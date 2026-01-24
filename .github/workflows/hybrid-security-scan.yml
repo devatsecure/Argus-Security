@@ -70,7 +70,7 @@ jobs:
       
       - name: Cache Hugging Face Models
         if: github.event.inputs.enable_foundation_sec == 'true'
-        uses: actions/cache@v3
+        uses: actions/cache@v5
         id: cache-hf-models
         with:
           path: ~/.cache/huggingface
