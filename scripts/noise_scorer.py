@@ -24,7 +24,7 @@ class NoiseScorer:
     3. Pattern-based noise detection
     """
 
-    def __init__(self, history_file: str = ".agent-os/finding_history.jsonl"):
+    def __init__(self, history_file: str = ".argus/finding_history.jsonl"):
         self.history_file = Path(history_file)
         self.history: list[dict] = []
         self.llm = None
@@ -248,7 +248,7 @@ def main():
     parser = argparse.ArgumentParser(description="Score findings for noise/false positives")
     parser.add_argument("--input", "-i", required=True, help="Input findings JSON file")
     parser.add_argument("--output", "-o", required=True, help="Output scored findings JSON file")
-    parser.add_argument("--history", default=".agent-os/finding_history.jsonl", help="Historical findings database")
+    parser.add_argument("--history", default=".argus/finding_history.jsonl", help="Historical findings database")
     parser.add_argument("--update-history", action="store_true", help="Update historical database with these findings")
 
     args = parser.parse_args()

@@ -2,7 +2,7 @@
 
 **Date:** 2026-01-19
 **Status:** 🎉 PUBLISHED & LIVE
-**Release URL:** https://github.com/securedotcom/agent-os-action/releases/tag/v4.2.0
+**Release URL:** https://github.com/devatsecure/Argus-Security/releases/tag/v4.2.0
 
 ---
 
@@ -28,7 +28,7 @@
 ## 🎯 What's Published
 
 ### GitHub Release
-**URL:** https://github.com/securedotcom/agent-os-action/releases/tag/v4.2.0
+**URL:** https://github.com/devatsecure/Argus-Security/releases/tag/v4.2.0
 
 **Release Notes Sections:**
 1. Overview (multi-agent system introduction)
@@ -109,10 +109,10 @@
 ✅ CHANGELOG.md updated
 
 ### Docker Images (Auto-built by GitHub Actions)
-✅ `ghcr.io/securedotcom/agent-os-action:4.2.0`
-✅ `ghcr.io/securedotcom/agent-os-action:4.2`
-✅ `ghcr.io/securedotcom/agent-os-action:4`
-✅ `ghcr.io/securedotcom/agent-os-action:latest`
+✅ `ghcr.io/devatsecure/Argus-Security:4.2.0`
+✅ `ghcr.io/devatsecure/Argus-Security:4.2`
+✅ `ghcr.io/devatsecure/Argus-Security:4`
+✅ `ghcr.io/devatsecure/Argus-Security:latest`
 
 **Platforms:**
 - linux/amd64
@@ -125,9 +125,9 @@
 - Vulnerability scanned with Trivy
 
 ### GitHub Actions
-✅ `securedotcom/agent-os-action@v4.2.0` (exact version)
-✅ `securedotcom/agent-os-action@v4.2` (minor version)
-✅ `securedotcom/agent-os-action@v4` (major version)
+✅ `devatsecure/Argus-Security@v4.2.0` (exact version)
+✅ `devatsecure/Argus-Security@v4.2` (minor version)
+✅ `devatsecure/Argus-Security@v4` (major version)
 
 ---
 
@@ -135,12 +135,12 @@
 
 ### User-Facing
 - **README.md:** Updated with 390+ line multi-agent section
-- **Multi-Agent Guide:** [`docs/MULTI_AGENT_GUIDE.md`](https://github.com/securedotcom/agent-os-action/blob/v4.2.0/docs/MULTI_AGENT_GUIDE.md)
-- **Collaborative Reasoning:** [`docs/collaborative-reasoning-guide.md`](https://github.com/securedotcom/agent-os-action/blob/v4.2.0/docs/collaborative-reasoning-guide.md)
-- **Spontaneous Discovery:** [`docs/spontaneous-discovery-guide.md`](https://github.com/securedotcom/agent-os-action/blob/v4.2.0/docs/spontaneous-discovery-guide.md)
+- **Multi-Agent Guide:** [`docs/MULTI_AGENT_GUIDE.md`](https://github.com/devatsecure/Argus-Security/blob/v4.2.0/docs/MULTI_AGENT_GUIDE.md)
+- **Collaborative Reasoning:** [`docs/collaborative-reasoning-guide.md`](https://github.com/devatsecure/Argus-Security/blob/v4.2.0/docs/collaborative-reasoning-guide.md)
+- **Spontaneous Discovery:** [`docs/spontaneous-discovery-guide.md`](https://github.com/devatsecure/Argus-Security/blob/v4.2.0/docs/spontaneous-discovery-guide.md)
 
 ### Technical
-- **CHANGELOG:** [`CHANGELOG.md#420`](https://github.com/securedotcom/agent-os-action/blob/v4.2.0/CHANGELOG.md#420---2026-01-19)
+- **CHANGELOG:** [`CHANGELOG.md#420`](https://github.com/devatsecure/Argus-Security/blob/v4.2.0/CHANGELOG.md#420---2026-01-19)
 - **Implementation Summary:** `MULTI_AGENT_IMPLEMENTATION_SUMMARY.md`
 - **Integration Complete:** `MULTI_AGENT_INTEGRATION_COMPLETE.md`
 - **Test Summary:** `TEST_SUMMARY.md`
@@ -187,7 +187,7 @@
 
 ### GitHub Actions (Simplest)
 ```yaml
-- uses: securedotcom/agent-os-action@v4.2.0
+- uses: devatsecure/Argus-Security@v4.2.0
   with:
     anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
     # Multi-agent features automatically enabled!
@@ -207,10 +207,10 @@ python scripts/run_ai_audit.py \
 
 ### Docker
 ```bash
-docker pull ghcr.io/securedotcom/agent-os-action:4.2.0
+docker pull ghcr.io/devatsecure/Argus-Security:4.2.0
 docker run -v $(pwd):/workspace \
   -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
-  ghcr.io/securedotcom/agent-os-action:4.2.0
+  ghcr.io/devatsecure/Argus-Security:4.2.0
 ```
 
 ---
@@ -223,7 +223,7 @@ docker run -v $(pwd):/workspace \
 ✅ Docker images available - COMPLETE
 
 ### This Week
-⏳ Run benchmark on agent-os-action repo itself
+⏳ Run benchmark on argus-action repo itself
 ⏳ Monitor initial adoption metrics
 ⏳ Collect early user feedback
 ⏳ Update marketing materials
@@ -285,11 +285,11 @@ docker run -v $(pwd):/workspace \
 
 ## 🔗 Important Links
 
-- **Release:** https://github.com/securedotcom/agent-os-action/releases/tag/v4.2.0
-- **CHANGELOG:** https://github.com/securedotcom/agent-os-action/blob/v4.2.0/CHANGELOG.md#420---2026-01-19
-- **Documentation:** https://github.com/securedotcom/agent-os-action/blob/v4.2.0/docs/MULTI_AGENT_GUIDE.md
-- **PR #43:** https://github.com/securedotcom/agent-os-action/pull/43
-- **Repository:** https://github.com/securedotcom/agent-os-action
+- **Release:** https://github.com/devatsecure/Argus-Security/releases/tag/v4.2.0
+- **CHANGELOG:** https://github.com/devatsecure/Argus-Security/blob/v4.2.0/CHANGELOG.md#420---2026-01-19
+- **Documentation:** https://github.com/devatsecure/Argus-Security/blob/v4.2.0/docs/MULTI_AGENT_GUIDE.md
+- **PR #43:** https://github.com/devatsecure/Argus-Security/pull/43
+- **Repository:** https://github.com/devatsecure/Argus-Security
 
 ---
 

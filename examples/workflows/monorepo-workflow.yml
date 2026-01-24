@@ -1,4 +1,4 @@
-name: Agent OS Code Review (Monorepo)
+name: Argus Code Review (Monorepo)
 
 on:
   schedule:
@@ -14,7 +14,7 @@ jobs:
     - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332  # v4.1.7
     
     - name: Review Frontend
-      uses: securedotcom/agent-os-action@v1  # Our action - use semver tag
+      uses: devatsecure/Argus-Security@v1  # Our action - use semver tag
       with:
         review-type: 'audit'
         project-path: './packages/frontend'
@@ -28,7 +28,7 @@ jobs:
       if: always()
       with:
         name: frontend-review-reports
-        path: packages/frontend/.agent-os/reviews/
+        path: packages/frontend/.argus/reviews/
   
   # Review backend package
   review-backend:
@@ -38,7 +38,7 @@ jobs:
     - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332  # v4.1.7
     
     - name: Review Backend
-      uses: securedotcom/agent-os-action@v1  # Our action - use semver tag
+      uses: devatsecure/Argus-Security@v1  # Our action - use semver tag
       with:
         review-type: 'audit'
         project-path: './packages/backend'
@@ -52,7 +52,7 @@ jobs:
       if: always()
       with:
         name: backend-review-reports
-        path: packages/backend/.agent-os/reviews/
+        path: packages/backend/.argus/reviews/
   
   # Review shared libraries
   review-shared:
@@ -62,7 +62,7 @@ jobs:
     - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332  # v4.1.7
     
     - name: Review Shared
-      uses: securedotcom/agent-os-action@v1  # Our action - use semver tag
+      uses: devatsecure/Argus-Security@v1  # Our action - use semver tag
       with:
         review-type: 'audit'
         project-path: './packages/shared'
@@ -76,5 +76,5 @@ jobs:
       if: always()
       with:
         name: shared-review-reports
-        path: packages/shared/.agent-os/reviews/
+        path: packages/shared/.argus/reviews/
 

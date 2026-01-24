@@ -117,7 +117,7 @@ jobs:
         run: |
           pip install -q anthropic openai tenacity
       
-      - name: Run Agent OS Code Review
+      - name: Run Argus Code Review
         id: review
         uses: ./
         with:
@@ -140,35 +140,35 @@ jobs:
           fi
           
           # Check that reports were generated
-          if [ ! -f "test-repo/.agent-os/reviews/audit-report.md" ]; then
+          if [ ! -f "test-repo/.argus/reviews/audit-report.md" ]; then
             echo "❌ Main report not found"
             exit 1
           fi
           
-          if [ ! -f "test-repo/.agent-os/reviews/results.sarif" ]; then
+          if [ ! -f "test-repo/.argus/reviews/results.sarif" ]; then
             echo "❌ SARIF report not found"
             exit 1
           fi
           
-          if [ ! -f "test-repo/.agent-os/reviews/results.json" ]; then
+          if [ ! -f "test-repo/.argus/reviews/results.json" ]; then
             echo "❌ JSON report not found"
             exit 1
           fi
           
-          if [ ! -f "test-repo/.agent-os/reviews/metrics.json" ]; then
+          if [ ! -f "test-repo/.argus/reviews/metrics.json" ]; then
             echo "❌ Metrics not found"
             exit 1
           fi
           
           # For multi-agent mode, check individual agent reports
           if [ "${{ matrix.mode }}" == "sequential" ]; then
-            if [ ! -d "test-repo/.agent-os/reviews/agents" ]; then
+            if [ ! -d "test-repo/.argus/reviews/agents" ]; then
               echo "❌ Agent reports directory not found"
               exit 1
             fi
             
             for agent in security performance testing quality; do
-              if [ ! -f "test-repo/.agent-os/reviews/agents/${agent}-report.md" ]; then
+              if [ ! -f "test-repo/.argus/reviews/agents/${agent}-report.md" ]; then
                 echo "❌ ${agent} agent report not found"
                 exit 1
               fi
@@ -182,18 +182,18 @@ jobs:
           echo "Verifying SARIF structure..."
           
           # Check SARIF is valid JSON
-          if ! jq empty test-repo/.agent-os/reviews/results.sarif 2>/dev/null; then
+          if ! jq empty test-repo/.argus/reviews/results.sarif 2>/dev/null; then
             echo "❌ SARIF is not valid JSON"
             exit 1
           fi
           
           # Check SARIF has required fields
-          if ! jq -e '.version' test-repo/.agent-os/reviews/results.sarif > /dev/null; then
+          if ! jq -e '.version' test-repo/.argus/reviews/results.sarif > /dev/null; then
             echo "❌ SARIF missing version field"
             exit 1
           fi
           
-          if ! jq -e '.runs[0].tool.driver.name' test-repo/.agent-os/reviews/results.sarif > /dev/null; then
+          if ! jq -e '.runs[0].tool.driver.name' test-repo/.argus/reviews/results.sarif > /dev/null; then
             echo "❌ SARIF missing tool name"
             exit 1
           fi
@@ -227,7 +227,7 @@ jobs:
         uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874  # v4.4.0
         with:
           name: smoke-test-reports-${{ matrix.mode }}-${{ matrix.provider }}
-          path: test-repo/.agent-os/reviews/
+          path: test-repo/.argus/reviews/
           retention-days: 7
   
   smoke-test-summary:

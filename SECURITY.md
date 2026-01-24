@@ -12,7 +12,7 @@ We release patches for security vulnerabilities. Currently supported versions:
 
 ## Reporting a Vulnerability
 
-We take the security of Agent-OS seriously. If you believe you have found a security vulnerability, please report it to us as described below.
+We take the security of Argus seriously. If you believe you have found a security vulnerability, please report it to us as described below.
 
 ### Where to Report
 
@@ -52,7 +52,7 @@ Please include the following information in your report:
 
 ## Security Measures
 
-Agent-OS implements several security measures:
+Argus implements several security measures:
 
 ### Code Security
 
@@ -104,7 +104,7 @@ Agent-OS implements several security measures:
 
 ### AI Model Usage
 
-Agent-OS integrates with AI models (Claude, Foundation-Sec). Be aware:
+Argus integrates with AI models (Claude, Foundation-Sec). Be aware:
 
 - AI responses are sent to third-party APIs
 - Code snippets may be transmitted for analysis
@@ -127,7 +127,7 @@ Agent-OS integrates with AI models (Claude, Foundation-Sec). Be aware:
 
 We publish security advisories for:
 
-- Critical vulnerabilities in Agent-OS
+- Critical vulnerabilities in Argus
 - High-severity dependency vulnerabilities
 - Security-related configuration changes
 
@@ -138,7 +138,7 @@ Subscribe to security advisories:
 
 ## Compliance
 
-Agent-OS supports compliance requirements:
+Argus supports compliance requirements:
 
 - **SOC 2**: Automated compliance checks
 - **SLSA**: Supply chain security (Level 2)
@@ -156,9 +156,9 @@ Our security posture:
 - **Gitleaks**: Secret detection
 
 View current security status:
-- [Security Tab](https://github.com/securedotcom/agent-os-action/security)
-- [Code Scanning](https://github.com/securedotcom/agent-os-action/security/code-scanning)
-- [Dependabot Alerts](https://github.com/securedotcom/agent-os-action/security/dependabot)
+- [Security Tab](https://github.com/devatsecure/Argus-Security/security)
+- [Code Scanning](https://github.com/devatsecure/Argus-Security/security/code-scanning)
+- [Dependabot Alerts](https://github.com/devatsecure/Argus-Security/security/dependabot)
 
 ## Attribution
 

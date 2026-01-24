@@ -11,7 +11,7 @@
 
 ### Step 1: Analyze Available Specialist Roles (Agents)
 
-Read the file `agent-os/roles/implementers.yml`.
+Read the file `argus/roles/implementers.yml`.
 
 - Review each `implementer`'s `areas_of_responsibility` (specialty areas) and THINK HARD
 - Identify which implementers are best suited for different types of tasks
@@ -22,7 +22,7 @@ Read the file `agent-os/roles/implementers.yml`.
 
 Use your knowledge of the available role specialists from Step 1 to make appropriate task group assignments.
 
-Generate `agent-os/specs/[current-spec]/tasks.md` with suggested subagents (a.k.a. implementers).
+Generate `argus/specs/[current-spec]/tasks.md` with suggested subagents (a.k.a. implementers).
 
 **Important**: The exact tasks, task groups, and organization will vary based on the feature's specific requirements. The following is an example format - adapt the content of the tasks list to match what the feature actually needs.
 

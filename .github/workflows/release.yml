@@ -118,8 +118,8 @@ jobs:
           ### GitHub Actions Usage
           
           ```yaml
-          - name: Run Agent-OS Security Review
-            uses: devatsecure/agent-os-action@${{ steps.version.outputs.tag }}
+          - name: Run Argus Security Review
+            uses: devatsecure/argus-action@${{ steps.version.outputs.tag }}
             with:
               anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
               severity_threshold: high
@@ -202,7 +202,7 @@ jobs:
           
           ### Links
           - 🔗 [View Release](https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.tag }})
-          - 🐳 [Docker Image](https://github.com/${{ github.repository }}/pkgs/container/agent-os-action)
+          - 🐳 [Docker Image](https://github.com/${{ github.repository }}/pkgs/container/argus-action)
           - 📝 [Changelog](https://github.com/${{ github.repository }}/compare/${{ steps.previous.outputs.tag }}...${{ steps.version.outputs.tag }})
           
           ### Next Steps

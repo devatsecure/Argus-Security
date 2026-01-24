@@ -1,6 +1,6 @@
-# Agent-OS Examples
+# Argus Examples
 
-This directory contains example scripts and usage patterns for Agent-OS Security Action.
+This directory contains example scripts and usage patterns for Argus Security Action.
 
 ## Examples
 
@@ -36,7 +36,7 @@ python examples/threat_intel_integration.py
 
 ### 2. Basic Workflow
 
-Standard Agent-OS security audit workflow:
+Standard Argus security audit workflow:
 
 ```bash
 # Run full security audit with AI triage
@@ -63,21 +63,21 @@ semgrep --config auto --json .
 
 ### 4. CLI Tools
 
-Agent-OS CLI (`agentos`) examples:
+Argus CLI (`argus`) examples:
 
 ```bash
 # Normalize scanner outputs
-./scripts/agentos normalize \
+./scripts/argus normalize \
   --inputs semgrep.sarif trivy.json \
   --output findings.json
 
 # Apply policy gates
-./scripts/agentos gate \
+./scripts/argus gate \
   --stage pr \
   --input findings.json
 
 # Record feedback
-./scripts/agentos feedback record abc-123 \
+./scripts/argus feedback record abc-123 \
   --mark fp \
   --reason "Test file should be ignored"
 ```
@@ -87,7 +87,7 @@ Agent-OS CLI (`agentos`) examples:
 All examples assume you're in the repository root:
 
 ```bash
-cd /path/to/agent-os-action
+cd /path/to/argus-action
 python examples/threat_intel_integration.py
 ```
 

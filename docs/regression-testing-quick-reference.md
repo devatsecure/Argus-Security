@@ -128,7 +128,7 @@ pytest tests/security_regression/sql_injection/test_<id>.py -v
 ### Bulk Test Generation
 
 ```bash
-# From Agent-OS scan results (extract fixed findings)
+# From Argus scan results (extract fixed findings)
 jq '[.[] | select(.status == "fixed")]' scan_results.json > fixed.json
 python scripts/regression_tester.py --mode generate --fixed-findings fixed.json
 ```
@@ -234,7 +234,7 @@ Edit `scripts/regression_tester.py` and add to the template dictionary in:
 - **Selective running**: Use `--vuln-type` to run specific categories
 - **Incremental generation**: Only generate tests for new fixes
 
-## Integration with Agent-OS
+## Integration with Argus
 
 ```bash
 # Full workflow

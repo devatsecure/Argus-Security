@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-DAST Scanner for Agent-OS
+DAST Scanner for Argus
 Dynamic Application Security Testing using Nuclei
 
 Features:

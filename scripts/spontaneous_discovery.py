@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Spontaneous Security Discovery System for Agent-OS
+Spontaneous Security Discovery System for Argus
 
 This module implements an AI-powered security discovery system that identifies
 issues beyond traditional scanner detection rules. Inspired by Slack's agents,

@@ -1,4 +1,4 @@
-Create `agent-os/product/tech-stack.md` with a list of all tech stack choices that cover all aspects of this product's codebase.
+Create `argus/product/tech-stack.md` with a list of all tech stack choices that cover all aspects of this product's codebase.
 
 ### Creating the Tech Stack document
 
@@ -17,4 +17,4 @@ Reconcile and fill in the remaining gaps in the tech stack list by finding, read
 
 #### Step 3: Create the Tech Stack Document
 
-Create `agent-os/product/tech-stack.md` and populate it with the final list of all technical stack choices, reconciled between the information the user has provided to you and the information found in provided sources.
+Create `argus/product/tech-stack.md` and populate it with the final list of all technical stack choices, reconciled between the information the user has provided to you and the information found in provided sources.

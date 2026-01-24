@@ -1,6 +1,6 @@
 # Platform Integration Quick Reference
 
-**One-page cheat sheet for integrating Agent-OS with GitHub, GitLab, and Bitbucket**
+**One-page cheat sheet for integrating Argus with GitHub, GitLab, and Bitbucket**
 
 ---
 
@@ -21,7 +21,7 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v4
-      - uses: securedotcom/agent-os-action@v4.0.0
+      - uses: devatsecure/Argus-Security@v4.0.0
         with:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           review-type: security
@@ -32,11 +32,11 @@ jobs:
 
 ```yaml
 # .gitlab-ci.yml
-agent-os:
+argus:
   image: python:3.11
   script:
-    - git clone https://github.com/securedotcom/agent-os-action
-    - cd agent-os-action && pip install -r requirements.txt
+    - git clone https://github.com/devatsecure/Argus-Security
+    - cd argus-action && pip install -r requirements.txt
     - python scripts/run_ai_audit.py --output-file ../results.json
   artifacts:
     reports:
@@ -54,8 +54,8 @@ pipelines:
       - step:
           name: Security Scan
           script:
-            - git clone https://github.com/securedotcom/agent-os-action
-            - cd agent-os-action && pip install -r requirements.txt
+            - git clone https://github.com/devatsecure/Argus-Security
+            - cd argus-action && pip install -r requirements.txt
             - python scripts/run_ai_audit.py --output-file ../results.json
           artifacts:
             - results.json
@@ -68,7 +68,7 @@ pipelines:
 ### GitHub Actions (Full)
 
 ```yaml
-- uses: securedotcom/agent-os-action@v4.0.0
+- uses: devatsecure/Argus-Security@v4.0.0
   with:
     anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
     semgrep-enabled: true
@@ -112,25 +112,25 @@ python scripts/run_ai_audit.py \
 ### API Security Testing
 
 ```bash
-# All platforms (after installing Agent-OS)
-./scripts/agentos api-security --path . --output api-findings.json
+# All platforms (after installing Argus)
+./scripts/argus api-security --path . --output api-findings.json
 ```
 
 ### Supply Chain Security
 
 ```bash
 # Check for typosquatting and malicious packages
-./scripts/agentos supply-chain diff --base main --head HEAD
+./scripts/argus supply-chain diff --base main --head HEAD
 
 # Full dependency scan
-./scripts/agentos supply-chain scan --path .
+./scripts/argus supply-chain scan --path .
 ```
 
 ### DAST Scanning
 
 ```bash
 # Requires running application
-./scripts/agentos dast --target http://localhost:8080 \
+./scripts/argus dast --target http://localhost:8080 \
   --openapi openapi.yaml --output dast-results.json
 ```
 
@@ -138,7 +138,7 @@ python scripts/run_ai_audit.py \
 
 ```bash
 # Enrich findings with CISA KEV, EPSS, NVD, GitHub, OSV
-./scripts/agentos threat-intel enrich \
+./scripts/argus threat-intel enrich \
   --findings findings.json --output enriched.json
 ```
 
@@ -146,7 +146,7 @@ python scripts/run_ai_audit.py \
 
 ```bash
 # Generate AI-powered fixes
-./scripts/agentos remediate \
+./scripts/argus remediate \
   --findings findings.json --output fixes.md
 ```
 
@@ -154,10 +154,10 @@ python scripts/run_ai_audit.py \
 
 ```bash
 # API fuzzing
-./scripts/agentos fuzz api --spec openapi.yaml --duration 60
+./scripts/argus fuzz api --spec openapi.yaml --duration 60
 
 # Function fuzzing
-./scripts/agentos fuzz function --target src/parser.py \
+./scripts/argus fuzz function --target src/parser.py \
   --function parse_xml --duration 30
 ```
 
@@ -165,14 +165,14 @@ python scripts/run_ai_audit.py \
 
 ```bash
 # Run security regression tests
-./scripts/agentos regression-test run --path . --output results.json
+./scripts/argus regression-test run --path . --output results.json
 ```
 
 ### SAST-DAST Correlation
 
 ```bash
 # Correlate static and dynamic findings
-./scripts/agentos correlate --sast sast.json --dast dast.json
+./scripts/argus correlate --sast sast.json --dast dast.json
 ```
 
 ---
@@ -309,23 +309,23 @@ curl -X POST \
 ```yaml
 - uses: actions/cache@v4
   with:
-    path: .agent-os-cache
-    key: agent-os-${{ hashFiles('**/*.py') }}
+    path: .argus-cache
+    key: argus-${{ hashFiles('**/*.py') }}
 ```
 
 **GitLab:**
 ```yaml
 cache:
-  key: agent-os-${CI_COMMIT_REF_SLUG}
+  key: argus-${CI_COMMIT_REF_SLUG}
   paths:
-    - .agent-os-cache/
+    - .argus-cache/
 ```
 
 **Bitbucket:**
 ```yaml
 definitions:
   caches:
-    agent-cache: .agent-os-cache
+    agent-cache: .argus-cache
 ```
 
 ---
@@ -376,13 +376,13 @@ timeout: 30m         # GitLab/Bitbucket
 
 - **Complete Guide:** [docs/PLATFORM_INTEGRATIONS.md](./PLATFORM_INTEGRATIONS.md)
 - **GitHub Examples:** [.github/workflows/](./.github/workflows/)
-- **Agent-OS Docs:** [docs/](./docs/)
+- **Argus Docs:** [docs/](./docs/)
 
 ---
 
 **Quick Links:**
-- [GitHub Actions Marketplace](https://github.com/marketplace/actions/agent-os-security-action)
-- [Agent-OS Repository](https://github.com/securedotcom/agent-os-action)
-- [Report Issues](https://github.com/securedotcom/agent-os-action/issues)
+- [GitHub Actions Marketplace](https://github.com/marketplace/actions/argus-security-action)
+- [Argus Repository](https://github.com/devatsecure/Argus-Security)
+- [Report Issues](https://github.com/devatsecure/Argus-Security/issues)
 
 **Version:** 4.0.0 | **Updated:** 2026-01-15

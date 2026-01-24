@@ -1,6 +1,6 @@
 """
 Integration tests for complete pipeline using real scanner outputs
-Tests the entire Agent-OS workflow from scan to report generation
+Tests the entire Argus workflow from scan to report generation
 """
 import json
 import os

@@ -2,14 +2,14 @@
 
 ## Overview
 
-Agent-OS v1.0.16+ now exposes all 10 security features directly in GitHub Action inputs, making them discoverable and configurable without CLI knowledge.
+Argus v1.0.16+ now exposes all 10 security features directly in GitHub Action inputs, making them discoverable and configurable without CLI knowledge.
 
 ## What Changed
 
 ### Before (v1.0.15 and earlier)
 
 ```yaml
-- uses: securedotcom/agent-os-action@v1
+- uses: devatsecure/Argus-Security@v1
   with:
     anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
     # Only 3 security features exposed:
@@ -22,7 +22,7 @@ Agent-OS v1.0.16+ now exposes all 10 security features directly in GitHub Action
 ### After (v1.0.16+)
 
 ```yaml
-- uses: securedotcom/agent-os-action@v1
+- uses: devatsecure/Argus-Security@v1
   with:
     anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
 
@@ -62,7 +62,7 @@ Agent-OS v1.0.16+ now exposes all 10 security features directly in GitHub Action
 
 If you're using the default configuration:
 ```yaml
-- uses: securedotcom/agent-os-action@v1
+- uses: devatsecure/Argus-Security@v1
   with:
     anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
 ```
@@ -74,7 +74,7 @@ If you're using the default configuration:
 If you want to enable DAST, fuzzing, or runtime security:
 
 ```yaml
-- uses: securedotcom/agent-os-action@v1
+- uses: devatsecure/Argus-Security@v1
   with:
     anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
 
@@ -96,7 +96,7 @@ If you want to enable DAST, fuzzing, or runtime security:
 If you want to reduce scan time or cost:
 
 ```yaml
-- uses: securedotcom/agent-os-action@v1
+- uses: devatsecure/Argus-Security@v1
   with:
     anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
 
@@ -144,7 +144,7 @@ If you want to reduce scan time or cost:
 If the cost increase is too high, disable features you don't need:
 
 ```yaml
-- uses: securedotcom/agent-os-action@v1
+- uses: devatsecure/Argus-Security@v1
   with:
     anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
 
@@ -159,7 +159,7 @@ If the cost increase is too high, disable features you don't need:
 Or use Ollama for $0.00 cost:
 
 ```yaml
-- uses: securedotcom/agent-os-action@v1
+- uses: devatsecure/Argus-Security@v1
   with:
     ai-provider: 'ollama'
     ollama-endpoint: 'http://localhost:11434'
@@ -179,7 +179,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: securedotcom/agent-os-action@v1
+      - uses: devatsecure/Argus-Security@v1
         with:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           only-changed: 'true'
@@ -205,7 +205,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: securedotcom/agent-os-action@v1
+      - uses: devatsecure/Argus-Security@v1
         with:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           only-changed: 'true'
@@ -231,7 +231,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: securedotcom/agent-os-action@v1
+      - uses: devatsecure/Argus-Security@v1
         with:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
 
@@ -308,12 +308,12 @@ A: Start with defaults, then:
 - **Container deployments**: Enable `enable-runtime-security: 'true'`
 
 **Q: Can I use CLI instead of GitHub Action inputs?**
-A: Yes! CLI still works. See `scripts/agentos --help`.
+A: Yes! CLI still works. See `scripts/argus --help`.
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/securedotcom/agent-os-action/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/securedotcom/agent-os-action/discussions)
+- **Issues**: [GitHub Issues](https://github.com/devatsecure/Argus-Security/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/devatsecure/Argus-Security/discussions)
 - **Documentation**: [docs/index.md](docs/index.md)
 
 ---

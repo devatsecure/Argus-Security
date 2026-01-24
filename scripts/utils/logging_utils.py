@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Logging Utilities for Agent-OS
+Logging Utilities for Argus
 Structured logging with sanitization and performance tracking.
 
 This module provides standardized logging setup with automatic

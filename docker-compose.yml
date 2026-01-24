@@ -1,13 +1,13 @@
 version: '3.8'
 
 services:
-  # Agent-OS Complete 6-Phase Security Scanner
-  agent-os-scanner:
+  # Argus Complete 6-Phase Security Scanner
+  argus-scanner:
     build:
       context: .
       dockerfile: Dockerfile.complete
-    image: agent-os-scanner:latest
-    container_name: agent-os-scanner
+    image: argus-scanner:latest
+    container_name: argus-scanner
     environment:
       # AI Provider Configuration
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
@@ -38,7 +38,7 @@ services:
       - ${OUTPUT_DIR:-./output}:/output
 
       # Cache directory for faster subsequent scans
-      - agent-os-cache:/cache
+      - argus-cache:/cache
 
       # Docker socket for Phase 4 Sandbox Validation
       - /var/run/docker.sock:/var/run/docker.sock
@@ -47,7 +47,7 @@ services:
 
     # Network configuration
     networks:
-      - agent-os-network
+      - argus-network
 
     # Resource limits
     deploy:
@@ -68,10 +68,10 @@ services:
       start_period: 5s
 
 volumes:
-  agent-os-cache:
-    name: agent-os-cache
+  argus-cache:
+    name: argus-cache
 
 networks:
-  agent-os-network:
-    name: agent-os-network
+  argus-network:
+    name: argus-network
     driver: bridge

@@ -9,7 +9,7 @@ Follow these instructions:
 Display the following message to the user:
 
 ```
-Your spec verification report is ready at `agent-os/specs/[this-spec]/verification/spec-verification.md`.
+Your spec verification report is ready at `argus/specs/[this-spec]/verification/spec-verification.md`.
 
 Review it closely to make sure it all looks good.
 

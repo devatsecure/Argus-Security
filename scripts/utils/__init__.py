@@ -1,5 +1,5 @@
 """
-Utility modules for Agent-OS
+Utility modules for Argus
 """
 
 from .error_handling import (

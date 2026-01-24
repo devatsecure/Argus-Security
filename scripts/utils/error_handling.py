@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Error Handling Utilities for Agent-OS
+Error Handling Utilities for Argus
 
 Provides circuit breakers, graceful degradation, and retry logic with exponential backoff
 to improve reliability and prevent cascading failures.

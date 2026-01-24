@@ -60,7 +60,7 @@ for finding in result.findings:
     print(f"  URL: {finding.matched_at}")
     print(f"  PoC: {finding.curl_command}\n")
 
-# Normalize to Agent-OS Finding format
+# Normalize to Argus Finding format
 normalized = scanner.normalize_to_findings(result)
 ```
 
@@ -177,7 +177,7 @@ python scripts/dast_scanner.py https://api.example.com \
   --timeout 10
 ```
 
-## Integration with Agent-OS
+## Integration with Argus
 
 ### Add to Hybrid Analyzer
 
@@ -214,7 +214,7 @@ class HybridAnalyzer:
 ### Enable in Configuration
 
 ```yaml
-# .agentos.yml
+# .argus.yml
 scanners:
   dast:
     enabled: true
@@ -274,15 +274,15 @@ python scripts/dast_scanner.py https://example.com \
 
 ## Next Steps
 
-1. **Read the full documentation**: `/home/user/agent-os-action/docs/references/dast-scanner-reference.md`
-2. **Try the examples**: `/home/user/agent-os-action/examples/dast_scanner_example.py`
+1. **Read the full documentation**: `/home/user/argus-action/docs/references/dast-scanner-reference.md`
+2. **Try the examples**: `/home/user/argus-action/examples/dast_scanner_example.py`
 3. **Create custom templates**: For your specific application vulnerabilities
 4. **Integrate with CI/CD**: Add DAST scanning to your pipeline
 5. **Monitor trends**: Track findings over time to measure security improvements
 
 ## Get Help
 
-- GitHub Issues: https://github.com/securedotcom/agent-os-action/issues
+- GitHub Issues: https://github.com/devatsecure/Argus-Security/issues
 - Nuclei Docs: https://docs.projectdiscovery.io/nuclei/
 - Template Library: https://github.com/projectdiscovery/nuclei-templates
 

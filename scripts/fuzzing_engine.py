@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Intelligent Fuzzing Engine for Agent-OS
+Intelligent Fuzzing Engine for Argus
 AI-guided fuzzing with coverage tracking, API fuzzing, and crash detection
 
 Features:
@@ -1113,9 +1113,9 @@ No explanations, just the JSON array."""
             "runs": [{
                 "tool": {
                     "driver": {
-                        "name": "Agent-OS Fuzzing Engine",
+                        "name": "Argus Fuzzing Engine",
                         "version": "1.0.0",
-                        "informationUri": "https://github.com/securedotcom/agent-os-action"
+                        "informationUri": "https://github.com/devatsecure/Argus-Security"
                     }
                 },
                 "results": []
@@ -1160,7 +1160,7 @@ No explanations, just the JSON array."""
 
 def main():
     """CLI entry point"""
-    parser = argparse.ArgumentParser(description="Agent-OS Intelligent Fuzzing Engine")
+    parser = argparse.ArgumentParser(description="Argus Intelligent Fuzzing Engine")
     subparsers = parser.add_subparsers(dest='command', help='Fuzzing command')
 
     # API fuzzing

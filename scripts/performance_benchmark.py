@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Performance Benchmark Script for Agent-OS Caching and Progress Tracking
+Performance Benchmark Script for Argus Caching and Progress Tracking
 
 This script provides a comprehensive benchmark of:
 1. Cache manager performance (hits vs misses)
@@ -380,7 +380,7 @@ class PerformanceBenchmark:
     def run_all_benchmarks(self) -> Dict[str, any]:
         """Run all benchmarks"""
         print("\n" + "="*70)
-        print("  AGENT-OS PERFORMANCE BENCHMARK")
+        print("  ARGUS PERFORMANCE BENCHMARK")
         print("="*70)
         print(f"  Start Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"  Cache Directory: {self.temp_cache_dir}")

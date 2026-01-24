@@ -1,4 +1,4 @@
-# Agent-OS Unified Finding Schema
+# Argus Unified Finding Schema
 # Version: 1.0
 # Date: 2025-11-06
 # Purpose: Normalize all security tool outputs into single format
@@ -22,7 +22,7 @@ Finding:
     type: string
     required: true
     description: Repository name or URL
-    example: "securedotcom/agent-os"
+    example: "devatsecure/Argus-Security"
   
   commit_sha:
     type: string
@@ -226,7 +226,7 @@ Finding:
 example:
   id: "a3f5e8c9d2b14f6c8e1a7b3d9c2e4f6a8b1c3d5e7f9a2b4c6d8e1f3a5b7c9d"
   origin: "semgrep"
-  repo: "securedotcom/agent-os"
+  repo: "devatsecure/Argus-Security"
   commit_sha: "a1b2c3d4e5f6"
   branch: "main"
   pr_number: 123
@@ -245,7 +245,7 @@ example:
   evidence:
     message: "SQL query constructed using string concatenation with user input"
     snippet: "query = 'SELECT * FROM users WHERE id=' + user_id"
-    artifact_url: "https://github.com/securedotcom/agent-os/security/code-scanning/123"
+    artifact_url: "https://github.com/devatsecure/Argus-Security/security/code-scanning/123"
   references:
     - "https://cwe.mitre.org/data/definitions/89.html"
     - "https://owasp.org/www-community/attacks/SQL_Injection"

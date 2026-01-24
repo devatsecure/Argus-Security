@@ -60,8 +60,8 @@ jobs:
           "spdxVersion": "SPDX-2.3",
           "dataLicense": "CC0-1.0",
           "SPDXID": "SPDXRef-DOCUMENT",
-          "name": "agent-os-action",
-          "documentNamespace": "https://github.com/securedotcom/agent-os-action/sbom/${{ steps.get-tag.outputs.tag }}",
+          "name": "argus-action",
+          "documentNamespace": "https://github.com/devatsecure/Argus-Security/sbom/${{ steps.get-tag.outputs.tag }}",
           "creationInfo": {
             "created": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
             "creators": ["Tool: GitHub Actions"]
@@ -69,9 +69,9 @@ jobs:
           "packages": [
             {
               "SPDXID": "SPDXRef-Package",
-              "name": "agent-os-action",
+              "name": "argus-action",
               "versionInfo": "${{ steps.get-tag.outputs.tag }}",
-              "downloadLocation": "https://github.com/securedotcom/agent-os-action/archive/${{ steps.get-tag.outputs.tag }}.tar.gz",
+              "downloadLocation": "https://github.com/devatsecure/Argus-Security/archive/${{ steps.get-tag.outputs.tag }}.tar.gz",
               "filesAnalyzed": false,
               "licenseConcluded": "MIT"
             }
@@ -85,14 +85,14 @@ jobs:
     - name: Create Release Artifact
       run: |
         # Create tarball of the release
-        tar -czf agent-os-action-${{ steps.get-tag.outputs.tag }}.tar.gz \
+        tar -czf argus-action-${{ steps.get-tag.outputs.tag }}.tar.gz \
           --exclude='.git' \
           --exclude='node_modules' \
-          --exclude='.agent-os' \
+          --exclude='.argus' \
           .
         
         # Generate checksums
-        sha256sum agent-os-action-${{ steps.get-tag.outputs.tag }}.tar.gz > checksums.txt
+        sha256sum argus-action-${{ steps.get-tag.outputs.tag }}.tar.gz > checksums.txt
         
         echo "✅ Release artifact created"
     
@@ -101,7 +101,7 @@ jobs:
       uses: actions/attest-build-provenance@1c608d11d69870c2092266b3f9a6f3abbf17002c  # v1.4.3
       with:
         subject-path: |
-          agent-os-action-${{ steps.get-tag.outputs.tag }}.tar.gz
+          argus-action-${{ steps.get-tag.outputs.tag }}.tar.gz
           sbom/sbom.spdx.json
     
     # Upload artifacts to release
@@ -112,8 +112,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ github.event.release.upload_url }}
-        asset_path: ./agent-os-action-${{ steps.get-tag.outputs.tag }}.tar.gz
-        asset_name: agent-os-action-${{ steps.get-tag.outputs.tag }}.tar.gz
+        asset_path: ./argus-action-${{ steps.get-tag.outputs.tag }}.tar.gz
+        asset_name: argus-action-${{ steps.get-tag.outputs.tag }}.tar.gz
         asset_content_type: application/gzip
     
     - name: Upload Checksums
@@ -154,7 +154,7 @@ jobs:
         echo "### Verification:" >> $GITHUB_STEP_SUMMARY
         echo '```bash' >> $GITHUB_STEP_SUMMARY
         echo "# Verify attestation" >> $GITHUB_STEP_SUMMARY
-        echo "gh attestation verify agent-os-action-${{ steps.get-tag.outputs.tag }}.tar.gz \\" >> $GITHUB_STEP_SUMMARY
+        echo "gh attestation verify argus-action-${{ steps.get-tag.outputs.tag }}.tar.gz \\" >> $GITHUB_STEP_SUMMARY
         echo "  --owner securedotcom" >> $GITHUB_STEP_SUMMARY
         echo '```' >> $GITHUB_STEP_SUMMARY
 

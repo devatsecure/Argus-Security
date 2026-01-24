@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Docker Manager for Agent-OS Sandbox
+Docker Manager for Argus Sandbox
 Adapted from Strix's docker_runtime.py for safe exploit validation
 
 Provides isolated Docker containers with:
@@ -39,7 +39,7 @@ class DockerManager:
     """Manages Docker containers for safe exploit validation"""
 
     # Default image (will be built from our Dockerfile)
-    DEFAULT_IMAGE = os.getenv("AGENT_OS_SANDBOX_IMAGE", "agent-os-sandbox:latest")
+    DEFAULT_IMAGE = os.getenv("ARGUS_SANDBOX_IMAGE", "argus-sandbox:latest")
 
     def __init__(self, image: Optional[str] = None):
         """
@@ -153,7 +153,7 @@ class DockerManager:
             Container ID
         """
         if not name:
-            name = f"agent-os-sandbox-{secrets.token_hex(8)}"
+            name = f"argus-sandbox-{secrets.token_hex(8)}"
 
         # Clean up any existing container with the same name
         try:
@@ -198,7 +198,7 @@ class DockerManager:
                 tmpfs={"/tmp": "size=100m,mode=1777"},  # Temporary filesystem
                 environment=env,
                 labels={
-                    "agent-os-sandbox": "true",
+                    "argus-sandbox": "true",
                     "created_at": str(int(time.time())),
                 },
                 remove=False,  # Don't auto-remove (we'll do it explicitly)
@@ -466,13 +466,13 @@ class DockerManager:
 
     def list_containers(self) -> list[dict[str, any]]:
         """
-        List all agent-os sandbox containers
+        List all argus sandbox containers
 
         Returns:
             List of container info dicts
         """
         try:
-            containers = self.client.containers.list(all=True, filters={"label": "agent-os-sandbox=true"})
+            containers = self.client.containers.list(all=True, filters={"label": "argus-sandbox=true"})
 
             return [
                 {

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Metrics Calculator is a Python module for analyzing inter-rater agreement between security findings from two different sources (e.g., Agent-OS and Codex). It provides sophisticated statistical analysis including Cohen's Kappa, Precision/Recall metrics, confusion matrices, and severity/category breakdowns.
+The Metrics Calculator is a Python module for analyzing inter-rater agreement between security findings from two different sources (e.g., Argus and Codex). It provides sophisticated statistical analysis including Cohen's Kappa, Precision/Recall metrics, confusion matrices, and severity/category breakdowns.
 
 **Module Location:** `/scripts/metrics_calculator.py`
 **Test Suite:** `/scripts/test_metrics_calculator.py`
@@ -56,8 +56,8 @@ Includes kappa coefficient and agreement percentage for each category.
 Standard 2x2 confusion matrix:
 ```
                  Codex Found    Codex Missed
-Agent-OS Found   True Positive  False Positive
-Agent-OS Missed  False Negative True Negative
+Argus Found   True Positive  False Positive
+Argus Missed  False Negative True Negative
 ```
 
 ### 6. Statistical Significance Testing
@@ -73,10 +73,10 @@ Complete analysis results containing:
 @dataclass
 class MetricsReport:
     timestamp: str                              # ISO timestamp
-    agent_os_finding_count: int                 # Total Agent-OS findings
+    argus_finding_count: int                 # Total Argus findings
     codex_finding_count: int                    # Total Codex findings
     total_matches: int                          # Matched findings
-    total_unique_to_agent_os: int              # Agent-OS only findings
+    total_unique_to_argus: int              # Argus only findings
     total_unique_to_codex: int                 # Codex only findings
     simple_agreement_rate: float                # % of findings that matched
     cohens_kappa: CohenKappaResult             # Kappa with CI and p-value
@@ -115,14 +115,14 @@ Expected input format for findings:
 from metrics_calculator import MetricsCalculator
 
 # Load findings
-agent_os_findings = [...]  # List of findings from Agent-OS
+argus_findings = [...]  # List of findings from Argus
 codex_findings = [...]     # List of findings from Codex
 
 # Create calculator
 calculator = MetricsCalculator()
 
 # Run comparison
-report = calculator.compare_findings(agent_os_findings, codex_findings)
+report = calculator.compare_findings(argus_findings, codex_findings)
 
 # Access results
 print(f"Cohen's Kappa: {report.cohens_kappa.kappa:.3f}")
@@ -136,11 +136,11 @@ print(f"Agreement Rate: {report.simple_agreement_rate:.1%}")
 from metrics_calculator import load_findings_from_file, save_metrics_report
 
 # Load findings from JSON
-agent_os = load_findings_from_file("agent_os_findings.json")
+argus = load_findings_from_file("argus_findings.json")
 codex = load_findings_from_file("codex_findings.json")
 
 # Compare
-report = calculator.compare_findings(agent_os, codex)
+report = calculator.compare_findings(argus, codex)
 
 # Save report
 save_metrics_report(report, "metrics_report.json")
@@ -150,7 +150,7 @@ save_metrics_report(report, "metrics_report.json")
 
 ```bash
 python scripts/metrics_calculator.py \
-  --agent-os-file agent_os_findings.json \
+  --argus-file argus_findings.json \
   --codex-file codex_findings.json \
   --output-file metrics_report.json
 ```
@@ -195,7 +195,7 @@ python scripts/metrics_calculator.py \
 ```python
 calculator = MetricsCalculator()
 
-agent_os_findings = [
+argus_findings = [
     {"path": "auth.py", "line": 42, "rule_id": "SQL-001",
      "severity": "critical", "category": "SAST"},
     {"path": "config.py", "line": 8, "rule_id": "SECRET-001",
@@ -209,7 +209,7 @@ codex_findings = [
      "severity": "high", "category": "SAST"},
 ]
 
-report = calculator.compare_findings(agent_os_findings, codex_findings)
+report = calculator.compare_findings(argus_findings, codex_findings)
 
 print(f"Match Rate: {report.simple_agreement_rate:.1%}")
 print(f"Kappa: {report.cohens_kappa.kappa:.3f}")
@@ -220,7 +220,7 @@ print(f"Recall: {report.precision_recall.recall:.3f}")
 ### Example 2: Analyze by Severity
 
 ```python
-report = calculator.compare_findings(agent_os, codex)
+report = calculator.compare_findings(argus, codex)
 
 for sev_agreement in report.severity_agreements:
     print(f"{sev_agreement.severity.upper()}: "
@@ -255,10 +255,10 @@ else:
 ```json
 {
   "timestamp": "2026-01-14T12:00:00.000000+00:00",
-  "agent_os_finding_count": 10,
+  "argus_finding_count": 10,
   "codex_finding_count": 12,
   "total_matches": 8,
-  "total_unique_to_agent_os": 2,
+  "total_unique_to_argus": 2,
   "total_unique_to_codex": 4,
   "simple_agreement_rate": 0.8,
   "cohens_kappa": {
@@ -287,7 +287,7 @@ else:
   "severity_agreements": [
     {
       "severity": "critical",
-      "agent_os_count": 3,
+      "argus_count": 3,
       "codex_count": 3,
       "both_agree": 3,
       "agreement_rate": 1.0,
@@ -296,7 +296,7 @@ else:
   ],
   "category_agreements": [...],
   "severity_distribution": {
-    "agent_os": {"critical": 3, "high": 5, "medium": 2},
+    "argus": {"critical": 3, "high": 5, "medium": 2},
     "codex": {"critical": 4, "high": 4, "medium": 4}
   },
   "category_distribution": {...}
@@ -333,7 +333,7 @@ for cat in report.category_agreements:
 
 ## Performance Characteristics
 
-- **Time Complexity**: O(n * m) for n Agent-OS findings and m Codex findings
+- **Time Complexity**: O(n * m) for n Argus findings and m Codex findings
 - **Space Complexity**: O(n + m)
 - **Typical Performance**: <100ms for 100-1000 findings each
 
@@ -391,7 +391,7 @@ from metrics_calculator import MetricsCalculator
 # In orchestrator workflow
 calculator = MetricsCalculator()
 report = calculator.compare_findings(
-    orchestrator.agent_os_findings,
+    orchestrator.argus_findings,
     orchestrator.codex_findings
 )
 ```

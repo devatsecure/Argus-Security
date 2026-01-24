@@ -31,5 +31,5 @@ body:
     id: config
     attributes:
       label: Configuration (optional)
-      description: Share your .agent-os.yml or relevant config
+      description: Share your .argus.yml or relevant config
       render: yaml

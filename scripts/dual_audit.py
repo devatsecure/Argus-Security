@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Dual-Audit Security Analysis
-Runs Agent-OS (Anthropic Claude) followed by Codex (OpenAI) validation
+Runs Argus (Anthropic Claude) followed by Codex (OpenAI) validation
 Compares findings and generates comprehensive validation report
 
 Usage:
@@ -75,30 +75,30 @@ SCORING_RUBRIC = {
 }
 
 class DualAuditOrchestrator:
-    """Orchestrates dual-audit process with Agent-OS and Codex"""
+    """Orchestrates dual-audit process with Argus and Codex"""
 
     def __init__(self, target_repo: str, project_type: str = "backend-api"):
         self.target_repo = Path(target_repo).resolve()
         self.project_type = project_type
         self.timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        self.output_dir = self.target_repo / ".agent-os" / "dual-audit" / self.timestamp
+        self.output_dir = self.target_repo / ".argus" / "dual-audit" / self.timestamp
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-    def run_agent_os_audit(self) -> Dict[str, Any]:
-        """Run Agent-OS security audit"""
+    def run_argus_audit(self) -> Dict[str, Any]:
+        """Run Argus security audit"""
         print("\n" + "="*80)
-        print("PHASE 1: Agent-OS Security Audit (Anthropic Claude)")
+        print("PHASE 1: Argus Security Audit (Anthropic Claude)")
         print("="*80 + "\n")
 
-        agent_os_script = Path(__file__).parent / "run_ai_audit.py"
+        argus_script = Path(__file__).parent / "run_ai_audit.py"
 
         cmd = [
             sys.executable,
-            str(agent_os_script),
+            str(argus_script),
             str(self.target_repo),
             self.project_type,
             "--ai-provider", "anthropic",
-            "--output-file", str(self.output_dir / "agent_os_report.json"),
+            "--output-file", str(self.output_dir / "argus_report.json"),
             "--output-format", "markdown"
         ]
 
@@ -115,36 +115,36 @@ class DualAuditOrchestrator:
             if result.stderr:
                 print("STDERR:", result.stderr, file=sys.stderr)
 
-            # Load Agent-OS results
-            report_path = self.target_repo / ".agent-os" / "reviews" / "backend-api-report.md"
-            json_path = self.target_repo / ".agent-os" / "reviews" / "results.json"
+            # Load Argus results
+            report_path = self.target_repo / ".argus" / "reviews" / "backend-api-report.md"
+            json_path = self.target_repo / ".argus" / "reviews" / "results.json"
 
             if json_path.exists():
                 with open(json_path, 'r') as f:
-                    agent_os_results = json.load(f)
+                    argus_results = json.load(f)
             else:
-                agent_os_results = {"error": "No results generated"}
+                argus_results = {"error": "No results generated"}
 
             # Copy reports to dual-audit directory
             if report_path.exists():
                 import shutil
-                shutil.copy(report_path, self.output_dir / "agent_os_report.md")
-                shutil.copy(json_path, self.output_dir / "agent_os_results.json")
+                shutil.copy(report_path, self.output_dir / "argus_report.md")
+                shutil.copy(json_path, self.output_dir / "argus_results.json")
 
             return {
                 "success": result.returncode == 0,
-                "results": agent_os_results,
+                "results": argus_results,
                 "stdout": result.stdout,
                 "stderr": result.stderr
             }
 
         except subprocess.TimeoutExpired:
-            return {"success": False, "error": "Agent-OS audit timed out"}
+            return {"success": False, "error": "Argus audit timed out"}
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    def run_codex_validation(self, agent_os_results: Dict[str, Any]) -> Dict[str, Any]:
-        """Run Codex validation of Agent-OS findings with chain-of-thought reasoning"""
+    def run_codex_validation(self, argus_results: Dict[str, Any]) -> Dict[str, Any]:
+        """Run Codex validation of Argus findings with chain-of-thought reasoning"""
         print("\n" + "="*80)
         print("PHASE 2: Codex Independent Validation (OpenAI GPT-5.2)")
         print("="*80 + "\n")
@@ -155,8 +155,8 @@ class DualAuditOrchestrator:
         except subprocess.CalledProcessError:
             return {"success": False, "error": "Codex CLI not installed"}
 
-        # Extract key findings from Agent-OS for targeted validation
-        findings_summary = self._generate_findings_summary(agent_os_results)
+        # Extract key findings from Argus for targeted validation
+        findings_summary = self._generate_findings_summary(argus_results)
 
         # Create enhanced Codex validation prompt with chain-of-thought reasoning
         codex_prompt = f"""You are a senior security auditor performing independent validation of AI-generated security findings.
@@ -164,12 +164,12 @@ class DualAuditOrchestrator:
 SCORING RUBRIC:
 {self._format_scoring_rubric()}
 
-AGENT-OS FINDINGS TO VALIDATE:
+ARGUS FINDINGS TO VALIDATE:
 {findings_summary}
 
 VALIDATION METHODOLOGY (Chain-of-Thought):
 
-For EACH Agent-OS finding, follow this reasoning process:
+For EACH Argus finding, follow this reasoning process:
 
 1. UNDERSTANDING OF THE CLAIM
    - What vulnerability is being claimed?
@@ -198,14 +198,14 @@ For EACH Agent-OS finding, follow this reasoning process:
    - Explain why this score applies
 
 VALIDATION TASKS:
-1. Review the same security categories that Agent-OS analyzed
+1. Review the same security categories that Argus analyzed
 2. Independently identify security vulnerabilities
-3. For EACH Agent-OS finding, provide:
+3. For EACH Argus finding, provide:
    - Finding description
    - Your assessment (Valid/Invalid/Uncertain)
    - Confidence score (1-5) with justification
    - Evidence or reasoning
-4. Identify any issues Agent-OS missed
+4. Identify any issues Argus missed
 5. Assess overall false positive rate
 
 FOCUS AREAS:
@@ -275,14 +275,14 @@ Temperature: 0.2 (for consistency and deterministic reasoning)
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    def _generate_findings_summary(self, agent_os_results: Dict[str, Any]) -> str:
-        """Generate detailed summary of Agent-OS findings for Codex validation"""
+    def _generate_findings_summary(self, argus_results: Dict[str, Any]) -> str:
+        """Generate detailed summary of Argus findings for Codex validation"""
         summary_parts = []
 
-        if "summary" in agent_os_results:
-            s = agent_os_results["summary"]
+        if "summary" in argus_results:
+            s = argus_results["summary"]
             summary_parts.append(f"""
-AGENT-OS SUMMARY:
+ARGUS SUMMARY:
 - Files Reviewed: {s.get('files_reviewed', 'unknown')}
 - Lines Analyzed: {s.get('lines_analyzed', 'unknown')}
 - Critical: {s.get('findings', {}).get('critical', 0)}
@@ -294,9 +294,9 @@ AGENT-OS SUMMARY:
 - Cost: ${s.get('cost_usd', 0):.2f}
 """)
 
-        if "findings" in agent_os_results:
+        if "findings" in argus_results:
             summary_parts.append("\nDETAILED FINDINGS (Top 15):")
-            for idx, finding in enumerate(agent_os_results["findings"][:15], 1):
+            for idx, finding in enumerate(argus_results["findings"][:15], 1):
                 severity = finding.get('severity', 'unknown').upper()
                 message = finding.get('message', 'No message')
                 category = finding.get('category', 'unknown')
@@ -339,7 +339,7 @@ Criteria:""")
         return "\n".join(rubric_lines)
 
     def generate_comparison_report(self,
-                                   agent_os_result: Dict[str, Any],
+                                   argus_result: Dict[str, Any],
                                    codex_result: Dict[str, Any]) -> str:
         """Generate comprehensive comparison report with validation scoring"""
 
@@ -350,7 +350,7 @@ Target: {self.target_repo}
 ## Audit Methodology
 
 This report presents findings from a dual-audit approach with rigorous validation:
-1. **Agent-OS (Anthropic Claude)**: Comprehensive AI-powered security analysis
+1. **Argus (Anthropic Claude)**: Comprehensive AI-powered security analysis
 2. **Codex (OpenAI GPT-5.2)**: Independent validation with chain-of-thought reasoning
 
 ### Validation Framework
@@ -376,17 +376,17 @@ Each finding is validated through the following reasoning steps:
 
 ---
 
-## Phase 1: Agent-OS Results
+## Phase 1: Argus Results
 
 ### Status
-- **Success**: {agent_os_result.get('success', False)}
+- **Success**: {argus_result.get('success', False)}
 - **Provider**: Anthropic Claude (claude-sonnet-4-5)
 
 ### Summary
 """
 
-        if agent_os_result.get("success") and "results" in agent_os_result:
-            results = agent_os_result["results"]
+        if argus_result.get("success") and "results" in argus_result:
+            results = argus_result["results"]
             if "summary" in results:
                 s = results["summary"]
                 report += f"""
@@ -427,13 +427,13 @@ Each finding is validated through the following reasoning steps:
 ## Cross-Validation Analysis
 
 ### Agreement Metrics
-- **Tools Used**: Agent-OS (Claude) + Codex (GPT-5.2)
+- **Tools Used**: Argus (Claude) + Codex (GPT-5.2)
 - **Validation Method**: Independent dual-audit
-- **Cross-reference**: Codex reviewed Agent-OS report and codebase
+- **Cross-reference**: Codex reviewed Argus report and codebase
 
 ### Key Observations
 1. Both tools provide AI-powered security analysis
-2. Codex acts as independent validator of Agent-OS findings
+2. Codex acts as independent validator of Argus findings
 3. Cross-validation increases confidence in findings
 4. Human review still recommended for final validation
 
@@ -450,10 +450,10 @@ Each finding is validated through the following reasoning steps:
 
 ## Report Artifacts
 
-- Agent-OS Report (MD): `.agent-os/dual-audit/{self.timestamp}/agent_os_report.md`
-- Agent-OS Results (JSON): `.agent-os/dual-audit/{self.timestamp}/agent_os_results.json`
-- Codex Validation: `.agent-os/dual-audit/{self.timestamp}/codex_validation.txt`
-- This Report: `.agent-os/dual-audit/{self.timestamp}/dual_audit_report.md`
+- Argus Report (MD): `.argus/dual-audit/{self.timestamp}/argus_report.md`
+- Argus Results (JSON): `.argus/dual-audit/{self.timestamp}/argus_results.json`
+- Codex Validation: `.argus/dual-audit/{self.timestamp}/codex_validation.txt`
+- This Report: `.argus/dual-audit/{self.timestamp}/dual_audit_report.md`
 
 ---
 
@@ -478,19 +478,19 @@ This dual-audit approach provides high-confidence security assessment by:
         print(f"Output: {self.output_dir}")
         print(f"{'='*80}\n")
 
-        # Phase 1: Agent-OS
-        agent_os_result = self.run_agent_os_audit()
-        if not agent_os_result.get("success"):
-            print(f"\n❌ Agent-OS audit failed: {agent_os_result.get('error')}")
+        # Phase 1: Argus
+        argus_result = self.run_argus_audit()
+        if not argus_result.get("success"):
+            print(f"\n❌ Argus audit failed: {argus_result.get('error')}")
             return 1
 
-        print("\n✅ Agent-OS audit completed successfully\n")
+        print("\n✅ Argus audit completed successfully\n")
 
         # Phase 2: Codex
-        codex_result = self.run_codex_validation(agent_os_result["results"])
+        codex_result = self.run_codex_validation(argus_result["results"])
         if not codex_result.get("success"):
             print(f"\n⚠️  Codex validation failed: {codex_result.get('error')}")
-            print("Continuing with Agent-OS results only...\n")
+            print("Continuing with Argus results only...\n")
         else:
             print("\n✅ Codex validation completed successfully\n")
 
@@ -499,7 +499,7 @@ This dual-audit approach provides high-confidence security assessment by:
         print("Generating Dual-Audit Comparison Report")
         print("="*80 + "\n")
 
-        report = self.generate_comparison_report(agent_os_result, codex_result)
+        report = self.generate_comparison_report(argus_result, codex_result)
         report_path = self.output_dir / "dual_audit_report.md"
 
         with open(report_path, 'w') as f:
@@ -516,7 +516,7 @@ This dual-audit approach provides high-confidence security assessment by:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Run dual-audit security analysis with Agent-OS and Codex"
+        description="Run dual-audit security analysis with Argus and Codex"
     )
     parser.add_argument(
         "target",

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Agent-OS Policy Gate
+Argus Policy Gate
 Evaluates Rego policies to determine pass/fail for PR or release
 """
 
@@ -143,7 +143,7 @@ class PolicyGate:
                 input_file,
                 "--format",
                 "json",
-                f"data.agentos.{stage}.decision",
+                f"data.argus.{stage}.decision",
             ]
 
             result = subprocess.run(cmd, capture_output=True, text=True, check=True)
@@ -199,7 +199,7 @@ class PolicyGate:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Agent-OS Policy Gate - Deterministic security gates")
+    parser = argparse.ArgumentParser(description="Argus Policy Gate - Deterministic security gates")
     parser.add_argument("--stage", required=True, choices=["pr", "release"], help="Gate stage: pr or release")
     parser.add_argument("--input", required=True, help="Path to findings JSON file")
     parser.add_argument("--sbom-present", action="store_true", help="SBOM is present (release only)")

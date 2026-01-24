@@ -1,7 +1,7 @@
 # Dual-Audit Script Enhancement Summary
 
-## Project: Agent-OS Security Action
-## File Enhanced: `/Users/waseem.ahmed/Repos/agent-os-action/scripts/dual_audit.py`
+## Project: Argus Security Action
+## File Enhanced: `/Users/waseem.ahmed/Repos/argus-action/scripts/dual_audit.py`
 ## Enhancement Date: 2026-01-14
 ## Version: Enhanced v1.0
 
@@ -105,15 +105,15 @@ The Codex validator now follows this explicit process for each finding:
 ## Files Changed
 
 ### Primary File
-- `/Users/waseem.ahmed/Repos/agent-os-action/scripts/dual_audit.py` (536 lines total)
+- `/Users/waseem.ahmed/Repos/argus-action/scripts/dual_audit.py` (536 lines total)
   - Added: 52 lines of new code
   - Enhanced: 128 lines of existing code
   - Total: 180 lines of changes
 
 ### Documentation Files Created
-- `/Users/waseem.ahmed/Repos/agent-os-action/DUAL_AUDIT_ENHANCEMENTS.md` - Feature overview
-- `/Users/waseem.ahmed/Repos/agent-os-action/DUAL_AUDIT_CODE_REFERENCE.md` - Complete code reference
-- `/Users/waseem.ahmed/Repos/agent-os-action/ENHANCEMENT_SUMMARY.md` - This file
+- `/Users/waseem.ahmed/Repos/argus-action/DUAL_AUDIT_ENHANCEMENTS.md` - Feature overview
+- `/Users/waseem.ahmed/Repos/argus-action/DUAL_AUDIT_CODE_REFERENCE.md` - Complete code reference
+- `/Users/waseem.ahmed/Repos/argus-action/ENHANCEMENT_SUMMARY.md` - This file
 
 ---
 
@@ -280,13 +280,13 @@ SUMMARY:
   run: |
     # Extract findings with score >= 4
     grep -A 5 "SCORE: [45]" \
-      .agent-os/dual-audit/*/codex_validation.txt
+      .argus/dual-audit/*/codex_validation.txt
 
 - name: Fail on Critical
   run: |
     # Exit 1 if findings with score 5 found
     grep -q "SCORE: 5" \
-      .agent-os/dual-audit/*/codex_validation.txt && exit 1 || true
+      .argus/dual-audit/*/codex_validation.txt && exit 1 || true
 ```
 
 ---
@@ -315,13 +315,13 @@ python scripts/dual_audit.py /path/to/test/repo \
   --project-type backend-api
 
 # 3. Review generated files
-ls -la .agent-os/dual-audit/*/
+ls -la .argus/dual-audit/*/
 
 # 4. Check validation output
-cat .agent-os/dual-audit/*/codex_validation.txt
+cat .argus/dual-audit/*/codex_validation.txt
 
 # 5. Review main report
-cat .agent-os/dual-audit/*/dual_audit_report.md
+cat .argus/dual-audit/*/dual_audit_report.md
 ```
 
 ---
@@ -390,7 +390,7 @@ These enhancements transform the dual-audit process from a simple comparison too
 ## Quick Reference
 
 ### File Location
-`/Users/waseem.ahmed/Repos/agent-os-action/scripts/dual_audit.py`
+`/Users/waseem.ahmed/Repos/argus-action/scripts/dual_audit.py`
 
 ### New Scoring Rubric
 - Score 5: Definitely Valid (confirmed vulnerability)
@@ -416,5 +416,5 @@ These enhancements transform the dual-audit process from a simple comparison too
 For questions about the enhancements:
 1. Review DUAL_AUDIT_CODE_REFERENCE.md for detailed code
 2. See DUAL_AUDIT_ENHANCEMENTS.md for feature details
-3. Check test reports in `.agent-os/dual-audit/` directory
+3. Check test reports in `.argus/dual-audit/` directory
 

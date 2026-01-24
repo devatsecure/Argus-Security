@@ -13,13 +13,13 @@
 Read and understand all inputs and THINK HARD:
 ```bash
 # Read the requirements document
-cat agent-os/specs/[current-spec]/planning/requirements.md
+cat argus/specs/[current-spec]/planning/requirements.md
 
 # Check for visual assets
-ls -la agent-os/specs/[current-spec]/planning/visuals/ 2>/dev/null | grep -v "^total" | grep -v "^d"
+ls -la argus/specs/[current-spec]/planning/visuals/ 2>/dev/null | grep -v "^total" | grep -v "^d"
 
 # Read the agent registry to know available subagents
-cat agent-os/agents-registry.yml
+cat argus/agents-registry.yml
 ```
 
 Parse and analyze:
@@ -50,7 +50,7 @@ Document your findings for use in the specification.
 
 ### Step 3: Create Core Specification
 
-Write the main specification to `agent-os/specs/[current-spec]/spec.md`.
+Write the main specification to `argus/specs/[current-spec]/spec.md`.
 
 DO NOT write actual code in the spec.md document. Just describe the requirements clearly and concisely.
 

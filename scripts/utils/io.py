@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-I/O Utilities for Agent-OS
+I/O Utilities for Argus
 Safe file operations with validation for JSON, SARIF, and Markdown.
 
 This module provides standardized I/O operations to eliminate duplicate
@@ -156,7 +156,7 @@ class SafeIO:
     def write_sarif(
         file_path: Union[str, Path],
         runs: List[Dict],
-        tool_name: str = "agent-os",
+        tool_name: str = "argus",
         tool_version: str = "1.0.0"
     ) -> None:
         """
@@ -165,7 +165,7 @@ class SafeIO:
         Args:
             file_path: Path to output file
             runs: List of SARIF run objects
-            tool_name: Name of the tool (default: "agent-os")
+            tool_name: Name of the tool (default: "argus")
             tool_version: Version of the tool (default: "1.0.0")
 
         Example:

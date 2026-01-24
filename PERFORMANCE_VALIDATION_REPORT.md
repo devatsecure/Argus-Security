@@ -1,4 +1,4 @@
-# Agent-OS Performance Validation Report
+# Argus Performance Validation Report
 
 **Date:** 2026-01-14
 **Test Suite:** Performance Validation Tests for Cache Manager and Progress Tracker
@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-Comprehensive performance validation tests have been successfully executed for the Agent-OS caching system and progress bar features. All tests pass, demonstrating that both systems work correctly and deliver the expected performance benefits.
+Comprehensive performance validation tests have been successfully executed for the Argus caching system and progress bar features. All tests pass, demonstrating that both systems work correctly and deliver the expected performance benefits.
 
 ### Key Findings
 
@@ -33,7 +33,7 @@ Comprehensive performance validation tests have been successfully executed for t
 - **Status:** ✅ PASSED
 - **Description:** Verifies cache files are created in correct directory structure
 - **Results:**
-  - Cache directory structure verified: `.agent-os-cache/{scanner_name}/{file_hash}.json`
+  - Cache directory structure verified: `.argus-cache/{scanner_name}/{file_hash}.json`
   - Cache files contain complete metadata (hash, timestamp, scanner version, results)
   - Multiple scanners supported with separate directories
 
@@ -252,7 +252,7 @@ Multi-Scanner Benchmark (5 files × 4 scanners)
 
 ### Cache Manager (`cache_manager.py`)
 - ✅ File-based caching with SHA256 content hashing
-- ✅ Cache directory structure: `.agent-os-cache/{scanner}/{hash}.json`
+- ✅ Cache directory structure: `.argus-cache/{scanner}/{hash}.json`
 - ✅ Configurable TTL (default 7 days)
 - ✅ Scanner version tracking for invalidation
 - ✅ Atomic writes (temp file → rename)
@@ -328,7 +328,7 @@ Next scan: ~2s (all cached)
 ## Test Files and Documentation
 
 ### Test Files
-- `/Users/waseem.ahmed/Repos/agent-os-action/tests/test_performance_validation.py` (650+ lines)
+- `/Users/waseem.ahmed/Repos/argus-action/tests/test_performance_validation.py` (650+ lines)
   - 18 comprehensive test cases
   - Cache performance tests
   - Progress tracker tests
@@ -336,13 +336,13 @@ Next scan: ~2s (all cached)
   - Benchmark tests
 
 ### Benchmark Script
-- `/Users/waseem.ahmed/Repos/agent-os-action/scripts/performance_benchmark.py` (400+ lines)
+- `/Users/waseem.ahmed/Repos/argus-action/scripts/performance_benchmark.py` (400+ lines)
   - Can be run standalone: `python scripts/performance_benchmark.py`
   - Generates JSON report: `performance_benchmark_results.json`
   - Comprehensive metrics collection
 
 ### Results File
-- `/Users/waseem.ahmed/Repos/agent-os-action/performance_benchmark_results.json`
+- `/Users/waseem.ahmed/Repos/argus-action/performance_benchmark_results.json`
   - Machine-readable benchmark results
   - Can be integrated into CI/CD for regression detection
 

@@ -77,10 +77,10 @@ Each correlation includes:
 
 ## Installation
 
-The correlator is part of the Agent-OS Security Action:
+The correlator is part of the Argus Security Action:
 
 ```bash
-cd agent-os-action/scripts
+cd argus-action/scripts
 pip install -r ../requirements.txt
 ```
 
@@ -148,7 +148,7 @@ for result in results:
 correlator.export_results(results, "output.json", format="json")
 ```
 
-### Integration with Agent-OS Workflow
+### Integration with Argus Workflow
 
 ```python
 from run_ai_audit import run_security_audit
@@ -186,7 +186,7 @@ print(f"Found {len(confirmed)} confirmed exploitable vulnerabilities")
 
 ### SAST Findings
 
-Findings should be in the normalized Agent-OS format:
+Findings should be in the normalized Argus format:
 
 ```json
 {
@@ -269,7 +269,7 @@ Findings should be in the normalized Agent-OS format:
 
 ### AI Provider Configuration
 
-The correlator uses the same AI provider configuration as the main Agent-OS system:
+The correlator uses the same AI provider configuration as the main Argus system:
 
 ```bash
 # Anthropic (recommended for security analysis)
@@ -380,7 +380,7 @@ The correlator recognizes and normalizes these vulnerability types:
    - Incomplete DAST scans will show many "no_coverage" results
 
 4. **Finding Format**: Both SAST and DAST findings must be in normalized format
-   - Use Agent-OS normalizers or convert findings manually
+   - Use Argus normalizers or convert findings manually
    - See `scripts/normalizer/` for examples
 
 ## Troubleshooting
@@ -432,7 +432,7 @@ python scripts/sast_dast_correlator.py \
 
 ## Best Practices
 
-1. **Normalize Findings First**: Use Agent-OS normalizers to ensure consistent format
+1. **Normalize Findings First**: Use Argus normalizers to ensure consistent format
 2. **Run Comprehensive DAST**: Better DAST coverage = better correlation accuracy
 3. **Use AI for High-Value Findings**: Enable AI verification for critical/high severity findings
 4. **Track Metrics**: Monitor confirmation rates to improve SAST/DAST coverage over time
@@ -449,7 +449,7 @@ To extend the correlator:
 
 ## See Also
 
-- [Agent-OS Main Documentation](../README.md)
+- [Argus Main Documentation](../README.md)
 - [AI Triage Strategy](adrs/0003-ai-triage-strategy.md)
 - [Multi-Scanner Architecture](adrs/0002-multi-scanner-architecture.md)
 - [Scanner Reference](references/scanner-reference.md)

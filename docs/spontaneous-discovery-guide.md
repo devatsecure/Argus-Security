@@ -42,10 +42,10 @@ The Spontaneous Discovery system is an AI-powered security analysis engine that 
 
 ## Installation
 
-The spontaneous discovery system is included in Agent-OS and requires no additional dependencies:
+The spontaneous discovery system is included in Argus and requires no additional dependencies:
 
 ```bash
-# Already available if you have Agent-OS installed
+# Already available if you have Argus installed
 pip install -r requirements.txt
 ```
 
@@ -165,7 +165,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Run Security Audit
-        uses: securedotcom/agent-os-action@v1
+        uses: devatsecure/Argus-Security@v1
         with:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           review-type: security
@@ -175,7 +175,7 @@ jobs:
       - name: Upload Results
         uses: github/codeql-action/upload-sarif@v2
         with:
-          sarif_file: agent-os-findings.sarif
+          sarif_file: argus-findings.sarif
 ```
 
 ## Discovery Algorithm
@@ -534,13 +534,13 @@ Remediation:
 - [OWASP Top 10](https://owasp.org/www-project-top-ten/)
 - [CWE/SANS Top 25](https://cwe.mitre.org/top25/)
 - [OWASP Cheat Sheet Series](https://cheatsheetseries.owasp.org/)
-- [Agent-OS Documentation](../README.md)
+- [Argus Documentation](../README.md)
 
 ## Support
 
 For issues or questions:
-- GitHub Issues: https://github.com/securedotcom/agent-os-action/issues
-- Documentation: https://github.com/securedotcom/agent-os-action/docs
+- GitHub Issues: https://github.com/devatsecure/Argus-Security/issues
+- Documentation: https://github.com/devatsecure/Argus-Security/docs
 
 ## License
 

@@ -111,7 +111,7 @@ class MultiRepoCoordinator:
         temp_dir = None
         try:
             # Clone repository
-            temp_dir = tempfile.mkdtemp(prefix="agentos_scan_")
+            temp_dir = tempfile.mkdtemp(prefix="argus_scan_")
             clone_success = await self._clone_repo(config.repo_url, temp_dir, config.branch)
 
             if not clone_success:

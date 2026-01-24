@@ -9,7 +9,7 @@ last_updated: 2024-11-10
 
 # Scanner Reference
 
-Complete reference for all 4 security scanners orchestrated by Agent-OS.
+Complete reference for all 4 security scanners orchestrated by Argus.
 
 ## Scanner Overview
 
@@ -48,7 +48,7 @@ Python, JavaScript, TypeScript, Java, Go, Ruby, PHP, C#, Kotlin, Scala, Rust, Sw
 ### Configuration
 
 ```yaml
-- uses: securedotcom/agent-os-action@v3
+- uses: devatsecure/Argus-Security@v3
   with:
     semgrep-rules: 'p/security-audit,p/owasp-top-ten'
     semgrep-config: '.semgrep.yml'  # Custom rules
@@ -95,7 +95,7 @@ Detects secrets (API keys, tokens, credentials) and **verifies them** by calling
 ### Configuration
 
 ```yaml
-- uses: securedotcom/agent-os-action@v3
+- uses: devatsecure/Argus-Security@v3
   with:
     # TruffleHog is enabled by default
     trufflehog-verify: 'true'  # Enable API verification
@@ -146,7 +146,7 @@ npm, pip, maven, gradle, go modules, cargo, composer, bundler, nuget, cocoapods
 ### Configuration
 
 ```yaml
-- uses: securedotcom/agent-os-action@v3
+- uses: devatsecure/Argus-Security@v3
   with:
     trivy-severity: 'CRITICAL,HIGH,MEDIUM'
     trivy-vuln-type: 'os,library'
@@ -201,7 +201,7 @@ Terraform, CloudFormation, Kubernetes, Helm, ARM templates, Docker, Serverless
 ### Configuration
 
 ```yaml
-- uses: securedotcom/agent-os-action@v3
+- uses: devatsecure/Argus-Security@v3
   with:
     checkov-framework: 'terraform,kubernetes'
     checkov-skip-check: 'CKV_AWS_20,CKV_AWS_21'  # Skip specific checks
@@ -256,7 +256,7 @@ Terraform, CloudFormation, Kubernetes, Helm, ARM templates, Docker, Serverless
 If you don't need a specific scanner:
 
 ```yaml
-- uses: securedotcom/agent-os-action@v3
+- uses: devatsecure/Argus-Security@v3
   with:
     disable-scanners: 'checkov,trivy'  # Disable IaC and dependency scanning
 ```

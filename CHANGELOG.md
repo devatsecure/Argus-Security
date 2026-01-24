@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Agent-OS Security Action will be documented in this file.
+All notable changes to Argus Security will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -355,7 +355,7 @@ No breaking changes! Multi-agent features are enabled by default with minimal co
 **If you want to opt-out:**
 ```yaml
 # Disable multi-agent features (not recommended)
-- uses: securedotcom/agent-os-action@v4.2.0
+- uses: devatsecure/Argus-Security@v4.2.0
   with:
     enable-multi-agent: 'false'
     enable-spontaneous-discovery: 'false'
@@ -364,7 +364,7 @@ No breaking changes! Multi-agent features are enabled by default with minimal co
 **For maximum accuracy (release gates only):**
 ```yaml
 # Enable collaborative reasoning
-- uses: securedotcom/agent-os-action@v4.2.0
+- uses: devatsecure/Argus-Security@v4.2.0
   with:
     enable-collaborative-reasoning: 'true'  # Opt-in for critical deployments
 ```
@@ -409,14 +409,14 @@ python scripts/run_ai_audit.py \
 
 **Inspired by:** [Slack Engineering: Streamlining Security Investigations with Agents](https://slack.engineering/streamlining-security-investigations-with-agents/)
 
-Slack's approach to multi-agent security investigation (7,500+ investigations/quarter) inspired our adaptation for proactive CI/CD security scanning. While Slack uses agents for reactive incident response, Agent-OS uses them for proactive vulnerability prevention.
+Slack's approach to multi-agent security investigation (7,500+ investigations/quarter) inspired our adaptation for proactive CI/CD security scanning. While Slack uses agents for reactive incident response, Argus uses them for proactive vulnerability prevention.
 
 ---
 
 ### 🔗 Links
 
 - **Documentation:** [Multi-Agent Guide](docs/MULTI_AGENT_GUIDE.md)
-- **PR:** [#43 - Multi-agent security analysis system](https://github.com/securedotcom/agent-os-action/pull/43)
+- **PR:** [#43 - Multi-agent security analysis system](https://github.com/devatsecure/Argus-Security/pull/43)
 - **Inspiration:** [Slack Engineering Blog Post](https://slack.engineering/streamlining-security-investigations-with-agents/)
 
 ---
@@ -425,7 +425,7 @@ Slack's approach to multi-agent security investigation (7,500+ investigations/qu
 
 ### Overview
 
-**v4.1.0** achieves production readiness with 2 critical security fixes, completion of the supply chain analyzer, and comprehensive customer-facing documentation. This release transforms Agent-OS from 6.8/10 to **8.5/10 production ready** and reduces timeline to GA from 3-4 weeks to **2-3 days**.
+**v4.1.0** achieves production readiness with 2 critical security fixes, completion of the supply chain analyzer, and comprehensive customer-facing documentation. This release transforms Argus from 6.8/10 to **8.5/10 production ready** and reduces timeline to GA from 3-4 weeks to **2-3 days**.
 
 **Highlights:**
 - Fixed 2 critical security vulnerabilities (fuzzing sandbox, XML bombs)
@@ -692,7 +692,7 @@ enable-regression-testing: 'true'# Security regression tests
 **Optional New Features:**
 ```yaml
 # Enable all 10 features
-- uses: securedotcom/agent-os-action@v4.1.0
+- uses: devatsecure/Argus-Security@v4.1.0
   with:
     anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
     enable-api-security: 'true'
@@ -730,7 +730,7 @@ enable-regression-testing: 'true'# Security regression tests
 
 ### Overview
 
-**v1.1.0** represents a major production readiness milestone with comprehensive security fixes, architectural improvements, and new functionality. This release transforms Agent-OS from a functional prototype into an enterprise-grade security platform with zero breaking changes.
+**v1.1.0** represents a major production readiness milestone with comprehensive security fixes, architectural improvements, and new functionality. This release transforms Argus from a functional prototype into an enterprise-grade security platform with zero breaking changes.
 
 **Highlights:**
 - 6 active scanners (TruffleHog, Gitleaks, Semgrep, Trivy, Checkov + LLM analysis)
@@ -1045,7 +1045,7 @@ Initial production release with comprehensive security scanning and AI triage ca
 
 1. **Try TruffleHog for Secret Detection**
 ```yaml
-- uses: securedotcom/agent-os-action@v1.1.0
+- uses: devatsecure/Argus-Security@v1.1.0
   with:
     anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
     # TruffleHog enabled by default
@@ -1053,7 +1053,7 @@ Initial production release with comprehensive security scanning and AI triage ca
 
 2. **Try Checkov for IaC Scanning**
 ```yaml
-- uses: securedotcom/agent-os-action@v1.1.0
+- uses: devatsecure/Argus-Security@v1.1.0
   with:
     anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
     # Checkov enabled by default
@@ -1061,7 +1061,7 @@ Initial production release with comprehensive security scanning and AI triage ca
 
 3. **Configure Cache TTL**
 ```yaml
-- uses: securedotcom/agent-os-action@v1.1.0
+- uses: devatsecure/Argus-Security@v1.1.0
   with:
     anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
   env:
@@ -1070,7 +1070,7 @@ Initial production release with comprehensive security scanning and AI triage ca
 
 4. **Disable Progress Bars (if needed)**
 ```yaml
-- uses: securedotcom/agent-os-action@v1.1.0
+- uses: devatsecure/Argus-Security@v1.1.0
   with:
     anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
   env:
@@ -1138,19 +1138,19 @@ Initial production release with comprehensive security scanning and AI triage ca
 
 ## Links
 
-- **Repository**: https://github.com/securedotcom/agent-os-action
-- **Documentation**: https://github.com/securedotcom/agent-os-action/blob/main/README.md
-- **Issue Tracker**: https://github.com/securedotcom/agent-os-action/issues
-- **Releases**: https://github.com/securedotcom/agent-os-action/releases
+- **Repository**: https://github.com/devatsecure/Argus-Security
+- **Documentation**: https://github.com/devatsecure/Argus-Security/blob/main/README.md
+- **Issue Tracker**: https://github.com/devatsecure/Argus-Security/issues
+- **Releases**: https://github.com/devatsecure/Argus-Security/releases
 
 ---
 
 ## Support
 
 For issues, questions, or feedback:
-- Open an issue on GitHub: https://github.com/securedotcom/agent-os-action/issues
-- Review the documentation: https://github.com/securedotcom/agent-os-action/blob/main/docs/
-- Check the FAQ: https://github.com/securedotcom/agent-os-action/blob/main/docs/FAQ.md
+- Open an issue on GitHub: https://github.com/devatsecure/Argus-Security/issues
+- Review the documentation: https://github.com/devatsecure/Argus-Security/blob/main/docs/
+- Check the FAQ: https://github.com/devatsecure/Argus-Security/blob/main/docs/FAQ.md
 
 ---
 

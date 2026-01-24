@@ -1,6 +1,6 @@
-# Agent-OS Requirements & Prerequisites
+# Argus Requirements & Prerequisites
 
-Complete checklist of everything needed to run Agent-OS on GitHub, GitLab, and Bitbucket.
+Complete checklist of everything needed to run Argus on GitHub, GitLab, and Bitbucket.
 
 **Last Updated:** 2026-01-16
 **Version:** 4.0.0
@@ -174,7 +174,7 @@ before_script:
 
 # Required for:
 - enable-dast: true
-- ./scripts/agentos dast
+- ./scripts/argus dast
 
 # If NOT installed:
 - DAST features will be skipped (no error)
@@ -192,7 +192,7 @@ sudo apt-get install -y falco
 
 # Required for:
 - enable-runtime-security: true
-- ./scripts/agentos runtime-security
+- ./scripts/argus runtime-security
 
 # If NOT installed:
 - Runtime security features will be skipped
@@ -322,10 +322,10 @@ Python 3.9+ ✅
 pip 20.0+ ✅
 ```
 
-**Step 2: Test Agent-OS Installation**
+**Step 2: Test Argus Installation**
 ```bash
-- run: git clone https://github.com/securedotcom/agent-os-action
-- run: cd agent-os-action && pip install -r requirements.txt
+- run: git clone https://github.com/devatsecure/Argus-Security
+- run: cd argus-action && pip install -r requirements.txt
 - run: python scripts/run_ai_audit.py --help
 
 # Expected: Help text showing all options ✅
@@ -354,7 +354,7 @@ pip 20.0+ ✅
 ```bash
 # Minimal scan to verify everything works
 - run: |
-    cd agent-os-action
+    cd argus-action
     python scripts/run_ai_audit.py \
       --project-path . \
       --max-files 10 \
@@ -396,7 +396,7 @@ Compare to commercial tools:
 - Checkmarx: $5,000+/year
 - Veracode: $10,000+/year
 
-Agent-OS: 90%+ cost savings ✅
+Argus: 90%+ cost savings ✅
 ```
 
 ---
@@ -411,7 +411,7 @@ pip install -r requirements.txt
 # GitHub Actions: Add this step
 - name: Install dependencies
   run: |
-    cd agent-os-action
+    cd argus-action
     pip install -r requirements.txt
 ```
 
@@ -494,7 +494,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: securedotcom/agent-os-action@v4.0.0
+      - uses: devatsecure/Argus-Security@v4.0.0
         with:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
 ```
@@ -511,8 +511,8 @@ jobs:
 test:
   image: python:3.11
   script:
-    - git clone https://github.com/securedotcom/agent-os-action
-    - cd agent-os-action && pip install -r requirements.txt
+    - git clone https://github.com/devatsecure/Argus-Security
+    - cd argus-action && pip install -r requirements.txt
     - python scripts/run_ai_audit.py --output-file ../results.json
   variables:
     ANTHROPIC_API_KEY: $ANTHROPIC_API_KEY
@@ -527,8 +527,8 @@ pipelines:
     '**':
       - step:
           script:
-            - git clone https://github.com/securedotcom/agent-os-action
-            - cd agent-os-action && pip install -r requirements.txt
+            - git clone https://github.com/devatsecure/Argus-Security
+            - cd argus-action && pip install -r requirements.txt
             - python scripts/run_ai_audit.py --output-file ../results.json
 ```
 
@@ -538,7 +538,7 @@ pipelines:
 
 - [Platform Integration Guide](./PLATFORM_INTEGRATIONS.md) - Complete setup
 - [Quick Reference](./PLATFORM_QUICK_REFERENCE.md) - Cheat sheet
-- [Agent-OS Documentation](./index.md) - Full docs
+- [Argus Documentation](./index.md) - Full docs
 - [Troubleshooting Guide](../README.md#troubleshooting) - Common issues
 
 ---
@@ -549,7 +549,7 @@ pipelines:
 A: No! Built-in scanners (Semgrep, TruffleHog, Gitleaks, Trivy, Checkov) install automatically. Optional scanners (Nuclei, Falco) enable specific features but aren't required.
 
 **Q: Can I run without AI?**
-A: No, AI is core to Agent-OS. But you can use free Ollama locally instead of paid APIs.
+A: No, AI is core to Argus. But you can use free Ollama locally instead of paid APIs.
 
 **Q: How much does it cost?**
 A: ~$0.35 per scan with Claude, or FREE with Ollama (self-hosted).

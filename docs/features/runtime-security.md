@@ -35,7 +35,7 @@ The runtime security monitor:
 
 ```bash
 # Monitor runtime security for 60 seconds
-./scripts/agentos runtime-security monitor --duration 60 --path /path/to/app
+./scripts/argus runtime-security monitor --duration 60 --path /path/to/app
 
 # Enable during full scan (disabled by default)
 python scripts/run_ai_audit.py --enable-runtime-security --runtime-monitoring-duration 60
@@ -266,7 +266,7 @@ spec:
           privileged: true
 ```
 
-## Integration with Agent-OS
+## Integration with Argus
 
 Runtime security findings are treated like other scanner findings:
 

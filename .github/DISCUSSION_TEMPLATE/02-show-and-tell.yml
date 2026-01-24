@@ -5,7 +5,7 @@ body:
       value: |
         ## 🎉 Show and Tell
         
-        Share what you've built with Agent-OS!
+        Share what you've built with Argus!
         
   - type: input
     id: project
@@ -22,7 +22,7 @@ body:
       description: Tell us about your project
       placeholder: |
         - What does it do?
-        - How are you using Agent-OS?
+        - How are you using Argus?
         - What results have you seen?
     validations:
       required: true

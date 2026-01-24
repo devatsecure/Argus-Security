@@ -16,7 +16,7 @@ Lite Mode uses only 3 specialized agents instead of the full 22-agent suite:
 - Pre-commit hooks (don't slow down devs)
 - Exploratory scans (quick overview)
 - Budget-constrained projects (<$0.25 per scan)
-- Learning/trying Agent-OS
+- Learning/trying Argus
 
 ❌ **Use Full Mode for:**
 - Production deployments
@@ -42,13 +42,13 @@ docker run --rm \
   -v $(pwd):/workspace \
   -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
   -e AGENT_PROFILE=lite \
-  ghcr.io/devatsecure/agent-os-action:latest \
+  ghcr.io/devatsecure/argus-action:latest \
   /workspace audit
 ```
 
 ### GitHub Actions
 ```yaml
-- uses: devatsecure/agent-os-action@v1
+- uses: devatsecure/argus-action@v1
   with:
     anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
     agent_profile: lite
@@ -65,7 +65,7 @@ python scripts/run_ai_audit.py /path/to/repo audit
 
 ### Output Files
 ```
-.agent-os/reviews/
+.argus/reviews/
 ├── audit-report.md          # Human-readable findings
 ├── security-findings.json   # Machine-readable
 ├── results.sarif           # GitHub Security integration
@@ -118,7 +118,7 @@ multi_agent_mode: parallel  # Or sequential
 
 ## Configuration
 
-Create `.agent-os.yml`:
+Create `.argus.yml`:
 
 ```yaml
 # Use lite mode

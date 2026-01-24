@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide shows you how to run the performance validation tests for Agent-OS caching and progress bar features.
+This guide shows you how to run the performance validation tests for Argus caching and progress bar features.
 
 ## What Gets Tested
 
@@ -135,10 +135,10 @@ Cache Entries:     21
 
 ## Cache Directory Structure
 
-After running tests, cache files are created in `.agent-os-cache/`:
+After running tests, cache files are created in `.argus-cache/`:
 
 ```
-.agent-os-cache/
+.argus-cache/
 ├── metadata.json                      # Cache statistics
 ├── test-scanner/
 │   └── {file_hash}.json              # Cached scan result
@@ -207,7 +207,7 @@ pytest tests/test_performance_validation.py::TestBenchmarkScenarios -v -s
 ```bash
 python -c "from scripts.cache_manager import CacheManager; cm = CacheManager(); cm.clear_cache()"
 # Or
-rm -rf .agent-os-cache/
+rm -rf .argus-cache/
 ```
 
 ### Check Cache Statistics
@@ -215,7 +215,7 @@ rm -rf .agent-os-cache/
 ```bash
 python scripts/cache_manager.py stats
 # Or after a test run:
-cat .agent-os-cache/metadata.json
+cat .argus-cache/metadata.json
 ```
 
 ## Troubleshooting
@@ -227,8 +227,8 @@ pip install -r requirements.txt
 
 ### Cache Not Being Cleaned Up
 ```bash
-# Tests use temporary directories, but .agent-os-cache might exist
-rm -rf .agent-os-cache/
+# Tests use temporary directories, but .argus-cache might exist
+rm -rf .argus-cache/
 ```
 
 ### TTL Expiration Test Takes Too Long
@@ -333,7 +333,7 @@ performance_tests:
 For issues or questions:
 1. Check the test output for detailed error messages
 2. Review the PERFORMANCE_VALIDATION_REPORT.md for context
-3. Examine cache files: `ls -la .agent-os-cache/`
+3. Examine cache files: `ls -la .argus-cache/`
 4. Check logs: Look for INFO and DEBUG level messages
 
 ---

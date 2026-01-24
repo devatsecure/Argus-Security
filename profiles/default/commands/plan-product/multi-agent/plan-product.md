@@ -7,7 +7,7 @@ You are helping to plan and document the mission, roadmap and tech stack for the
 - **Roadmap**: Create a phased development plan with prioritized features
 - **Tech stack**: Establish the technical stack used for all aspects of this product's codebase
 
-This process will create these files in `agent-os/product/` directory.
+This process will create these files in `argus/product/` directory.
 
 ### PHASE 1: Gather Product Requirements
 
@@ -17,9 +17,9 @@ IF the user has provided any details in regards to the product idea, its purpose
 
 The product-planner will:
 - Confirm (or gather) product idea, features, target users, confirm the tech stack and gather other details
-- Create `agent-os/product/mission.md` with product vision and strategy
-- Create `agent-os/product/roadmap.md` with phased development plan
-- Create `agent-os/product/tech-stack.md` documenting all of this product's tech stack choices
+- Create `argus/product/mission.md` with product vision and strategy
+- Create `argus/product/roadmap.md` with phased development plan
+- Create `argus/product/tech-stack.md` documenting all of this product's tech stack choices
 
 ### PHASE 2: Display Results
 
@@ -36,6 +36,6 @@ Output to user:
 
 Upon completion, the following files should have been been created and delivered to the user:
 
-- `agent-os/product/mission.md` - Full product vision and strategy
-- `agent-os/product/roadmap.md` - Phased development plan
-- `agent-os/product/tech-stack.md` - Tech stack list for this product
+- `argus/product/mission.md` - Full product vision and strategy
+- `argus/product/roadmap.md` - Phased development plan
+- `argus/product/tech-stack.md` - Tech stack list for this product

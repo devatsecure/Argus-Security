@@ -37,11 +37,11 @@ jobs:
       fail-fast: false # Continue even if one audit fails
       
     steps:
-      - name: Checkout Agent OS Action
+      - name: Checkout Argus Action
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332  # v4.1.7
         with:
-          repository: securedotcom/agent-os-action
-          path: agent-os
+          repository: devatsecure/Argus-Security
+          path: argus
           
       - name: Checkout Target Repository
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332  # v4.1.7
@@ -55,9 +55,9 @@ jobs:
         with:
           python-version: '3.10'
           
-      - name: Install Agent OS Dependencies
+      - name: Install Argus Dependencies
         run: |
-          cd agent-os
+          cd argus
           pip install -r requirements.txt || echo "No requirements.txt found"
           
       - name: Run Audit
@@ -65,9 +65,9 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           cd target-repo
-          # Run Agent OS audit command
-          # This assumes you have a CLI tool for Agent OS
-          agent-os audit-codebase --output audit-reports/
+          # Run Argus audit command
+          # This assumes you have a CLI tool for Argus
+          argus audit-codebase --output audit-reports/
           
       - name: Create Pull Request with Audit Findings
         uses: peter-evans/create-pull-request@v5
@@ -77,14 +77,14 @@ jobs:
           commit-message: |
             Add automated codebase audit findings
             
-            Automated audit performed by Agent OS
+            Automated audit performed by Argus
             Date: ${{ github.run_id }}
           branch: audit/automated-${{ github.run_id }}
           title: '🔍 Automated Codebase Audit - ${{ github.run_id }}'
           body: |
             ## Automated Codebase Audit
             
-            This PR contains automated audit findings from Agent OS.
+            This PR contains automated audit findings from Argus.
             
             **Repository:** ${{ matrix.repository }}
             **Audit Date:** ${{ github.event.repository.updated_at }}
@@ -96,7 +96,7 @@ jobs:
             3. Create follow-up tasks for medium and low-priority items
             
             ### Automated by
-            - Agent OS Multi-Agent System
+            - Argus Multi-Agent System
             - Workflow: `.github/workflows/automated-audit.yml`
           labels: |
             audit

@@ -3,17 +3,17 @@
 blank_issues_enabled: false
 contact_links:
   - name: 🐛 Bug Report
-    url: https://github.com/devatsecure/agent-os-action/issues/new?template=bug_report.yml
+    url: https://github.com/devatsecure/argus-action/issues/new?template=bug_report.yml
     about: Report a bug or unexpected behavior
   
   - name: 📖 Documentation
-    url: https://github.com/devatsecure/agent-os-action#readme
+    url: https://github.com/devatsecure/argus-action#readme
     about: Read the full documentation
   
   - name: 🚀 Quick Start Guide
-    url: https://github.com/devatsecure/agent-os-action/blob/main/QUICKSTART.md
+    url: https://github.com/devatsecure/argus-action/blob/main/QUICKSTART.md
     about: Get started in 5 minutes
   
   - name: 🦙 Ollama Setup
-    url: https://github.com/devatsecure/agent-os-action/blob/main/docs/OLLAMA_SETUP.md
-    about: Run Agent-OS with free local LLMs
+    url: https://github.com/devatsecure/argus-action/blob/main/docs/OLLAMA_SETUP.md
+    about: Run Argus with free local LLMs

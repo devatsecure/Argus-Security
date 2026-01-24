@@ -104,7 +104,7 @@ function loadUser(id) {
         # main()
 
         # Verify output files created
-        sample_repo / ".agent-os"
+        sample_repo / ".argus"
         # assert output_dir.exists()
         # assert (output_dir / 'audit-report.json').exists()
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Pairwise Comparison Engine is a comprehensive system for evaluating and comparing security findings from Agent-OS (Anthropic Claude) against independent Codex analysis using AI-powered judges.
+The Pairwise Comparison Engine is a comprehensive system for evaluating and comparing security findings from Argus (Anthropic Claude) against independent Codex analysis using AI-powered judges.
 
 **Created**: January 14, 2025
 **Total Implementation**: 3,418 lines of code
@@ -253,14 +253,14 @@ pytest tests/unit/test_pairwise_comparison.py -v
 ### Basic Usage
 ```bash
 python scripts/pairwise_comparison.py \
-    --agent-os-findings agent_os.json \
+    --argus-findings argus.json \
     --codex-findings codex.json
 ```
 
 ### With Output Files
 ```bash
 python scripts/pairwise_comparison.py \
-    --agent-os-findings agent_os.json \
+    --argus-findings argus.json \
     --codex-findings codex.json \
     --output report.json \
     --output-markdown report.md
@@ -269,7 +269,7 @@ python scripts/pairwise_comparison.py \
 ### Cost-Limited
 ```bash
 python scripts/pairwise_comparison.py \
-    --agent-os-findings agent_os.json \
+    --argus-findings argus.json \
     --codex-findings codex.json \
     --max-comparisons 10
 ```
@@ -277,7 +277,7 @@ python scripts/pairwise_comparison.py \
 ### With OpenAI Judge
 ```bash
 python scripts/pairwise_comparison.py \
-    --agent-os-findings agent_os.json \
+    --argus-findings argus.json \
     --codex-findings codex.json \
     --judge-model openai
 ```
@@ -285,7 +285,7 @@ python scripts/pairwise_comparison.py \
 ### Custom Matching Threshold
 ```bash
 python scripts/pairwise_comparison.py \
-    --agent-os-findings agent_os.json \
+    --argus-findings argus.json \
     --codex-findings codex.json \
     --match-threshold 0.5
 ```
@@ -318,9 +318,9 @@ For each matched pair (and unmatched findings), an AI judge rates on:
 
 ### Winner Determination
 ```
-If agent_os_score > codex_score + 0.5:
-    winner = "agent_os"
-Elif codex_score > agent_os_score + 0.5:
+If argus_score > codex_score + 0.5:
+    winner = "argus"
+Elif codex_score > argus_score + 0.5:
     winner = "codex"
 Else:
     winner = "tie"
@@ -364,7 +364,7 @@ Results are aggregated into:
 ## Features Checklist
 
 ### Core Features
-- [x] Pairwise evaluation (Agent-OS vs Codex)
+- [x] Pairwise evaluation (Argus vs Codex)
 - [x] Direct comparison prompts with AI judge
 - [x] 1-5 scale scoring system
 - [x] Preference aggregation
@@ -412,11 +412,11 @@ Results are aggregated into:
 python scripts/dual_audit.py /path/to/repo
 
 # Find latest results
-LATEST=$(find .agent-os/dual-audit -type d -maxdepth 1 | sort | tail -1)
+LATEST=$(find .argus/dual-audit -type d -maxdepth 1 | sort | tail -1)
 
 # Run comparison
 python scripts/pairwise_comparison.py \
-    --agent-os-findings $LATEST/agent_os_results.json \
+    --argus-findings $LATEST/argus_results.json \
     --codex-findings $LATEST/codex_validation.json \
     --output $LATEST/comparison.json \
     --output-markdown $LATEST/comparison.md
@@ -429,7 +429,7 @@ python scripts/pairwise_comparison.py \
     ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
   run: |
     python scripts/pairwise_comparison.py \
-      --agent-os-findings results/agent_os.json \
+      --argus-findings results/argus.json \
       --codex-findings results/codex.json \
       --output-markdown results/comparison.md
 ```
@@ -439,7 +439,7 @@ python scripts/pairwise_comparison.py \
 from pairwise_comparison import PairwiseComparator
 
 comparator = PairwiseComparator(
-    agent_os_findings=findings1,
+    argus_findings=findings1,
     codex_findings=findings2,
     judge_model="anthropic"
 )

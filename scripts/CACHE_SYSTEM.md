@@ -1,10 +1,10 @@
 # Intelligent Caching System
 
-High-performance file-based caching system for Agent OS Action security scanners.
+High-performance file-based caching system for Argus Action security scanners.
 
 ## Overview
 
-The intelligent caching system dramatically speeds up repeated scans by caching scan results with smart invalidation. Results are stored in `.agent-os-cache/` and automatically invalidated when:
+The intelligent caching system dramatically speeds up repeated scans by caching scan results with smart invalidation. Results are stored in `.argus-cache/` and automatically invalidated when:
 
 - File content changes (SHA256 hash detection)
 - Scanner version changes
@@ -69,7 +69,7 @@ result = scanner.scan("src/main.py")
 ### Cache Structure
 
 ```
-.agent-os-cache/
+.argus-cache/
 ├── semgrep/
 │   ├── abc123def456...json  # SHA256 hash of file content
 │   └── 789ghi012jkl...json
@@ -276,7 +276,7 @@ jobs:
       - name: Restore scan cache
         uses: actions/cache@v3
         with:
-          path: .agent-os-cache
+          path: .argus-cache
           key: security-scan-${{ github.sha }}
           restore-keys: |
             security-scan-
@@ -295,13 +295,13 @@ jobs:
 
 ```bash
 # Cache directory
-export AGENT_OS_CACHE_DIR=".agent-os-cache"
+export ARGUS_CACHE_DIR=".argus-cache"
 
 # Default TTL (days)
-export AGENT_OS_CACHE_TTL_DAYS=7
+export ARGUS_CACHE_TTL_DAYS=7
 
 # Enable verbose logging
-export AGENT_OS_CACHE_DEBUG=1
+export ARGUS_CACHE_DEBUG=1
 ```
 
 ### Programmatic Configuration
@@ -387,7 +387,7 @@ Corrupt cache files are automatically detected and removed:
 
 ```python
 # Corrupt cache detected
-WARNING: Corrupt cache file: .agent-os-cache/semgrep/abc123.json
+WARNING: Corrupt cache file: .argus-cache/semgrep/abc123.json
 INFO: Removed corrupt cache entry
 
 # Scan continues normally
@@ -522,13 +522,13 @@ python scripts/cached_scanner_example.py --scan file.py --scanner semgrep
 
 ```bash
 # Check cache directory exists
-ls -la .agent-os-cache/
+ls -la .argus-cache/
 
 # Check permissions
-chmod 755 .agent-os-cache/
+chmod 755 .argus-cache/
 
 # Enable debug logging
-export AGENT_OS_CACHE_DEBUG=1
+export ARGUS_CACHE_DEBUG=1
 ```
 
 ### Cache Always Misses
@@ -551,7 +551,7 @@ python scripts/cache_manager.py stats
 python scripts/cache_manager.py clear
 
 # Verify disk space
-df -h .agent-os-cache/
+df -h .argus-cache/
 ```
 
 ## API Reference
@@ -583,7 +583,7 @@ See inline documentation for detailed parameter descriptions.
 
 ## License
 
-Part of Agent OS Action security scanning suite.
+Part of Argus Action security scanning suite.
 
 ## Support
 

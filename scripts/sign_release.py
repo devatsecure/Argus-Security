@@ -161,13 +161,13 @@ class SLSAProvenanceGenerator:
             "predicateType": "https://slsa.dev/provenance/v1",
             "predicate": {
                 "buildDefinition": {
-                    "buildType": "https://agentos.dev/build-types/default@v1",
+                    "buildType": "https://argus.dev/build-types/default@v1",
                     "externalParameters": {"repository": f"https://github.com/{repo}", "ref": commit_sha},
                     "internalParameters": build_config or {},
                     "resolvedDependencies": [],
                 },
                 "runDetails": {
-                    "builder": {"id": "https://agentos.dev/builder@v1", "version": {"agent-os": "1.0.0"}},
+                    "builder": {"id": "https://argus.dev/builder@v1", "version": {"argus": "1.0.0"}},
                     "metadata": {
                         "invocationId": f"build-{datetime.now().strftime('%Y%m%d-%H%M%S')}",
                         "startedOn": datetime.now().astimezone().isoformat(),

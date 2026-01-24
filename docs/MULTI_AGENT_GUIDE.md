@@ -1,8 +1,8 @@
-# Agent-OS Multi-Agent Analysis System
+# Argus Multi-Agent Analysis System
 
 ## Overview
 
-Agent-OS includes a **specialized multi-agent system** inspired by Slack's security investigation workflow. Instead of a single AI analyzing all findings, **5 specialized agents** collaborate to provide comprehensive security analysis with higher accuracy and discovery of hidden security issues.
+Argus includes a **specialized multi-agent system** inspired by Slack's security investigation workflow. Instead of a single AI analyzing all findings, **5 specialized agents** collaborate to provide comprehensive security analysis with higher accuracy and discovery of hidden security issues.
 
 ### Why Multi-Agent?
 
@@ -266,7 +266,7 @@ Savings: Eliminated 1 false positive
 ### Basic Multi-Agent Setup (Recommended)
 
 ```yaml
-- uses: securedotcom/agent-os-action@v1
+- uses: devatsecure/Argus-Security@v1
   with:
     anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
 
@@ -281,7 +281,7 @@ Savings: Eliminated 1 false positive
 ### Advanced: Full Collaboration Mode
 
 ```yaml
-- uses: securedotcom/agent-os-action@v1
+- uses: devatsecure/Argus-Security@v1
   with:
     anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
 
@@ -296,7 +296,7 @@ Savings: Eliminated 1 false positive
 ### Cost-Conscious: Single Agent
 
 ```yaml
-- uses: securedotcom/agent-os-action@v1
+- uses: devatsecure/Argus-Security@v1
   with:
     anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
     enable-multi-agent: 'false'  # Use standard AI only
@@ -367,7 +367,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: securedotcom/agent-os-action@v1
+      - uses: devatsecure/Argus-Security@v1
         with:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           enable-multi-agent: 'true'
@@ -390,7 +390,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: securedotcom/agent-os-action@v1
+      - uses: devatsecure/Argus-Security@v1
         with:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           enable-multi-agent: 'true'
@@ -403,8 +403,8 @@ jobs:
 
 ```bash
 # Clone and setup
-git clone https://github.com/securedotcom/agent-os-action
-cd agent-os-action
+git clone https://github.com/devatsecure/Argus-Security
+cd argus-action
 pip install -r requirements.txt
 
 # Run with multi-agent
@@ -457,7 +457,7 @@ on:
 
 ```bash
 # Check discovery effectiveness
-./scripts/agentos feedback stats
+./scripts/argus feedback stats
 
 # Analyze agent decisions
 python scripts/decision_analyzer.py --format json | jq '.agents'
@@ -497,7 +497,7 @@ python scripts/run_ai_audit.py --enable-multi-agent
 cat findings.json | jq '.findings[] | {title, severity, agent_reasoning}'
 
 # 3. Mark false positives
-./scripts/agentos feedback record finding-id --mark fp --reason "..."
+./scripts/argus feedback record finding-id --mark fp --reason "..."
 
 # 4. Agents learn patterns
 # Next scan uses this feedback automatically

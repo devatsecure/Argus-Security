@@ -53,9 +53,9 @@ jobs:
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
           labels: |
-            org.opencontainers.image.title=Agent-OS Code Reviewer
+            org.opencontainers.image.title=Argus Code Reviewer
             org.opencontainers.image.description=AI-Powered Automated Code Review System
-            org.opencontainers.image.vendor=Agent OS
+            org.opencontainers.image.vendor=Argus
             org.opencontainers.image.licenses=MIT
       
       - name: Build and push multi-platform image

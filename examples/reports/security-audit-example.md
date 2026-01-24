@@ -3,7 +3,7 @@
 **Repository**: example/backend-api  
 **Date**: November 7, 2025  
 **Review Type**: Security Audit  
-**Agent-OS Version**: 1.0.0  
+**Argus Version**: 1.0.0  
 
 ---
 
@@ -352,10 +352,10 @@ This report was generated using:
 ---
 
 **Report Generated**: November 7, 2025  
-**Agent-OS Version**: 1.0.0  
+**Argus Version**: 1.0.0  
 **Scan ID**: audit-20251107-example
 
 ---
 
-*This is an example report showing the type of analysis Agent-OS provides. Actual reports will vary based on your codebase.*
+*This is an example report showing the type of analysis Argus provides. Actual reports will vary based on your codebase.*
 

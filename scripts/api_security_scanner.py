@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-API Security Scanner for Agent-OS
+API Security Scanner for Argus
 Tests OWASP API Security Top 10 (2023)
 
 Features:
@@ -9,7 +9,7 @@ Features:
 - Supports multiple frameworks: Flask, FastAPI, Django, Express, Spring, Gin, Echo
 - GraphQL-specific security tests (introspection, depth limits, DoS)
 - gRPC endpoint detection
-- Compatible with Agent-OS normalizer system
+- Compatible with Argus normalizer system
 """
 
 import json

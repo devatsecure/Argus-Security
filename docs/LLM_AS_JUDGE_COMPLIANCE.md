@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-This document describes the implementation of LLM-as-a-Judge evaluation methodology in Agent-OS Security Action. This approach applies rigorous evaluation frameworks from Evidently AI and academic research to ensure consistent, unbiased, and measurable LLM quality standards in security scanning.
+This document describes the implementation of LLM-as-a-Judge evaluation methodology in Argus Security Action. This approach applies rigorous evaluation frameworks from Evidently AI and academic research to ensure consistent, unbiased, and measurable LLM quality standards in security scanning.
 
 **Key Benefits:**
 - Reduces false positive rates by 30-40% through consensus evaluation
@@ -79,7 +79,7 @@ Our implementation integrates these research findings into practical security sc
 
 ### Components
 
-#### 1. **Agent-OS (Claude Sonnet 4.5)**
+#### 1. **Argus (Claude Sonnet 4.5)**
 
 Primary security analysis engine:
 - Runs threat modeling (STRIDE analysis)
@@ -96,7 +96,7 @@ Primary security analysis engine:
 
 Independent validation engine:
 - Re-analyzes same codebase
-- Validates Agent-OS findings
+- Validates Argus findings
 - Identifies additional issues
 - Provides second opinion
 
@@ -318,7 +318,7 @@ p_e = expected agreement by chance
 
 **Calculation Example:**
 ```
-Agent-OS findings: 18 total
+Argus findings: 18 total
 Codex findings: 20 total
 Findings both agree on: 15
 
@@ -377,25 +377,25 @@ When agents disagree on severity, track separately:
 
 ```
 Critical Issues:
-- Agent-OS: 3 critical findings
+- Argus: 3 critical findings
 - Codex: 3 critical findings
 - Agreement: 100% (3/3 match)
 - Interpretation: High confidence for critical issues
 
 High Issues:
-- Agent-OS: 8 high findings
+- Argus: 8 high findings
 - Codex: 7 high findings
 - Agreement: 83% (5/6 match, 1 upgraded from medium)
 - Interpretation: Strong agreement on high-severity
 
 Medium Issues:
-- Agent-OS: 5 medium findings
+- Argus: 5 medium findings
 - Codex: 7 medium findings
 - Agreement: 67% (2/3 match, some severity disagreements)
 - Interpretation: Moderate agreement, review severity
 
 Low Issues:
-- Agent-OS: 2 low findings
+- Argus: 2 low findings
 - Codex: 3 low findings
 - Agreement: 100% (2/2 match)
 - Interpretation: High agreement on low-severity
@@ -407,7 +407,7 @@ Low Issues:
 
 ### Previous Approach (Single Agent)
 
-**Agent-OS Only (Claude):**
+**Argus Only (Claude):**
 ```
 Findings: 18
 False Positive Rate: 12-15%
@@ -425,7 +425,7 @@ Issues:
 
 ### New Approach (Dual Agent + Judge)
 
-**Agent-OS + Codex + LLM Judge:**
+**Argus + Codex + LLM Judge:**
 ```
 Findings Reported: 15 (consensus)
 Additional Investigation: 5 (disagreements)
@@ -449,7 +449,7 @@ Improvements:
 
 **SQL Injection Finding:**
 
-**Before (Agent-OS Only):**
+**Before (Argus Only):**
 ```
 Finding: SQL Injection in users.py:42
 Severity: High
@@ -465,7 +465,7 @@ False Positive Risk: Unknown
 ```
 Finding: SQL Injection in users.py:42
 
-Agent-OS Assessment:
+Argus Assessment:
 - Severity: Critical (full database access)
 - Evidence: f"SELECT * FROM users WHERE id = {user_input}"
 - Exploit: SELECT * FROM users WHERE id = 1 OR 1=1
@@ -571,7 +571,7 @@ class ConsensusBuilder:
                     "total_agents": 2,
                     "consensus_level": "unanimous",  # unanimous/strong/majority/weak
                     "confidence": 0.95,
-                    "agents_agree": ["agent-os", "codex"]
+                    "agents_agree": ["argus", "codex"]
                 }
             }
         """
@@ -858,7 +858,7 @@ The LLM-as-Judge methodology brings scientific rigor to AI-powered security scan
 4. **Continuous monitoring** - Detect quality drift automatically
 5. **Interpretable reasoning** - Show Chain-of-Thought for each finding
 
-Agent-OS Security Action achieves:
+Argus Security Action achieves:
 - **67% reduction** in false positives
 - **High confidence** in security findings
 - **Production-grade quality** for critical systems

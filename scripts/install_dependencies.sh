@@ -1,9 +1,9 @@
 #!/bin/bash
-# Agent-OS Security Action - Dependency Installation Script
+# Argus Security Action - Dependency Installation Script
 # Version: 1.1.0
 # Updated: 2026-01-15
 #
-# This script automates the installation of all required dependencies for Agent-OS
+# This script automates the installation of all required dependencies for Argus
 # Supports: macOS, Linux (Ubuntu/Debian, RHEL/CentOS)
 #
 # Usage:
@@ -51,7 +51,7 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         -h|--help)
-            echo "Agent-OS Security Action - Dependency Installation"
+            echo "Argus Security Action - Dependency Installation"
             echo ""
             echo "Usage: $0 [OPTIONS]"
             echo ""
@@ -479,7 +479,7 @@ install_tools_rhel() {
 # Main installation flow
 main() {
     echo "================================================================================"
-    echo "Agent-OS Security Action - Dependency Installation"
+    echo "Argus Security Action - Dependency Installation"
     echo "================================================================================"
     echo ""
 

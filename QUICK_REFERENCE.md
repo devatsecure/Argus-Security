@@ -2,7 +2,7 @@
 
 ## File Location
 ```
-/Users/waseem.ahmed/Repos/agent-os-action/scripts/dual_audit.py
+/Users/waseem.ahmed/Repos/argus-action/scripts/dual_audit.py
 ```
 
 ## What Changed
@@ -158,12 +158,12 @@ python scripts/dual_audit.py /path/to/repo --project-type backend-api
 
 ### Review Validation Output
 ```bash
-cat .agent-os/dual-audit/*/codex_validation.txt
+cat .argus/dual-audit/*/codex_validation.txt
 ```
 
 ### Check Main Report
 ```bash
-cat .agent-os/dual-audit/*/dual_audit_report.md
+cat .argus/dual-audit/*/dual_audit_report.md
 ```
 
 ---
@@ -198,7 +198,7 @@ SUMMARY:
 
 ### Fail on Score 5
 ```bash
-if grep -q "SCORE: 5" .agent-os/dual-audit/*/codex_validation.txt; then
+if grep -q "SCORE: 5" .argus/dual-audit/*/codex_validation.txt; then
   echo "Critical findings detected"
   exit 1
 fi
@@ -206,7 +206,7 @@ fi
 
 ### Alert on Score 4+
 ```bash
-grep "SCORE: [45]" .agent-os/dual-audit/*/codex_validation.txt | \
+grep "SCORE: [45]" .argus/dual-audit/*/codex_validation.txt | \
   wc -l > /tmp/critical_count
 ```
 
@@ -261,7 +261,7 @@ python scripts/dual_audit.py /test/repo --project-type backend-api
 
 ### Review Output
 ```bash
-ls -la .agent-os/dual-audit/*/
+ls -la .argus/dual-audit/*/
 ```
 
 ---

@@ -1,5 +1,5 @@
 """
-Anthropic Claude Provider for Agent-OS
+Anthropic Claude Provider for Argus
 Replaces deprecated Foundation-Sec-8B with Claude Sonnet for ML-based analysis
 """
 

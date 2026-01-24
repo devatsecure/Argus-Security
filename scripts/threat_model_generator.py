@@ -1023,8 +1023,8 @@ def main():
     parser.add_argument(
         "--output",
         "-o",
-        default=".agent-os/threat-model.json",
-        help="Output path for threat model (default: .agent-os/threat-model.json)",
+        default=".argus/threat-model.json",
+        help="Output path for threat model (default: .argus/threat-model.json)",
     )
     parser.add_argument("--api-key", help="Anthropic API key (or set ANTHROPIC_API_KEY env var)")
     parser.add_argument("--force", action="store_true", help="Force regeneration even if threat model exists")

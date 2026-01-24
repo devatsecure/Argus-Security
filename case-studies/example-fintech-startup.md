@@ -17,7 +17,7 @@
 
 ### What was the problem?
 
-Before Agent-OS, our security review process was a major bottleneck:
+Before Argus, our security review process was a major bottleneck:
 
 - **Manual Processes:** Security team manually reviewed every PR - 2-3 days per review
 - **Tool Limitations:** Existing SAST tools (Snyk, SonarQube) had 85-90% false positive rates
@@ -36,7 +36,7 @@ Before Agent-OS, our security review process was a major bottleneck:
 
 ## Solution
 
-### How did you implement Agent-OS?
+### How did you implement Argus?
 
 - **Setup Time:** 2 hours (including GitHub Actions setup)
 - **Integration:** GitHub Actions for all PRs + scheduled nightly scans
@@ -46,7 +46,7 @@ Before Agent-OS, our security review process was a major bottleneck:
 ### Implementation Details
 
 ```yaml
-# .agent-os.yml
+# .argus.yml
 ai_provider: anthropic
 agent_profile: default
 multi_agent_mode: parallel
@@ -96,7 +96,7 @@ integrations:
 - **Developer Experience:** Developers love instant feedback. No more waiting days for security review.
 - **Security Posture:** Found 3 critical SQL injection vulnerabilities that other tools missed. One could have led to full database compromise.
 - **Velocity:** Shipping features 3x faster due to instant security feedback.
-- **Compliance:** Agent-OS generates audit logs for PCI-DSS compliance, reducing manual documentation burden.
+- **Compliance:** Argus generates audit logs for PCI-DSS compliance, reducing manual documentation burden.
 
 **ROI:** Saved $85,000/year (reduced external audits + developer time savings)
 
@@ -150,13 +150,13 @@ integrations:
    - **Solution:** Configured `severity_threshold: high` to only block on critical/high issues. Medium/low became suggestions.
 
 3. **Challenge:** Occasional false positives in legacy code
-   - **Solution:** Used noise suppression features. Added `.agent-os-ignore` file for known false positives.
+   - **Solution:** Used noise suppression features. Added `.argus-ignore` file for known false positives.
 
 ---
 
 ## Recommendations
 
-### For Teams Considering Agent-OS
+### For Teams Considering Argus
 
 - **Start with:** Lite mode on a single repository. Show quick wins to gain team buy-in.
 - **Focus on:** PR integration first. Instant feedback is the killer feature.
@@ -218,10 +218,10 @@ generate_security_tests: true
 
 ## Media
 
-### Before Agent-OS
+### Before Argus
 ![Security Review Bottleneck](https://via.placeholder.com/800x400?text=Before%3A+2-3+day+wait)
 
-### After Agent-OS
+### After Argus
 ![Instant Feedback](https://via.placeholder.com/800x400?text=After%3A+5+minute+feedback)
 
 ### Metrics Dashboard
@@ -229,6 +229,6 @@ generate_security_tests: true
 
 ---
 
-*"Agent-OS transformed our security process from a bottleneck to a competitive advantage. We're shipping faster AND more securely."*
+*"Argus transformed our security process from a bottleneck to a competitive advantage. We're shipping faster AND more securely."*
 
 — Head of Engineering, PayFlow Technologies

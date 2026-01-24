@@ -1,15 +1,15 @@
 #!/bin/bash
-# Sync script for agent-os-action repository
+# Sync script for argus-action repository
 # Usage: ./scripts/sync-repos.sh
 #
-# Note: agent-os is now a symbolic link to agent-os-action
+# Note: argus is now a symbolic link to argus-action
 # There is only ONE repository to sync.
 
 set -e
 
-REPO_DIR="/Users/waseem.ahmed/Repos/agent-os-action"
+REPO_DIR="/Users/waseem.ahmed/Repos/argus-action"
 
-echo "🔄 Syncing agent-os-action repository..."
+echo "🔄 Syncing argus-action repository..."
 
 # Function to sync repo
 sync_repo() {
@@ -44,9 +44,9 @@ sync_repo() {
 }
 
 # Sync repository
-sync_repo "$REPO_DIR" "agent-os-action"
+sync_repo "$REPO_DIR" "argus-action"
 
 echo ""
 echo "✅ Sync complete!"
 echo ""
-echo "💡 Note: /Users/waseem.ahmed/Repos/agent-os is a symlink to agent-os-action"
+echo "💡 Note: /Users/waseem.ahmed/Repos/argus is a symlink to argus-action"

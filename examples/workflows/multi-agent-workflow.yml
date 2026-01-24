@@ -35,7 +35,7 @@ jobs:
       
       - name: Run Multi-Agent Code Review
         id: review
-        uses: securedotcom/agent-os-action@v2.1.0
+        uses: devatsecure/Argus-Security@v2.1.0
         with:
           # Multi-Agent Configuration
           multi-agent-mode: 'sequential'  # Run 5 specialized agents
@@ -73,14 +73,14 @@ jobs:
           echo "- Main Report: ${{ steps.review.outputs.report-path }}"
           echo "- SARIF: ${{ steps.review.outputs.sarif-path }}"
           echo "- JSON: ${{ steps.review.outputs.json-path }}"
-          echo "- Individual Agent Reports: .agent-os/reviews/agents/"
+          echo "- Individual Agent Reports: .argus/reviews/agents/"
       
       - name: Upload SARIF to Code Scanning
         if: always()
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: ${{ steps.review.outputs.sarif-path }}
-          category: agent-os-multi-agent
+          category: argus-multi-agent
         continue-on-error: true
       
       - name: Upload Review Artifacts
@@ -88,7 +88,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: multi-agent-review-reports
-          path: .agent-os/reviews/
+          path: .argus/reviews/
           retention-days: 90  # Keep for 3 months
 
 # Multi-Agent Mode Benefits:

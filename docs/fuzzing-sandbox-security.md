@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Agent-OS fuzzing engine now includes **mandatory Docker-based sandboxing** for safe execution of untrusted code. This critical security feature prevents malicious code from escaping the fuzzing environment and affecting the host system.
+The Argus fuzzing engine now includes **mandatory Docker-based sandboxing** for safe execution of untrusted code. This critical security feature prevents malicious code from escaping the fuzzing environment and affecting the host system.
 
 ## Security Vulnerability Fixed
 
@@ -125,7 +125,7 @@ engine.cleanup()
 
 ```bash
 # Custom sandbox image
-export AGENT_OS_SANDBOX_IMAGE="my-custom-sandbox:latest"
+export ARGUS_SANDBOX_IMAGE="my-custom-sandbox:latest"
 ```
 
 ## Security Best Practices
@@ -157,7 +157,7 @@ export AGENT_OS_SANDBOX_IMAGE="my-custom-sandbox:latest"
 
 ### Docker Image
 
-The sandbox uses the standard Agent-OS Docker image with security hardening:
+The sandbox uses the standard Argus Docker image with security hardening:
 
 ```dockerfile
 FROM python:3.11-slim
@@ -177,7 +177,7 @@ WORKDIR /tmp
 Build custom image:
 ```bash
 docker build -f docker/security-sandbox.dockerfile \
-  -t agent-os-sandbox:latest .
+  -t argus-sandbox:latest .
 ```
 
 ## Monitoring and Logging
@@ -195,17 +195,17 @@ engine = FuzzingEngine(config=config)
 
 ```bash
 # List active sandbox containers
-docker ps --filter "label=agent-os-sandbox=true"
+docker ps --filter "label=argus-sandbox=true"
 
 # Monitor resource usage
-docker stats $(docker ps -q --filter "label=agent-os-sandbox=true")
+docker stats $(docker ps -q --filter "label=argus-sandbox=true")
 ```
 
 ### Cleanup Orphaned Containers
 
 ```bash
 # Remove stopped sandbox containers
-docker container prune --filter "label=agent-os-sandbox=true" -f
+docker container prune --filter "label=argus-sandbox=true" -f
 ```
 
 ## Incident Response
@@ -242,7 +242,7 @@ docker container prune --filter "label=agent-os-sandbox=true" -f
 1. **Reuse Containers**: Sandbox reuses containers across executions
 2. **Pre-pull Image**: Pull sandbox image before fuzzing
    ```bash
-   docker pull agent-os-sandbox:latest
+   docker pull argus-sandbox:latest
    ```
 3. **Use SSD**: Store Docker data on SSD for faster I/O
 4. **Adjust Limits**: Balance security vs. performance based on threat model
@@ -273,12 +273,12 @@ RuntimeError: Docker is not available or not running
 ### Image Not Found
 
 ```
-ImageNotFound: Image agent-os-sandbox:latest not found
+ImageNotFound: Image argus-sandbox:latest not found
 ```
 
 **Solution**:
-1. Build image: `docker build -f docker/security-sandbox.dockerfile -t agent-os-sandbox:latest .`
-2. Or use default: `export AGENT_OS_SANDBOX_IMAGE=python:3.11-slim`
+1. Build image: `docker build -f docker/security-sandbox.dockerfile -t argus-sandbox:latest .`
+2. Or use default: `export ARGUS_SANDBOX_IMAGE=python:3.11-slim`
 
 ### Permission Denied
 
@@ -372,4 +372,4 @@ with DockerSandbox() as sandbox:
 
 ---
 
-**Security Contact**: Report security issues to security@agent-os.dev
+**Security Contact**: Report security issues to security@argus.dev

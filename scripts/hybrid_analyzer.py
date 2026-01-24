@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Hybrid Security Analyzer for Agent-OS
+Hybrid Security Analyzer for Argus
 Combines multiple security scanning tools for comprehensive analysis:
 
 1. Semgrep - Fast SAST (static analysis)
 2. Trivy - CVE/dependency scanning
 3. Checkov - IaC security scanning (Terraform, K8s, Dockerfile, etc.)
 4. AI-powered security analysis & CWE mapping (Claude/OpenAI)
-5. Existing Agent-OS multi-agent system
+5. Existing Argus multi-agent system
 
 Architecture:
 ┌─────────────────────────────────────────────────────────────────┐
@@ -18,7 +18,7 @@ Architecture:
 ├─────────────────────────────────────────────────────────────────┤
 │  PHASE 2: AI Enrichment (2-5 min)                               │
 │  ├─ Claude/OpenAI (Security analysis, CWE mapping)              │
-│  └─ Existing Agent-OS agents                                    │
+│  └─ Existing Argus agents                                    │
 ├─────────────────────────────────────────────────────────────────┤
 │  PHASE 2.5: Automated Remediation (Optional)                    │
 │  └─ AI-Generated Fix Suggestions                                │
@@ -64,6 +64,15 @@ SCRIPT_DIR = Path(__file__).parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
+# Import project context detector for context-aware AI triage
+try:
+    from project_context_detector import detect_project_context, ProjectContext
+    PROJECT_CONTEXT_AVAILABLE = True
+except ImportError:
+    PROJECT_CONTEXT_AVAILABLE = False
+    ProjectContext = None  # type: ignore
+    logger.warning("⚠️  project_context_detector not available - context-aware triage disabled")
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
@@ -73,7 +82,7 @@ class HybridFinding:
     """Unified finding from multiple security tools"""
 
     finding_id: str
-    source_tool: str  # 'semgrep', 'trivy', 'checkov', 'api-security', 'dast', 'agent-os'
+    source_tool: str  # 'semgrep', 'trivy', 'checkov', 'api-security', 'dast', 'argus'
     severity: str  # 'critical', 'high', 'medium', 'low'
     category: str  # 'security', 'quality', 'performance'
     title: str
@@ -117,7 +126,7 @@ class HybridSecurityAnalyzer:
     Hybrid Security Analyzer
 
     Combines deterministic tools (Semgrep, Trivy, Checkov) with AI analysis
-    (Claude, OpenAI, Agent-OS agents)
+    (Claude, OpenAI, Argus agents)
     """
 
     def __init__(
@@ -134,7 +143,7 @@ class HybridSecurityAnalyzer:
         enable_runtime_security: bool = False,
         enable_regression_testing: bool = True,
         enable_ai_enrichment: bool = True,
-        enable_agent_os: bool = False,  # Use existing agent-os if needed
+        enable_argus: bool = False,  # Use existing argus if needed
         enable_sandbox: bool = True,  # Validate exploits in Docker sandbox
         enable_multi_agent: bool = True,  # Use specialized agent personas
         enable_spontaneous_discovery: bool = True,  # Discover issues beyond scanner rules
@@ -161,7 +170,7 @@ class HybridSecurityAnalyzer:
             enable_runtime_security: Run Container Runtime Security Monitoring
             enable_regression_testing: Run Security Regression Testing
             enable_ai_enrichment: Use AI (Claude/OpenAI) for enrichment
-            enable_agent_os: Use existing Agent-OS multi-agent system
+            enable_argus: Use existing Argus multi-agent system
             enable_sandbox: Validate exploits in Docker sandbox
             enable_multi_agent: Use specialized agent personas (SecretHunter, ArchitectureReviewer, etc.)
             enable_spontaneous_discovery: Discover issues beyond traditional scanner rules
@@ -184,7 +193,7 @@ class HybridSecurityAnalyzer:
         self.enable_runtime_security = enable_runtime_security
         self.enable_regression_testing = enable_regression_testing
         self.enable_ai_enrichment = enable_ai_enrichment
-        self.enable_agent_os = enable_agent_os
+        self.enable_argus = enable_argus
         self.enable_sandbox = enable_sandbox
         self.enable_multi_agent = enable_multi_agent
         self.enable_spontaneous_discovery = enable_spontaneous_discovery
@@ -214,6 +223,9 @@ class HybridSecurityAnalyzer:
         self.agent_personas = None
         self.spontaneous_discovery = None
         self.collaborative_reasoning = None
+
+        # Initialize project context for context-aware AI triage
+        self.project_context = None
 
         # Initialize AI client if enrichment is enabled
         if self.enable_ai_enrichment:
@@ -415,7 +427,7 @@ class HybridSecurityAnalyzer:
 
         Args:
             target_path: Path to analyze (repo, directory, or file)
-            output_dir: Directory to save results (default: .agent-os/hybrid-results)
+            output_dir: Directory to save results (default: .argus/hybrid-results)
             severity_filter: Only report these severities (default: all)
 
         Returns:
@@ -432,6 +444,19 @@ class HybridSecurityAnalyzer:
         logger.info(f"📁 Target: {target_path}")
         logger.info(f"🛠️  Tools: {self._get_enabled_tools()}")
         logger.info("")
+
+        # Detect project context for context-aware AI triage
+        if PROJECT_CONTEXT_AVAILABLE and self.enable_ai_enrichment:
+            try:
+                logger.info("🔍 Detecting project context for context-aware AI triage...")
+                self.project_context = detect_project_context(target_path)
+                logger.info(f"   ✅ Project: {self.project_context.type} ({self.project_context.runtime})")
+                logger.info(f"   📤 Output: {', '.join(self.project_context.output_destinations)}")
+                if self.project_context.framework:
+                    logger.info(f"   🔧 Framework: {self.project_context.framework}")
+            except Exception as e:
+                logger.warning(f"⚠️  Project context detection failed: {e}")
+                logger.info("   💡 Continuing without project context")
 
         overall_start = time.time()
         phase_timings = {}
@@ -681,7 +706,7 @@ class HybridSecurityAnalyzer:
 
             # Run multi-agent persona review on findings
             try:
-                enriched_findings = self._run_agent_os_review(all_findings, target_path)
+                enriched_findings = self._run_argus_review(all_findings, target_path)
                 all_findings = enriched_findings
                 logger.info(f"   ✅ Multi-agent persona review complete: {len(all_findings)} findings reviewed")
             except Exception as e:
@@ -1342,8 +1367,71 @@ class HybridSecurityAnalyzer:
 
         return enriched
 
+    def _analyze_xss_output_destination(self, finding: HybridFinding) -> Optional[str]:
+        """
+        Analyze XSS finding to determine output destination (browser vs. terminal)
+
+        Args:
+            finding: XSS finding to analyze
+
+        Returns:
+            Output destination: 'browser', 'terminal', 'console', or None if unclear
+        """
+        if not finding.file_path or not Path(finding.file_path).exists():
+            return None
+
+        try:
+            # Read file content around the finding
+            with open(finding.file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                content = f.read()
+
+            # Browser/HTML output patterns
+            browser_patterns = [
+                ".innerHTML",
+                ".appendChild",
+                "document.write",
+                "render_template",
+                "res.send(",
+                "res.render(",
+                "HttpResponse(",
+                "response.write",
+                "<script>",
+                "dangerouslySetInnerHTML",
+            ]
+
+            # Terminal/console output patterns
+            terminal_patterns = [
+                "console.log(",
+                "print(",
+                "println(",
+                "fmt.Println(",
+                "puts ",
+                "echo ",
+                "logger.",
+                "logging.",
+                "System.out.println",
+            ]
+
+            # Count matches
+            browser_matches = sum(1 for pattern in browser_patterns if pattern in content)
+            terminal_matches = sum(1 for pattern in terminal_patterns if pattern in content)
+
+            # Determine destination based on patterns
+            if browser_matches > terminal_matches:
+                return "browser"
+            elif terminal_matches > browser_matches:
+                return "terminal"
+            elif terminal_matches > 0:
+                return "console"
+
+            return None
+
+        except Exception as e:
+            logger.debug(f"Error analyzing XSS output destination for {finding.file_path}: {e}")
+            return None
+
     def _build_enrichment_prompt(self, finding: HybridFinding) -> str:
-        """Build prompt for AI to analyze a finding"""
+        """Build prompt for AI to analyze a finding with project context"""
 
         prompt = f"""You are a security expert analyzing a potential vulnerability.
 
@@ -1363,6 +1451,53 @@ class HybridSecurityAnalyzer:
         if finding.cvss_score:
             prompt += f"- CVSS Score: {finding.cvss_score}\n"
 
+        # Add project context if available
+        if self.project_context:
+            prompt += f"""
+**Project Context:**
+- Type: {self.project_context.type}
+- Runtime: {self.project_context.runtime}
+- Output Destinations: {', '.join(self.project_context.output_destinations)}
+- Framework: {self.project_context.framework or 'Unknown'}
+"""
+
+        # Add context-aware rules
+        if self.project_context:
+            prompt += """
+**Context-Aware Rules:**
+"""
+            # CLI tool specific rules
+            if self.project_context.is_cli_tool or 'terminal' in self.project_context.output_destinations:
+                prompt += """- CLI Tools: XSS in console.log/print() is FALSE POSITIVE (terminal output, not browser-rendered HTML)
+- CLI Tools: CSRF findings are FALSE POSITIVE (no browser sessions)
+- Terminal output is not HTML-rendered, so XSS attacks do not apply
+"""
+
+            # Web app specific rules
+            if self.project_context.is_web_app or 'browser' in self.project_context.output_destinations:
+                prompt += """- Web Apps: XSS in HTML rendering (innerHTML, res.send, render_template) is TRUE POSITIVE
+- Web Apps: CSRF protection should be evaluated for state-changing operations
+- Browser-rendered content requires strict output encoding
+"""
+
+            # Library specific rules
+            if self.project_context.is_library:
+                prompt += """- Libraries: Consider how consuming applications might misuse the API
+- Libraries: Security burden may be shared with consumers
+"""
+
+            # Special handling for XSS findings
+            if "xss" in finding.title.lower() or "cross-site" in finding.description.lower():
+                output_dest = self._analyze_xss_output_destination(finding)
+                if output_dest == "terminal" or output_dest == "console":
+                    prompt += f"""
+**⚠️  IMPORTANT XSS ANALYSIS:**
+- Code analysis shows output goes to TERMINAL/CONSOLE (e.g., console.log, print)
+- Terminal output is NOT browser-rendered HTML
+- This XSS finding is likely a FALSE POSITIVE for CLI tools
+- Downgrade severity to LOW or mark as false positive unless output reaches browser
+"""
+
         prompt += """
 **Your Task:**
 Analyze this security finding and provide:
@@ -1370,10 +1505,11 @@ Analyze this security finding and provide:
 1. **CWE Mapping**: Map to the most specific CWE ID (e.g., CWE-89 for SQL Injection)
 2. **Exploitability**: Assess how easy it is to exploit (trivial/moderate/complex/theoretical)
 3. **Severity Assessment**: Confirm or adjust severity (critical/high/medium/low) based on:
-   - Real-world exploitability
+   - Real-world exploitability in THIS PROJECT CONTEXT
    - Potential impact
    - Attack complexity
    - Required privileges
+   - Whether the vulnerability actually applies to this project type
 4. **Remediation**: Provide specific, actionable fix recommendation
 5. **References**: Include relevant CWE/OWASP/security reference URLs
 
@@ -1382,9 +1518,9 @@ Analyze this security finding and provide:
   "cwe_id": "CWE-XXX",
   "cwe_name": "Brief CWE name",
   "exploitability": "trivial|moderate|complex|theoretical",
-  "exploitability_reason": "Brief explanation",
+  "exploitability_reason": "Brief explanation considering project context",
   "severity_assessment": "critical|high|medium|low",
-  "severity_reason": "Why this severity",
+  "severity_reason": "Why this severity (considering project context)",
   "recommendation": "Specific fix (code snippet if applicable)",
   "references": ["https://cwe.mitre.org/...", "https://owasp.org/..."]
 }
@@ -1424,7 +1560,7 @@ Respond with JSON only:"""
             logger.warning(f"Error parsing AI response: {e}")
             return None
 
-    def _run_agent_os_review(self, findings: list[HybridFinding], target_path: str) -> list[HybridFinding]:
+    def _run_argus_review(self, findings: list[HybridFinding], target_path: str) -> list[HybridFinding]:
         """
         Run multi-agent persona review on findings using the new agent_personas system
 
@@ -1645,8 +1781,8 @@ Respond with JSON only:"""
             tools.append("Regression-Testing")
         if self.enable_ai_enrichment and self.ai_client:
             tools.append(f"AI-Enrichment ({self.ai_client.provider})")
-        if self.enable_agent_os:
-            tools.append("Agent-OS")
+        if self.enable_argus:
+            tools.append("Argus")
         if self.enable_sandbox:
             tools.append("Sandbox-Validator")
         return tools
@@ -1689,7 +1825,7 @@ Respond with JSON only:"""
                         "driver": {
                             "name": "Hybrid Security Analyzer",
                             "version": "1.0.0",
-                            "informationUri": "https://github.com/securedotcom/agent-os",
+                            "informationUri": "https://github.com/securedotcom/argus",
                             "rules": [],
                         }
                     },
@@ -1835,8 +1971,8 @@ def main():
     parser.add_argument("target", help="Target path to analyze (repository or directory)")
     parser.add_argument(
         "--output-dir",
-        default=".agent-os/hybrid-results",
-        help="Output directory for results (default: .agent-os/hybrid-results)",
+        default=".argus/hybrid-results",
+        help="Output directory for results (default: .argus/hybrid-results)",
     )
     parser.add_argument("--enable-semgrep", action="store_true", default=True, help="Enable Semgrep SAST")
     parser.add_argument("--enable-trivy", action="store_true", default=True, help="Enable Trivy CVE scanning")

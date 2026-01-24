@@ -1,4 +1,4 @@
-# Agent-OS Complete Security Scanner - Docker Edition
+# Argus Complete Security Scanner - Docker Edition
 
 **All-in-one Docker container with ALL security scanners pre-installed!**
 
@@ -17,7 +17,7 @@
 ### 1. Build the Docker Image
 
 ```bash
-docker build -f Dockerfile.complete -t agent-os:complete .
+docker build -f Dockerfile.complete -t argus:complete .
 ```
 
 ### 2. Set Your API Key
@@ -42,7 +42,7 @@ Get a key from: https://console.anthropic.com/
 docker run --rm \
   -v /path/to/your/repo:/workspace \
   -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
-  agent-os:complete \
+  argus:complete \
   . security --provider anthropic
 ```
 
@@ -67,7 +67,7 @@ docker run --rm \
   -v /tmp/UltraRAG:/workspace \
   -v ./reports:/output \
   -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
-  agent-os:complete \
+  argus:complete \
   . security --provider anthropic
 ```
 
@@ -102,7 +102,7 @@ The Docker image includes:
 docker run --rm \
   -v /tmp/UltraRAG:/workspace \
   -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
-  agent-os:complete \
+  argus:complete \
   . security \
   --provider anthropic \
   --enable-semgrep \
@@ -117,7 +117,7 @@ docker run --rm \
 docker run --rm \
   -v /path/to/repo:/workspace \
   -e OPENAI_API_KEY=$OPENAI_API_KEY \
-  agent-os:complete \
+  argus:complete \
   . security --provider openai
 ```
 
@@ -132,7 +132,7 @@ docker run --rm \
   -v /path/to/repo:/workspace \
   --network host \
   -e OLLAMA_ENDPOINT=http://localhost:11434 \
-  agent-os:complete \
+  argus:complete \
   . security --provider ollama
 ```
 
@@ -154,7 +154,7 @@ docker run --rm \
 ### Image not found
 ```bash
 # Rebuild the image
-docker build -f Dockerfile.complete -t agent-os:complete .
+docker build -f Dockerfile.complete -t argus:complete .
 ```
 
 ## 📈 Performance

@@ -148,7 +148,7 @@ jobs:
 
           # Build command
           CMD="python3 scripts/hybrid_analyzer.py $TARGET_PATH"
-          CMD="$CMD --output-dir .agent-os/hybrid-results"
+          CMD="$CMD --output-dir .argus/hybrid-results"
           CMD="$CMD --severity-filter $SEVERITY_FILTER"
           CMD="$CMD --enable-semgrep"
           CMD="$CMD --enable-trivy"
@@ -176,10 +176,10 @@ jobs:
         continue-on-error: false
       
       - name: Upload SARIF to GitHub Security
-        if: always() && hashFiles('.agent-os/hybrid-results/*.sarif') != ''
+        if: always() && hashFiles('.argus/hybrid-results/*.sarif') != ''
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: .agent-os/hybrid-results/
+          sarif_file: .argus/hybrid-results/
           category: hybrid-security-scan
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -189,15 +189,15 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: hybrid-security-results-${{ github.run_id }}
-          path: .agent-os/hybrid-results/
+          path: .argus/hybrid-results/
           retention-days: 90
       
       - name: Parse Results for PR Comment
         if: always() && github.event_name == 'pull_request'
         id: parse_results
         run: |
-          if compgen -G ".agent-os/hybrid-results/*.json" > /dev/null; then
-            JSON_FILE=$(ls -t .agent-os/hybrid-results/*.json 2>/dev/null | head -1)
+          if compgen -G ".argus/hybrid-results/*.json" > /dev/null; then
+            JSON_FILE=$(ls -t .argus/hybrid-results/*.json 2>/dev/null | head -1)
             
             if [ ! -f "$JSON_FILE" ]; then
               echo "No JSON results found"
@@ -279,7 +279,7 @@ jobs:
             - [Security Tab](https://github.com/${context.repo.owner}/${context.repo.repo}/security/code-scanning)
             
             ---
-            *Powered by [Agent-OS Hybrid Analyzer](https://github.com/securedotcom/agent-os)*
+            *Powered by [Argus Hybrid Analyzer](https://github.com/securedotcom/argus)*
             `;
             
             // Find existing comment

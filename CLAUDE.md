@@ -1,21 +1,41 @@
-# CLAUDE.md - Agent-OS Security Action Context
+# CLAUDE.md - Argus Security
+
+> **👁️ The All-Seeing AI Security Platform — Multi-agent security with 100 eyes watching your code**
+> 
+> Orchestrates 5 security scanners + 5 specialized AI personas (like the mythical Argus Panoptes) for collaborative vulnerability analysis, spontaneous discovery, and intelligent false positive reduction.
+
+---
+
+## Quick Reference
+
+| Command | Purpose |
+|---------|---------|
+| `python scripts/run_ai_audit.py --project-type backend-api` | Run full security audit |
+| `./scripts/argus gate --stage pr --input findings.json` | Apply policy gate |
+| `./scripts/argus feedback record <id> --mark fp` | Record false positive |
+| `./scripts/argus dashboard` | Launch observability dashboard |
+| `pytest -v --cov=scripts` | Run tests with coverage |
+| `ruff check scripts/ && ruff format scripts/` | Lint and format code |
+
+---
 
 ## Project Overview
 
-**Agent-OS Security Action** is a production-grade GitHub Action that orchestrates multiple security scanners (TruffleHog, Gitleaks, Semgrep, Trivy, Checkov) with AI-powered triage to reduce false positives and enforce security policies. It acts as a security control plane that runs in GitHub Actions, providing comprehensive security scanning with intelligent noise reduction.
+**Argus Security Action** is a production-grade GitHub Action that orchestrates multiple security scanners (TruffleHog, Gitleaks, Semgrep, Trivy, Checkov) with AI-powered triage to reduce false positives and enforce security policies. It acts as a security control plane that runs in GitHub Actions, providing comprehensive security scanning with intelligent noise reduction.
 
-Key capabilities:
-- Multi-scanner orchestration with parallel execution (5 scanners: TruffleHog, Gitleaks, Semgrep, Trivy, Checkov)
-- AI triage using Claude/OpenAI/Ollama
-- 60-70% false positive reduction via ML noise scoring
-- **Automated remediation** with AI-generated fix suggestions
-- **Spontaneous discovery** to find issues beyond scanner rules
-- **Multi-agent persona review** (SecretHunter, ArchitectureReviewer, ExploitAssessor, etc.)
-- **Docker-based sandbox validation** for exploit verification
-- Policy enforcement via Rego
-- SARIF/JSON/Markdown reporting
-- Intelligent caching for scanner results and AI responses
-- Rich progress bars for real-time feedback
+### Key Capabilities
+
+| Feature | Description |
+|---------|-------------|
+| **Multi-Scanner Orchestration** | 5 scanners in parallel: TruffleHog, Gitleaks, Semgrep, Trivy, Checkov |
+| **AI Triage** | Claude/OpenAI/Ollama for 60-70% false positive reduction |
+| **Multi-Agent Personas** | 5 specialized agents: SecretHunter, ArchitectureReviewer, ExploitAssessor, FalsePositiveFilter, ThreatModeler |
+| **Spontaneous Discovery** | Find issues beyond scanner rules (+15-20% findings) |
+| **Automated Remediation** | AI-generated fix suggestions with code patches |
+| **Sandbox Validation** | Docker-based exploit verification |
+| **Policy Gates** | Rego/OPA policy enforcement for PR/release gates |
+| **Intelligent Caching** | 10-100x faster repeat scans |
+| **Rich Reporting** | SARIF, JSON, Markdown outputs |
 
 ## Security Pipeline (6 Phases)
 
@@ -126,11 +146,11 @@ Key capabilities:
 ## Project Structure
 
 ```
-agent-os-action/
+argus-action/
 ├── scripts/                    # Core application (40+ Python modules)
 │   ├── run_ai_audit.py        # Main orchestrator (3,800+ lines)
 │   ├── hybrid_analyzer.py     # Multi-scanner orchestrator (all 6 phases)
-│   ├── agentos                # CLI entry point
+│   ├── argus                # CLI entry point
 │   │
 │   ├── # PHASE 1: Scanners
 │   ├── semgrep_scanner.py     # SAST scanning
@@ -320,8 +340,8 @@ Based on current state and completed work:
 **Installation:**
 ```bash
 # Clone and setup
-git clone https://github.com/securedotcom/agent-os-action
-cd agent-os-action
+git clone https://github.com/devatsecure/Argus-Security
+cd argus-action
 pip install -r requirements.txt
 ```
 
@@ -333,9 +353,9 @@ python scripts/run_ai_audit.py \
   --ai-provider anthropic \
   --output-file report.json
 
-# Use agentos CLI
-./scripts/agentos normalize --inputs semgrep.sarif trivy.json --output findings.json
-./scripts/agentos gate --stage pr --input findings.json
+# Use argus CLI
+./scripts/argus normalize --inputs semgrep.sarif trivy.json --output findings.json
+./scripts/argus gate --stage pr --input findings.json
 
 # Available AI providers: anthropic, openai, ollama
 ```
@@ -357,7 +377,7 @@ mypy scripts/*.py
 
 **GitHub Action:**
 ```yaml
-- uses: securedotcom/agent-os-action@v1
+- uses: devatsecure/Argus-Security@v1
   with:
     anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
     review-type: security
@@ -367,17 +387,17 @@ mypy scripts/*.py
 **Docker:**
 ```bash
 # Build image
-docker build -t agent-os .
+docker build -t argus .
 
 # Run container
-docker run -v $(pwd):/workspace agent-os
+docker run -v $(pwd):/workspace argus
 ```
 
 ## Agent Interaction Patterns
 
 ### Overview for AI Agents
 
-This section provides concrete examples of how AI agents should interact with Agent-OS compositionally. The system is designed for **tool composition** rather than hard-coded workflows, enabling emergent capabilities through primitive combination.
+This section provides concrete examples of how AI agents should interact with Argus compositionally. The system is designed for **tool composition** rather than hard-coded workflows, enabling emergent capabilities through primitive combination.
 
 ### 1. Discovering Available Capabilities
 
@@ -385,7 +405,7 @@ When asked "What security checks can you run for SQL injection?":
 
 ```bash
 # Discover scanners with SQL injection detection
-./scripts/agentos list-scanners --capability sql-injection
+./scripts/argus list-scanners --capability sql-injection
 # Output: semgrep (cwe-89, cwe-564)
 
 # Get details on specific scanner rules
@@ -412,7 +432,7 @@ python scripts/run_ai_audit.py \
 # (Built into run_ai_audit.py when AI provider is configured)
 
 # Step 4: Apply policy gate
-./scripts/agentos gate --stage pr --input injection-findings.json
+./scripts/argus gate --stage pr --input injection-findings.json
 ```
 
 ### 3. Using Feedback for Continuous Improvement
@@ -421,12 +441,12 @@ When user says "This finding is wrong - test files should be ignored":
 
 ```bash
 # Record feedback to improve future scans
-./scripts/agentos feedback record finding-abc123 \
+./scripts/argus feedback record finding-abc123 \
   --mark fp \
   --reason "Test fixture file in tests/ directory"
 
 # View feedback statistics to track improvements
-./scripts/agentos feedback stats
+./scripts/argus feedback stats
 # Output: Shows FP rate by scanner, finding type, recent feedback
 
 # AI triage automatically incorporates past feedback as few-shot examples
@@ -439,7 +459,7 @@ When investigating "Why are so many findings suppressed?":
 
 ```bash
 # Analyze AI triage decisions
-python scripts/decision_analyzer.py --log-file .agent-os-cache/decisions.jsonl
+python scripts/decision_analyzer.py --log-file .argus-cache/decisions.jsonl
 
 # Output includes:
 # - Suppression/escalation rates
@@ -460,7 +480,7 @@ When asked "Why was finding xyz-789 suppressed?":
 
 ```bash
 # Decision logs contain reasoning for every AI triage decision
-cat .agent-os-cache/decisions.jsonl | grep "xyz-789"
+cat .argus-cache/decisions.jsonl | grep "xyz-789"
 
 # Output shows:
 # - Finding ID and type
@@ -473,7 +493,7 @@ cat .agent-os-cache/decisions.jsonl | grep "xyz-789"
 
 ### Key Principles for Agents
 
-1. **Discover, don't assume:** Agent-OS capabilities evolve. Use discovery commands to find available scanners and rules
+1. **Discover, don't assume:** Argus capabilities evolve. Use discovery commands to find available scanners and rules
 2. **Compose primitives:** Chain commands (scan → normalize → triage → gate) for custom workflows
 3. **Use feedback loops:** Mark findings as TP/FP to improve future scans
 4. **Provide context:** Use `--project-type` and custom prompts to give AI domain-specific info
@@ -495,16 +515,16 @@ By composing primitives, agents can create workflows without hard-coding:
 | Command | Purpose | Example |
 |---------|---------|---------|
 | `run_ai_audit.py` | Full security audit with AI triage | `python scripts/run_ai_audit.py --project-type backend-api` |
-| `agentos normalize` | Normalize scanner outputs to unified format | `agentos normalize --inputs semgrep.sarif --output findings.json` |
-| `agentos gate` | Apply policy gates (PR/release) | `agentos gate --stage pr --input findings.json` |
-| `agentos feedback record` | Record finding feedback (TP/FP) | `agentos feedback record abc-123 --mark fp --reason "test file"` |
-| `agentos feedback stats` | View feedback statistics | `agentos feedback stats` |
+| `argus normalize` | Normalize scanner outputs to unified format | `argus normalize --inputs semgrep.sarif --output findings.json` |
+| `argus gate` | Apply policy gates (PR/release) | `argus gate --stage pr --input findings.json` |
+| `argus feedback record` | Record finding feedback (TP/FP) | `argus feedback record abc-123 --mark fp --reason "test file"` |
+| `argus feedback stats` | View feedback statistics | `argus feedback stats` |
 | `decision_analyzer.py` | Analyze AI decision quality | `python scripts/decision_analyzer.py --days 7` |
 | `feedback_collector.py` | Manage feedback data | `python scripts/feedback_collector.py stats` |
 
 ### Integration with External Systems
 
-Agents can integrate Agent-OS into larger workflows:
+Agents can integrate Argus into larger workflows:
 
 ```bash
 # Example: GitHub Actions integration with feedback collection
@@ -516,7 +536,7 @@ python scripts/run_ai_audit.py --output-file findings.json
 
 # 3. Record feedback
 cat pr-feedback.txt | while read finding_id feedback reason; do
-  ./scripts/agentos feedback record $finding_id --mark $feedback --reason "$reason"
+  ./scripts/argus feedback record $finding_id --mark $feedback --reason "$reason"
 done
 
 # 4. Re-run scan with improved AI using feedback
@@ -529,7 +549,7 @@ For large repos, agents should:
 
 1. **Use caching:** Intelligent caching speeds up repeat scans 10-100x
    ```bash
-   # Cache is automatic in .agent-os-cache/
+   # Cache is automatic in .argus-cache/
    # View cache stats
    python scripts/cache_manager.py stats
    ```

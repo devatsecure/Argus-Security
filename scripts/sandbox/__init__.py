@@ -1,5 +1,5 @@
 """
-Sandbox module for safe code execution in Agent-OS
+Sandbox module for safe code execution in Argus
 Provides Docker-based sandboxing for fuzzing engine
 """
 

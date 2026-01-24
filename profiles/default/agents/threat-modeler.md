@@ -341,7 +341,7 @@ Align threat modeling with industry standards:
 
 ## Output Delivery
 
-Generate threat model and save to `.agent-os/threat-model.json` in the repository root.
+Generate threat model and save to `.argus/threat-model.json` in the repository root.
 
 Provide summary report:
 - Total threats identified

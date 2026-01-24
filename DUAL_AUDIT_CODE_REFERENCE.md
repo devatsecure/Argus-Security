@@ -1,7 +1,7 @@
 # Dual-Audit Code Reference - Complete Updated Sections
 
 ## File Location
-`/Users/waseem.ahmed/Repos/agent-os-action/scripts/dual_audit.py`
+`/Users/waseem.ahmed/Repos/argus-action/scripts/dual_audit.py`
 
 ---
 
@@ -68,8 +68,8 @@ SCORING_RUBRIC = {
 ## Section 2: Enhanced run_codex_validation() Method (Lines 146-274)
 
 ```python
-def run_codex_validation(self, agent_os_results: Dict[str, Any]) -> Dict[str, Any]:
-    """Run Codex validation of Agent-OS findings with chain-of-thought reasoning"""
+def run_codex_validation(self, argus_results: Dict[str, Any]) -> Dict[str, Any]:
+    """Run Codex validation of Argus findings with chain-of-thought reasoning"""
     print("\n" + "="*80)
     print("PHASE 2: Codex Independent Validation (OpenAI GPT-5.2)")
     print("="*80 + "\n")
@@ -80,8 +80,8 @@ def run_codex_validation(self, agent_os_results: Dict[str, Any]) -> Dict[str, An
     except subprocess.CalledProcessError:
         return {"success": False, "error": "Codex CLI not installed"}
 
-    # Extract key findings from Agent-OS for targeted validation
-    findings_summary = self._generate_findings_summary(agent_os_results)
+    # Extract key findings from Argus for targeted validation
+    findings_summary = self._generate_findings_summary(argus_results)
 
     # Create enhanced Codex validation prompt with chain-of-thought reasoning
     codex_prompt = f"""You are a senior security auditor performing independent validation of AI-generated security findings.
@@ -89,12 +89,12 @@ def run_codex_validation(self, agent_os_results: Dict[str, Any]) -> Dict[str, An
 SCORING RUBRIC:
 {self._format_scoring_rubric()}
 
-AGENT-OS FINDINGS TO VALIDATE:
+ARGUS FINDINGS TO VALIDATE:
 {findings_summary}
 
 VALIDATION METHODOLOGY (Chain-of-Thought):
 
-For EACH Agent-OS finding, follow this reasoning process:
+For EACH Argus finding, follow this reasoning process:
 
 1. UNDERSTANDING OF THE CLAIM
    - What vulnerability is being claimed?
@@ -123,14 +123,14 @@ For EACH Agent-OS finding, follow this reasoning process:
    - Explain why this score applies
 
 VALIDATION TASKS:
-1. Review the same security categories that Agent-OS analyzed
+1. Review the same security categories that Argus analyzed
 2. Independently identify security vulnerabilities
-3. For EACH Agent-OS finding, provide:
+3. For EACH Argus finding, provide:
    - Finding description
    - Your assessment (Valid/Invalid/Uncertain)
    - Confidence score (1-5) with justification
    - Evidence or reasoning
-4. Identify any issues Agent-OS missed
+4. Identify any issues Argus missed
 5. Assess overall false positive rate
 
 FOCUS AREAS:
@@ -212,14 +212,14 @@ Temperature: 0.2 (for consistency and deterministic reasoning)
 ## Section 3: Enhanced _generate_findings_summary() Method (Lines 276-322)
 
 ```python
-def _generate_findings_summary(self, agent_os_results: Dict[str, Any]) -> str:
-    """Generate detailed summary of Agent-OS findings for Codex validation"""
+def _generate_findings_summary(self, argus_results: Dict[str, Any]) -> str:
+    """Generate detailed summary of Argus findings for Codex validation"""
     summary_parts = []
 
-    if "summary" in agent_os_results:
-        s = agent_os_results["summary"]
+    if "summary" in argus_results:
+        s = argus_results["summary"]
         summary_parts.append(f"""
-AGENT-OS SUMMARY:
+ARGUS SUMMARY:
 - Files Reviewed: {s.get('files_reviewed', 'unknown')}
 - Lines Analyzed: {s.get('lines_analyzed', 'unknown')}
 - Critical: {s.get('findings', {}).get('critical', 0)}
@@ -231,9 +231,9 @@ AGENT-OS SUMMARY:
 - Cost: ${s.get('cost_usd', 0):.2f}
 """)
 
-    if "findings" in agent_os_results:
+    if "findings" in argus_results:
         summary_parts.append("\nDETAILED FINDINGS (Top 15):")
-        for idx, finding in enumerate(agent_os_results["findings"][:15], 1):
+        for idx, finding in enumerate(argus_results["findings"][:15], 1):
             severity = finding.get('severity', 'unknown').upper()
             message = finding.get('message', 'No message')
             category = finding.get('category', 'unknown')
@@ -316,7 +316,7 @@ SCORE 4: Likely Valid
 
 ```python
 def generate_comparison_report(self,
-                               agent_os_result: Dict[str, Any],
+                               argus_result: Dict[str, Any],
                                codex_result: Dict[str, Any]) -> str:
     """Generate comprehensive comparison report with validation scoring"""
 
@@ -327,7 +327,7 @@ Target: {self.target_repo}
 ## Audit Methodology
 
 This report presents findings from a dual-audit approach with rigorous validation:
-1. **Agent-OS (Anthropic Claude)**: Comprehensive AI-powered security analysis
+1. **Argus (Anthropic Claude)**: Comprehensive AI-powered security analysis
 2. **Codex (OpenAI GPT-5.2)**: Independent validation with chain-of-thought reasoning
 
 ### Validation Framework
@@ -453,7 +453,7 @@ SUMMARY:
 python scripts/dual_audit.py /path/to/repo --project-type backend-api
 
 # Expected output includes:
-# - Phase 1: Agent-OS findings
+# - Phase 1: Argus findings
 # - Phase 2: Codex validation with structured scores
 # - Comprehensive report with validation methodology
 # - Confidence scores for each finding (1-5)
@@ -482,10 +482,10 @@ python3 -m py_compile scripts/dual_audit.py
 python scripts/dual_audit.py /path/to/test/repo
 
 # 3. Review generated reports
-cat .agent-os/dual-audit/*/dual_audit_report.md
+cat .argus/dual-audit/*/dual_audit_report.md
 
 # 4. Check Codex validation output
-cat .agent-os/dual-audit/*/codex_validation.txt
+cat .argus/dual-audit/*/codex_validation.txt
 ```
 
 ---

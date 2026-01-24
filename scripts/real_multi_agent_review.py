@@ -1008,7 +1008,7 @@ async def main():
     if not Path(repo_path).exists():
         print(f"❌ Repository not found: {repo_path}")
         print("   Clone it first with:")
-        print(f"   gh repo clone securedotcom/{repo_name} {repo_path}")
+        print(f"   gh repo clone devatsecure/{repo_name} {repo_path}")
         return
 
     # Files to review (key files from human feedback)

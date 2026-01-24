@@ -388,7 +388,7 @@ collab = CollaborativeReasoning(agents, min_consensus_threshold=0.5)
    - Average confidence below threshold
    - Example: "Low confidence (0.55) - escalated for manual review"
 
-## Integration with Agent-OS
+## Integration with Argus
 
 ### Integration Points
 

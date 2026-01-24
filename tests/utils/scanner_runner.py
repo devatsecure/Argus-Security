@@ -189,7 +189,7 @@ class ScannerRunner:
         enable_all_scanners: bool = True,
     ) -> Dict[str, Any]:
         """
-        Run complete Agent-OS pipeline
+        Run complete Argus pipeline
 
         Args:
             target_path: Path to scan

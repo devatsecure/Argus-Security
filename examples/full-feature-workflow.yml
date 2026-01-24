@@ -1,7 +1,7 @@
-# Example: Agent-OS Security Scan with All Features Enabled
+# Example: Argus Security Scan with All Features Enabled
 # This workflow demonstrates all available security features
 
-name: Agent-OS Full Security Suite
+name: Argus Full Security Suite
 on:
   pull_request:
     branches: [main, develop]
@@ -22,8 +22,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Run Agent-OS Security Scan
-        uses: securedotcom/agent-os-action@v1
+      - name: Run Argus Security Scan
+        uses: devatsecure/Argus-Security@v1
         with:
           # AI Provider Configuration
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -72,11 +72,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: security-reports-${{ github.run_id }}
-          path: .agent-os/reviews/
+          path: .argus/reviews/
           retention-days: 30
 
       - name: Upload SARIF to GitHub Security
         if: always()
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: .agent-os/reviews/results.sarif
+          sarif_file: .argus/reviews/results.sarif

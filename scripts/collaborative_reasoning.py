@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Collaborative Reasoning System for Agent-OS
+Collaborative Reasoning System for Argus
 Multi-agent collaboration with discussion and consensus building
 
 This module enables multiple specialized AI agents to:

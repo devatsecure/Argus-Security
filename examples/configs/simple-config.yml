@@ -1,5 +1,5 @@
-# Simple Agent-OS Configuration Example
-# Copy this to your repo as .agent-os.yml
+# Simple Argus Configuration Example
+# Copy this to your repo as .argus.yml
 
 # AI Provider (required)
 ai_provider: anthropic  # Options: anthropic, openai, foundation-sec, ollama

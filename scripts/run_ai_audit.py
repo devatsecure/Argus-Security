@@ -1723,7 +1723,7 @@ def generate_sarif(findings, repo_path, metrics=None):
                     "driver": {
                         "name": "Agent OS Code Reviewer",
                         "version": "1.0.16",
-                        "informationUri": "https://github.com/securedotcom/agent-os-action",
+                        "informationUri": "https://github.com/devatsecure/Argus-Security",
                         "rules": [],
                     }
                 },
@@ -1734,7 +1734,7 @@ def generate_sarif(findings, repo_path, metrics=None):
 
     for finding in findings:
         result = {
-            "ruleId": finding.get("rule_id", "AGENT-OS-001"),
+            "ruleId": finding.get("rule_id", "ARGUS-001"),
             "level": map_severity_to_sarif(finding.get("severity", "medium")),
             "message": {"text": finding.get("message", "Issue found")},
             "locations": [
@@ -2024,10 +2024,10 @@ def load_agent_prompt(agent_name):
 
     # Try multiple locations
     possible_paths = [
-        Path.home() / f".agent-os/profiles/default/agents/{prompt_file}",
-        Path.home() / f".agent-os/profiles/default/agents/{agent_name}.md",
-        Path(".agent-os") / f"profiles/default/agents/{prompt_file}",
-        Path(".agent-os") / f"profiles/default/agents/{agent_name}.md",
+        Path.home() / f".argus/profiles/default/agents/{prompt_file}",
+        Path.home() / f".argus/profiles/default/agents/{agent_name}.md",
+        Path(".argus") / f"profiles/default/agents/{prompt_file}",
+        Path(".argus") / f"profiles/default/agents/{agent_name}.md",
     ]
 
     for prompt_path in possible_paths:
@@ -2772,7 +2772,7 @@ Orchestrator synthesis failed. Below are individual agent reports.
     final_report += multi_agent_summary
 
     # Save individual agent reports
-    report_dir = Path(repo_path) / ".agent-os/reviews"
+    report_dir = Path(repo_path) / ".argus/reviews"
     report_dir.mkdir(parents=True, exist_ok=True)
 
     agents_dir = report_dir / "agents"
@@ -3141,7 +3141,7 @@ def run_audit(repo_path, config, review_type="audit"):
     if THREAT_MODELING_AVAILABLE:
         print("🛡️  Generating threat model...")
         try:
-            threat_model_path = Path(repo_path) / ".agent-os/threat-model.json"
+            threat_model_path = Path(repo_path) / ".argus/threat-model.json"
 
             # Initialize hybrid generator (pytm + optional Anthropic)
             # API key is optional - pytm works without it
@@ -3309,7 +3309,7 @@ def run_audit(repo_path, config, review_type="audit"):
         )
 
         # Skip to saving reports (multi-agent handles its own analysis)
-        report_dir = Path(repo_path) / ".agent-os/reviews"
+        report_dir = Path(repo_path) / ".argus/reviews"
         report_dir.mkdir(parents=True, exist_ok=True)
 
         report_file = report_dir / f"{review_type}-report.md"
@@ -3640,7 +3640,7 @@ Be specific and actionable. This plan will guide the detailed analysis."""
     
     # Load audit instructions
     audit_command_path = (
-        Path.home() / ".agent-os/profiles/default/commands/audit-codebase/multi-agent/audit-codebase.md"
+        Path.home() / ".argus/profiles/default/commands/audit-codebase/multi-agent/audit-codebase.md"
     )
     if audit_command_path.exists():
         with open(audit_command_path) as f:
@@ -3749,7 +3749,7 @@ Focus on issues identified in the analysis plan."""
         metrics.record_llm_call(input_tokens, output_tokens, provider)
 
         # Save markdown report
-        report_dir = Path(repo_path) / ".agent-os/reviews"
+        report_dir = Path(repo_path) / ".argus/reviews"
         report_dir.mkdir(parents=True, exist_ok=True)
 
         report_file = report_dir / f"{review_type}-report.md"

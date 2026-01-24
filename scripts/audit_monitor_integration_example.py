@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 def integrate_audit_monitor_with_dual_audit(
-    agent_os_results: Dict[str, Any],
+    argus_results: Dict[str, Any],
     codex_results: Dict[str, Any],
     repo_name: str,
     project_type: str,
@@ -36,7 +36,7 @@ def integrate_audit_monitor_with_dual_audit(
     Integrate Audit Monitor with Dual-Audit results
 
     Args:
-        agent_os_results: Results from Agent-OS audit
+        argus_results: Results from Argus audit
         codex_results: Results from Codex validation
         repo_name: Repository name
         project_type: Project type (backend-api, frontend, etc.)
@@ -52,43 +52,43 @@ def integrate_audit_monitor_with_dual_audit(
 
     # Initialize monitor
     monitor = AuditMonitor(
-        db_path=".agent-os/audit_monitor.db",
+        db_path=".argus/audit_monitor.db",
         agreement_threshold=0.75,
         drift_sensitivity=0.15
     )
 
     # Extract findings from results
-    agent_os_findings = agent_os_results.get("findings", [])
+    argus_findings = argus_results.get("findings", [])
     codex_findings = codex_results.get("findings", [])
 
-    logger.info(f"Agent-OS findings: {len(agent_os_findings)}")
+    logger.info(f"Argus findings: {len(argus_findings)}")
     logger.info(f"Codex findings: {len(codex_findings)}")
 
     # Create mapping of findings for comparison
     findings_by_id: Dict[str, Any] = {}
 
-    # Add Agent-OS findings
-    for finding in agent_os_findings:
+    # Add Argus findings
+    for finding in argus_findings:
         finding_id = finding.get("id", finding.get("rule_id", ""))
         if not findings_by_id.get(finding_id):
             findings_by_id[finding_id] = {
                 "id": finding_id,
-                "agent_os_finding": finding,
+                "argus_finding": finding,
                 "codex_finding": None,
                 "path": finding.get("path", ""),
                 "category": finding.get("category", "UNKNOWN"),
                 "severity": finding.get("severity", "medium")
             }
         else:
-            findings_by_id[finding_id]["agent_os_finding"] = finding
+            findings_by_id[finding_id]["argus_finding"] = finding
 
-    # Add Codex findings and match with Agent-OS
+    # Add Codex findings and match with Argus
     for finding in codex_findings:
         finding_id = finding.get("id", finding.get("rule_id", ""))
         if not findings_by_id.get(finding_id):
             findings_by_id[finding_id] = {
                 "id": finding_id,
-                "agent_os_finding": None,
+                "argus_finding": None,
                 "codex_finding": finding,
                 "path": finding.get("path", ""),
                 "category": finding.get("category", "UNKNOWN"),
@@ -99,7 +99,7 @@ def integrate_audit_monitor_with_dual_audit(
 
     # Calculate agreement metrics
     agreed_findings = 0
-    agent_os_only = 0
+    argus_only = 0
     codex_only = 0
     total_score_diff = 0.0
     score_diff_count = 0
@@ -115,18 +115,18 @@ def integrate_audit_monitor_with_dual_audit(
     findings_comparisons: List[FindingComparison] = []
 
     for finding_id, comparison_data in findings_by_id.items():
-        agent_os_finding = comparison_data["agent_os_finding"]
+        argus_finding = comparison_data["argus_finding"]
         codex_finding = comparison_data["codex_finding"]
         severity = comparison_data["severity"]
 
         # Count severity distribution
         severity_distribution[severity] = severity_distribution.get(severity, 0) + 1
 
-        if agent_os_finding and codex_finding:
+        if argus_finding and codex_finding:
             # Both systems found it - check if they agree on severity/verdict
-            agent_os_score = _score_finding(agent_os_finding)
+            argus_score = _score_finding(argus_finding)
             codex_score = _score_finding(codex_finding)
-            score_diff = abs(agent_os_score - codex_score)
+            score_diff = abs(argus_score - codex_score)
 
             # They agree if scores are within 1 point (0.5 would be strict, 1.0 is moderate)
             agreed = score_diff <= 1.0
@@ -139,17 +139,17 @@ def integrate_audit_monitor_with_dual_audit(
                     id=AuditMonitor._generate_id("finding"),
                     audit_run_id="",  # Will be set after audit_run created
                     finding_id=finding_id,
-                    agent_os_score=agent_os_score,
+                    argus_score=argus_score,
                     codex_score=codex_score,
                     score_difference=score_diff,
                     agreed=agreed,
-                    agent_os_verdict=_get_verdict(agent_os_score),
+                    argus_verdict=_get_verdict(argus_score),
                     codex_verdict=_get_verdict(codex_score),
                     severity=severity,
                     category=comparison_data["category"],
                     metadata={
                         "path": comparison_data["path"],
-                        "agent_os_rule": agent_os_finding.get("rule_id", ""),
+                        "argus_rule": argus_finding.get("rule_id", ""),
                         "codex_rule": codex_finding.get("rule_id", "")
                     }
                 )
@@ -158,27 +158,27 @@ def integrate_audit_monitor_with_dual_audit(
             total_score_diff += score_diff
             score_diff_count += 1
 
-        elif agent_os_finding:
-            agent_os_only += 1
-            agent_os_score = _score_finding(agent_os_finding)
+        elif argus_finding:
+            argus_only += 1
+            argus_score = _score_finding(argus_finding)
 
             findings_comparisons.append(
                 FindingComparison(
                     id=AuditMonitor._generate_id("finding"),
                     audit_run_id="",
                     finding_id=finding_id,
-                    agent_os_score=agent_os_score,
+                    argus_score=argus_score,
                     codex_score=0.0,
-                    score_difference=agent_os_score,
+                    score_difference=argus_score,
                     agreed=False,
-                    agent_os_verdict=_get_verdict(agent_os_score),
+                    argus_verdict=_get_verdict(argus_score),
                     codex_verdict="not_found",
                     severity=severity,
                     category=comparison_data["category"],
                     metadata={
                         "path": comparison_data["path"],
-                        "agent_os_rule": agent_os_finding.get("rule_id", ""),
-                        "type": "agent_os_only"
+                        "argus_rule": argus_finding.get("rule_id", ""),
+                        "type": "argus_only"
                     }
                 )
             )
@@ -192,11 +192,11 @@ def integrate_audit_monitor_with_dual_audit(
                     id=AuditMonitor._generate_id("finding"),
                     audit_run_id="",
                     finding_id=finding_id,
-                    agent_os_score=0.0,
+                    argus_score=0.0,
                     codex_score=codex_score,
                     score_difference=codex_score,
                     agreed=False,
-                    agent_os_verdict="not_found",
+                    argus_verdict="not_found",
                     codex_verdict=_get_verdict(codex_score),
                     severity=severity,
                     category=comparison_data["category"],
@@ -225,10 +225,10 @@ def integrate_audit_monitor_with_dual_audit(
         timestamp=datetime.now(timezone.utc).isoformat(),
         repo=repo_name,
         project_type=project_type,
-        agent_os_findings_count=len(agent_os_findings),
+        argus_findings_count=len(argus_findings),
         codex_findings_count=len(codex_findings),
         agreed_findings_count=agreed_findings,
-        agent_os_only_count=agent_os_only,
+        argus_only_count=argus_only,
         codex_only_count=codex_only,
         agreement_rate=agreement_rate,
         average_score_difference=avg_score_diff,

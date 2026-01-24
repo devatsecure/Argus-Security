@@ -33,10 +33,10 @@ The regression tester:
 
 ```bash
 # Generate regression test suite from fixed findings
-./scripts/agentos regression-test generate --fixed-findings fixed.json
+./scripts/argus regression-test generate --fixed-findings fixed.json
 
 # Run regression tests to detect if vulnerabilities returned
-./scripts/agentos regression-test run --path /path/to/repo
+./scripts/argus regression-test run --path /path/to/repo
 
 # Regression testing is automatically enabled during scans (default)
 python scripts/run_ai_audit.py --enable-regression-testing
@@ -217,7 +217,7 @@ def test_xss_regression_002():
 1. **Run on Every Commit**: Add regression tests to CI/CD pipeline
 2. **Track All Fixes**: Record every security fix in the fix database
 3. **Review Regressions Immediately**: Regressions indicate recent code changes broke fixes
-4. **Automate Test Generation**: Let Agent-OS generate tests automatically
+4. **Automate Test Generation**: Let Argus generate tests automatically
 5. **Maintain Test Suite**: Remove obsolete tests, update for code refactoring
 
 ## CI/CD Integration
@@ -284,7 +284,7 @@ pytest tests/ -k "regression" -v
 
 ## Fix Database Format
 
-Fixes are stored in `.agent-os/fixed_vulnerabilities.jsonl`:
+Fixes are stored in `.argus/fixed_vulnerabilities.jsonl`:
 
 ```jsonl
 {"finding_id": "semgrep-sql-injection-042", "file_path": "app/login.py", "line_number": 42, "cwe_id": "CWE-89", "fix_date": "2026-01-10", "fix_commit": "abc123", "pattern": "f\"SELECT * FROM users WHERE username = '{username}'\"", "status": "fixed"}
@@ -295,7 +295,7 @@ Fixes are stored in `.agent-os/fixed_vulnerabilities.jsonl`:
 
 **Q: Why are regressions not detected?**
 
-A: Ensure `.agent-os/fixed_vulnerabilities.jsonl` exists and contains historical fixes. Run an initial scan to populate the database.
+A: Ensure `.argus/fixed_vulnerabilities.jsonl` exists and contains historical fixes. Run an initial scan to populate the database.
 
 **Q: False positive regression?**
 
@@ -303,7 +303,7 @@ A: Code refactoring may trigger false positives. Review pattern similarity thres
 
 **Q: How do I mark a regression as intentional?**
 
-A: Add exception in `.agent-os/regression_exceptions.json`:
+A: Add exception in `.argus/regression_exceptions.json`:
 
 ```json
 {

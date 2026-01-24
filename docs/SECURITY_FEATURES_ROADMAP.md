@@ -1,6 +1,6 @@
-# Security Features Roadmap: Making Agent-OS Absolutely Powerful
+# Security Features Roadmap: Making Argus Absolutely Powerful
 
-> **Goal:** Transform Agent-OS into the most comprehensive open-source security platform
+> **Goal:** Transform Argus into the most comprehensive open-source security platform
 > **Date:** 2026-01-14
 > **Status:** Strategic planning for next-generation security capabilities
 
@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-Agent-OS already has strong foundations (6 scanners, AI triage, feedback learning, observability). This roadmap outlines **15 game-changing security features** to make it the most powerful open-source security platform, capable of competing with commercial tools like Snyk, Checkmarx, and Veracode.
+Argus already has strong foundations (6 scanners, AI triage, feedback learning, observability). This roadmap outlines **15 game-changing security features** to make it the most powerful open-source security platform, capable of competing with commercial tools like Snyk, Checkmarx, and Veracode.
 
 **✅ COMPLETED (2026-01-15):**
 - API Security Testing (OWASP API Top 10)
@@ -78,7 +78,7 @@ python scripts/run_ai_audit.py \
   --auth-token $STAGING_TOKEN
 
 # DAST + SAST correlation
-./scripts/agentos correlate --sast findings.json --dast dast-results.json
+./scripts/argus correlate --sast findings.json --dast dast-results.json
 # Output: "SQLi finding in login.py CONFIRMED exploitable via DAST"
 ```
 
@@ -142,13 +142,13 @@ class FuzzingEngine:
 **CLI Usage:**
 ```bash
 # Fuzz API endpoints
-./scripts/agentos fuzz api --spec openapi.yaml --duration 60
+./scripts/argus fuzz api --spec openapi.yaml --duration 60
 
 # Fuzz specific function
-./scripts/agentos fuzz function --target src/parser.py --function parse_xml --duration 30
+./scripts/argus fuzz function --target src/parser.py --function parse_xml --duration 30
 
 # Continuous fuzzing in CI
-./scripts/agentos fuzz ci --budget 5
+./scripts/argus fuzz ci --budget 5
 ```
 
 **Impact:**
@@ -161,7 +161,7 @@ class FuzzingEngine:
 **Files Created:**
 - `scripts/fuzzing_engine.py` - Main fuzzing engine (200+ lines)
 - Integrated into `hybrid_analyzer.py`
-- Added `agentos fuzz` CLI commands
+- Added `argus fuzz` CLI commands
 
 ---
 
@@ -208,10 +208,10 @@ class SupplyChainAnalyzer:
 **CLI Usage:**
 ```bash
 # Analyze dependency changes in PR
-./scripts/agentos supply-chain diff --base main --head feature-branch
+./scripts/argus supply-chain diff --base main --head feature-branch
 
 # Check specific package
-./scripts/agentos supply-chain check --package lodash --ecosystem npm
+./scripts/argus supply-chain check --package lodash --ecosystem npm
 ```
 
 **Impact:**
@@ -224,7 +224,7 @@ class SupplyChainAnalyzer:
 **Files Created:**
 - `scripts/supply_chain_analyzer.py` - Main scanner (900+ lines)
 - Integrated into `hybrid_analyzer.py`
-- Added `agentos supply-chain` CLI commands
+- Added `argus supply-chain` CLI commands
 
 ---
 
@@ -282,16 +282,16 @@ class APISecurityScanner:
 **CLI Usage:**
 ```bash
 # Scan all API endpoints
-./scripts/agentos api-security scan
+./scripts/argus api-security scan
 
 # Test specific endpoint
-./scripts/agentos api-security test \
+./scripts/argus api-security test \
   --endpoint "/api/users/{id}" \
   --method GET \
   --auth-required
 
 # Generate security tests
-./scripts/agentos api-security generate-tests \
+./scripts/argus api-security generate-tests \
   --output tests/security/test_api_security.py
 ```
 
@@ -371,13 +371,13 @@ class LicenseComplianceChecker:
 **CLI Usage:**
 ```bash
 # Check license compliance
-./scripts/agentos license check --project-license MIT
+./scripts/argus license check --project-license MIT
 
 # Generate attribution file
-./scripts/agentos license attribution --output NOTICES.txt
+./scripts/argus license attribution --output NOTICES.txt
 
 # Track license changes in PR
-./scripts/agentos license diff --base main --head feature-branch
+./scripts/argus license diff --base main --head feature-branch
 ```
 
 **Impact:**
@@ -436,7 +436,7 @@ class ThreatIntelEnricher:
 - ✅ EPSS (Exploit Prediction Scoring System) integration
 - ✅ Exploit availability detection (Metasploit, GitHub PoCs)
 - ✅ Automatic severity escalation for actively exploited CVEs
-- ✅ CLI command: `./scripts/agentos threat-intel enrich --findings findings.json`
+- ✅ CLI command: `./scripts/argus threat-intel enrich --findings findings.json`
 
 **Impact:**
 - ✅ Prioritize real threats over theoretical CVEs
@@ -447,7 +447,7 @@ class ThreatIntelEnricher:
 **Files Created:**
 - `scripts/threat_intel_enricher.py` - Threat intelligence enricher
 - Integrated into `hybrid_analyzer.py` Phase 1
-- Added CLI commands in `agentos`
+- Added CLI commands in `argus`
 
 ---
 
@@ -487,10 +487,10 @@ class RemediationEngine:
 **CLI Usage:**
 ```bash
 # Get fix suggestions
-./scripts/agentos remediate --finding abc-123
+./scripts/argus remediate --finding abc-123
 
 # Auto-create PR with fixes
-./scripts/agentos remediate --auto-pr --findings findings.json
+./scripts/argus remediate --auto-pr --findings findings.json
 ```
 
 **Implementation:**
@@ -499,7 +499,7 @@ class RemediationEngine:
 - ✅ Testing recommendations for each fix
 - ✅ Context-aware remediation (understands code patterns)
 - ✅ Integrated as Phase 2.5 in hybrid analyzer workflow
-- ✅ CLI command: `./scripts/agentos remediate --findings findings.json --output fixes.md`
+- ✅ CLI command: `./scripts/argus remediate --findings findings.json --output fixes.md`
 
 **Impact:**
 - ✅ Reduce time-to-fix by 50-70%
@@ -510,7 +510,7 @@ class RemediationEngine:
 **Files Created:**
 - `scripts/remediation_engine.py` - AI-powered remediation engine
 - Integrated into `hybrid_analyzer.py` Phase 2.5
-- Added CLI commands in `agentos`
+- Added CLI commands in `argus`
 
 ---
 
@@ -572,7 +572,7 @@ RETURN secret, service, data
 - ✅ Monitors syscalls, network, file access
 - ✅ Detects anomalies with behavioral analysis
 - ✅ Alerts on suspicious runtime behavior
-- ✅ CLI command: `./scripts/agentos runtime-security monitor --duration 60`
+- ✅ CLI command: `./scripts/argus runtime-security monitor --duration 60`
 
 **Events Detected:**
 - Unexpected process spawns (shells in containers)
@@ -590,7 +590,7 @@ RETURN secret, service, data
 **Files Created:**
 - `scripts/runtime_security_monitor.py` - Runtime security monitor
 - Integrated into `hybrid_analyzer.py` Phase 1
-- Added CLI commands in `agentos`
+- Added CLI commands in `argus`
 
 ---
 
@@ -626,8 +626,8 @@ class SecurityRegressionTester:
 - ✅ Detects if fixed vulnerabilities reappear
 - ✅ High severity alert for regressions (always escalated)
 - ✅ CLI commands:
-  - `./scripts/agentos regression-test generate --fixed-findings fixed.json`
-  - `./scripts/agentos regression-test run`
+  - `./scripts/argus regression-test generate --fixed-findings fixed.json`
+  - `./scripts/argus regression-test run`
 
 **Impact:**
 - ✅ Prevent regressions (15-20% of fixes regress without testing)
@@ -638,7 +638,7 @@ class SecurityRegressionTester:
 **Files Created:**
 - `scripts/regression_tester.py` - Security regression tester
 - Integrated into `hybrid_analyzer.py` Phase 1
-- Added CLI commands in `agentos`
+- Added CLI commands in `argus`
 
 ---
 
@@ -656,7 +656,7 @@ class SecurityRegressionTester:
 
 **Structure:**
 ```
-agent-os-rules/
+argus-rules/
 ├── python/
 │   ├── django/
 │   │   ├── sql-injection.yaml
@@ -707,10 +707,10 @@ deny[msg] {
 **CLI Usage:**
 ```bash
 # Run compliance check
-./scripts/agentos gate --compliance pci-dss
+./scripts/argus gate --compliance pci-dss
 
 # Generate compliance report
-./scripts/agentos compliance report --standard soc2 --output audit.pdf
+./scripts/argus compliance report --standard soc2 --output audit.pdf
 ```
 
 **Impact:**
@@ -843,9 +843,9 @@ class AttackSurfaceMapper:
 
 ## 🏆 Competitive Positioning
 
-With these features, Agent-OS will be:
+With these features, Argus will be:
 
-| Feature | Agent-OS | Snyk | Checkmarx | Veracode | Semgrep | Trivy |
+| Feature | Argus | Snyk | Checkmarx | Veracode | Semgrep | Trivy |
 |---------|----------|------|-----------|----------|---------|-------|
 | **SAST** | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 | **SCA (CVE)** | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
@@ -864,7 +864,7 @@ With these features, Agent-OS will be:
 | **Self-Hosted** | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ |
 | **Cost** | $0 | $$$$ | $$$$$ | $$$$$ | $$ | $0 |
 
-**Agent-OS Advantages:**
+**Argus Advantages:**
 - ✅ Only open-source tool with AI feedback learning
 - ✅ Only tool with SAST+DAST+Fuzzing+Runtime in one platform
 - ✅ Community-driven rule packs
@@ -878,7 +878,7 @@ With these features, Agent-OS will be:
 
 While keeping core features open source, potential revenue streams:
 
-1. **Agent-OS Cloud** - Hosted version with managed infrastructure
+1. **Argus Cloud** - Hosted version with managed infrastructure
 2. **Enterprise Support** - SLAs, dedicated support, custom integrations
 3. **Enterprise Features** - SSO, RBAC, audit logs, compliance reporting
 4. **Training & Certification** - Security engineering training programs
@@ -893,7 +893,7 @@ To begin implementation:
 1. **Community Input:**
    ```bash
    # Create GitHub Discussions for roadmap feedback
-   gh repo create securedotcom/agent-os-roadmap --public
+   gh repo create devatsecure/argus-roadmap --public
    ```
 
 2. **Contributor Guide:**
@@ -936,7 +936,7 @@ Track these metrics to measure impact:
 
 ## 🎯 Vision
 
-**By end of 2026, Agent-OS will be:**
+**By end of 2026, Argus will be:**
 
 - The most comprehensive open-source security platform
 - Used by 10,000+ organizations

@@ -1,5 +1,5 @@
 """
-Agent-OS Finding Normalizer
+Argus Finding Normalizer
 Converts security tool outputs to unified Finding format
 """
 

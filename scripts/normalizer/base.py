@@ -13,7 +13,7 @@ class Finding:
 
     # Identity
     id: str
-    origin: str  # semgrep, trivy, trufflehog, gitleaks, checkov, agent-os
+    origin: str  # semgrep, trivy, trufflehog, gitleaks, checkov, argus
 
     # Context
     repo: str

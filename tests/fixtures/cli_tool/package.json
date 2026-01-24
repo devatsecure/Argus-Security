@@ -1,0 +1,16 @@
+{
+  "name": "test-cli-tool",
+  "version": "1.0.0",
+  "description": "Sample CLI tool for testing XSS false positive detection",
+  "main": "index.js",
+  "bin": {
+    "test-cli": "./index.js"
+  },
+  "keywords": ["cli", "command-line"],
+  "author": "Test Author",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^9.0.0",
+    "chalk": "^4.1.2"
+  }
+}

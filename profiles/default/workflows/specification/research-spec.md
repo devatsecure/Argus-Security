@@ -19,19 +19,19 @@ Read the raw idea from `[spec-path]/planning/initialization.md` to understand wh
 
 Before generating questions, understand the broader product context:
 
-1. **Read Product Mission**: Load `agent-os/product/mission.md` to understand:
+1. **Read Product Mission**: Load `argus/product/mission.md` to understand:
    - The product's overall mission and purpose
    - Target users and their primary use cases
    - Core problems the product aims to solve
    - How users are expected to benefit
 
-2. **Read Product Roadmap**: Load `agent-os/product/roadmap.md` to understand:
+2. **Read Product Roadmap**: Load `argus/product/roadmap.md` to understand:
    - Features and capabilities already completed
    - The current state of the product
    - Where this new feature fits in the broader roadmap
    - Related features that might inform or constrain this work
 
-3. **Read Product Tech Stack**: Load `agent-os/product/tech-stack.md` to understand:
+3. **Read Product Tech Stack**: Load `argus/product/tech-stack.md` to understand:
    - Technologies and frameworks in use
    - Technical constraints and capabilities
    - Libraries and tools available

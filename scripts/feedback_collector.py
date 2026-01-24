@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Feedback Collection System for Agent-OS
+Feedback Collection System for Argus
 Collects user feedback on finding accuracy to improve AI triage over time
 
 Features:
@@ -25,12 +25,12 @@ logger = logging.getLogger(__name__)
 class FeedbackCollector:
     """Collect user feedback on finding accuracy to improve AI triage"""
 
-    def __init__(self, feedback_dir: str = ".agent-os/feedback"):
+    def __init__(self, feedback_dir: str = ".argus/feedback"):
         """
         Initialize feedback collector
 
         Args:
-            feedback_dir: Directory to store feedback logs (default: .agent-os/feedback)
+            feedback_dir: Directory to store feedback logs (default: .argus/feedback)
         """
         self.feedback_dir = Path(feedback_dir)
         self.feedback_file = self.feedback_dir / "feedback.jsonl"
@@ -398,7 +398,7 @@ def main():
     )
     parser.add_argument(
         "--feedback-dir",
-        default=".agent-os/feedback",
+        default=".argus/feedback",
         help="Feedback directory path"
     )
 

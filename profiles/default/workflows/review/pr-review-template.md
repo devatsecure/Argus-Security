@@ -180,5 +180,5 @@ const d = new Date(); // Could be 'currentDate' or 'now'
 
 ---
 
-*Review conducted by Agent OS Code Review System*  
+*Review conducted by Argus Code Review System*  
 *For questions about this review, contact the development team*

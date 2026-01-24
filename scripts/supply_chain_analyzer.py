@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Supply Chain Attack Detection for Agent-OS
+Supply Chain Attack Detection for Argus
 Detects malicious dependencies, typosquatting, and compromised packages
 
 This module analyzes dependency changes in version control to identify:

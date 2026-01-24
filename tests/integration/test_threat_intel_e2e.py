@@ -433,7 +433,7 @@ require github.com/gin-gonik/gin v1.7.0
 
 
 class TestThreatIntelIntegration:
-    """Test integration with other Agent-OS components"""
+    """Test integration with other Argus components"""
 
     def test_integration_with_normalizer(self):
         """Test that findings can be normalized to UnifiedFinding format"""

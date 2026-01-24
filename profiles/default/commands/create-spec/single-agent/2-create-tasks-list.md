@@ -7,7 +7,7 @@ Now that we've documented the spec.md, please break down the spec into an action
 Display the following message to the user:
 
 ```
-The tasks list has created at `agent-os/specs/[this-spec]/tasks.md`.
+The tasks list has created at `argus/specs/[this-spec]/tasks.md`.
 
 Review it closely to make sure it all looks good.
 

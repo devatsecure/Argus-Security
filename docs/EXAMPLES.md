@@ -1,6 +1,6 @@
-# Agent-OS: Usage Examples & Cookbook
+# Argus: Usage Examples & Cookbook
 
-Practical examples for common Agent-OS use cases.
+Practical examples for common Argus use cases.
 
 ---
 
@@ -37,7 +37,7 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Run Security Scan
-        uses: securedotcom/agent-os-action@v1
+        uses: devatsecure/Argus-Security@v1
         with:
           review-type: 'security'
           fail-on-blockers: 'true'
@@ -62,7 +62,7 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Security Scan
-        uses: securedotcom/agent-os-action@v1
+        uses: devatsecure/Argus-Security@v1
         with:
           fail-on-blockers: 'false'  # Never fail
           comment-on-pr: 'true'       # Just comment
@@ -86,7 +86,7 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Security Scan
-        uses: securedotcom/agent-os-action@v1
+        uses: devatsecure/Argus-Security@v1
         with:
           fail-on: 'security:critical,security:high'
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -109,7 +109,7 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Security Scan
-        uses: securedotcom/agent-os-action@v1
+        uses: devatsecure/Argus-Security@v1
         with:
           enable-exploit-analysis: 'true'
           exploitability-threshold: 'moderate'  # Block if moderate or easier
@@ -144,7 +144,7 @@ jobs:
           fetch-depth: 0  # Full history
       
       - name: Full Security Audit
-        uses: securedotcom/agent-os-action@v1
+        uses: devatsecure/Argus-Security@v1
         with:
           review-type: 'audit'
           fail-on-blockers: 'false'  # Don't fail, just report
@@ -154,7 +154,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: security-audit-${{ github.run_id }}
-          path: .agent-os/reviews/
+          path: .argus/reviews/
           retention-days: 365  # Keep for compliance
       
       - name: Create Issue if Blockers Found
@@ -190,7 +190,7 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Scan Dependencies
-        uses: securedotcom/agent-os-action@v1
+        uses: devatsecure/Argus-Security@v1
         with:
           review-type: 'security'
           semgrep-enabled: 'false'  # Skip SAST for speed
@@ -218,7 +218,7 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Security Audit
-        uses: securedotcom/agent-os-action@v1
+        uses: devatsecure/Argus-Security@v1
         with:
           review-type: 'audit'
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -233,7 +233,7 @@ jobs:
         run: |
           opa eval \
             -d policy/rego/compliance_soc2.rego \
-            -i .agent-os/reviews/results.json \
+            -i .argus/reviews/results.json \
             "data.compliance.soc2.decision" \
             --format pretty > compliance-report.txt
       
@@ -242,7 +242,7 @@ jobs:
         with:
           name: compliance-${{ github.run_id }}
           path: |
-            .agent-os/reviews/
+            .argus/reviews/
             sbom-*.json
             compliance-report.txt
           retention-days: 2555  # 7 years for compliance
@@ -280,7 +280,7 @@ jobs:
           token: ${{ secrets.PAT_TOKEN }}  # Need PAT for other repos
       
       - name: Scan ${{ matrix.repo }}
-        uses: securedotcom/agent-os-action@v1
+        uses: devatsecure/Argus-Security@v1
         with:
           review-type: 'audit'
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -289,7 +289,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: scan-${{ matrix.repo }}-${{ github.run_id }}
-          path: .agent-os/reviews/
+          path: .argus/reviews/
 ```
 
 **Use Case**: Centralized security scanning across multiple repositories.
@@ -313,7 +313,7 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Scan ${{ matrix.service }}
-        uses: securedotcom/agent-os-action@v1
+        uses: devatsecure/Argus-Security@v1
         with:
           project-path: 'services/${{ matrix.service }}'
           only-changed: 'true'
@@ -328,7 +328,7 @@ jobs:
 
 ### Custom Rego Policy: Block Regex DoS
 
-Create `.agent-os/policy/custom.rego`:
+Create `.argus/policy/custom.rego`:
 
 ```rego
 package custom
@@ -353,20 +353,20 @@ decision := {
 Workflow:
 
 ```yaml
-- uses: securedotcom/agent-os-action@v1
+- uses: devatsecure/Argus-Security@v1
   with:
     anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
 
 - name: Evaluate Custom Policy
   run: |
     opa eval \
-      -d .agent-os/policy/custom.rego \
-      -i .agent-os/reviews/results.json \
+      -d .argus/policy/custom.rego \
+      -i .argus/reviews/results.json \
       "data.custom.decision" \
       --format pretty
     
     # Fail if blocked
-    if [ "$(opa eval -d .agent-os/policy/custom.rego -i .agent-os/reviews/results.json 'data.custom.decision.block' --format raw)" = "true" ]; then
+    if [ "$(opa eval -d .argus/policy/custom.rego -i .argus/reviews/results.json 'data.custom.decision.block' --format raw)" = "true" ]; then
       echo "Custom policy blocked this PR"
       exit 1
     fi
@@ -395,7 +395,7 @@ jobs:
       
       # Security scan
       - name: Security Scan
-        uses: securedotcom/agent-os-action@v1
+        uses: devatsecure/Argus-Security@v1
         with:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
       
@@ -473,7 +473,7 @@ jobs:
 ### SBOM as PR Artifact
 
 ```yaml
-- uses: securedotcom/agent-os-action@v1
+- uses: devatsecure/Argus-Security@v1
   with:
     review-type: 'audit'
 
@@ -498,7 +498,7 @@ jobs:
 ```yaml
 - name: Security Scan
   id: scan
-  uses: securedotcom/agent-os-action@v1
+  uses: devatsecure/Argus-Security@v1
   with:
     anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
 
@@ -537,7 +537,7 @@ jobs:
 ```yaml
 - name: Security Scan
   id: scan
-  uses: securedotcom/agent-os-action@v1
+  uses: devatsecure/Argus-Security@v1
 
 - name: Create Jira Ticket
   if: steps.scan.outputs.blockers > 0
@@ -568,12 +568,12 @@ jobs:
 ```yaml
 - name: Security Scan
   id: scan
-  uses: securedotcom/agent-os-action@v1
+  uses: devatsecure/Argus-Security@v1
 
 - name: Check for Verified Secrets
   id: check-secrets
   run: |
-    VERIFIED=$(jq '[.findings[] | select(.category == "secret" and .verified == true)] | length' .agent-os/reviews/results.json)
+    VERIFIED=$(jq '[.findings[] | select(.category == "secret" and .verified == true)] | length' .argus/reviews/results.json)
     echo "verified=$VERIFIED" >> $GITHUB_OUTPUT
 
 - name: PagerDuty Alert
@@ -618,7 +618,7 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Multi-Agent Scan
-        uses: securedotcom/agent-os-action@v1
+        uses: devatsecure/Argus-Security@v1
         with:
           multi-agent-mode: 'parallel'  # Run specialized agents in parallel
           enable-exploit-analysis: 'true'
@@ -650,7 +650,7 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Security Scan
-        uses: securedotcom/agent-os-action@v1
+        uses: devatsecure/Argus-Security@v1
         with:
           foundation-sec-enabled: 'true'
           foundation-sec-device: 'cuda'  # Use GPU
@@ -676,7 +676,7 @@ jobs:
       # Week 1-2: Comment only, don't block
       - name: Security Scan (Learning Mode)
         if: ${{ env.SECURITY_MODE == 'learning' }}
-        uses: securedotcom/agent-os-action@v1
+        uses: devatsecure/Argus-Security@v1
         with:
           fail-on-blockers: 'false'
           comment-on-pr: 'true'
@@ -684,14 +684,14 @@ jobs:
       # Week 3-4: Block critical only
       - name: Security Scan (Critical Block)
         if: ${{ env.SECURITY_MODE == 'critical' }}
-        uses: securedotcom/agent-os-action@v1
+        uses: devatsecure/Argus-Security@v1
         with:
           fail-on: 'security:critical'
       
       # Week 5+: Block critical + high
       - name: Security Scan (Strict)
         if: ${{ env.SECURITY_MODE == 'strict' }}
-        uses: securedotcom/agent-os-action@v1
+        uses: devatsecure/Argus-Security@v1
         with:
           fail-on: 'security:critical,security:high'
 ```
@@ -716,7 +716,7 @@ jobs:
       
       # Full security audit
       - name: Security Audit
-        uses: securedotcom/agent-os-action@v1
+        uses: devatsecure/Argus-Security@v1
         with:
           review-type: 'audit'
           fail-on-blockers: 'true'
@@ -778,13 +778,13 @@ with:
 2. Week 3-4: Block on critical only
 3. Week 5+: Block on critical + high
 
-### Testing Agent-OS Changes
+### Testing Argus Changes
 
 ```yaml
 # Test on feature branches before main
 on:
   push:
-    branches: [test-agent-os]
+    branches: [test-argus]
 ```
 
 ---
@@ -802,4 +802,4 @@ See the `examples/workflows/` directory for:
 
 ---
 
-*Need help with your specific use case? [Open a discussion](https://github.com/securedotcom/agent-os-action/discussions)*
+*Need help with your specific use case? [Open a discussion](https://github.com/devatsecure/Argus-Security/discussions)*

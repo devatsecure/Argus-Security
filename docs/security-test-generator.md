@@ -238,7 +238,7 @@ describe('Security Tests - Generated', () => {
 });
 ```
 
-## Integration with Agent-OS Workflow
+## Integration with Argus Workflow
 
 ### 1. Scan for Vulnerabilities
 

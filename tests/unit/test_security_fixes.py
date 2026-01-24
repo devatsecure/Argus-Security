@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Comprehensive Security Tests for Agent-OS Security Fixes
+Comprehensive Security Tests for Argus Security Fixes
 
 Tests for:
 - Command injection prevention
@@ -349,11 +349,11 @@ class TestDockerSecurityConfiguration(unittest.TestCase):
         """Test containers have identification labels"""
         # Labels help identify and track sandbox containers
         labels = {
-            "agent-os-sandbox": "true",
+            "argus-sandbox": "true",
             "created_at": "2024-01-01T00:00:00Z"
         }
 
-        self.assertEqual(labels["agent-os-sandbox"], "true")
+        self.assertEqual(labels["argus-sandbox"], "true")
         self.assertIn("created_at", labels)
 
     def test_localhost_port_binding_principle(self):

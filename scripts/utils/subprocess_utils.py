@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Subprocess Utilities for Agent-OS
+Subprocess Utilities for Argus
 Safe subprocess execution with proper error handling and logging.
 
 This module provides utilities for running external commands safely,

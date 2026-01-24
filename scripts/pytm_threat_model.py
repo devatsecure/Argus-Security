@@ -38,7 +38,7 @@ class PytmThreatModelGenerator:
             repo_context: Dict with languages, frameworks, key_files, etc.
 
         Returns:
-            Threat model dict compatible with Agent-OS format
+            Threat model dict compatible with Argus format
         """
         logger.info(f"Generating pytm threat model for {repo_context.get('name', 'repository')}")
 
@@ -52,8 +52,8 @@ class PytmThreatModelGenerator:
         # Generate threats using pytm
         threats = self._generate_threats(tm)
 
-        # Convert to Agent-OS format
-        threat_model = self._convert_to_agent_os_format(tm, threats, repo_context, arch_type)
+        # Convert to Argus format
+        threat_model = self._convert_to_argus_format(tm, threats, repo_context, arch_type)
 
         logger.info(f"Generated {len(threat_model.get('threats', []))} threats")
         return threat_model
@@ -98,7 +98,7 @@ class PytmThreatModelGenerator:
 
     def _build_pytm_model(self, repo_context: dict, arch_type: str):
         """Build pytm model based on architecture type"""
-        tm = self.TM(f"Agent-OS Threat Model: {repo_context.get('name', 'Repository')}")
+        tm = self.TM(f"Argus Threat Model: {repo_context.get('name', 'Repository')}")
         tm.description = f"Automated threat model for {repo_context.get('name', 'repository')} ({arch_type})"
         tm.isOrdered = True
 
@@ -383,8 +383,8 @@ class PytmThreatModelGenerator:
         # Default to low
         return "low"
 
-    def _convert_to_agent_os_format(self, tm, threats: list[dict], repo_context: dict, arch_type: str) -> dict:
-        """Convert pytm output to Agent-OS threat model format"""
+    def _convert_to_argus_format(self, tm, threats: list[dict], repo_context: dict, arch_type: str) -> dict:
+        """Convert pytm output to Argus threat model format"""
         return {
             "name": tm.name,
             "description": tm.description,
@@ -505,7 +505,7 @@ class PytmThreatModelGenerator:
         ]
 
     def _format_threats(self, threats: list[dict]) -> list[dict]:
-        """Format threats for Agent-OS"""
+        """Format threats for Argus"""
         formatted = []
 
         for threat in threats:

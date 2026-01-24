@@ -41,10 +41,10 @@ class AuditRun:
     timestamp: str
     repo: str
     project_type: str
-    agent_os_findings_count: int
+    argus_findings_count: int
     codex_findings_count: int
     agreed_findings_count: int
-    agent_os_only_count: int
+    argus_only_count: int
     codex_only_count: int
     agreement_rate: float
     average_score_difference: float
@@ -58,11 +58,11 @@ class FindingComparison:
     id: str
     audit_run_id: str
     finding_id: str
-    agent_os_score: float
+    argus_score: float
     codex_score: float
     score_difference: float
     agreed: bool
-    agent_os_verdict: str
+    argus_verdict: str
     codex_verdict: str
     severity: str
     category: str
@@ -108,7 +108,7 @@ class AuditMonitor:
 
     def __init__(
         self,
-        db_path: str = ".agent-os/audit_monitor.db",
+        db_path: str = ".argus/audit_monitor.db",
         agreement_threshold: float = 0.75,
         drift_sensitivity: float = 0.15,
         enable_cleanup: bool = True
@@ -146,10 +146,10 @@ class AuditMonitor:
                 timestamp TEXT NOT NULL,
                 repo TEXT NOT NULL,
                 project_type TEXT,
-                agent_os_findings_count INTEGER,
+                argus_findings_count INTEGER,
                 codex_findings_count INTEGER,
                 agreed_findings_count INTEGER,
-                agent_os_only_count INTEGER,
+                argus_only_count INTEGER,
                 codex_only_count INTEGER,
                 agreement_rate REAL NOT NULL,
                 average_score_difference REAL,
@@ -168,11 +168,11 @@ class AuditMonitor:
                 id TEXT PRIMARY KEY,
                 audit_run_id TEXT NOT NULL,
                 finding_id TEXT NOT NULL,
-                agent_os_score REAL NOT NULL,
+                argus_score REAL NOT NULL,
                 codex_score REAL NOT NULL,
                 score_difference REAL NOT NULL,
                 agreed INTEGER NOT NULL,
-                agent_os_verdict TEXT,
+                argus_verdict TEXT,
                 codex_verdict TEXT,
                 severity TEXT,
                 category TEXT,
@@ -270,8 +270,8 @@ class AuditMonitor:
                 """
                 INSERT INTO audit_runs (
                     id, timestamp, repo, project_type,
-                    agent_os_findings_count, codex_findings_count, agreed_findings_count,
-                    agent_os_only_count, codex_only_count, agreement_rate,
+                    argus_findings_count, codex_findings_count, agreed_findings_count,
+                    argus_only_count, codex_only_count, agreement_rate,
                     average_score_difference, severity_distribution, metadata
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
@@ -280,10 +280,10 @@ class AuditMonitor:
                     audit_run.timestamp,
                     audit_run.repo,
                     audit_run.project_type,
-                    audit_run.agent_os_findings_count,
+                    audit_run.argus_findings_count,
                     audit_run.codex_findings_count,
                     audit_run.agreed_findings_count,
-                    audit_run.agent_os_only_count,
+                    audit_run.argus_only_count,
                     audit_run.codex_only_count,
                     audit_run.agreement_rate,
                     audit_run.average_score_difference,
@@ -297,8 +297,8 @@ class AuditMonitor:
                 cursor.execute(
                     """
                     INSERT INTO findings_comparison (
-                        id, audit_run_id, finding_id, agent_os_score, codex_score,
-                        score_difference, agreed, agent_os_verdict, codex_verdict,
+                        id, audit_run_id, finding_id, argus_score, codex_score,
+                        score_difference, agreed, argus_verdict, codex_verdict,
                         severity, category, metadata
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
@@ -306,11 +306,11 @@ class AuditMonitor:
                         finding.id,
                         finding.audit_run_id,
                         finding.finding_id,
-                        finding.agent_os_score,
+                        finding.argus_score,
                         finding.codex_score,
                         finding.score_difference,
                         1 if finding.agreed else 0,
-                        finding.agent_os_verdict,
+                        finding.argus_verdict,
                         finding.codex_verdict,
                         finding.severity,
                         finding.category,
@@ -534,7 +534,7 @@ class AuditMonitor:
             # Find outliers
             cursor.execute(
                 """
-                SELECT id, finding_id, agent_os_score, codex_score, score_difference,
+                SELECT id, finding_id, argus_score, codex_score, score_difference,
                        severity, category FROM findings_comparison
                 WHERE audit_run_id = ? AND (score_difference > ? OR score_difference < ?)
                 """,
@@ -545,7 +545,7 @@ class AuditMonitor:
                 {
                     "id": row[0],
                     "finding_id": row[1],
-                    "agent_os_score": row[2],
+                    "argus_score": row[2],
                     "codex_score": row[3],
                     "score_difference": row[4],
                     "severity": row[5],
@@ -582,7 +582,7 @@ class AuditMonitor:
                     "repo": audit_run.repo,
                     "agreed_findings": audit_run.agreed_findings_count,
                     "total_findings": (
-                        audit_run.agent_os_findings_count + audit_run.codex_only_count
+                        audit_run.argus_findings_count + audit_run.codex_only_count
                     )
                 }
             )
@@ -617,7 +617,7 @@ class AuditMonitor:
                     metric_value=outlier["score_difference"],
                     threshold=0.5,
                     metadata={
-                        "agent_os_score": outlier["agent_os_score"],
+                        "argus_score": outlier["argus_score"],
                         "codex_score": outlier["codex_score"],
                         "severity": outlier["severity"],
                         "category": outlier["category"]
@@ -722,10 +722,10 @@ class AuditMonitor:
                 timestamp=row["timestamp"],
                 repo=row["repo"],
                 project_type=row["project_type"],
-                agent_os_findings_count=row["agent_os_findings_count"],
+                argus_findings_count=row["argus_findings_count"],
                 codex_findings_count=row["codex_findings_count"],
                 agreed_findings_count=row["agreed_findings_count"],
-                agent_os_only_count=row["agent_os_only_count"],
+                argus_only_count=row["argus_only_count"],
                 codex_only_count=row["codex_only_count"],
                 agreement_rate=row["agreement_rate"],
                 average_score_difference=row["average_score_difference"],
@@ -791,10 +791,10 @@ class AuditMonitor:
                     timestamp=row["timestamp"],
                     repo=row["repo"],
                     project_type=row["project_type"],
-                    agent_os_findings_count=row["agent_os_findings_count"],
+                    argus_findings_count=row["argus_findings_count"],
                     codex_findings_count=row["codex_findings_count"],
                     agreed_findings_count=row["agreed_findings_count"],
-                    agent_os_only_count=row["agent_os_only_count"],
+                    argus_only_count=row["argus_only_count"],
                     codex_only_count=row["codex_only_count"],
                     agreement_rate=row["agreement_rate"],
                     average_score_difference=row["average_score_difference"],
@@ -1054,10 +1054,10 @@ class AuditMonitor:
                     "id": current_run.id,
                     "timestamp": current_run.timestamp,
                     "repo": current_run.repo,
-                    "agent_os_findings": current_run.agent_os_findings_count,
+                    "argus_findings": current_run.argus_findings_count,
                     "codex_findings": current_run.codex_findings_count,
                     "agreed_findings": current_run.agreed_findings_count,
-                    "agent_os_only": current_run.agent_os_only_count,
+                    "argus_only": current_run.argus_only_count,
                     "codex_only": current_run.codex_only_count,
                     "severity_distribution": current_run.severity_distribution
                 },
@@ -1367,7 +1367,7 @@ class AuditMonitor:
 if __name__ == "__main__":
     # Example usage and testing
     monitor = AuditMonitor(
-        db_path=".agent-os/audit_monitor.db",
+        db_path=".argus/audit_monitor.db",
         agreement_threshold=0.75,
         drift_sensitivity=0.15
     )
@@ -1378,10 +1378,10 @@ if __name__ == "__main__":
         timestamp=datetime.now(timezone.utc).isoformat(),
         repo="test-repo",
         project_type="backend-api",
-        agent_os_findings_count=42,
+        argus_findings_count=42,
         codex_findings_count=45,
         agreed_findings_count=38,
-        agent_os_only_count=4,
+        argus_only_count=4,
         codex_only_count=7,
         agreement_rate=0.84,
         average_score_difference=0.18,
@@ -1400,11 +1400,11 @@ if __name__ == "__main__":
             id=AuditMonitor._generate_id("finding"),
             audit_run_id=example_run.id,
             finding_id="finding-001",
-            agent_os_score=4.5,
+            argus_score=4.5,
             codex_score=4.2,
             score_difference=0.3,
             agreed=True,
-            agent_os_verdict="likely_valid",
+            argus_verdict="likely_valid",
             codex_verdict="likely_valid",
             severity="high",
             category="SAST",
@@ -1414,11 +1414,11 @@ if __name__ == "__main__":
             id=AuditMonitor._generate_id("finding"),
             audit_run_id=example_run.id,
             finding_id="finding-002",
-            agent_os_score=2.1,
+            argus_score=2.1,
             codex_score=3.8,
             score_difference=1.7,
             agreed=False,
-            agent_os_verdict="likely_false_positive",
+            argus_verdict="likely_false_positive",
             codex_verdict="uncertain",
             severity="medium",
             category="SAST",

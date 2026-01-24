@@ -65,7 +65,7 @@ jobs:
           trivy fs --format json . > findings_vuln.json || true
           
           # Normalize all findings (Week 1)
-          python3 scripts/agentos normalize --tool all --input findings_*.json -o findings_normalized.json
+          python3 scripts/argus normalize --tool all --input findings_*.json -o findings_normalized.json
           
           # Reachability analysis (Day 60)
           python3 scripts/reachability_analyzer.py findings_normalized.json --repo . -o findings_reachable.json
@@ -82,7 +82,7 @@ jobs:
       
       - name: Apply release policy gate (Week 1)
         run: |
-          python3 scripts/agentos gate --stage release --input findings_scored.json
+          python3 scripts/argus gate --stage release --input findings_scored.json
       
       - name: Upload findings artifact
         uses: actions/upload-artifact@v4

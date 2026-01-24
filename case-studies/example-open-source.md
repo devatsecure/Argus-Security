@@ -36,7 +36,7 @@ Open source projects have unique security challenges:
 
 ## Solution
 
-### How did you implement Agent-OS?
+### How did you implement Argus?
 
 - **Setup Time:** 1 hour (using free Ollama + GitHub Actions)
 - **Integration:** GitHub Actions on all PRs
@@ -46,7 +46,7 @@ Open source projects have unique security challenges:
 ### Implementation Details
 
 ```yaml
-# .agent-os.yml - Free configuration for open source
+# .argus.yml - Free configuration for open source
 ai_provider: ollama
 ollama_endpoint: http://localhost:11434
 model: codellama
@@ -94,7 +94,7 @@ jobs:
           docker exec ${{ job.services.ollama.id }} ollama pull codellama
       
       - name: Security scan
-        uses: devatsecure/agent-os-action@v1
+        uses: devatsecure/argus-action@v1
         with:
           ai_provider: ollama
           ollama_endpoint: http://ollama:11434
@@ -181,7 +181,7 @@ jobs:
    - **Solution:** Trade-off acceptable for $0 cost. Used lite mode to speed up.
 
 3. **Challenge:** False positives in legacy C code
-   - **Solution:** Added `.agent-os-ignore` for known safe patterns. Updated comments to help AI understand intent.
+   - **Solution:** Added `.argus-ignore` for known safe patterns. Updated comments to help AI understand intent.
 
 ---
 
@@ -193,7 +193,7 @@ jobs:
 - **Focus on:** PR reviews first. Catch issues before they're merged.
 - **Avoid:** Running full scans on every push. Use lite mode for PRs, full scans weekly.
 - **Best practices:**
-  - Document your `.agent-os.yml` in README
+  - Document your `.argus.yml` in README
   - Add "Security Scanned" badge to README
   - Share findings in security advisories to help other projects
   - Use GitHub Discussions to share lessons learned
@@ -272,7 +272,7 @@ See full report in workflow artifacts.
 
 ---
 
-*"Agent-OS makes enterprise-grade security accessible to open source projects. Every project should use this."*
+*"Argus makes enterprise-grade security accessible to open source projects. Every project should use this."*
 
 — Lead Maintainer, AsyncDB Project
 
@@ -281,9 +281,9 @@ See full report in workflow artifacts.
 ## Recognition
 
 - Featured in **"Open Source Security in 2024"** report
-- **2,000+ stars** on GitHub since adding Agent-OS badge
+- **2,000+ stars** on GitHub since adding Argus badge
 - **50% reduction** in time-to-merge for PRs (faster security reviews)
 
 ---
 
-**Want to add Agent-OS to your open source project?** See our [Open Source Guide](../docs/OLLAMA_SETUP.md) for free setup!
+**Want to add Argus to your open source project?** See our [Open Source Guide](../docs/OLLAMA_SETUP.md) for free setup!

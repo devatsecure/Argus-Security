@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Integration Example: Spontaneous Discovery with Agent-OS
+Integration Example: Spontaneous Discovery with Argus
 
 This example demonstrates how to integrate spontaneous discovery
 into your security scanning workflow alongside traditional scanners.
@@ -212,7 +212,7 @@ To integrate spontaneous discovery into hybrid_analyzer.py:
 4. Use in action.yml:
 
    - name: Run Security Audit
-     uses: securedotcom/agent-os-action@v1
+     uses: devatsecure/Argus-Security@v1
      with:
        enable-spontaneous-discovery: true
        anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}

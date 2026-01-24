@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Security Test Suite Generator for Agent-OS
+Security Test Suite Generator for Argus
 Generates pytest/Jest tests for discovered vulnerabilities
 
 This module uses AI to automatically generate security regression tests

@@ -1,4 +1,4 @@
-name: Agent OS Code Review (Security Hardened)
+name: Argus Code Review (Security Hardened)
 
 # This is a production-ready, security-hardened workflow
 # following GitHub Actions best practices
@@ -46,10 +46,10 @@ jobs:
         node-version: '18'
         cache: 'npm'
     
-    # Run Agent OS Code Review with security safeguards
-    - name: Run Agent OS Code Review
+    # Run Argus Code Review with security safeguards
+    - name: Run Argus Code Review
       id: code-review
-      uses: securedotcom/agent-os-action@v1  # Use @v1 floating tag
+      uses: devatsecure/Argus-Security@v1  # Use @v1 floating tag
       with:
         # API Configuration
         anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -81,8 +81,8 @@ jobs:
       if: always()
       uses: github/codeql-action/upload-sarif@afb54ba388a7dca6ecae48f608c4ff05ff4cc77a  # v3.25.15
       with:
-        sarif_file: .agent-os/reviews/results.sarif
-        category: agent-os-code-review
+        sarif_file: .argus/reviews/results.sarif
+        category: argus-code-review
     
     # Upload detailed reports as artifacts - pinned by commit SHA
     - name: Upload Review Reports
@@ -91,8 +91,8 @@ jobs:
       with:
         name: code-review-reports-${{ github.run_number }}
         path: |
-          .agent-os/reviews/
-          !.agent-os/reviews/**/*.tmp
+          .argus/reviews/
+          !.argus/reviews/**/*.tmp
         retention-days: 90
         if-no-files-found: warn
     
@@ -100,7 +100,7 @@ jobs:
     - name: Post Workflow Summary
       if: always()
       run: |
-        echo "## 🤖 Agent OS Code Review Results" >> $GITHUB_STEP_SUMMARY
+        echo "## 🤖 Argus Code Review Results" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**Status**: ${{ steps.code-review.outputs.review-completed }}" >> $GITHUB_STEP_SUMMARY
         echo "**Blockers Found**: ${{ steps.code-review.outputs.blockers-found }}" >> $GITHUB_STEP_SUMMARY

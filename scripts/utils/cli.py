@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CLI Utilities for Agent-OS
+CLI Utilities for Argus
 Provides standardized argument parsing and validation for all scripts.
 
 This module eliminates duplicate CLI argument parsing across 10+ scripts
@@ -15,7 +15,7 @@ from typing import List, Optional
 
 class AgentOSArgumentParser(argparse.ArgumentParser):
     """
-    Standardized argument parser for Agent-OS scripts
+    Standardized argument parser for Argus scripts
 
     Provides common arguments used across all scripts and allows
     easy extension with script-specific arguments.

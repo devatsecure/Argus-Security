@@ -4,7 +4,7 @@
 
 The SAST-DAST Correlator is a standalone module that can be integrated into your security workflow to verify if SAST findings are exploitable.
 
-## Integration with Agent-OS Workflow
+## Integration with Argus Workflow
 
 ### Option 1: Standalone CLI Usage
 
@@ -95,7 +95,7 @@ jobs:
 
       # Run SAST scans
       - name: Run SAST
-        uses: securedotcom/agent-os-action@v1
+        uses: devatsecure/Argus-Security@v1
         with:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           review-type: security
@@ -209,7 +209,7 @@ import json
 from normalizer.base import Normalizer, Finding
 
 class CustomDASTNormalizer(Normalizer):
-    """Normalize Custom DAST tool output to Agent-OS format"""
+    """Normalize Custom DAST tool output to Argus format"""
 
     def normalize(self, raw_output: dict) -> list[Finding]:
         """Convert Custom DAST output to Finding objects"""
@@ -387,5 +387,5 @@ fi
 ## See Also
 
 - [SAST-DAST Correlation Documentation](./sast-dast-correlation.md)
-- [Main Agent-OS Documentation](../README.md)
+- [Main Argus Documentation](../README.md)
 - [Scanner Reference](./references/scanner-reference.md)

@@ -1,6 +1,6 @@
-# Contributing to Agent-OS
+# Contributing to Argus
 
-Thanks for considering a contribution! Agent-OS is free and open source, and we welcome contributions from the community.
+Thanks for considering a contribution! Argus is free and open source, and we welcome contributions from the community.
 
 ---
 
@@ -33,8 +33,8 @@ We follow **Git Flow** branching strategy. See [GITFLOW.md](GITFLOW.md) for comp
 
 ```bash
 # Fork the repository on GitHub
-git clone https://github.com/YOUR_USERNAME/agent-os.git
-cd agent-os
+git clone https://github.com/YOUR_USERNAME/argus.git
+cd argus
 ```
 
 #### 2. Set Up Git Flow
@@ -309,11 +309,11 @@ Contributors are recognized in:
 
 ## 📄 License
 
-By contributing to Agent-OS, you agree that your contributions will be licensed under the [MIT License](../LICENSE).
+By contributing to Argus, you agree that your contributions will be licensed under the [MIT License](../LICENSE).
 
 ---
 
-**Thank you for contributing to Agent-OS!** 🎉
+**Thank you for contributing to Argus!** 🎉
 
 Your contributions help make security analysis better for everyone.
 

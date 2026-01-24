@@ -1,6 +1,6 @@
-# Agent-OS Platform Integration Guide
+# Argus Platform Integration Guide
 
-Complete guide for integrating Agent-OS with GitHub, GitLab, and Bitbucket with all security features.
+Complete guide for integrating Argus with GitHub, GitLab, and Bitbucket with all security features.
 
 **Version:** 4.0.0
 **Last Updated:** 2026-01-15
@@ -38,7 +38,7 @@ Complete guide for integrating Agent-OS with GitHub, GitLab, and Bitbucket with 
 
 ```yaml
 # .github/workflows/security-scan.yml
-name: Agent-OS Security Scan
+name: Argus Security Scan
 
 on:
   pull_request:
@@ -61,8 +61,8 @@ jobs:
         with:
           fetch-depth: 0  # Full history for better analysis
 
-      - name: Agent-OS Security Scan
-        uses: securedotcom/agent-os-action@v4.0.0
+      - name: Argus Security Scan
+        uses: devatsecure/Argus-Security@v4.0.0
         with:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           review-type: security
@@ -115,8 +115,8 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: Agent-OS Complete Security Platform
-        uses: securedotcom/agent-os-action@v4.0.0
+      - name: Argus Complete Security Platform
+        uses: devatsecure/Argus-Security@v4.0.0
         with:
           # Core Configuration
           review-type: security
@@ -165,7 +165,7 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: security-results.sarif
-          category: agent-os-security
+          category: argus-security
 
       - name: Upload Security Reports
         if: always()
@@ -191,23 +191,23 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Agent-OS
+      - name: Install Argus
         run: |
-          git clone https://github.com/securedotcom/agent-os-action
-          cd agent-os-action
+          git clone https://github.com/devatsecure/Argus-Security
+          cd argus-action
           pip install -r requirements.txt
 
       - name: API Security Scan
         run: |
-          cd agent-os-action
-          ./scripts/agentos api-security --path ${{ github.workspace }} \
+          cd argus-action
+          ./scripts/argus api-security --path ${{ github.workspace }} \
             --output api-findings.json
 
       - name: Upload API Findings
         uses: actions/upload-artifact@v4
         with:
           name: api-security-findings
-          path: agent-os-action/api-findings.json
+          path: argus-action/api-findings.json
 
   # Job 3: Supply Chain Security
   supply-chain:
@@ -223,26 +223,26 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Agent-OS
+      - name: Install Argus
         run: |
-          git clone https://github.com/securedotcom/agent-os-action
-          cd agent-os-action
+          git clone https://github.com/devatsecure/Argus-Security
+          cd argus-action
           pip install -r requirements.txt
 
       - name: Supply Chain Analysis
         run: |
-          cd agent-os-action
+          cd argus-action
 
           # Check for typosquatting and malicious packages
           if [ "${{ github.event_name }}" == "pull_request" ]; then
-            ./scripts/agentos supply-chain diff \
+            ./scripts/argus supply-chain diff \
               --base origin/${{ github.base_ref }} \
               --head HEAD \
               --output supply-chain-diff.json
           fi
 
           # Check all dependencies
-          ./scripts/agentos supply-chain scan \
+          ./scripts/argus supply-chain scan \
             --path ${{ github.workspace }} \
             --output supply-chain-scan.json
 
@@ -250,7 +250,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: supply-chain-report
-          path: agent-os-action/*.json
+          path: argus-action/*.json
 
   # Job 4: Threat Intelligence Enrichment
   threat-intel:
@@ -270,16 +270,16 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Agent-OS
+      - name: Install Argus
         run: |
-          git clone https://github.com/securedotcom/agent-os-action
-          cd agent-os-action
+          git clone https://github.com/devatsecure/Argus-Security
+          cd argus-action
           pip install -r requirements.txt
 
       - name: Enrich with Threat Intelligence
         run: |
-          cd agent-os-action
-          ./scripts/agentos threat-intel enrich \
+          cd argus-action
+          ./scripts/argus threat-intel enrich \
             --findings ../security-results.json \
             --output threat-intel-enriched.json
 
@@ -287,7 +287,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: threat-intel-report
-          path: agent-os-action/threat-intel-enriched.json
+          path: argus-action/threat-intel-enriched.json
 
   # Job 5: Auto-Remediation (Create Fix PR)
   auto-remediate:
@@ -311,18 +311,18 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Agent-OS
+      - name: Install Argus
         run: |
-          git clone https://github.com/securedotcom/agent-os-action
-          cd agent-os-action
+          git clone https://github.com/devatsecure/Argus-Security
+          cd argus-action
           pip install -r requirements.txt
 
       - name: Generate Remediation Fixes
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          cd agent-os-action
-          ./scripts/agentos remediate \
+          cd argus-action
+          ./scripts/argus remediate \
             --findings ../security-results.json \
             --output remediation-fixes.md \
             --auto-apply false
@@ -332,7 +332,7 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const fixes = fs.readFileSync('agent-os-action/remediation-fixes.md', 'utf8');
+            const fixes = fs.readFileSync('argus-action/remediation-fixes.md', 'utf8');
 
             github.rest.issues.createComment({
               issue_number: context.issue.number,
@@ -353,16 +353,16 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Agent-OS
+      - name: Install Argus
         run: |
-          git clone https://github.com/securedotcom/agent-os-action
-          cd agent-os-action
+          git clone https://github.com/devatsecure/Argus-Security
+          cd argus-action
           pip install -r requirements.txt
 
       - name: Run Security Regression Tests
         run: |
-          cd agent-os-action
-          ./scripts/agentos regression-test run \
+          cd argus-action
+          ./scripts/argus regression-test run \
             --path ${{ github.workspace }} \
             --output regression-results.json
 
@@ -370,7 +370,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: regression-test-results
-          path: agent-os-action/regression-results.json
+          path: argus-action/regression-results.json
 ```
 
 ## 🎯 GitHub-Specific Features
@@ -382,7 +382,7 @@ jobs:
   uses: github/codeql-action/upload-sarif@v3
   with:
     sarif_file: security-results.sarif
-    category: agent-os-comprehensive
+    category: argus-comprehensive
     checkout_path: ${{ github.workspace }}
 ```
 
@@ -415,7 +415,7 @@ strategy:
   fail-fast: false
 
 steps:
-  - uses: securedotcom/agent-os-action@v4.0.0
+  - uses: devatsecure/Argus-Security@v4.0.0
     with:
       project-type: ${{ matrix.project-type }}
       ai-provider: ${{ matrix.ai-provider }}
@@ -434,12 +434,12 @@ steps:
 stages:
   - security
 
-agent-os-security:
+argus-security:
   stage: security
   image: python:3.11
   before_script:
-    - git clone https://github.com/securedotcom/agent-os-action
-    - cd agent-os-action
+    - git clone https://github.com/devatsecure/Argus-Security
+    - cd argus-action
     - pip install -r requirements.txt
   script:
     - |
@@ -464,7 +464,7 @@ agent-os-security:
 ```yaml
 # .gitlab-ci.yml
 variables:
-  AGENT_OS_VERSION: "v4.0.0"
+  ARGUS_VERSION: "v4.0.0"
   PYTHON_VERSION: "3.11"
 
 stages:
@@ -478,23 +478,23 @@ stages:
 # Cache dependencies
 .cache_template: &cache_template
   cache:
-    key: agent-os-${CI_COMMIT_REF_SLUG}
+    key: argus-${CI_COMMIT_REF_SLUG}
     paths:
-      - agent-os-action/
-      - .agent-os-cache/
+      - argus-action/
+      - .argus-cache/
 
-# Install Agent-OS once
-setup:agent-os:
+# Install Argus once
+setup:argus:
   stage: setup
   image: python:${PYTHON_VERSION}
   <<: *cache_template
   script:
-    - git clone --branch ${AGENT_OS_VERSION} https://github.com/securedotcom/agent-os-action
-    - cd agent-os-action
+    - git clone --branch ${ARGUS_VERSION} https://github.com/devatsecure/Argus-Security
+    - cd argus-action
     - pip install -r requirements.txt
   artifacts:
     paths:
-      - agent-os-action/
+      - argus-action/
     expire_in: 1 hour
 
 # Job 1: Complete Security Scan
@@ -503,9 +503,9 @@ security:comprehensive-scan:
   image: python:${PYTHON_VERSION}
   <<: *cache_template
   dependencies:
-    - setup:agent-os
+    - setup:argus
   before_script:
-    - cd agent-os-action
+    - cd argus-action
   script:
     - |
       python scripts/run_ai_audit.py \
@@ -549,16 +549,16 @@ security:api-security:
   image: python:${PYTHON_VERSION}
   <<: *cache_template
   dependencies:
-    - setup:agent-os
+    - setup:argus
   script:
-    - cd agent-os-action
+    - cd argus-action
     - |
-      ./scripts/agentos api-security \
+      ./scripts/argus api-security \
         --path ${CI_PROJECT_DIR} \
         --output api-findings.json
   artifacts:
     paths:
-      - agent-os-action/api-findings.json
+      - argus-action/api-findings.json
     expire_in: 30 days
   only:
     - merge_requests
@@ -569,25 +569,25 @@ security:supply-chain:
   image: python:${PYTHON_VERSION}
   <<: *cache_template
   dependencies:
-    - setup:agent-os
+    - setup:argus
   script:
-    - cd agent-os-action
+    - cd argus-action
     - |
       # Diff mode for MRs
       if [ "$CI_PIPELINE_SOURCE" = "merge_request_event" ]; then
-        ./scripts/agentos supply-chain diff \
+        ./scripts/argus supply-chain diff \
           --base origin/${CI_MERGE_REQUEST_TARGET_BRANCH_NAME} \
           --head HEAD \
           --output supply-chain-diff.json
       fi
 
       # Full scan
-      ./scripts/agentos supply-chain scan \
+      ./scripts/argus supply-chain scan \
         --path ${CI_PROJECT_DIR} \
         --output supply-chain-scan.json
   artifacts:
     paths:
-      - agent-os-action/supply-chain-*.json
+      - argus-action/supply-chain-*.json
     expire_in: 30 days
 
 # Job 4: DAST Scanning (requires running app)
@@ -596,24 +596,24 @@ security:dast:
   image: python:${PYTHON_VERSION}
   <<: *cache_template
   dependencies:
-    - setup:agent-os
+    - setup:argus
   services:
     - name: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}
       alias: app
   script:
-    - cd agent-os-action
+    - cd argus-action
     - |
       # Wait for app to be ready
       sleep 10
 
       # Run DAST scan
-      ./scripts/agentos dast \
+      ./scripts/argus dast \
         --target http://app:8080 \
         --openapi ${CI_PROJECT_DIR}/openapi.yaml \
         --output dast-findings.json
   artifacts:
     paths:
-      - agent-os-action/dast-findings.json
+      - argus-action/dast-findings.json
     expire_in: 30 days
   only:
     - merge_requests
@@ -625,17 +625,17 @@ analyze:threat-intel:
   image: python:${PYTHON_VERSION}
   <<: *cache_template
   dependencies:
-    - setup:agent-os
+    - setup:argus
     - security:comprehensive-scan
   script:
-    - cd agent-os-action
+    - cd argus-action
     - |
-      ./scripts/agentos threat-intel enrich \
+      ./scripts/argus threat-intel enrich \
         --findings ../security-results.json \
         --output threat-intel-enriched.json
   artifacts:
     paths:
-      - agent-os-action/threat-intel-enriched.json
+      - argus-action/threat-intel-enriched.json
     expire_in: 30 days
 
 # Job 6: SAST-DAST Correlation
@@ -644,19 +644,19 @@ analyze:correlate:
   image: python:${PYTHON_VERSION}
   <<: *cache_template
   dependencies:
-    - setup:agent-os
+    - setup:argus
     - security:comprehensive-scan
     - security:dast
   script:
-    - cd agent-os-action
+    - cd argus-action
     - |
-      ./scripts/agentos correlate \
+      ./scripts/argus correlate \
         --sast ../security-results.json \
         --dast dast-findings.json \
         --output correlated-findings.json
   artifacts:
     paths:
-      - agent-os-action/correlated-findings.json
+      - argus-action/correlated-findings.json
     expire_in: 30 days
   only:
     - merge_requests
@@ -668,18 +668,18 @@ remediate:generate-fixes:
   image: python:${PYTHON_VERSION}
   <<: *cache_template
   dependencies:
-    - setup:agent-os
+    - setup:argus
     - security:comprehensive-scan
   script:
-    - cd agent-os-action
+    - cd argus-action
     - |
-      ./scripts/agentos remediate \
+      ./scripts/argus remediate \
         --findings ../security-results.json \
         --output remediation-fixes.md \
         --auto-apply false
   artifacts:
     paths:
-      - agent-os-action/remediation-fixes.md
+      - argus-action/remediation-fixes.md
     expire_in: 30 days
   variables:
     ANTHROPIC_API_KEY: $ANTHROPIC_API_KEY
@@ -692,18 +692,18 @@ test:regression:
   image: python:${PYTHON_VERSION}
   <<: *cache_template
   dependencies:
-    - setup:agent-os
+    - setup:argus
   script:
-    - cd agent-os-action
+    - cd argus-action
     - |
-      ./scripts/agentos regression-test run \
+      ./scripts/argus regression-test run \
         --path ${CI_PROJECT_DIR} \
         --output regression-results.json
   artifacts:
     reports:
-      junit: agent-os-action/regression-results.xml
+      junit: argus-action/regression-results.xml
     paths:
-      - agent-os-action/regression-results.json
+      - argus-action/regression-results.json
     expire_in: 30 days
 
 # Job 9: Generate Security Dashboard
@@ -712,19 +712,19 @@ report:dashboard:
   image: python:${PYTHON_VERSION}
   <<: *cache_template
   dependencies:
-    - setup:agent-os
+    - setup:argus
     - security:comprehensive-scan
     - analyze:threat-intel
   script:
-    - cd agent-os-action
+    - cd argus-action
     - |
-      ./scripts/agentos dashboard generate \
+      ./scripts/argus dashboard generate \
         --findings ../security-results.json \
         --threat-intel threat-intel-enriched.json \
         --output security-dashboard.html
   artifacts:
     paths:
-      - agent-os-action/security-dashboard.html
+      - argus-action/security-dashboard.html
     expire_in: 90 days
   when: always
 
@@ -766,9 +766,9 @@ artifacts:
 security:policy-gate:
   stage: report
   script:
-    - cd agent-os-action
+    - cd argus-action
     - |
-      EXIT_CODE=$(./scripts/agentos gate --stage mr --input ../security-results.json)
+      EXIT_CODE=$(./scripts/argus gate --stage mr --input ../security-results.json)
       if [ $EXIT_CODE -ne 0 ]; then
         echo "Security gate failed - blocking MR"
         exit 1
@@ -802,18 +802,18 @@ image: python:3.11
 
 definitions:
   caches:
-    agent-os: agent-os-action
+    argus: argus-action
 
 pipelines:
   default:
     - step:
-        name: Agent-OS Security Scan
+        name: Argus Security Scan
         caches:
-          - agent-os
+          - argus
           - pip
         script:
-          - git clone https://github.com/securedotcom/agent-os-action
-          - cd agent-os-action
+          - git clone https://github.com/devatsecure/Argus-Security
+          - cd argus-action
           - pip install -r requirements.txt
           - |
             python scripts/run_ai_audit.py \
@@ -834,8 +834,8 @@ image: python:3.11
 
 definitions:
   caches:
-    agent-os: agent-os-action
-    agent-cache: .agent-os-cache
+    argus: argus-action
+    agent-cache: .argus-cache
 
   services:
     docker:
@@ -850,12 +850,12 @@ pipelines:
               name: Comprehensive Security Scan
               size: 2x
               caches:
-                - agent-os
+                - argus
                 - agent-cache
                 - pip
               script:
-                - git clone https://github.com/securedotcom/agent-os-action
-                - cd agent-os-action
+                - git clone https://github.com/devatsecure/Argus-Security
+                - cd argus-action
                 - pip install -r requirements.txt
                 - |
                   python scripts/run_ai_audit.py \
@@ -885,83 +885,83 @@ pipelines:
           - step:
               name: API Security Testing
               caches:
-                - agent-os
+                - argus
                 - pip
               script:
-                - git clone https://github.com/securedotcom/agent-os-action
-                - cd agent-os-action
+                - git clone https://github.com/devatsecure/Argus-Security
+                - cd argus-action
                 - pip install -r requirements.txt
                 - |
-                  ./scripts/agentos api-security \
+                  ./scripts/argus api-security \
                     --path $BITBUCKET_CLONE_DIR \
                     --output api-findings.json
               artifacts:
-                - agent-os-action/api-findings.json
+                - argus-action/api-findings.json
 
           - step:
               name: Supply Chain Security
               caches:
-                - agent-os
+                - argus
                 - pip
               script:
-                - git clone https://github.com/securedotcom/agent-os-action
-                - cd agent-os-action
+                - git clone https://github.com/devatsecure/Argus-Security
+                - cd argus-action
                 - pip install -r requirements.txt
                 - |
                   # Check dependency changes in PR
-                  ./scripts/agentos supply-chain diff \
+                  ./scripts/argus supply-chain diff \
                     --base origin/main \
                     --head HEAD \
                     --output supply-chain-diff.json
 
                   # Full scan
-                  ./scripts/agentos supply-chain scan \
+                  ./scripts/argus supply-chain scan \
                     --path $BITBUCKET_CLONE_DIR \
                     --output supply-chain-scan.json
               artifacts:
-                - agent-os-action/supply-chain-*.json
+                - argus-action/supply-chain-*.json
 
       - step:
           name: Threat Intelligence Enrichment
           caches:
-            - agent-os
+            - argus
             - pip
           script:
-            - cd agent-os-action
+            - cd argus-action
             - |
-              ./scripts/agentos threat-intel enrich \
+              ./scripts/argus threat-intel enrich \
                 --findings ../security-results.json \
                 --output threat-intel-enriched.json
           artifacts:
-            - agent-os-action/threat-intel-enriched.json
+            - argus-action/threat-intel-enriched.json
 
       - step:
           name: Generate Remediation Fixes
           caches:
-            - agent-os
+            - argus
             - pip
           script:
-            - cd agent-os-action
+            - cd argus-action
             - |
-              ./scripts/agentos remediate \
+              ./scripts/argus remediate \
                 --findings ../security-results.json \
                 --output remediation-fixes.md
           artifacts:
-            - agent-os-action/remediation-fixes.md
+            - argus-action/remediation-fixes.md
 
       - step:
           name: Security Regression Tests
           caches:
-            - agent-os
+            - argus
             - pip
           script:
-            - cd agent-os-action
+            - cd argus-action
             - |
-              ./scripts/agentos regression-test run \
+              ./scripts/argus regression-test run \
                 --path $BITBUCKET_CLONE_DIR \
                 --output regression-results.json
           artifacts:
-            - agent-os-action/regression-results.json
+            - argus-action/regression-results.json
 
       - step:
           name: Post PR Comment
@@ -982,12 +982,12 @@ pipelines:
           name: Complete Security Audit
           size: 2x
           caches:
-            - agent-os
+            - argus
             - agent-cache
             - pip
           script:
-            - git clone https://github.com/securedotcom/agent-os-action
-            - cd agent-os-action
+            - git clone https://github.com/devatsecure/Argus-Security
+            - cd argus-action
             - pip install -r requirements.txt
             - |
               python scripts/run_ai_audit.py \
@@ -1008,11 +1008,11 @@ pipelines:
           name: Deep Security Analysis
           size: 2x
           caches:
-            - agent-os
+            - argus
             - pip
           script:
-            - git clone https://github.com/securedotcom/agent-os-action
-            - cd agent-os-action
+            - git clone https://github.com/devatsecure/Argus-Security
+            - cd argus-action
             - pip install -r requirements.txt
             - |
               # Enable ALL features
@@ -1057,9 +1057,9 @@ pipelines:
     deployment: production
     trigger: manual
     script:
-      - cd agent-os-action
+      - cd argus-action
       - |
-        ./scripts/agentos gate --stage release --input ../security-results.json
+        ./scripts/argus gate --stage release --input ../security-results.json
         if [ $? -ne 0 ]; then
           echo "Security gate failed - deployment blocked"
           exit 1
@@ -1091,8 +1091,8 @@ BITBUCKET_APP_PASSWORD=xxx     # Bitbucket only
 
 # Optional
 OLLAMA_ENDPOINT=http://localhost:11434
-AGENT_OS_DEBUG=true
-AGENT_OS_CACHE_DIR=.agent-os-cache
+ARGUS_DEBUG=true
+ARGUS_CACHE_DIR=.argus-cache
 ```
 
 ### Secret Management
@@ -1137,10 +1137,10 @@ Repository settings → Pipelines → Repository variables → Add variable (Sec
 
 ### 1. **Use Caching**
 ```yaml
-# Cache Agent-OS installation and Python packages
+# Cache Argus installation and Python packages
 cache:
-  - agent-os-action/
-  - .agent-os-cache/
+  - argus-action/
+  - .argus-cache/
   - pip/
 ```
 
@@ -1179,10 +1179,10 @@ parallel:
 - [GitHub Actions Documentation](https://docs.github.com/en/actions)
 - [GitLab CI/CD Documentation](https://docs.gitlab.com/ee/ci/)
 - [Bitbucket Pipelines Documentation](https://support.atlassian.com/bitbucket-cloud/docs/get-started-with-bitbucket-pipelines/)
-- [Agent-OS Documentation](https://github.com/securedotcom/agent-os-action/tree/main/docs)
+- [Argus Documentation](https://github.com/devatsecure/Argus-Security/tree/main/docs)
 
 ---
 
 **Version:** 4.0.0
 **Last Updated:** 2026-01-15
-**Maintained by:** Agent-OS Team
+**Maintained by:** Argus Team

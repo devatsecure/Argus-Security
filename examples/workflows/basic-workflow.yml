@@ -1,4 +1,4 @@
-name: Agent-OS Security Scan (Basic)
+name: Argus Security Scan (Basic)
 
 on:
   # Weekly schedule - Sundays at 2 AM UTC
@@ -43,8 +43,8 @@ jobs:
         python-version: '3.11'
         cache: 'pip'
     
-    - name: Run Agent-OS Security Scan
-      uses: securedotcom/agent-os-action@v1
+    - name: Run Argus Security Scan
+      uses: devatsecure/Argus-Security@v1
       with:
         review-type: ${{ github.event.inputs.review_type || 'audit' }}
         anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -57,6 +57,6 @@ jobs:
       uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874  # v4.4.0
       with:
         name: code-review-reports
-        path: .agent-os/reviews/
+        path: .argus/reviews/
         retention-days: 90
 

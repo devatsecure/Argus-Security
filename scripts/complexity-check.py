@@ -271,7 +271,7 @@ def generate_sarif(findings: list[dict], repo_path: str) -> str:
                     "driver": {
                         "name": "Agent OS Complexity Analyzer",
                         "version": "1.0.0",
-                        "informationUri": "https://github.com/securedotcom/agent-os-action",
+                        "informationUri": "https://github.com/devatsecure/Argus-Security",
                     }
                 },
                 "results": results,
@@ -291,7 +291,7 @@ def main():
     print(f"✅ Found {len(findings)} complexity issues")
 
     # Save SARIF report
-    report_dir = Path(repo_path) / ".agent-os/reviews"
+    report_dir = Path(repo_path) / ".argus/reviews"
     report_dir.mkdir(parents=True, exist_ok=True)
 
     sarif_file = report_dir / "complexity-report.sarif"

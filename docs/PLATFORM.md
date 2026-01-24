@@ -1,9 +1,9 @@
-# Agent-OS Platform Documentation
+# Argus Platform Documentation
 
 **Enterprise Security Control Plane**  
 Deterministic Scanning + AI Analysis + Supply Chain Security + Policy Enforcement
 
-> **Note**: This document covers the full Agent-OS platform architecture and capabilities.  
+> **Note**: This document covers the full Argus platform architecture and capabilities.  
 > For the GitHub Action quick start, see [README.md](README.md).
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -33,7 +33,7 @@ Deterministic Scanning + AI Analysis + Supply Chain Security + Policy Enforcemen
 
 ## Overview
 
-Agent-OS is a **production-ready security control plane** that transforms how organizations secure their software delivery pipeline.
+Argus is a **production-ready security control plane** that transforms how organizations secure their software delivery pipeline.
 
 ### What It Does
 
@@ -45,12 +45,12 @@ Agent-OS is a **production-ready security control plane** that transforms how or
 - **Supply Chain Security**: SBOM generation, SLSA provenance, artifact signing
 - **Compliance Automation**: SOC 2, PCI-DSS policy packs
 
-### Why Agent-OS?
+### Why Argus?
 
 **AppSec maturity isn't about how many alerts you raise.**  
 **It's about how many risks you resolve and how fast you ship.**
 
-Agent-OS aligns security with delivery velocity, compliance mandates, and executive reporting.
+Argus aligns security with delivery velocity, compliance mandates, and executive reporting.
 
 ### Key Metrics
 
@@ -80,8 +80,8 @@ Agent-OS aligns security with delivery velocity, compliance mandates, and execut
 
 ```bash
 # Clone repository
-git clone https://github.com/YOUR_USERNAME/agent-os.git
-cd agent-os
+git clone https://github.com/YOUR_USERNAME/argus.git
+cd argus
 
 # Install Python dependencies
 pip install -r requirements.txt
@@ -104,8 +104,8 @@ cp .env.example .env
 python3 scripts/run_ai_audit.py /path/to/your/repo audit
 
 # Results saved to:
-# - .agent-os/reviews/audit-report.md
-# - .agent-os/reviews/security-findings.json
+# - .argus/reviews/audit-report.md
+# - .argus/reviews/security-findings.json
 ```
 
 ### Expected Output
@@ -130,7 +130,7 @@ python3 scripts/run_ai_audit.py /path/to/your/repo audit
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Agent-OS Control Plane                    │
+│                    Argus Control Plane                    │
 ├─────────────────────────────────────────────────────────────┤
 │                                                               │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
@@ -286,7 +286,7 @@ python3 scripts/run_ai_audit.py /path/to/your/repo audit
 # Complete security audit
 python3 scripts/run_ai_audit.py /path/to/repo audit
 
-# Output: .agent-os/reviews/audit-report.md
+# Output: .argus/reviews/audit-report.md
 ```
 
 #### 2. Noise Scoring
@@ -459,7 +459,7 @@ Configure scanners in `config/`:
 
 ### Branching Strategy (Git Flow)
 
-Agent-OS follows **Git Flow** for structured development. See [.github/GITFLOW.md](.github/GITFLOW.md) for complete details.
+Argus follows **Git Flow** for structured development. See [.github/GITFLOW.md](.github/GITFLOW.md) for complete details.
 
 **Quick Reference:**
 
@@ -495,7 +495,7 @@ git push origin develop
 ### Project Structure
 
 ```
-agent-os/
+argus/
 ├── scripts/              # Core analysis scripts
 │   ├── normalizer/       # Finding normalization
 │   ├── providers/        # AI provider integrations
@@ -522,8 +522,8 @@ agent-os/
 
 ```bash
 # Clone repository
-git clone https://github.com/YOUR_USERNAME/agent-os.git
-cd agent-os
+git clone https://github.com/YOUR_USERNAME/argus.git
+cd argus
 
 # Create virtual environment
 python3 -m venv venv
@@ -543,7 +543,7 @@ pytest tests/
 
 ### Code Style
 
-Agent-OS follows PEP 8 style guidelines:
+Argus follows PEP 8 style guidelines:
 
 ```bash
 # Format code
@@ -654,10 +654,10 @@ def test_noise_scoring():
 
 ### GitHub Actions Integration
 
-Create `.github/workflows/agent-os.yml`:
+Create `.github/workflows/argus.yml`:
 
 ```yaml
-name: Agent-OS Security Scan
+name: Argus Security Scan
 
 on:
   pull_request:
@@ -676,7 +676,7 @@ jobs:
         with:
           python-version: '3.9'
       
-      - name: Install Agent-OS
+      - name: Install Argus
         run: |
           pip install -r requirements.txt
           ./scripts/install_security_tools.sh
@@ -691,36 +691,36 @@ jobs:
         run: |
           python3 scripts/gate.py \
             --stage pr \
-            --input .agent-os/analysis/risk_scored.json
+            --input .argus/analysis/risk_scored.json
       
       - name: Upload Results
         uses: actions/upload-artifact@v3
         with:
           name: security-report
-          path: .agent-os/reviews/
+          path: .argus/reviews/
 ```
 
 ### Docker Deployment
 
 ```bash
 # Build Docker image
-docker build -t agent-os:latest -f docker/security-sandbox.dockerfile .
+docker build -t argus:latest -f docker/security-sandbox.dockerfile .
 
 # Run container
 docker run -v $(pwd):/workspace \
   -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
-  agent-os:latest \
+  argus:latest \
   python3 scripts/run_ai_audit.py /workspace audit
 ```
 
 ### Kubernetes Deployment
 
 ```yaml
-# k8s/agent-os-cronjob.yaml
+# k8s/argus-cronjob.yaml
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: agent-os-scan
+  name: argus-scan
 spec:
   schedule: "0 2 * * *"  # Daily at 2 AM
   jobTemplate:
@@ -728,13 +728,13 @@ spec:
       template:
         spec:
           containers:
-          - name: agent-os
-            image: agent-os:latest
+          - name: argus
+            image: argus:latest
             env:
             - name: ANTHROPIC_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: agent-os-secrets
+                  name: argus-secrets
                   key: anthropic-api-key
             command:
             - python3
@@ -783,7 +783,7 @@ Tested on **spring_auth** repository (Node.js, 1,458 dependencies):
 
 ### Threat Model
 
-Agent-OS itself is a security tool and follows secure development practices:
+Argus itself is a security tool and follows secure development practices:
 
 - **No secrets in code**: All credentials via environment variables
 - **Sandboxed execution**: Docker containers with minimal privileges
@@ -840,12 +840,12 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 
 ## License
 
-Agent-OS is licensed under the [MIT License](LICENSE).
+Argus is licensed under the [MIT License](LICENSE).
 
 ```
 MIT License
 
-Copyright (c) 2025 Agent-OS Contributors
+Copyright (c) 2025 Argus Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -886,7 +886,7 @@ SOFTWARE.
 
 ## Acknowledgments
 
-Agent-OS is built on the shoulders of giants:
+Argus is built on the shoulders of giants:
 
 - **TruffleHog**: Secret scanning
 - **Gitleaks**: Secret detection
@@ -907,7 +907,7 @@ Special thanks to the open-source security community.
 
 **Version**: 1.0.0 - Production Ready  
 **Last Updated**: November 7, 2025  
-**Maintainer**: Agent-OS Community  
+**Maintainer**: Argus Community  
 **License**: MIT
 
 ---

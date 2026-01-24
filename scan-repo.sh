@@ -1,5 +1,5 @@
 #!/bin/bash
-# Agent-OS Complete Security Scanner - Simple Wrapper
+# Argus Complete Security Scanner - Simple Wrapper
 # Usage: ./scan-repo.sh /path/to/repo [output-dir]
 
 set -e
@@ -13,7 +13,7 @@ REPO_PATH="${1:-.}"
 OUTPUT_DIR="${2:-./security-reports}"
 
 echo -e "${BLUE}╔══════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║         Agent-OS Complete Security Scanner                  ║${NC}"
+echo -e "${BLUE}║         Argus Complete Security Scanner                  ║${NC}"
 echo -e "${BLUE}╚══════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
@@ -50,7 +50,7 @@ docker run --rm \
     -v "$(realpath $OUTPUT_DIR):/output" \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -e ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
-    agent-os:complete \
+    argus:complete \
     . security --provider anthropic
 
 echo ""

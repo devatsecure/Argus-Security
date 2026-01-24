@@ -2,7 +2,7 @@
 
 ## Overview
 
-The **Pairwise Comparison Engine** (`scripts/pairwise_comparison.py`) is a sophisticated evaluation framework that compares security findings from Agent-OS (Anthropic Claude) against independent analysis from Codex (OpenAI). It uses AI-powered judges to rate and compare analyses, providing detailed metrics on which tool performs better.
+The **Pairwise Comparison Engine** (`scripts/pairwise_comparison.py`) is a sophisticated evaluation framework that compares security findings from Argus (Anthropic Claude) against independent analysis from Codex (OpenAI). It uses AI-powered judges to rate and compare analyses, providing detailed metrics on which tool performs better.
 
 ## What's Been Implemented
 
@@ -33,7 +33,7 @@ A complete, production-ready Python module with **2,200+ lines** of code impleme
 
 #### PairwiseComparator Orchestrator
 - Coordinates entire comparison workflow
-- Matches findings between Agent-OS and Codex
+- Matches findings between Argus and Codex
 - Runs judge comparisons on matched pairs
 - Evaluates unmatched findings individually
 - Aggregates results into statistics
@@ -103,7 +103,7 @@ Comprehensive 500+ line guide covering:
 ## Key Features
 
 ### 1. **Pairwise Evaluation**
-✅ Compares Agent-OS findings vs Codex independent findings
+✅ Compares Argus findings vs Codex independent findings
 ✅ Matches similar findings across tools
 ✅ Handles both matched and unmatched findings
 ✅ Supports flexible matching thresholds
@@ -122,7 +122,7 @@ Comprehensive 500+ line guide covering:
 
 ### 4. **Preference Aggregation**
 ✅ Calculates win rates for each tool
-✅ Determines overall winner (agent_os, codex, tie)
+✅ Determines overall winner (argus, codex, tie)
 ✅ Aggregates coverage, accuracy, actionability scores
 ✅ Breaks down findings by severity
 ✅ Provides detailed statistics
@@ -139,7 +139,7 @@ Comprehensive 500+ line guide covering:
 ### Basic Usage
 ```bash
 python scripts/pairwise_comparison.py \
-    --agent-os-findings agent_os_results.json \
+    --argus-findings argus_results.json \
     --codex-findings codex_results.json \
     --output comparison_report.json
 ```
@@ -147,7 +147,7 @@ python scripts/pairwise_comparison.py \
 ### With Markdown Report
 ```bash
 python scripts/pairwise_comparison.py \
-    --agent-os-findings agent_os_results.json \
+    --argus-findings argus_results.json \
     --codex-findings codex_results.json \
     --output-markdown comparison_report.md
 ```
@@ -155,7 +155,7 @@ python scripts/pairwise_comparison.py \
 ### With OpenAI Judge (GPT-4)
 ```bash
 python scripts/pairwise_comparison.py \
-    --agent-os-findings agent_os_results.json \
+    --argus-findings argus_results.json \
     --codex-findings codex_results.json \
     --judge-model openai
 ```
@@ -163,7 +163,7 @@ python scripts/pairwise_comparison.py \
 ### Cost-Limited (First 10 Comparisons Only)
 ```bash
 python scripts/pairwise_comparison.py \
-    --agent-os-findings agent_os_results.json \
+    --argus-findings argus_results.json \
     --codex-findings codex_results.json \
     --max-comparisons 10
 ```
@@ -183,19 +183,19 @@ bash scripts/examples/pairwise_comparison_example.sh
   "aggregation": {
     "total_comparisons": 15,
     "matched_findings": 12,
-    "agent_os_only": 2,
+    "argus_only": 2,
     "codex_only": 1,
-    "agent_os_wins": 7,
+    "argus_wins": 7,
     "codex_wins": 4,
     "ties": 4,
-    "avg_agent_os_score": 4.1,
+    "avg_argus_score": 4.1,
     "avg_codex_score": 3.8,
-    "overall_winner": "agent_os",
-    "agent_os_win_rate": 0.467,
+    "overall_winner": "argus",
+    "argus_win_rate": 0.467,
     "codex_win_rate": 0.267,
-    "critical_by_agent_os": 2,
+    "critical_by_argus": 2,
     "critical_by_codex": 1,
-    "recommendation": "Agent-OS provided superior analysis..."
+    "recommendation": "Argus provided superior analysis..."
   },
   "comparisons": [...]
 }
@@ -219,8 +219,8 @@ python scripts/dual_audit.py /path/to/repo
 
 # Then run comparison
 python scripts/pairwise_comparison.py \
-    --agent-os-findings .agent-os/dual-audit/*/agent_os_results.json \
-    --codex-findings .agent-os/dual-audit/*/codex_validation.json
+    --argus-findings .argus/dual-audit/*/argus_results.json \
+    --codex-findings .argus/dual-audit/*/codex_validation.json
 ```
 
 ### With GitHub Actions
@@ -230,7 +230,7 @@ python scripts/pairwise_comparison.py \
     ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
   run: |
     python scripts/pairwise_comparison.py \
-      --agent-os-findings results/agent_os.json \
+      --argus-findings results/argus.json \
       --codex-findings results/codex.json \
       --output results/comparison.json
 ```
@@ -240,7 +240,7 @@ python scripts/pairwise_comparison.py \
 from pairwise_comparison import PairwiseComparator
 
 comparator = PairwiseComparator(
-    agent_os_findings=findings1,
+    argus_findings=findings1,
     codex_findings=findings2,
     judge_model="anthropic"
 )
@@ -252,7 +252,7 @@ print(f"Winner: {aggregation.overall_winner}")
 
 | Option | Required | Default | Description |
 |--------|----------|---------|-------------|
-| `--agent-os-findings` | ✅ | N/A | Path to Agent-OS findings JSON |
+| `--argus-findings` | ✅ | N/A | Path to Argus findings JSON |
 | `--codex-findings` | ✅ | N/A | Path to Codex findings JSON |
 | `--output` | ❌ | `pairwise_comparison_report.json` | Output file for JSON report |
 | `--output-markdown` | ❌ | N/A | Optional markdown report path |
@@ -319,7 +319,7 @@ print(f"Winner: {aggregation.overall_winner}")
 │           ▼                              ▼                   │
 │  Input Findings           Comparisons & Reasoning            │
 │  ┌──────────────────┐    ┌──────────────────────────┐       │
-│  │ Agent-OS Results │    │ PairwiseComparison[]     │       │
+│  │ Argus Results │    │ PairwiseComparison[]     │       │
 │  │ Codex Results    │    │ - winner: str            │       │
 │  └──────────────────┘    │ - scores: int            │       │
 │                          │ - reasoning: str         │       │
@@ -366,9 +366,9 @@ avg_score = (coverage + accuracy + actionability + detail + risk_assessment) / 5
 
 ### 3. Winner Determination
 ```
-if avg_agent_os > avg_codex + 0.5:
-    winner = "agent_os"
-elif avg_codex > avg_agent_os + 0.5:
+if avg_argus > avg_codex + 0.5:
+    winner = "argus"
+elif avg_codex > avg_argus + 0.5:
     winner = "codex"
 else:
     winner = "tie"
@@ -462,7 +462,7 @@ For issues, improvements, or questions:
 
 ## Related Tools
 
-- `dual_audit.py` - Runs Agent-OS + Codex audit
+- `dual_audit.py` - Runs Argus + Codex audit
 - `normalizer/` - Finding format standardization
 - `providers/` - LLM provider integrations
 - `noise_scorer.py` - ML-based false positive detection
@@ -477,7 +477,7 @@ For issues, improvements, or questions:
 
 ## License & Attribution
 
-This implementation follows the Agent-OS project structure and conventions.
+This implementation follows the Argus project structure and conventions.
 All code is production-ready and follows best practices for:
 - Python code quality (ruff, mypy)
 - Error handling and logging

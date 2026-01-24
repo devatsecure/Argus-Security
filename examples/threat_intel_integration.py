@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Example: Integrating Threat Intelligence Enrichment with Agent-OS Scanners
+Example: Integrating Threat Intelligence Enrichment with Argus Scanners
 
 This example demonstrates how to:
 1. Run security scanners (Trivy, Semgrep)

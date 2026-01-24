@@ -7,7 +7,7 @@
 ## Deliverables
 
 ### 1. Performance Validation Test Suite
-**File:** `/Users/waseem.ahmed/Repos/agent-os-action/tests/test_performance_validation.py`
+**File:** `/Users/waseem.ahmed/Repos/argus-action/tests/test_performance_validation.py`
 - **Lines:** 762
 - **Test Cases:** 18
 - **Status:** All Passing ✅
@@ -39,7 +39,7 @@
   - CI vs terminal mode performance comparison
 
 ### 2. Performance Benchmark Script
-**File:** `/Users/waseem.ahmed/Repos/agent-os-action/scripts/performance_benchmark.py`
+**File:** `/Users/waseem.ahmed/Repos/argus-action/scripts/performance_benchmark.py`
 - **Lines:** 461
 - **Scenarios:** 6 comprehensive benchmarks
 - **Status:** Runnable as standalone tool ✅
@@ -73,7 +73,7 @@
 - Advanced usage patterns
 
 ### 4. Benchmark Results File
-**File:** `/Users/waseem.ahmed/Repos/agent-os-action/performance_benchmark_results.json`
+**File:** `/Users/waseem.ahmed/Repos/argus-action/performance_benchmark_results.json`
 - Machine-readable results from latest benchmark run
 - Can be integrated into CI/CD for regression detection
 
@@ -139,7 +139,7 @@ Cache Entries:       21
 
 ### Cache Manager Features
 - ✅ SHA256 content-based hashing
-- ✅ Proper directory structure: `.agent-os-cache/{scanner}/{hash}.json`
+- ✅ Proper directory structure: `.argus-cache/{scanner}/{hash}.json`
 - ✅ Configurable TTL (default 7 days)
 - ✅ Scanner version tracking for cache invalidation
 - ✅ Atomic writes (write to temp, then rename)
@@ -170,24 +170,24 @@ Cache Entries:       21
 
 ### Test Files
 ```
-/Users/waseem.ahmed/Repos/agent-os-action/tests/test_performance_validation.py
+/Users/waseem.ahmed/Repos/argus-action/tests/test_performance_validation.py
 ```
 
 ### Benchmark Script
 ```
-/Users/waseem.ahmed/Repos/agent-os-action/scripts/performance_benchmark.py
+/Users/waseem.ahmed/Repos/argus-action/scripts/performance_benchmark.py
 ```
 
 ### Documentation
 ```
-/Users/waseem.ahmed/Repos/agent-os-action/PERFORMANCE_VALIDATION_REPORT.md
-/Users/waseem.ahmed/Repos/agent-os-action/PERFORMANCE_TESTING_QUICKSTART.md
-/Users/waseem.ahmed/Repos/agent-os-action/PERFORMANCE_VALIDATION_SUMMARY.md (this file)
+/Users/waseem.ahmed/Repos/argus-action/PERFORMANCE_VALIDATION_REPORT.md
+/Users/waseem.ahmed/Repos/argus-action/PERFORMANCE_TESTING_QUICKSTART.md
+/Users/waseem.ahmed/Repos/argus-action/PERFORMANCE_VALIDATION_SUMMARY.md (this file)
 ```
 
 ### Results
 ```
-/Users/waseem.ahmed/Repos/agent-os-action/performance_benchmark_results.json
+/Users/waseem.ahmed/Repos/argus-action/performance_benchmark_results.json
 ```
 
 ## How to Run
@@ -226,18 +226,18 @@ After running tests, verify the cache structure:
 
 ```bash
 # List cache files
-find .agent-os-cache -type f -name "*.json" | head -20
+find .argus-cache -type f -name "*.json" | head -20
 
 # Check cache statistics
-cat .agent-os-cache/metadata.json
+cat .argus-cache/metadata.json
 
 # Inspect a cache entry
-cat .agent-os-cache/test-scanner/*.json
+cat .argus-cache/test-scanner/*.json
 ```
 
 Expected structure:
 ```
-.agent-os-cache/
+.argus-cache/
 ├── metadata.json           # Stats file
 ├── test-scanner/           # Scanner directory
 │   └── {sha256_hash}.json # Cache file

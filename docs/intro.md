@@ -4,13 +4,13 @@ sidebar_position: 1
 slug: /
 ---
 
-# Agent-OS Security Platform Documentation
+# Argus Security Platform Documentation
 
-Welcome to the comprehensive documentation for **Agent-OS** - an AI-powered security platform that orchestrates multiple security scanners, applies intelligent triage to reduce false positives, and enforces policy gates.
+Welcome to the comprehensive documentation for **Argus** - an AI-powered security platform that orchestrates multiple security scanners, applies intelligent triage to reduce false positives, and enforces policy gates.
 
-## 🎯 What is Agent-OS?
+## 🎯 What is Argus?
 
-Agent-OS is a production-ready security platform that runs as a GitHub Action, CLI tool, or deployed service. It uses advanced AI models (Claude, OpenAI, or Ollama) to provide:
+Argus is a production-ready security platform that runs as a GitHub Action, CLI tool, or deployed service. It uses advanced AI models (Claude, OpenAI, or Ollama) to provide:
 
 - **Multi-Scanner Orchestration**: TruffleHog, Gitleaks, Semgrep, Trivy, Checkov, API Security, DAST
 - **AI Triage & Noise Reduction**: 60-70% false positive suppression
@@ -39,7 +39,7 @@ jobs:
     
     steps:
       - uses: actions/checkout@v4
-      - uses: securedotcom/agent-os-action@v3
+      - uses: devatsecure/Argus-Security@v3
         with:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           review-type: 'audit'
@@ -58,7 +58,7 @@ Add your AI provider API key to GitHub Secrets (or use Ollama for free):
 ### 3. Run Your First Scan
 
 - Create a pull request or push to trigger the workflow
-- Review the generated report in `.agent-os/reviews/`
+- Review the generated report in `.argus/reviews/`
 - Check the PR comment for actionable findings (noise auto-suppressed)
 - View SARIF report in GitHub Security tab
 
@@ -209,7 +209,7 @@ with:
 
 ## 🔗 External Resources
 
-- **GitHub Repository**: [securedotcom/agent-os-action](https://github.com/securedotcom/agent-os-action)
+- **GitHub Repository**: [devatsecure/Argus-Security](https://github.com/devatsecure/Argus-Security)
 - **Anthropic Claude**: [anthropic.com](https://www.anthropic.com/)
 - **SARIF Format**: [SARIF Spec](https://sarifweb.azurewebsites.net/)
 - **GitHub Code Scanning**: [Docs](https://docs.github.com/en/code-security/code-scanning)
@@ -229,7 +229,7 @@ MIT License - see [LICENSE](../LICENSE) for details.
 ## 🆘 Need Help?
 
 - **Documentation**: Browse the sections in the sidebar
-- **Issues**: [GitHub Issues](https://github.com/securedotcom/agent-os-action/issues)
+- **Issues**: [GitHub Issues](https://github.com/devatsecure/Argus-Security/issues)
 - **FAQ**: [Frequently Asked Questions](../docs/FAQ.md)
 - **Troubleshooting**: [Troubleshooting Guide](../docs/TROUBLESHOOTING.md)
 

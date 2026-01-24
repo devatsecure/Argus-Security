@@ -5,12 +5,12 @@ body:
       value: |
         ## 💬 General Discussion
         
-        Start a conversation about Agent-OS!
+        Start a conversation about Argus!
         
   - type: textarea
     id: topic
     attributes:
       label: What would you like to discuss?
-      description: Share your thoughts, ideas, or questions about Agent-OS
+      description: Share your thoughts, ideas, or questions about Argus
     validations:
       required: true

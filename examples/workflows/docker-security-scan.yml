@@ -18,24 +18,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Run Agent-OS with Docker
+      - name: Run Argus with Docker
         run: |
           docker run --rm \
             -v $(pwd):/workspace \
             -e ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }} \
             -e SEVERITY_THRESHOLD=high \
-            ghcr.io/devatsecure/agent-os-action:latest \
+            ghcr.io/devatsecure/argus-action:latest \
             /workspace audit
       
       - name: Upload SARIF to GitHub Security
         if: always()
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: .agent-os/reviews/results.sarif
+          sarif_file: .argus/reviews/results.sarif
       
       - name: Upload Results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: security-audit-${{ github.run_id }}
-          path: .agent-os/reviews/
+          path: .argus/reviews/

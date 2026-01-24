@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Container Runtime Security Monitoring for Agent-OS
+Container Runtime Security Monitoring for Argus
 Falco-based runtime threat detection
 
 This module monitors container runtime behavior using Falco to detect:
@@ -721,7 +721,7 @@ class RuntimeSecurityMonitor:
         """Export monitoring results to JSON"""
         output = {
             "metadata": {
-                "tool": "Agent-OS Runtime Security Monitor",
+                "tool": "Argus Runtime Security Monitor",
                 "version": "1.0.0",
                 "timestamp": datetime.utcnow().isoformat(),
                 "monitoring_start": self.stats.get('monitoring_start'),
@@ -756,9 +756,9 @@ class RuntimeSecurityMonitor:
             "runs": [{
                 "tool": {
                     "driver": {
-                        "name": "Agent-OS Runtime Security Monitor",
+                        "name": "Argus Runtime Security Monitor",
                         "version": "1.0.0",
-                        "informationUri": "https://github.com/securedotcom/agent-os-action",
+                        "informationUri": "https://github.com/devatsecure/Argus-Security",
                         "rules": []
                     }
                 },

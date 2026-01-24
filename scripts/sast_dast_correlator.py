@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SAST-DAST Correlation Engine for Agent-OS
+SAST-DAST Correlation Engine for Argus
 
 Uses AI to verify if SAST findings are exploitable via DAST results.
 Correlates static analysis findings with dynamic testing results to confirm

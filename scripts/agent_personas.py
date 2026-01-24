@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Multi-Agent Persona System for Agent-OS Security Analysis
+Multi-Agent Persona System for Argus Security Analysis
 Inspired by Slack's security investigation agents.
 
 This module provides specialized security analysis agents with different personas/roles:

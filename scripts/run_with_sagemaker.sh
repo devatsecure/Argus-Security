@@ -71,23 +71,23 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 cd "$TARGET_REPO"
-python3 /Users/waseem.ahmed/Repos/agent-os/scripts/hybrid_analyzer.py . \
+python3 /Users/waseem.ahmed/Repos/argus/scripts/hybrid_analyzer.py . \
     --enable-semgrep \
     --enable-trivy \
     --enable-foundation-sec \
     --severity-filter critical,high,medium \
-    --output-dir .agent-os/sagemaker-scan \
-    2>&1 | tee .agent-os/sagemaker-scan.log
+    --output-dir .argus/sagemaker-scan \
+    2>&1 | tee .argus/sagemaker-scan.log
 
 # Check results
-if [ -f ".agent-os/sagemaker-scan/summary.json" ]; then
+if [ -f ".argus/sagemaker-scan/summary.json" ]; then
     echo ""
     echo -e "${GREEN}✅ Scan complete!${NC}"
     echo ""
     echo "📊 Results:"
     python3 -c "
 import json
-with open('.agent-os/sagemaker-scan/summary.json') as f:
+with open('.argus/sagemaker-scan/summary.json') as f:
     data = json.load(f)
     print(f'   Total findings: {data.get(\"total_findings\", 0)}')
     print(f'   Critical: {data.get(\"critical\", 0)}')
@@ -96,7 +96,7 @@ with open('.agent-os/sagemaker-scan/summary.json') as f:
     print(f'   AI enriched: {data.get(\"ai_enriched\", 0)}')
 "
     echo ""
-    echo "📁 Full report: .agent-os/sagemaker-scan/"
+    echo "📁 Full report: .argus/sagemaker-scan/"
 else
     echo -e "${RED}❌ Scan failed - no results generated${NC}"
     exit 1

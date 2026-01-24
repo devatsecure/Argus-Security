@@ -158,7 +158,7 @@ jobs:
       - name: Build sandbox image (if needed)
         run: |
           if [ -f scripts/Dockerfile.sandbox ]; then
-            docker build -t agent-os-sandbox:latest -f scripts/Dockerfile.sandbox scripts/
+            docker build -t argus-sandbox:latest -f scripts/Dockerfile.sandbox scripts/
           else
             echo "Sandbox Dockerfile not yet created"
           fi

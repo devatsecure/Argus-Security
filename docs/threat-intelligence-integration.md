@@ -51,7 +51,7 @@ The enricher automatically adjusts finding priorities based on threat context:
 
 ## Installation
 
-No additional dependencies beyond Agent-OS requirements:
+No additional dependencies beyond Argus requirements:
 
 ```bash
 # Standard library only (urllib, json, dataclasses)
@@ -96,7 +96,7 @@ from threat_intel_enricher import ThreatIntelEnricher
 
 # Initialize enricher
 enricher = ThreatIntelEnricher(
-    cache_dir=Path(".agent-os-cache/threat-intel"),
+    cache_dir=Path(".argus-cache/threat-intel"),
     use_progress=True
 )
 
@@ -132,7 +132,7 @@ for finding in enriched:
 enricher.export_enriched_findings(enriched, Path("enriched.json"))
 ```
 
-### Integration with Agent-OS Workflow
+### Integration with Argus Workflow
 
 ```python
 from run_ai_audit import run_security_audit
@@ -315,7 +315,7 @@ for threat in critical_threats:
 ### Cache Directory Structure
 
 ```
-.agent-os-cache/threat-intel/
+.argus-cache/threat-intel/
 ├── kev_catalog.json           # CISA KEV catalog (24h TTL)
 ├── epss_CVE-2024-1234.json    # EPSS scores per CVE (24h TTL)
 ├── nvd_CVE-2024-1234.json     # NVD data per CVE (24h TTL)
@@ -335,13 +335,13 @@ for threat in critical_threats:
 
 ```bash
 # Clear all threat intel cache
-rm -rf .agent-os-cache/threat-intel/
+rm -rf .argus-cache/threat-intel/
 
 # Clear only KEV catalog (force refresh)
-rm .agent-os-cache/threat-intel/kev_catalog.json
+rm .argus-cache/threat-intel/kev_catalog.json
 
 # View cache size
-du -sh .agent-os-cache/threat-intel/
+du -sh .argus-cache/threat-intel/
 ```
 
 ## Rate Limiting
@@ -447,7 +447,7 @@ Enable caching in CI pipelines to avoid rate limits:
 - name: Cache Threat Intel
   uses: actions/cache@v4
   with:
-    path: .agent-os-cache/threat-intel
+    path: .argus-cache/threat-intel
     key: threat-intel-${{ github.run_id }}
     restore-keys: threat-intel-
 
@@ -561,7 +561,7 @@ for finding in findings:
 **Cause**: NVD rate limiting (6 second delay per CVE)
 
 **Solutions**:
-1. Enable caching (automatic, but verify `.agent-os-cache/` is writable)
+1. Enable caching (automatic, but verify `.argus-cache/` is writable)
 2. Process findings incrementally (new findings only)
 3. Consider NVD API key (requires code modification)
 

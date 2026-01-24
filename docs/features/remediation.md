@@ -30,10 +30,10 @@ For each security finding, the remediation engine:
 
 ```bash
 # Generate remediation suggestions for all findings
-./scripts/agentos remediate --findings findings.json --output fixes.md
+./scripts/argus remediate --findings findings.json --output fixes.md
 
 # With specific AI provider
-./scripts/agentos remediate --findings findings.json --ai-provider anthropic --output fixes.md
+./scripts/argus remediate --findings findings.json --ai-provider anthropic --output fixes.md
 
 # Remediation is automatically applied during scans when enabled (default)
 python scripts/run_ai_audit.py --enable-remediation
@@ -135,7 +135,7 @@ Remediation runs automatically as **Phase 2.5** in the hybrid analyzer workflow:
 1. **Phase 1**: Scanners detect vulnerabilities
 2. **Phase 2**: AI triages findings
 3. **Phase 2.5** (Remediation): AI generates fix suggestions
-4. **Phase 3+**: Agent-OS review, sandbox validation, output
+4. **Phase 3+**: Argus review, sandbox validation, output
 
 ## Best Practices
 

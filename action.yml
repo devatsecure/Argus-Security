@@ -1,6 +1,6 @@
-name: 'Agent-OS Security Action'
-description: 'Production security control plane: orchestrates TruffleHog, Gitleaks, Semgrep, Trivy, Checkov + AI triage (Claude/OpenAI) + noise reduction + Rego policy gates + SBOM generation'
-author: 'Agent OS Team'
+name: 'Argus Security'
+description: 'The All-Seeing AI Security Platform: Multi-agent security analysis with 5 specialized AI personas, 9 security scanners, Claude/OpenAI triage, and intelligent false positive reduction'
+author: 'Argus Security Team'
 
 inputs:
   review-type:
@@ -244,40 +244,40 @@ runs:
         node-version: '18'
         # Cache disabled - repositories may not have lock files
 
-    - name: Install Agent OS
+    - name: Install Argus
       shell: bash
       run: |
-        echo "Setting up Agent OS Code Reviewer system..."
+        echo "Setting up Argus Code Reviewer system..."
         
-        # Create Agent OS directory structure
-        mkdir -p $HOME/.agent-os/{scripts,profiles,standards}
+        # Create Argus directory structure
+        mkdir -p $HOME/.argus/{scripts,profiles,standards}
         
-        # Copy our scripts from the action repository to the Agent OS directory
+        # Copy our scripts from the action repository to the Argus directory
         if [ -d "$GITHUB_ACTION_PATH/scripts" ]; then
-          cp -r $GITHUB_ACTION_PATH/scripts/* $HOME/.agent-os/scripts/ 2>/dev/null || echo "Note: No scripts to copy"
+          cp -r $GITHUB_ACTION_PATH/scripts/* $HOME/.argus/scripts/ 2>/dev/null || echo "Note: No scripts to copy"
           echo "Scripts copied from action repository"
         fi
         
         if [ -d "$GITHUB_ACTION_PATH/profiles" ]; then
-          cp -r $GITHUB_ACTION_PATH/profiles/* $HOME/.agent-os/profiles/ 2>/dev/null || echo "Note: No profiles to copy"
+          cp -r $GITHUB_ACTION_PATH/profiles/* $HOME/.argus/profiles/ 2>/dev/null || echo "Note: No profiles to copy"
           echo "Profiles copied from action repository"
         fi
         
         # Make scripts executable
-        chmod +x $HOME/.agent-os/scripts/*.sh 2>/dev/null || true
-        chmod +x $HOME/.agent-os/scripts/*.py 2>/dev/null || true
+        chmod +x $HOME/.argus/scripts/*.sh 2>/dev/null || true
+        chmod +x $HOME/.argus/scripts/*.py 2>/dev/null || true
         
         # Verify installation
-        if [ ! -d "$HOME/.agent-os" ]; then
-          echo "❌ Agent OS installation failed - directory not created"
+        if [ ! -d "$HOME/.argus" ]; then
+          echo "❌ Argus installation failed - directory not created"
           exit 1
         fi
         
-        if [ ! -d "$HOME/.agent-os/scripts" ]; then
+        if [ ! -d "$HOME/.argus/scripts" ]; then
           echo "⚠️  Warning: scripts directory not found"
         fi
         
-        echo "✅ Agent OS Code Reviewer system installed successfully"
+        echo "✅ Argus Code Reviewer system installed successfully"
 
     - name: Install Code Reviewer System
       shell: bash
@@ -285,67 +285,67 @@ runs:
         echo "Installing code reviewer system..."
         
         # Create directories
-        mkdir -p $HOME/.agent-os/profiles/default/agents
-        mkdir -p $HOME/.agent-os/profiles/default/workflows/review
-        mkdir -p $HOME/.agent-os/profiles/default/standards/review
-        mkdir -p $HOME/.agent-os/profiles/default/commands/audit-codebase/multi-agent
-        mkdir -p $HOME/.agent-os/profiles/default/commands/review-changes/multi-agent
-        mkdir -p $HOME/.agent-os/profiles/default/commands/security-scan/multi-agent
-        mkdir -p $HOME/.agent-os/profiles/default/roles
+        mkdir -p $HOME/.argus/profiles/default/agents
+        mkdir -p $HOME/.argus/profiles/default/workflows/review
+        mkdir -p $HOME/.argus/profiles/default/standards/review
+        mkdir -p $HOME/.argus/profiles/default/commands/audit-codebase/multi-agent
+        mkdir -p $HOME/.argus/profiles/default/commands/review-changes/multi-agent
+        mkdir -p $HOME/.argus/profiles/default/commands/security-scan/multi-agent
+        mkdir -p $HOME/.argus/profiles/default/roles
         
         # Copy code reviewer files from this repository
         if [ -d "$GITHUB_ACTION_PATH/profiles/default/agents" ]; then
-          cp -r $GITHUB_ACTION_PATH/profiles/default/agents/* $HOME/.agent-os/profiles/default/agents/
+          cp -r $GITHUB_ACTION_PATH/profiles/default/agents/* $HOME/.argus/profiles/default/agents/
           echo "Agents copied successfully"
         fi
         
         if [ -d "$GITHUB_ACTION_PATH/profiles/default/workflows/review" ]; then
-          cp -r $GITHUB_ACTION_PATH/profiles/default/workflows/review $HOME/.agent-os/profiles/default/workflows/
+          cp -r $GITHUB_ACTION_PATH/profiles/default/workflows/review $HOME/.argus/profiles/default/workflows/
           echo "Workflows copied successfully"
         fi
         
         if [ -d "$GITHUB_ACTION_PATH/profiles/default/standards/review" ]; then
-          cp -r $GITHUB_ACTION_PATH/profiles/default/standards/review $HOME/.agent-os/profiles/default/standards/
+          cp -r $GITHUB_ACTION_PATH/profiles/default/standards/review $HOME/.argus/profiles/default/standards/
           echo "Standards copied successfully"
         fi
         
         if [ -d "$GITHUB_ACTION_PATH/profiles/default/commands" ]; then
-          cp -r $GITHUB_ACTION_PATH/profiles/default/commands/audit-codebase $HOME/.agent-os/profiles/default/commands/
-          cp -r $GITHUB_ACTION_PATH/profiles/default/commands/review-changes $HOME/.agent-os/profiles/default/commands/
-          cp -r $GITHUB_ACTION_PATH/profiles/default/commands/security-scan $HOME/.agent-os/profiles/default/commands/
+          cp -r $GITHUB_ACTION_PATH/profiles/default/commands/audit-codebase $HOME/.argus/profiles/default/commands/
+          cp -r $GITHUB_ACTION_PATH/profiles/default/commands/review-changes $HOME/.argus/profiles/default/commands/
+          cp -r $GITHUB_ACTION_PATH/profiles/default/commands/security-scan $HOME/.argus/profiles/default/commands/
           echo "Commands copied successfully"
         fi
         
         # Copy AI audit script
         if [ -f "$GITHUB_ACTION_PATH/scripts/run_ai_audit.py" ]; then
-          mkdir -p $HOME/.agent-os/scripts
-          cp $GITHUB_ACTION_PATH/scripts/run_ai_audit.py $HOME/.agent-os/scripts/
-          chmod +x $HOME/.agent-os/scripts/run_ai_audit.py
+          mkdir -p $HOME/.argus/scripts
+          cp $GITHUB_ACTION_PATH/scripts/run_ai_audit.py $HOME/.argus/scripts/
+          chmod +x $HOME/.argus/scripts/run_ai_audit.py
           echo "AI audit script copied successfully"
         else
           echo "Warning: AI audit script not found at $GITHUB_ACTION_PATH/scripts/run_ai_audit.py"
         fi
         
         if [ -f "$GITHUB_ACTION_PATH/profiles/default/roles/reviewers.yml" ]; then
-          cp $GITHUB_ACTION_PATH/profiles/default/roles/reviewers.yml $HOME/.agent-os/profiles/default/roles/
+          cp $GITHUB_ACTION_PATH/profiles/default/roles/reviewers.yml $HOME/.argus/profiles/default/roles/
           echo "Roles copied successfully"
         fi
         
         echo "Code reviewer system installed successfully"
 
-    - name: Install Agent OS to Project
+    - name: Install Argus to Project
       shell: bash
       run: |
-        echo "Setting up Agent OS in project directory..."
+        echo "Setting up Argus in project directory..."
         cd "${{ inputs.project-path }}"
         
-        # Create project-level Agent OS directory
-        mkdir -p .agent-os/{config,reports}
+        # Create project-level Argus directory
+        mkdir -p .argus/{config,reports}
         
         # Copy configuration files
-        cp -r $HOME/.agent-os/profiles/default/standards .agent-os/ 2>/dev/null || true
+        cp -r $HOME/.argus/profiles/default/standards .argus/ 2>/dev/null || true
         
-        echo "Project Agent OS setup completed"
+        echo "Project Argus setup completed"
 
     - name: Detect Project Type
       id: detect-type
@@ -356,8 +356,8 @@ runs:
         
         if [ "${{ inputs.project-type }}" = "auto" ]; then
           # Fallback to backend-api if detection script doesn't exist
-          if [ -f "$HOME/.agent-os/scripts/detect-project-type.sh" ]; then
-            PROJECT_TYPE=$($HOME/.agent-os/scripts/detect-project-type.sh .)
+          if [ -f "$HOME/.argus/scripts/detect-project-type.sh" ]; then
+            PROJECT_TYPE=$($HOME/.argus/scripts/detect-project-type.sh .)
             echo "Auto-detected project type: $PROJECT_TYPE"
           else
             PROJECT_TYPE="backend-api"
@@ -417,7 +417,7 @@ runs:
         cd "${{ inputs.project-path }}"
         
         # Create reviews directory
-        mkdir -p .agent-os/reviews
+        mkdir -p .argus/reviews
         
         # Install Python dependencies
         echo "📦 Installing dependencies..."
@@ -436,13 +436,13 @@ runs:
         echo "   - Max files: ${{ inputs.max-files }}"
         echo "   - Cost limit: \$${{ inputs.cost-limit }}"
         
-        python3 $HOME/.agent-os/scripts/run_ai_audit.py "$(pwd)" "${{ inputs.review-type }}"
+        python3 $HOME/.argus/scripts/run_ai_audit.py "$(pwd)" "${{ inputs.review-type }}"
         
         # Check if analysis succeeded
-        REPORT_FILE=".agent-os/reviews/${{ inputs.review-type }}-report.md"
-        SARIF_FILE=".agent-os/reviews/results.sarif"
-        JSON_FILE=".agent-os/reviews/results.json"
-        METRICS_FILE=".agent-os/reviews/metrics.json"
+        REPORT_FILE=".argus/reviews/${{ inputs.review-type }}-report.md"
+        SARIF_FILE=".argus/reviews/results.sarif"
+        JSON_FILE=".argus/reviews/results.json"
+        METRICS_FILE=".argus/reviews/metrics.json"
         
         if [ ! -f "$REPORT_FILE" ]; then
           echo "❌ AI analysis failed - no report generated"
@@ -514,7 +514,7 @@ runs:
       uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874  # v4.4.0
       with:
         name: code-review-reports-${{ github.run_id }}-${{ github.run_attempt }}
-        path: ${{ inputs.project-path }}/.agent-os/reviews/
+        path: ${{ inputs.project-path }}/.argus/reviews/
         retention-days: 30
 
     # Create PR - pinned by SHA
@@ -529,7 +529,7 @@ runs:
           const path = require('path');
           
           // Read the audit report
-          const reportPath = '${{ inputs.project-path }}/.agent-os/reviews/${{ inputs.review-type }}-report.md';
+          const reportPath = '${{ inputs.project-path }}/.argus/reviews/${{ inputs.review-type }}-report.md';
           let reportContent = '';
           
           if (fs.existsSync(reportPath)) {
@@ -656,7 +656,7 @@ runs:
           const { data: newCommit } = await github.rest.git.createCommit({
             owner: context.repo.owner,
             repo: context.repo.repo,
-            message: `Add automated code review findings\n\nBlockers: ${blockerCount}\nSuggestions: ${suggestionCount}\n\nGenerated by Agent OS Code Reviewer`,
+            message: `Add automated code review findings\n\nBlockers: ${blockerCount}\nSuggestions: ${suggestionCount}\n\nGenerated by Argus Code Reviewer`,
             tree: newTree.sha,
             parents: [refData.object.sha]
           });
@@ -754,7 +754,7 @@ runs:
             `- **Run URL:** ${context.payload.repository.html_url}/actions/runs/${context.runId}`,
             '',
             '### 🤖 Automated Review',
-            'This PR was automatically created by the Agent OS Code Reviewer system.',
+            'This PR was automatically created by the Argus Code Reviewer system.',
             'Please review the findings and address the merge blockers before merging.',
             '',
             '**Note:** If you fix the issues, this PR will be automatically updated on the next review run.'
@@ -789,7 +789,7 @@ runs:
           const path = require('path');
           
           // Read the review report
-          const reportPath = '${{ inputs.project-path }}/.agent-os/reviews/review-report.md';
+          const reportPath = '${{ inputs.project-path }}/.argus/reviews/review-report.md';
           let reportContent = '';
           
           if (fs.existsSync(reportPath)) {

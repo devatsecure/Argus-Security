@@ -35,26 +35,26 @@ show_usage() {
     echo "Usage: $0 [OPTIONS]"
     echo ""
     echo "Options:"
-    echo "  --agent-os-path PATH    Path to Agent OS base installation (default: ~/.agent-os)"
+    echo "  --argus-path PATH    Path to Agent OS base installation (default: ~/.argus)"
     echo "  --install-path PATH      Path to install global script (default: ~/.local/bin)"
     echo "  --help                  Show this help message"
     echo ""
     echo "Examples:"
     echo "  $0                                    # Install with defaults"
-    echo "  $0 --agent-os-path /custom/path      # Custom Agent OS path"
+    echo "  $0 --argus-path /custom/path      # Custom Agent OS path"
     echo "  $0 --install-path /usr/local/bin      # Custom install path"
 }
 
 # Default values
-AGENT_OS_PATH="$HOME/.agent-os"
+ARGUS_PATH="$HOME/.argus"
 INSTALL_PATH="$HOME/.local/bin"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --agent-os-path)
-            AGENT_OS_PATH="$2"
+        --argus-path)
+            ARGUS_PATH="$2"
             shift 2
             ;;
         --install-path)
@@ -76,14 +76,14 @@ done
 print_info "Installing Global Code Reviewer System..."
 
 # Check if Agent OS is installed
-if [ ! -d "$AGENT_OS_PATH" ]; then
-    print_warning "Agent OS not found at $AGENT_OS_PATH"
+if [ ! -d "$ARGUS_PATH" ]; then
+    print_warning "Agent OS not found at $ARGUS_PATH"
     print_info "Installing Agent OS base installation..."
     
     # Install Agent OS
     curl -sSL https://raw.githubusercontent.com/buildermethods/agent-os/main/setup/base.sh | bash -s -- --claude-code --cursor
     
-    if [ ! -d "$AGENT_OS_PATH" ]; then
+    if [ ! -d "$ARGUS_PATH" ]; then
         print_error "Failed to install Agent OS"
         exit 1
     fi
@@ -92,18 +92,18 @@ if [ ! -d "$AGENT_OS_PATH" ]; then
 fi
 
 # Create directories if they don't exist
-mkdir -p "$AGENT_OS_PATH/profiles/default/agents"
-mkdir -p "$AGENT_OS_PATH/profiles/default/workflows"
-mkdir -p "$AGENT_OS_PATH/profiles/default/standards"
-mkdir -p "$AGENT_OS_PATH/profiles/default/commands"
-mkdir -p "$AGENT_OS_PATH/profiles/default/roles"
+mkdir -p "$ARGUS_PATH/profiles/default/agents"
+mkdir -p "$ARGUS_PATH/profiles/default/workflows"
+mkdir -p "$ARGUS_PATH/profiles/default/standards"
+mkdir -p "$ARGUS_PATH/profiles/default/commands"
+mkdir -p "$ARGUS_PATH/profiles/default/roles"
 mkdir -p "$INSTALL_PATH"
 
 print_info "Copying code reviewer system to Agent OS base installation..."
 
 # Copy agents
 if [ -d "$SCRIPT_DIR/profiles/default/agents" ]; then
-    cp -r "$SCRIPT_DIR/profiles/default/agents"/* "$AGENT_OS_PATH/profiles/default/agents/"
+    cp -r "$SCRIPT_DIR/profiles/default/agents"/* "$ARGUS_PATH/profiles/default/agents/"
     print_status "Agents copied successfully"
 else
     print_warning "Agents directory not found in script directory"
@@ -111,8 +111,8 @@ fi
 
 # Copy workflows
 if [ -d "$SCRIPT_DIR/profiles/default/workflows/review" ]; then
-    mkdir -p "$AGENT_OS_PATH/profiles/default/workflows"
-    cp -r "$SCRIPT_DIR/profiles/default/workflows/review" "$AGENT_OS_PATH/profiles/default/workflows/"
+    mkdir -p "$ARGUS_PATH/profiles/default/workflows"
+    cp -r "$SCRIPT_DIR/profiles/default/workflows/review" "$ARGUS_PATH/profiles/default/workflows/"
     print_status "Workflows copied successfully"
 else
     print_warning "Review workflows directory not found in script directory"
@@ -120,8 +120,8 @@ fi
 
 # Copy standards
 if [ -d "$SCRIPT_DIR/profiles/default/standards/review" ]; then
-    mkdir -p "$AGENT_OS_PATH/profiles/default/standards"
-    cp -r "$SCRIPT_DIR/profiles/default/standards/review" "$AGENT_OS_PATH/profiles/default/standards/"
+    mkdir -p "$ARGUS_PATH/profiles/default/standards"
+    cp -r "$SCRIPT_DIR/profiles/default/standards/review" "$ARGUS_PATH/profiles/default/standards/"
     print_status "Standards copied successfully"
 else
     print_warning "Review standards directory not found in script directory"
@@ -129,9 +129,9 @@ fi
 
 # Copy commands
 if [ -d "$SCRIPT_DIR/profiles/default/commands" ]; then
-    cp -r "$SCRIPT_DIR/profiles/default/commands/audit-codebase" "$AGENT_OS_PATH/profiles/default/commands/"
-    cp -r "$SCRIPT_DIR/profiles/default/commands/review-changes" "$AGENT_OS_PATH/profiles/default/commands/"
-    cp -r "$SCRIPT_DIR/profiles/default/commands/security-scan" "$AGENT_OS_PATH/profiles/default/commands/"
+    cp -r "$SCRIPT_DIR/profiles/default/commands/audit-codebase" "$ARGUS_PATH/profiles/default/commands/"
+    cp -r "$SCRIPT_DIR/profiles/default/commands/review-changes" "$ARGUS_PATH/profiles/default/commands/"
+    cp -r "$SCRIPT_DIR/profiles/default/commands/security-scan" "$ARGUS_PATH/profiles/default/commands/"
     print_status "Commands copied successfully"
 else
     print_warning "Commands directory not found in script directory"
@@ -139,7 +139,7 @@ fi
 
 # Copy roles
 if [ -f "$SCRIPT_DIR/profiles/default/roles/reviewers.yml" ]; then
-    cp "$SCRIPT_DIR/profiles/default/roles/reviewers.yml" "$AGENT_OS_PATH/profiles/default/roles/"
+    cp "$SCRIPT_DIR/profiles/default/roles/reviewers.yml" "$ARGUS_PATH/profiles/default/roles/"
     print_status "Roles copied successfully"
 else
     print_warning "Reviewers.yml not found in script directory"
@@ -196,7 +196,7 @@ show_usage() {
     echo "  code-review security /path/to/repo   # Security scan specific repo"
     echo "  code-review review                   # Review changes in current dir"
     echo ""
-    echo "Global installation path: ~/.agent-os"
+    echo "Global installation path: ~/.argus"
 }
 
 # Get project path (default to current directory)
@@ -214,10 +214,10 @@ cd "$PROJECT_PATH"
 print_info "Project path: $PROJECT_PATH"
 
 # Install Agent OS to project if not already installed
-if [ ! -d ".agent-os" ]; then
+if [ ! -d ".argus" ]; then
     print_info "Installing Agent OS to project..."
-    if [ -f "$HOME/.agent-os/scripts/project-install.sh" ]; then
-        "$HOME/.agent-os/scripts/project-install.sh"
+    if [ -f "$HOME/.argus/scripts/project-install.sh" ]; then
+        "$HOME/.argus/scripts/project-install.sh"
         print_status "Agent OS installed to project"
     else
         print_error "Agent OS project installation script not found"
@@ -236,13 +236,13 @@ case "${1:-help}" in
         echo ""
         
         # Create reviews directory if it doesn't exist
-        mkdir -p .agent-os/reviews
+        mkdir -p .argus/reviews
         
         # Generate audit report
-        echo "# Codebase Audit Report" > .agent-os/reviews/audit-report.md
-        echo "Generated: $(date)" >> .agent-os/reviews/audit-report.md
-        echo "Project: $PROJECT_PATH" >> .agent-os/reviews/audit-report.md
-        echo "" >> .agent-os/reviews/audit-report.md
+        echo "# Codebase Audit Report" > .argus/reviews/audit-report.md
+        echo "Generated: $(date)" >> .argus/reviews/audit-report.md
+        echo "Project: $PROJECT_PATH" >> .argus/reviews/audit-report.md
+        echo "" >> .argus/reviews/audit-report.md
         
         print_status "Security analysis completed"
         print_status "Performance analysis completed"
@@ -250,7 +250,7 @@ case "${1:-help}" in
         print_status "Code quality analysis completed"
         print_status "Comprehensive report generated"
         echo ""
-        print_info "📁 Audit report location: .agent-os/reviews/audit-report.md"
+        print_info "📁 Audit report location: .argus/reviews/audit-report.md"
         echo ""
         print_warning "🚨 Critical issues found: 5 - Immediate action required"
         print_warning "⚠️  High-priority issues found: 12 - Address soon"
@@ -263,13 +263,13 @@ case "${1:-help}" in
         echo ""
         
         # Create reviews directory if it doesn't exist
-        mkdir -p .agent-os/reviews
+        mkdir -p .argus/reviews
         
         # Generate security report
-        echo "# Security Scan Report" > .agent-os/reviews/security-report.md
-        echo "Generated: $(date)" >> .agent-os/reviews/security-report.md
-        echo "Project: $PROJECT_PATH" >> .agent-os/reviews/security-report.md
-        echo "" >> .agent-os/reviews/security-report.md
+        echo "# Security Scan Report" > .argus/reviews/security-report.md
+        echo "Generated: $(date)" >> .argus/reviews/security-report.md
+        echo "Project: $PROJECT_PATH" >> .argus/reviews/security-report.md
+        echo "" >> .argus/reviews/security-report.md
         
         print_status "Secrets detection completed"
         print_status "Injection vulnerability scan completed"
@@ -277,7 +277,7 @@ case "${1:-help}" in
         print_status "Cryptographic security validation completed"
         print_status "Dependency vulnerability scan completed"
         echo ""
-        print_info "📁 Security report location: .agent-os/reviews/security-report.md"
+        print_info "📁 Security report location: .argus/reviews/security-report.md"
         echo ""
         print_warning "🚨 Critical issues found: 3 - Immediate action required"
         print_warning "⚠️  High-priority issues found: 8 - Address soon"
@@ -290,13 +290,13 @@ case "${1:-help}" in
         echo ""
         
         # Create reviews directory if it doesn't exist
-        mkdir -p .agent-os/reviews
+        mkdir -p .argus/reviews
         
         # Generate review report
-        echo "# Code Review Report" > .agent-os/reviews/review-report.md
-        echo "Generated: $(date)" >> .agent-os/reviews/review-report.md
-        echo "Project: $PROJECT_PATH" >> .agent-os/reviews/review-report.md
-        echo "" >> .agent-os/reviews/review-report.md
+        echo "# Code Review Report" > .argus/reviews/review-report.md
+        echo "Generated: $(date)" >> .argus/reviews/review-report.md
+        echo "Project: $PROJECT_PATH" >> .argus/reviews/review-report.md
+        echo "" >> .argus/reviews/review-report.md
         
         print_status "Security analysis completed"
         print_status "Performance analysis completed"
@@ -304,7 +304,7 @@ case "${1:-help}" in
         print_status "Code quality analysis completed"
         print_status "Review report generated"
         echo ""
-        print_info "📁 Review report location: .agent-os/reviews/review-report.md"
+        print_info "📁 Review report location: .argus/reviews/review-report.md"
         echo ""
         print_warning "📋 Review Status: REQUIRES FIXES"
         echo ""
@@ -336,7 +336,7 @@ echo "  code-review review                   # Review changes in current dir"
 echo "  code-review help                     # Show help"
 echo ""
 print_info "Installation locations:"
-echo "  Agent OS base: $AGENT_OS_PATH"
+echo "  Agent OS base: $ARGUS_PATH"
 echo "  Global script: $INSTALL_PATH/code-review"
 echo ""
 print_info "Ready to use from any repository! 🚀"

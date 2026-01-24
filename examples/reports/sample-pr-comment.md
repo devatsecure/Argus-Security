@@ -1,4 +1,4 @@
-## 🔍 Agent-OS Security Report
+## 🔍 Argus Security Report
 
 **Analysis Complete**: 6 findings identified (3 actionable, 3 suppressed)
 
@@ -159,7 +159,7 @@ end
 
 ## ✅ Suppressed Findings (Low Confidence / Test Files)
 
-The following findings were automatically suppressed by Agent-OS noise reduction:
+The following findings were automatically suppressed by Argus noise reduction:
 
 ### 1. Test File: Sample Secret
 **File**: `test/fixtures/secrets/sample_aws_key.txt`  
@@ -234,7 +234,7 @@ The following findings were automatically suppressed by Agent-OS noise reduction
 
 ## 🤖 About This Report
 
-This automated security analysis was performed by **Agent-OS Security Action**.
+This automated security analysis was performed by **Argus Security Action**.
 
 **Configuration**:
 - Review Type: `audit` (full codebase)
@@ -243,8 +243,8 @@ This automated security analysis was performed by **Agent-OS Security Action**.
 - Noise Threshold: 0.7 (suppress findings with >70% false positive probability)
 
 **Customization**:
-- Adjust policies: `.agent-os/policy/pr.rego`
-- Suppress specific findings: `.agent-os/allowlist.yml`
+- Adjust policies: `.argus/policy/pr.rego`
+- Suppress specific findings: `.argus/allowlist.yml`
 - Change AI provider: `with: { ai-provider: 'anthropic' }`
 
 **Artifacts**:
@@ -254,12 +254,12 @@ This automated security analysis was performed by **Agent-OS Security Action**.
 
 ---
 
-**Questions?** See [Agent-OS Documentation](https://github.com/securedotcom/agent-os-action) or [Open an Issue](https://github.com/securedotcom/agent-os-action/issues).
+**Questions?** See [Argus Documentation](https://github.com/devatsecure/Argus-Security) or [Open an Issue](https://github.com/devatsecure/Argus-Security/issues).
 
 **False positive?** React with 👎 and comment with justification. We'll update the noise model.
 
 ---
 
 *Report generated at: 2025-11-08 14:23:17 UTC*  
-*Agent-OS Version: v1.0.0*  
+*Argus Version: v1.0.0*  
 *Scan ID: scan-a3f7c2d-20251108-142317*

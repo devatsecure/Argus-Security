@@ -347,9 +347,9 @@ If tests fail but vulnerability isn't present:
 2. Update assertions if behavior changed
 3. Regenerate test if needed
 
-## Integration with Agent-OS
+## Integration with Argus
 
-Regression tests integrate with Agent-OS workflows:
+Regression tests integrate with Argus workflows:
 
 ```bash
 # After running security scan and fixing findings
@@ -411,4 +411,4 @@ To add support for a new vulnerability type:
 
 ## License
 
-Part of Agent-OS Security Action - MIT License
+Part of Argus Security Action - MIT License

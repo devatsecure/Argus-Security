@@ -30,7 +30,7 @@ class ReportGenerator:
     # Tool information
     TOOL_NAME = "Agent OS Code Reviewer"
     TOOL_VERSION = "1.0.16"
-    TOOL_URI = "https://github.com/securedotcom/agent-os-action"
+    TOOL_URI = "https://github.com/devatsecure/Argus-Security"
 
     # SARIF schema
     SARIF_SCHEMA = "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json"
@@ -42,7 +42,7 @@ class ReportGenerator:
             repo_path: Path to the repository being analyzed
         """
         self.repo_path = repo_path
-        self.report_dir = Path(repo_path) / ".agent-os" / "reviews"
+        self.report_dir = Path(repo_path) / ".argus" / "reviews"
 
     def ensure_report_directory(self) -> Path:
         """Ensure the report directory exists
@@ -123,7 +123,7 @@ class ReportGenerator:
         # Process findings and convert to SARIF results
         for finding in findings:
             result = {
-                "ruleId": finding.get("rule_id", "AGENT-OS-001"),
+                "ruleId": finding.get("rule_id", "ARGUS-001"),
                 "level": self.map_severity_to_sarif(finding.get("severity", "medium")),
                 "message": {"text": finding.get("message", "Issue found")},
                 "locations": [

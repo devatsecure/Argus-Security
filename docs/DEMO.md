@@ -1,16 +1,16 @@
-# 🎬 Agent-OS Demo & Tutorial
+# 🎬 Argus Demo & Tutorial
 
-Watch Agent-OS in action and learn how to use it effectively.
+Watch Argus in action and learn how to use it effectively.
 
 ---
 
 ## 🎥 Video Tutorials
 
 ### Getting Started (5 Minutes)
-[![Watch: Getting Started with Agent-OS](https://img.shields.io/badge/▶️-Watch_Now-red?style=for-the-badge&logo=youtube)](https://youtube.com/placeholder)
+[![Watch: Getting Started with Argus](https://img.shields.io/badge/▶️-Watch_Now-red?style=for-the-badge&logo=youtube)](https://youtube.com/placeholder)
 
 **What you'll learn:**
-- ✅ Install Agent-OS in 2 minutes
+- ✅ Install Argus in 2 minutes
 - ✅ Run your first security scan
 - ✅ Understand the results
 - ✅ Fix a critical vulnerability
@@ -32,7 +32,7 @@ Watch Agent-OS in action and learn how to use it effectively.
 [![Watch: GitHub Actions Setup](https://img.shields.io/badge/▶️-Watch_Now-red?style=for-the-badge&logo=youtube)](https://youtube.com/placeholder)
 
 **What you'll learn:**
-- ✅ Add Agent-OS to your CI/CD
+- ✅ Add Argus to your CI/CD
 - ✅ Configure secrets
 - ✅ Automate security reviews
 - ✅ Block PRs with critical issues
@@ -41,7 +41,7 @@ Watch Agent-OS in action and learn how to use it effectively.
 
 ## 🧪 Live Demo Repositories
 
-Try Agent-OS on these intentionally vulnerable demo repositories:
+Try Argus on these intentionally vulnerable demo repositories:
 
 ### 1. Vulnerable Python App
 ```bash
@@ -51,7 +51,7 @@ cd demo-vulnerable-python
 docker run --rm \
   -v $(pwd):/workspace \
   -e ANTHROPIC_API_KEY=your_key \
-  ghcr.io/devatsecure/agent-os-action:latest \
+  ghcr.io/devatsecure/argus-action:latest \
   /workspace audit
 ```
 
@@ -72,7 +72,7 @@ cd demo-vulnerable-nodejs
 docker run --rm \
   -v $(pwd):/workspace \
   -e ANTHROPIC_API_KEY=your_key \
-  ghcr.io/devatsecure/agent-os-action:latest \
+  ghcr.io/devatsecure/argus-action:latest \
   /workspace audit
 ```
 
@@ -93,7 +93,7 @@ cd demo-vulnerable-java
 docker run --rm \
   -v $(pwd):/workspace \
   -e ANTHROPIC_API_KEY=your_key \
-  ghcr.io/devatsecure/agent-os-action:latest \
+  ghcr.io/devatsecure/argus-action:latest \
   /workspace audit
 ```
 
@@ -109,9 +109,9 @@ docker run --rm \
 ## 📊 Interactive Demo
 
 ### Online Playground
-Try Agent-OS in your browser without installing anything:
+Try Argus in your browser without installing anything:
 
-**[🚀 Launch Interactive Demo](https://demo.agent-os.dev)** *(Coming Soon)*
+**[🚀 Launch Interactive Demo](https://demo.argus.dev)** *(Coming Soon)*
 
 **Features:**
 - Pre-loaded vulnerable code samples
@@ -155,13 +155,13 @@ Try Agent-OS in your browser without installing anything:
    docker run --rm \
      -v $(pwd):/workspace \
      -e ANTHROPIC_API_KEY=sk-ant-... \
-     ghcr.io/devatsecure/agent-os-action:latest \
+     ghcr.io/devatsecure/argus-action:latest \
      /workspace audit
    ```
 
 5. **View Results**
    ```bash
-   cat .agent-os/reviews/audit-report.md
+   cat .argus/reviews/audit-report.md
    ```
 
 6. **Fix a Vulnerability**
@@ -183,7 +183,7 @@ Try Agent-OS in your browser without installing anything:
    docker run --rm \
      -v $(pwd):/workspace \
      -e ANTHROPIC_API_KEY=sk-ant-... \
-     ghcr.io/devatsecure/agent-os-action:latest \
+     ghcr.io/devatsecure/argus-action:latest \
      /workspace audit
    ```
 
@@ -222,7 +222,7 @@ Try Agent-OS in your browser without installing anything:
        runs-on: ubuntu-latest
        steps:
          - uses: actions/checkout@v4
-         - uses: devatsecure/agent-os-action@v1
+         - uses: devatsecure/argus-action@v1
            with:
              anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
              severity_threshold: high
@@ -232,7 +232,7 @@ Try Agent-OS in your browser without installing anything:
 4. **Commit and Push**
    ```bash
    git add .github/workflows/security.yml
-   git commit -m "Add Agent-OS security scan"
+   git commit -m "Add Argus security scan"
    git push
    ```
 
@@ -240,7 +240,7 @@ Try Agent-OS in your browser without installing anything:
    - Make a small change
    - Push to a new branch
    - Open a Pull Request
-   - Watch Agent-OS run automatically
+   - Watch Argus run automatically
 
 6. **Review Results**
    - Check the PR comment
@@ -260,12 +260,12 @@ Coming soon...
 
 ## 🎬 Recording Your Own Demo
 
-Want to create a video demo showing Agent-OS?
+Want to create a video demo showing Argus?
 
 ### Suggested Format
 
 1. **Introduction (30 seconds)**
-   - What is Agent-OS?
+   - What is Argus?
    - Key benefits
 
 2. **Setup (1 minute)**
@@ -308,7 +308,7 @@ Created a demo? Share it!
 
 Our demo repositories have been used:
 - **1,000+** times by developers
-- **50+** companies evaluating Agent-OS
+- **50+** companies evaluating Argus
 - **95%** satisfaction rate
 
 "*Best security demo I've seen. Clear, practical, and immediately useful.*"  
@@ -346,7 +346,7 @@ echo $ANTHROPIC_API_KEY
 docker run --rm \
   -v $(pwd):/workspace \
   -e ANTHROPIC_API_KEY=... \
-  ghcr.io/devatsecure/agent-os-action:latest \
+  ghcr.io/devatsecure/argus-action:latest \
   /workspace audit 2>&1 | tee debug.log
 ```
 
@@ -354,10 +354,10 @@ docker run --rm \
 
 ## 💬 Need Help?
 
-- 🐛 **Issue with demo?** [Report it](https://github.com/devatsecure/agent-os-action/issues)
-- 💬 **Questions?** [GitHub Discussions](https://github.com/devatsecure/agent-os-action/discussions)
+- 🐛 **Issue with demo?** [Report it](https://github.com/devatsecure/argus-action/issues)
+- 💬 **Questions?** [GitHub Discussions](https://github.com/devatsecure/argus-action/discussions)
 - 📧 **Email:** devatsecure@users.noreply.github.com
 
 ---
 
-**Ready to see Agent-OS in action?** Pick a tutorial above and get started! 🚀
+**Ready to see Argus in action?** Pick a tutorial above and get started! 🚀

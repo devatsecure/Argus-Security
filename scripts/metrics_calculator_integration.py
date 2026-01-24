@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Integration utilities for Metrics Calculator with Agent-OS workflow
+Integration utilities for Metrics Calculator with Argus workflow
 
 Provides convenience functions for:
-- Loading findings from Agent-OS output
+- Loading findings from Argus output
 - Comparing with external tools (Codex, Semgrep, Trivy, etc.)
 - Generating comparison reports
 - Publishing metrics to monitoring systems
@@ -21,9 +21,9 @@ logger = logging.getLogger(__name__)
 
 
 class MetricsIntegration:
-    """Convenience wrapper for metrics calculation in Agent-OS workflow."""
+    """Convenience wrapper for metrics calculation in Argus workflow."""
 
-    def __init__(self, cache_dir: str = ".agent-os"):
+    def __init__(self, cache_dir: str = ".argus"):
         """
         Initialize metrics integration.
 
@@ -35,30 +35,30 @@ class MetricsIntegration:
         self.calculator = MetricsCalculator()
 
     def compare_with_external_tool(
-        self, agent_os_results_file: str, external_tool_results_file: str, tool_name: str = "external"
+        self, argus_results_file: str, external_tool_results_file: str, tool_name: str = "external"
     ) -> MetricsReport:
         """
-        Compare Agent-OS findings with external security tool results.
+        Compare Argus findings with external security tool results.
 
         Args:
-            agent_os_results_file: Path to Agent-OS JSON findings
+            argus_results_file: Path to Argus JSON findings
             external_tool_results_file: Path to external tool JSON findings
             tool_name: Name of external tool (codex, semgrep, trivy, etc.)
 
         Returns:
             MetricsReport with comparison results
         """
-        logger.info(f"Comparing Agent-OS with {tool_name}")
+        logger.info(f"Comparing Argus with {tool_name}")
 
         # Load findings
-        agent_os_findings = self._load_findings(agent_os_results_file)
+        argus_findings = self._load_findings(argus_results_file)
         external_findings = self._load_findings(external_tool_results_file)
 
-        logger.info(f"Loaded {len(agent_os_findings)} Agent-OS findings")
+        logger.info(f"Loaded {len(argus_findings)} Argus findings")
         logger.info(f"Loaded {len(external_findings)} {tool_name} findings")
 
         # Run comparison
-        report = self.calculator.compare_findings(agent_os_findings, external_findings)
+        report = self.calculator.compare_findings(argus_findings, external_findings)
 
         # Cache report
         report_file = self.cache_dir / f"metrics_{tool_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
@@ -76,7 +76,7 @@ class MetricsIntegration:
         Supports multiple formats:
         - Direct list of findings: [...]
         - Findings in 'findings' key: {"findings": [...]}
-        - Agent-OS output format with metadata
+        - Argus output format with metadata
 
         Args:
             file_path: Path to JSON file
@@ -166,10 +166,10 @@ class MetricsIntegration:
         Returns:
             Markdown formatted report string
         """
-        md = f"""## Metrics Comparison: Agent-OS vs {tool_name}
+        md = f"""## Metrics Comparison: Argus vs {tool_name}
 
 ### Summary
-- **Agent-OS Findings**: {report.agent_os_finding_count}
+- **Argus Findings**: {report.argus_finding_count}
 - **{tool_name} Findings**: {report.codex_finding_count}
 - **Matched Findings**: {report.total_matches}
 - **Agreement Rate**: {report.simple_agreement_rate:.1%}
@@ -193,7 +193,7 @@ class MetricsIntegration:
 | **Accuracy** | {report.precision_recall.accuracy:.1%} |
 
 #### Confusion Matrix
-| | Agent-OS Found | Agent-OS Missed |
+| | Argus Found | Argus Missed |
 |---|---|---|
 | **{tool_name} Found** | {report.confusion_matrix.true_positive} (TP) | {report.confusion_matrix.false_negative} (FN) |
 | **{tool_name} Missed** | {report.confusion_matrix.false_positive} (FP) | {report.confusion_matrix.true_negative} (TN) |
@@ -235,10 +235,10 @@ class MetricsIntegration:
         summary = {
             "timestamp": report.timestamp,
             "metrics": {
-                "agent_os_findings": report.agent_os_finding_count,
+                "argus_findings": report.argus_finding_count,
                 "external_findings": report.codex_finding_count,
                 "matched_findings": report.total_matches,
-                "unique_to_agent_os": report.total_unique_to_agent_os,
+                "unique_to_argus": report.total_unique_to_argus,
                 "unique_to_external": report.total_unique_to_codex,
             },
             "agreement": {
@@ -263,7 +263,7 @@ class MetricsIntegration:
             "severity_breakdown": [
                 {
                     "severity": sev.severity,
-                    "agent_os_count": sev.agent_os_count,
+                    "argus_count": sev.argus_count,
                     "external_count": sev.codex_count,
                     "agreement": round(sev.agreement_rate, 4),
                 }
@@ -272,7 +272,7 @@ class MetricsIntegration:
             "category_breakdown": [
                 {
                     "category": cat.category,
-                    "agent_os_count": cat.agent_os_count,
+                    "argus_count": cat.argus_count,
                     "external_count": cat.codex_count,
                     "agreement": round(cat.agreement_rate, 4),
                 }
@@ -388,7 +388,7 @@ def example_integration():
 
     # Example: Compare findings (requires actual files)
     # report = integration.compare_with_external_tool(
-    #     "agent_os_findings.json",
+    #     "argus_findings.json",
     #     "codex_findings.json",
     #     tool_name="codex"
     # )
@@ -401,7 +401,7 @@ def example_integration():
     # integration.generate_json_summary(report, "metrics_summary.json")
 
     # Load historical metrics
-    # reports = integration.compare_over_time(".agent-os", pattern="metrics_*.json")
+    # reports = integration.compare_over_time(".argus", pattern="metrics_*.json")
     # trend = integration.calculate_trend(reports)
     # print(json.dumps(trend, indent=2))
 

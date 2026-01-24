@@ -32,7 +32,7 @@ class CacheManager:
     Manages file-based caching for security scan results
 
     Cache Structure:
-        .agent-os-cache/
+        .argus-cache/
             {scanner_name}/
                 {file_hash}.json
             metadata.json (cache stats)
@@ -48,7 +48,7 @@ class CacheManager:
 
     def __init__(
         self,
-        cache_dir: str = ".agent-os-cache",
+        cache_dir: str = ".argus-cache",
         default_ttl_days: int = 7,
         enable_stats: bool = True
     ):
@@ -56,7 +56,7 @@ class CacheManager:
         Initialize cache manager
 
         Args:
-            cache_dir: Directory for cache storage (default: .agent-os-cache)
+            cache_dir: Directory for cache storage (default: .argus-cache)
             default_ttl_days: Default TTL in days (default: 7)
             enable_stats: Enable statistics tracking (default: True)
         """
@@ -751,8 +751,8 @@ def main():
     )
     parser.add_argument(
         "--cache-dir",
-        default=".agent-os-cache",
-        help="Cache directory path (default: .agent-os-cache)"
+        default=".argus-cache",
+        help="Cache directory path (default: .argus-cache)"
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")

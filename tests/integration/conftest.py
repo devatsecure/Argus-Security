@@ -454,7 +454,7 @@ def reset_environment():
 @pytest.fixture
 def temp_output_dir(tmp_path: Path) -> Generator[Path, None, None]:
     """Create temporary directory for output files"""
-    output_dir = tmp_path / ".agent-os"
+    output_dir = tmp_path / ".argus"
     output_dir.mkdir()
     yield output_dir
 

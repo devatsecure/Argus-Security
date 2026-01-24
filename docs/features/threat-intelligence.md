@@ -6,7 +6,7 @@ The Threat Intelligence Enrichment feature enhances security findings with real-
 
 ## How It Works
 
-When Agent-OS discovers a CVE, the threat intelligence enricher:
+When Argus discovers a CVE, the threat intelligence enricher:
 
 1. **Queries Multiple Sources**:
    - CVE/NVD database
@@ -34,7 +34,7 @@ When Agent-OS discovers a CVE, the threat intelligence enricher:
 
 ```bash
 # Enrich findings with threat intelligence
-./scripts/agentos threat-intel enrich --findings findings.json --output enriched.json
+./scripts/argus threat-intel enrich --findings findings.json --output enriched.json
 
 # Threat intel is automatically applied during scans when enabled (default)
 python scripts/run_ai_audit.py --enable-threat-intel
@@ -121,7 +121,7 @@ Threat intelligence enrichment runs automatically as part of the hybrid analyzer
 
 ## Sources
 
-Agent-OS threat intelligence integrates data from:
+Argus threat intelligence integrates data from:
 
 - **CISA KEV**: https://www.cisa.gov/known-exploited-vulnerabilities-catalog
 - **NVD**: https://nvd.nist.gov/

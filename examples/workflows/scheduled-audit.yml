@@ -1,4 +1,4 @@
-name: Agent-OS Weekly Security Audit
+name: Argus Weekly Security Audit
 
 # Full codebase audit on a schedule
 # Creates PR with findings
@@ -27,7 +27,7 @@ jobs:
     
     - name: Run Full Codebase Audit
       id: audit
-      uses: securedotcom/agent-os-action@v1
+      uses: devatsecure/Argus-Security@v1
       with:
         anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
         review-type: 'audit'
@@ -58,7 +58,7 @@ jobs:
       if: always()
       uses: github/codeql-action/upload-sarif@afb54ba388a7dca6ecae48f608c4ff05ff4cc77a  # v3.25.15
       with:
-        sarif_file: .agent-os/reviews/results.sarif
+        sarif_file: .argus/reviews/results.sarif
         category: weekly-audit
     
     # Create PR - pinned by SHA
@@ -70,7 +70,7 @@ jobs:
           const fs = require('fs');
           
           // Read the audit report
-          const reportPath = '.agent-os/reviews/audit-report.md';
+          const reportPath = '.argus/reviews/audit-report.md';
           const reportContent = fs.readFileSync(reportPath, 'utf8');
           
           const blockers = '${{ steps.audit.outputs.blockers-found }}';
@@ -103,7 +103,7 @@ jobs:
           
           ---
           
-          *This PR is automatically created by Agent-OS Security Action.*  
+          *This PR is automatically created by Argus Security Action.*  
           *Review the findings and merge when all critical issues are resolved.*
           `;
           

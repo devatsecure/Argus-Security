@@ -28,7 +28,7 @@ def example_1_basic_comparison():
     print("="*80 + "\n")
 
     # Sample findings (in real usage, these would come from files)
-    agent_os_findings = [
+    argus_findings = [
         {
             "id": "finding_001",
             "path": "src/api/users.py",
@@ -76,7 +76,7 @@ def example_1_basic_comparison():
 
     # Create comparator
     comparator = PairwiseComparator(
-        agent_os_findings=agent_os_findings,
+        argus_findings=argus_findings,
         codex_findings=codex_findings,
         judge_model="anthropic",
     )
@@ -87,10 +87,10 @@ def example_1_basic_comparison():
     # Print results
     print(f"\n📊 Results:")
     print(f"  Winner: {aggregation.overall_winner.upper()}")
-    print(f"  Agent-OS: {aggregation.avg_agent_os_score:.1f}/5")
+    print(f"  Argus: {aggregation.avg_argus_score:.1f}/5")
     print(f"  Codex: {aggregation.avg_codex_score:.1f}/5")
     print(f"  Matched: {aggregation.matched_findings}")
-    print(f"  Agent-OS Only: {aggregation.agent_os_only}")
+    print(f"  Argus Only: {aggregation.argus_only}")
     print(f"  Codex Only: {aggregation.codex_only}")
 
 
@@ -100,7 +100,7 @@ def example_2_matching_only():
     print("Example 2: Finding Matching Only")
     print("="*80 + "\n")
 
-    agent_os_findings = [
+    argus_findings = [
         {
             "id": "ao_1",
             "path": "src/api/users.py",
@@ -135,13 +135,13 @@ def example_2_matching_only():
     ]
 
     matcher = FindingMatcher(match_threshold=0.6)
-    matched, ao_only, cx_only = matcher.match_findings(agent_os_findings, codex_findings)
+    matched, ao_only, cx_only = matcher.match_findings(argus_findings, codex_findings)
 
     print(f"✅ Matched pairs: {len(matched)}")
     for ao, cx in matched:
         print(f"  - {ao['path']} ({ao['rule_id']} <-> {cx['rule_id']})")
 
-    print(f"\n🆎 Agent-OS only: {len(ao_only)}")
+    print(f"\n🆎 Argus only: {len(ao_only)}")
     for finding in ao_only:
         print(f"  - {finding['path']} ({finding['rule_id']})")
 
@@ -160,7 +160,7 @@ def example_3_judge_evaluation():
     judge = PairwiseJudge(judge_model="anthropic")
 
     # Sample matched findings
-    agent_os_finding = {
+    argus_finding = {
         "id": "ao_1",
         "path": "src/api/endpoint.py",
         "rule_id": "INJECTION-001",
@@ -185,17 +185,17 @@ def example_3_judge_evaluation():
     }
 
     print("Evaluating matched findings...")
-    print(f"  File: {agent_os_finding['path']}")
-    print(f"  Agent-OS: {agent_os_finding['rule_name']}")
+    print(f"  File: {argus_finding['path']}")
+    print(f"  Argus: {argus_finding['rule_name']}")
     print(f"  Codex: {codex_finding['rule_name']}")
     print("\nWaiting for judge evaluation...\n")
 
     try:
-        comparison = judge.compare_matched_findings(agent_os_finding, codex_finding)
+        comparison = judge.compare_matched_findings(argus_finding, codex_finding)
 
         print(f"✅ Evaluation complete:")
         print(f"  Winner: {comparison.winner.upper()}")
-        print(f"  Agent-OS Score: {comparison.agent_os_score}/5")
+        print(f"  Argus Score: {comparison.argus_score}/5")
         print(f"  Codex Score: {comparison.codex_score}/5")
         print(f"  Confidence: {comparison.confidence*100:.0f}%")
         print(f"\n📝 Reasoning:\n{comparison.judge_reasoning}")
@@ -242,10 +242,10 @@ def example_4_load_and_compare_files():
     # Show how to use it
     print("Loading findings from files...")
     print("\nExample usage:")
-    print("  agent_os_findings = load_findings('agent_os_results.json')")
+    print("  argus_findings = load_findings('argus_results.json')")
     print("  codex_findings = load_findings('codex_results.json')")
     print("\n  comparator = PairwiseComparator(")
-    print("      agent_os_findings=agent_os_findings,")
+    print("      argus_findings=argus_findings,")
     print("      codex_findings=codex_findings")
     print("  )")
     print("  aggregation = comparator.run_comparison()")

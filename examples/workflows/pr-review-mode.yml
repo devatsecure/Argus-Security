@@ -1,4 +1,4 @@
-name: Agent-OS PR Security Review
+name: Argus PR Security Review
 
 # Only analyze changed files in pull requests
 # Optimized for speed and cost
@@ -29,9 +29,9 @@ jobs:
       with:
         fetch-depth: 0  # Need full history for changed files detection
     
-    - name: Run Agent-OS Security Scan
+    - name: Run Argus Security Scan
       id: review
-      uses: securedotcom/agent-os-action@v1
+      uses: devatsecure/Argus-Security@v1
       with:
         anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
         review-type: 'audit'
@@ -58,7 +58,7 @@ jobs:
       if: always()
       uses: github/codeql-action/upload-sarif@afb54ba388a7dca6ecae48f608c4ff05ff4cc77a  # v3.25.15
       with:
-        sarif_file: .agent-os/reviews/results.sarif
+        sarif_file: .argus/reviews/results.sarif
     
     # Comment on PR - pinned by SHA
     - name: Comment on PR with Summary
@@ -75,7 +75,7 @@ jobs:
           const status = blockers > 0 ? '⚠️ Issues Found' : '✅ Looks Good';
           const emoji = blockers > 0 ? '🔴' : '🟢';
           
-          const body = `## ${emoji} Agent-OS Security Review
+          const body = `## ${emoji} Argus Security Review
           
           **Status**: ${status}  
           **Analyzed**: ${files} files (changed only)  

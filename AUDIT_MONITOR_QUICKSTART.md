@@ -17,7 +17,7 @@ from scripts.audit_monitor import AuditMonitor, AuditRun, FindingComparison
 from datetime import datetime, timezone
 
 # 1. Initialize monitor
-monitor = AuditMonitor(db_path=".agent-os/audit_monitor.db")
+monitor = AuditMonitor(db_path=".argus/audit_monitor.db")
 
 # 2. Create audit run
 audit_run = AuditRun(
@@ -25,10 +25,10 @@ audit_run = AuditRun(
     timestamp=datetime.now(timezone.utc).isoformat(),
     repo="my-repo",
     project_type="backend-api",
-    agent_os_findings_count=50,
+    argus_findings_count=50,
     codex_findings_count=52,
     agreed_findings_count=45,
-    agent_os_only_count=5,
+    argus_only_count=5,
     codex_only_count=7,
     agreement_rate=0.88,
     average_score_difference=0.20,
@@ -42,11 +42,11 @@ findings = [
         id="finding-1",
         audit_run_id=audit_run.id,
         finding_id="finding-1",
-        agent_os_score=4.5,
+        argus_score=4.5,
         codex_score=4.2,
         score_difference=0.3,
         agreed=True,
-        agent_os_verdict="likely_valid",
+        argus_verdict="likely_valid",
         codex_verdict="likely_valid",
         severity="high",
         category="SAST",
@@ -82,32 +82,32 @@ from audit_monitor import AuditMonitor, AuditRun, FindingComparison
 monitor = AuditMonitor()
 
 # After running dual_audit.py, you have:
-# - agent_os_results: Dict with findings from Agent-OS
+# - argus_results: Dict with findings from Argus
 # - codex_results: Dict with findings from Codex
 
 # Create comparison function
-def compare_findings(agent_os_findings, codex_findings):
+def compare_findings(argus_findings, codex_findings):
     # Match findings between systems
-    agreed = sum(1 for f in agent_os_findings
+    agreed = sum(1 for f in argus_findings
                  if any(c['id'] == f['id'] for c in codex_findings))
     return {
-        'agent_os': len(agent_os_findings),
+        'argus': len(argus_findings),
         'codex': len(codex_findings),
         'agreed': agreed,
-        'agreement_rate': agreed / max(len(agent_os_findings), len(codex_findings))
+        'agreement_rate': agreed / max(len(argus_findings), len(codex_findings))
     }
 
-comparison = compare_findings(agent_os_findings, codex_findings)
+comparison = compare_findings(argus_findings, codex_findings)
 
 audit_run = AuditRun(
     id=f"audit-{datetime.now().strftime('%Y%m%d-%H%M%S')}",
     timestamp=datetime.now(timezone.utc).isoformat(),
     repo="my-repo",
     project_type="backend-api",
-    agent_os_findings_count=comparison['agent_os'],
+    argus_findings_count=comparison['argus'],
     codex_findings_count=comparison['codex'],
     agreed_findings_count=comparison['agreed'],
-    agent_os_only_count=comparison['agent_os'] - comparison['agreed'],
+    argus_only_count=comparison['argus'] - comparison['agreed'],
     codex_only_count=comparison['codex'] - comparison['agreed'],
     agreement_rate=comparison['agreement_rate'],
     average_score_difference=0.25,
@@ -292,7 +292,7 @@ print(f"Deleted {deleted} old audit runs")
 ```python
 # Check database size
 import os
-size_mb = os.path.getsize(".agent-os/audit_monitor.db") / (1024*1024)
+size_mb = os.path.getsize(".argus/audit_monitor.db") / (1024*1024)
 print(f"Database: {size_mb:.1f} MB")
 ```
 

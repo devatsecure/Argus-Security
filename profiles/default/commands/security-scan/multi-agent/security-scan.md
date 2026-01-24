@@ -26,7 +26,7 @@ The security-reviewer will generate a focused security report with:
 
 ## Security Scan Output
 
-Upon completion, the following files will be created in `agent-os/reviews/[date]-security-scan/`:
+Upon completion, the following files will be created in `argus/reviews/[date]-security-scan/`:
 
 ### Security Report Files
 - `security-summary.md` - High-level security overview
@@ -170,7 +170,7 @@ Upon completion, display:
 ✅ Dependency vulnerability scan completed
 ✅ Security report generated
 
-📁 Security report location: `agent-os/reviews/[date]-security-scan/`
+📁 Security report location: `argus/reviews/[date]-security-scan/`
 
 🚨 Critical issues found: [X] - Immediate action required
 ⚠️ High-priority issues found: [Y] - Address soon

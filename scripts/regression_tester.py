@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Security Regression Testing for Agent-OS
+Security Regression Testing for Argus
 Ensures fixed vulnerabilities don't reappear
 
 This module generates regression tests from fixed security findings and runs them
@@ -783,7 +783,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Security Regression Testing for Agent-OS",
+        description="Security Regression Testing for Argus",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

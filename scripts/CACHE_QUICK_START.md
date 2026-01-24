@@ -127,7 +127,7 @@ Cache key = SHA256(file content)
 ### Cache Structure
 
 ```
-.agent-os-cache/
+.argus-cache/
 ├── semgrep/
 │   ├── abc123...json  ← SHA256 hash of file
 │   └── def456...json
@@ -221,7 +221,7 @@ with CacheManager() as cache:
 
 ```python
 cache = CacheManager(
-    cache_dir=".agent-os-cache",  # Where to store cache
+    cache_dir=".argus-cache",  # Where to store cache
     default_ttl_days=7,            # How long cache is valid
     enable_stats=True              # Track hit/miss stats
 )
@@ -251,10 +251,10 @@ cache.set_cached_result(
 
 ```bash
 # Override cache directory
-export AGENT_OS_CACHE_DIR="/tmp/cache"
+export ARGUS_CACHE_DIR="/tmp/cache"
 
 # Override TTL
-export AGENT_OS_CACHE_TTL_DAYS=14
+export ARGUS_CACHE_TTL_DAYS=14
 ```
 
 ## Testing
@@ -276,7 +276,7 @@ python scripts/test_cache_manager.py
 - name: Restore scan cache
   uses: actions/cache@v3
   with:
-    path: .agent-os-cache
+    path: .argus-cache
     key: security-scan-${{ github.sha }}
     restore-keys: security-scan-
 
@@ -289,7 +289,7 @@ python scripts/test_cache_manager.py
 ```yaml
 cache:
   paths:
-    - .agent-os-cache/
+    - .argus-cache/
 
 security_scan:
   script:
@@ -302,7 +302,7 @@ security_scan:
 
 ```bash
 # Check cache directory
-ls -la .agent-os-cache/
+ls -la .argus-cache/
 
 # Check stats
 python scripts/cache_manager.py stats

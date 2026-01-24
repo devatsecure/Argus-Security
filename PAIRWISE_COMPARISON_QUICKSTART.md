@@ -2,7 +2,7 @@
 
 ## 30-Second Overview
 
-The Pairwise Comparison Engine compares Agent-OS findings against independent Codex analysis using AI judges to determine which tool is better.
+The Pairwise Comparison Engine compares Argus findings against independent Codex analysis using AI judges to determine which tool is better.
 
 ## Prerequisites
 
@@ -17,7 +17,7 @@ export OPENAI_API_KEY="sk-..."
 
 ```bash
 python scripts/pairwise_comparison.py \
-    --agent-os-findings agent_os_results.json \
+    --argus-findings argus_results.json \
     --codex-findings codex_results.json \
     --output comparison_report.json \
     --output-markdown comparison_report.md
@@ -29,11 +29,11 @@ If you ran `dual_audit.py`, findings are already available:
 
 ```bash
 # Find the latest dual audit directory
-LATEST=$(find .agent-os/dual-audit -type d -maxdepth 1 | sort | tail -1)
+LATEST=$(find .argus/dual-audit -type d -maxdepth 1 | sort | tail -1)
 
 # Run comparison
 python scripts/pairwise_comparison.py \
-    --agent-os-findings $LATEST/agent_os_results.json \
+    --argus-findings $LATEST/argus_results.json \
     --codex-findings $LATEST/codex_validation.json \
     --output $LATEST/comparison.json \
     --output-markdown $LATEST/comparison.md
@@ -58,19 +58,19 @@ This will:
 ```json
 {
   "aggregation": {
-    "overall_winner": "agent_os",           // Which tool performed better
-    "avg_agent_os_score": 4.1,              // Agent-OS average: 1-5 scale
+    "overall_winner": "argus",           // Which tool performed better
+    "avg_argus_score": 4.1,              // Argus average: 1-5 scale
     "avg_codex_score": 3.8,                 // Codex average: 1-5 scale
-    "agent_os_win_rate": 0.467,             // % of comparisons won (46.7%)
+    "argus_win_rate": 0.467,             // % of comparisons won (46.7%)
     "codex_win_rate": 0.267,                // % of comparisons won (26.7%)
     "matched_findings": 12,                 // Findings found by both tools
-    "agent_os_only": 2,                     // Findings only Agent-OS found
+    "argus_only": 2,                     // Findings only Argus found
     "codex_only": 1,                        // Findings only Codex found
-    "critical_by_agent_os": 2,              // Critical findings by Agent-OS
+    "critical_by_argus": 2,              // Critical findings by Argus
     "critical_by_codex": 1,                 // Critical findings by Codex
-    "avg_agent_os_coverage": 4.2,           // Coverage score 1-5
-    "avg_agent_os_accuracy": 4.0,           // Accuracy score 1-5
-    "avg_agent_os_actionability": 4.1       // Actionability score 1-5
+    "avg_argus_coverage": 4.2,           // Coverage score 1-5
+    "avg_argus_accuracy": 4.0,           // Accuracy score 1-5
+    "avg_argus_actionability": 4.1       // Actionability score 1-5
   }
 }
 ```
@@ -110,7 +110,7 @@ less comparison_report.md
 ```bash
 # Only run first 10 comparisons (~$0.03)
 python scripts/pairwise_comparison.py \
-    --agent-os-findings agent_os.json \
+    --argus-findings argus.json \
     --codex-findings codex.json \
     --max-comparisons 10
 ```
@@ -118,7 +118,7 @@ python scripts/pairwise_comparison.py \
 ### Use OpenAI Judge (GPT-4)
 ```bash
 python scripts/pairwise_comparison.py \
-    --agent-os-findings agent_os.json \
+    --argus-findings argus.json \
     --codex-findings codex.json \
     --judge-model openai
 ```
@@ -127,7 +127,7 @@ python scripts/pairwise_comparison.py \
 ```bash
 # Use 0.5 instead of default 0.7 (more lenient matching)
 python scripts/pairwise_comparison.py \
-    --agent-os-findings agent_os.json \
+    --argus-findings argus.json \
     --codex-findings codex.json \
     --match-threshold 0.5
 ```
@@ -142,8 +142,8 @@ python scripts/dual_audit.py /path/to/repo
 
 # Step 2: Run comparison with cost limit
 python scripts/pairwise_comparison.py \
-    --agent-os-findings .agent-os/dual-audit/*/agent_os_results.json \
-    --codex-findings .agent-os/dual-audit/*/codex_validation.json \
+    --argus-findings .argus/dual-audit/*/argus_results.json \
+    --codex-findings .argus/dual-audit/*/codex_validation.json \
     --max-comparisons 20 \
     --output comparison_report.json \
     --output-markdown comparison_report.md
@@ -153,10 +153,10 @@ echo "=== WINNER ==="
 jq '.aggregation.overall_winner' comparison_report.json
 
 echo -e "\n=== SCORES ==="
-jq '.aggregation | {agent_os: .avg_agent_os_score, codex: .avg_codex_score}' comparison_report.json
+jq '.aggregation | {argus: .avg_argus_score, codex: .avg_codex_score}' comparison_report.json
 
 echo -e "\n=== COVERAGE ==="
-jq '.aggregation | {agent_os_coverage: .avg_agent_os_coverage, codex_coverage: .avg_codex_coverage}' comparison_report.json
+jq '.aggregation | {argus_coverage: .avg_argus_coverage, codex_coverage: .avg_codex_coverage}' comparison_report.json
 
 echo -e "\n=== Details in: comparison_report.md ==="
 ```
@@ -258,7 +258,7 @@ python scripts/pairwise_comparison.py ...
     ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
   run: |
     python scripts/pairwise_comparison.py \
-      --agent-os-findings results/agent_os.json \
+      --argus-findings results/argus.json \
       --codex-findings results/codex.json \
       --max-comparisons 20 \
       --output-markdown results/comparison.md
@@ -279,26 +279,26 @@ python scripts/pairwise_comparison.py ...
 ```bash
 # Basic comparison
 python scripts/pairwise_comparison.py \
-    --agent-os-findings agent_os.json \
+    --argus-findings argus.json \
     --codex-findings codex.json \
     --output report.json
 
 # With markdown (recommended)
 python scripts/pairwise_comparison.py \
-    --agent-os-findings agent_os.json \
+    --argus-findings argus.json \
     --codex-findings codex.json \
     --output report.json \
     --output-markdown report.md
 
 # Cost-limited (first 10)
 python scripts/pairwise_comparison.py \
-    --agent-os-findings agent_os.json \
+    --argus-findings argus.json \
     --codex-findings codex.json \
     --max-comparisons 10
 
 # With OpenAI judge
 python scripts/pairwise_comparison.py \
-    --agent-os-findings agent_os.json \
+    --argus-findings argus.json \
     --codex-findings codex.json \
     --judge-model openai
 

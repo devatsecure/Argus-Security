@@ -1,0 +1,21 @@
+{
+  "name": "test-web-app",
+  "version": "1.0.0",
+  "description": "Sample web application for testing XSS true positive detection",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js"
+  },
+  "keywords": ["web", "express", "api"],
+  "author": "Test Author",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.0",
+    "body-parser": "^1.20.0",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.15"
+  }
+}

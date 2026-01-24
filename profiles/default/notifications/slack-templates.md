@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document defines Slack notification templates for the Agent OS Code Reviewer system.
+This document defines Slack notification templates for the Argus Code Reviewer system.
 
 ---
 
@@ -470,7 +470,7 @@ curl -X POST -H 'Content-type: application/json' \
         "type": "section",
         "text": {
           "type": "mrkdwn",
-          "text": "This is a test notification from Agent OS Code Reviewer"
+          "text": "This is a test notification from Argus Code Reviewer"
         }
       }
     ]

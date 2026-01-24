@@ -1,8 +1,8 @@
-# 🔬 Agent-OS v4.1.0 Benchmark Guide
+# 🔬 Argus v4.1.0 Benchmark Guide
 
 **Purpose:** Validate production readiness claims for beta testing and GA launch
 
-**Repository:** agent-os-action (self-scan)
+**Repository:** argus-action (self-scan)
 - **Files:** 131 Python files
 - **Lines:** ~40,550 lines of code
 - **Type:** Medium-sized backend security tool
@@ -30,7 +30,7 @@ From CHANGELOG.md v4.1.0:
 #!/bin/bash
 # Run single scan with timing and cost tracking
 
-echo "=== Agent-OS v4.1.0 Benchmark Scan ==="
+echo "=== Argus v4.1.0 Benchmark Scan ==="
 echo "Repository: $(pwd)"
 echo "Start time: $(date)"
 START_TIME=$(date +%s)
@@ -185,9 +185,9 @@ Cost = (100k input * $3/1M) + (50k output * $15/1M) = $0.30 + $0.75 = $1.05
 ## 📝 Benchmark Report Template
 
 ```markdown
-# Agent-OS v4.1.0 Benchmark Results
+# Argus v4.1.0 Benchmark Results
 
-**Repository:** agent-os-action
+**Repository:** argus-action
 **Date:** YYYY-MM-DD
 **Scanner Version:** v4.1.0
 
@@ -279,7 +279,7 @@ Cost = (100k input * $3/1M) + (50k output * $15/1M) = $0.30 + $0.75 = $1.05
 
 To be filled in after running benchmarks:
 
-### Scan 1: agent-os-action (this repo)
+### Scan 1: argus-action (this repo)
 ```
 Date: ____
 Time: ____

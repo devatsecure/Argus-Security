@@ -1,6 +1,6 @@
 # 🦙 Ollama Setup Guide
 
-Run Agent-OS with **free, local LLMs** using Ollama. No API keys, no cloud costs!
+Run Argus with **free, local LLMs** using Ollama. No API keys, no cloud costs!
 
 ---
 
@@ -52,7 +52,7 @@ ollama pull codellama:34b
 ollama serve
 ```
 
-### 4. Run Agent-OS with Ollama
+### 4. Run Argus with Ollama
 
 ```bash
 docker run --rm \
@@ -60,7 +60,7 @@ docker run --rm \
   -e AI_PROVIDER=ollama \
   -e OLLAMA_ENDPOINT=http://host.docker.internal:11434 \
   -e MODEL=codellama \
-  ghcr.io/devatsecure/agent-os-action:latest \
+  ghcr.io/devatsecure/argus-action:latest \
   /workspace audit
 ```
 
@@ -80,7 +80,7 @@ python scripts/run_ai_audit.py /path/to/repo audit
 
 ### Option 2: Config File
 
-Create `.agent-os.yml`:
+Create `.argus.yml`:
 
 ```yaml
 # Use Ollama provider
@@ -123,8 +123,8 @@ jobs:
         run: |
           docker exec ${{ job.services.ollama.id }} ollama pull codellama
       
-      - name: Run Agent-OS with Ollama
-        uses: devatsecure/agent-os-action@v1
+      - name: Run Argus with Ollama
+        uses: devatsecure/argus-action@v1
         with:
           ai_provider: ollama
           ollama_endpoint: http://ollama:11434
@@ -202,7 +202,7 @@ docker run --rm \
   -v $(pwd):/workspace \
   -e AI_PROVIDER=ollama \
   -e OLLAMA_ENDPOINT=http://host.docker.internal:11434 \
-  ghcr.io/devatsecure/agent-os-action:latest \
+  ghcr.io/devatsecure/argus-action:latest \
   /workspace audit
 ```
 
@@ -317,7 +317,7 @@ export QUALITY_MODEL=llama3
 ✅ **Privacy required** - Code can't leave premises  
 ✅ **Offline work** - No internet connection  
 ✅ **High volume** - Scanning many repos  
-✅ **Learning/testing** - Try Agent-OS for free  
+✅ **Learning/testing** - Try Argus for free  
 
 ### When to Use Cloud APIs
 
@@ -351,9 +351,9 @@ export QUALITY_MODEL=llama3
 ## Getting Help
 
 - **Ollama Docs:** https://github.com/ollama/ollama
-- **Agent-OS Docs:** [README.md](../README.md)
-- **Issues:** [GitHub Issues](https://github.com/devatsecure/agent-os-action/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/devatsecure/agent-os-action/discussions)
+- **Argus Docs:** [README.md](../README.md)
+- **Issues:** [GitHub Issues](https://github.com/devatsecure/argus-action/issues)
+- **Discussions:** [GitHub Discussions](https://github.com/devatsecure/argus-action/discussions)
 
 ---
 

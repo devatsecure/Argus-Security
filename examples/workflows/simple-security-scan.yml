@@ -18,8 +18,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Run Agent-OS Security Scan
-        uses: devatsecure/agent-os-action@v1
+      - name: Run Argus Security Scan
+        uses: devatsecure/argus-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           severity_threshold: high
@@ -30,4 +30,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: security-results
-          path: .agent-os/reviews/
+          path: .argus/reviews/

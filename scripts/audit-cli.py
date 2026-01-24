@@ -18,7 +18,7 @@ class AgentOSAudit:
     def __init__(self, config_file: str = "audit-config.json"):
         self.config_file = config_file
         self.config = self.load_config()
-        self.audit_dir = Path("/tmp/securedotcom-audits")
+        self.audit_dir = Path("/tmp/argus-security-audits")
         self.audit_dir.mkdir(parents=True, exist_ok=True)
 
     def load_config(self) -> dict:

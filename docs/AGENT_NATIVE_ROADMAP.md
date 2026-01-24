@@ -2,13 +2,13 @@
 
 > **Analysis Date:** 2026-01-14
 > **Reference:** [Every.to Agent-Native Guide](https://every.to/guides/agent-native)
-> **Status:** Recommendations for enhancing Agent-OS with agent-native principles
+> **Status:** Recommendations for enhancing Argus with agent-native principles
 
 ---
 
 ## Executive Summary
 
-Agent-OS already follows many agent-native principles (atomic tools, modular architecture, clear verification). This document outlines enhancements to make the platform more "agent-first" by enabling:
+Argus already follows many agent-native principles (atomic tools, modular architecture, clear verification). This document outlines enhancements to make the platform more "agent-first" by enabling:
 
 1. **Dynamic tool composition** - Agents discover and combine security checks at runtime
 2. **Feedback loops** - System learns from user corrections to improve accuracy
@@ -17,7 +17,7 @@ Agent-OS already follows many agent-native principles (atomic tools, modular arc
 
 ---
 
-## Current State: What Agent-OS Does Well
+## Current State: What Argus Does Well
 
 | Principle | Implementation | Evidence |
 |-----------|----------------|----------|
@@ -126,7 +126,7 @@ from datetime import datetime
 class FeedbackCollector:
     """Collect user feedback on finding accuracy to improve AI triage."""
 
-    def __init__(self, feedback_dir: Path = Path(".agent-os/feedback")):
+    def __init__(self, feedback_dir: Path = Path(".argus/feedback")):
         self.feedback_dir = feedback_dir
         self.feedback_dir.mkdir(parents=True, exist_ok=True)
 
@@ -167,14 +167,14 @@ class FeedbackCollector:
         return "\n\n".join(examples)
 ```
 
-**CLI integration:** Add `agentos feedback` subcommand
+**CLI integration:** Add `argus feedback` subcommand
 ```bash
 # New CLI command
-./scripts/agentos feedback <finding-id> --mark fp --reason "Test fixture file"
-./scripts/agentos feedback <finding-id> --mark tp --reason "Verified exploitable"
+./scripts/argus feedback <finding-id> --mark fp --reason "Test fixture file"
+./scripts/argus feedback <finding-id> --mark tp --reason "Verified exploitable"
 
 # Integration with AI triage
-./scripts/agentos scan --enable-feedback-learning  # Use historical feedback in prompts
+./scripts/argus scan --enable-feedback-learning  # Use historical feedback in prompts
 ```
 
 **AI integration:** In `anthropic_provider.py`, inject few-shot examples:
@@ -201,7 +201,7 @@ Now analyze this finding:
 #### **3. Enhanced CLAUDE.md with Agent-Native Examples**
 **Status:** ⭐⭐ (Medium Impact, Low Effort)
 
-**What:** Add concrete examples of how agents should compose Agent-OS tools
+**What:** Add concrete examples of how agents should compose Argus tools
 
 **File to modify:** `CLAUDE.md`
 
@@ -215,11 +215,11 @@ When asked "What security checks can you run for SQL injection?":
 
 bash
 # Discover scanners with SQL injection detection
-./scripts/agentos list-scanners --capability sql-injection
+./scripts/argus list-scanners --capability sql-injection
 # Output: semgrep (cwe-89, cwe-564), custom-regex (sql-concat)
 
 # Get details on specific scanner
-./scripts/agentos scanner-info semgrep --show-rules | grep -i sql
+./scripts/argus scanner-info semgrep --show-rules | grep -i sql
 # Output: 47 rules matching SQL injection patterns
 
 
@@ -232,16 +232,16 @@ bash
 FILES=$(grep -rl 'params\[' app/controllers/)
 
 # Step 2: Run targeted SAST scan
-./scripts/agentos scan --scanners semgrep --rules injection \
+./scripts/argus scan --scanners semgrep --rules injection \
   --paths "$FILES" --output findings.json
 
 # Step 3: Apply AI triage with custom context
-./scripts/agentos triage findings.json \
+./scripts/argus triage findings.json \
   --context "This is a Rails app using strong params" \
   --output triaged.json
 
 # Step 4: Apply policy gate
-./scripts/agentos gate triaged.json --stage pr --policy policy/rego/strict.rego
+./scripts/argus gate triaged.json --stage pr --policy policy/rego/strict.rego
 
 
 ### 3. Explaining and Fixing Findings
@@ -250,11 +250,11 @@ When asked "Why was finding abc123 suppressed?":
 
 bash
 # Get full finding context with AI reasoning
-./scripts/agentos explain --finding-id abc123
+./scripts/argus explain --finding-id abc123
 # Output: AI explanation + suppression reason + confidence score
 
 # Generate fix suggestion
-./scripts/agentos suggest-fix --finding-id abc123 --language ruby
+./scripts/argus suggest-fix --finding-id abc123 --language ruby
 # Output: Code diff with suggested remediation
 
 
@@ -264,10 +264,10 @@ When user says "This finding is wrong - test files should be ignored":
 
 bash
 # Record feedback
-./scripts/agentos feedback abc123 --mark fp --reason "Test fixture file"
+./scripts/argus feedback abc123 --mark fp --reason "Test fixture file"
 
 # Re-run scan with feedback learning enabled
-./scripts/agentos scan --enable-feedback-learning
+./scripts/argus scan --enable-feedback-learning
 # AI now uses past feedback as few-shot examples
 
 
@@ -289,7 +289,7 @@ By composing primitives, agents can create workflows without hard-coding:
 ```
 
 **Benefits:**
-- Agents understand how to use Agent-OS compositionally
+- Agents understand how to use Argus compositionally
 - Reduces need for hard-coded workflows
 - Encourages tool discovery
 - **Estimated effort:** 1 day
@@ -301,7 +301,7 @@ By composing primitives, agents can create workflows without hard-coding:
 #### **4. Plugin Architecture for Scanners**
 **Status:** ⭐⭐ (Medium Impact, Medium Effort)
 
-**What:** Load custom scanners dynamically from `~/.agent-os/plugins/`
+**What:** Load custom scanners dynamically from `~/.argus/plugins/`
 
 **New file:** `scripts/scanner_registry.py`
 ```python
@@ -335,7 +335,7 @@ class ScannerRegistry:
             "gitleaks": GitleaksScanner,
         })
 
-    def _discover_plugins(self, plugin_dir: Path = Path.home() / ".agent-os" / "plugins"):
+    def _discover_plugins(self, plugin_dir: Path = Path.home() / ".argus" / "plugins"):
         """Load scanner plugins from filesystem."""
         if not plugin_dir.exists():
             return
@@ -376,17 +376,17 @@ class ScannerRegistry:
 
 **CLI integration:** Add `list-scanners` and `scanner-info` commands
 ```bash
-./scripts/agentos list-scanners
+./scripts/argus list-scanners
 # Output: trufflehog, semgrep, trivy, checkov, gitleaks, custom-osv
 
-./scripts/agentos list-scanners --capability secrets
+./scripts/argus list-scanners --capability secrets
 # Output: trufflehog, gitleaks
 
-./scripts/agentos scanner-info semgrep
+./scripts/argus scanner-info semgrep
 # Output: Name, version, capabilities, rule count, languages supported
 ```
 
-**Plugin example:** `~/.agent-os/plugins/osv_scanner.py`
+**Plugin example:** `~/.argus/plugins/osv_scanner.py`
 ```python
 from scripts.scanners.base_scanner import BaseScannerInterface
 
@@ -412,7 +412,7 @@ class OSVScanner(BaseScannerInterface):
 
 **What:** Let users define custom security checks in YAML
 
-**New directory:** `~/.agent-os/custom-rules/`
+**New directory:** `~/.argus/custom-rules/`
 
 **Rule format:**
 ```yaml
@@ -460,8 +460,8 @@ class CustomRuleLoader:
 
 **CLI integration:**
 ```bash
-./scripts/agentos scan --custom-rules ~/.agent-os/custom-rules/
-./scripts/agentos validate-rule ~/.agent-os/custom-rules/api-key-in-logs.yaml
+./scripts/argus scan --custom-rules ~/.argus/custom-rules/
+./scripts/argus validate-rule ~/.argus/custom-rules/api-key-in-logs.yaml
 ```
 
 **Benefits:**
@@ -477,7 +477,7 @@ class CustomRuleLoader:
 #### **6. Agent Conversation API**
 **Status:** ⭐⭐⭐⭐ (High Impact, High Effort)
 
-**What:** RESTful API for agents to interact with Agent-OS programmatically
+**What:** RESTful API for agents to interact with Argus programmatically
 
 **New file:** `scripts/api_server.py` (FastAPI)
 
@@ -486,7 +486,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
 
-app = FastAPI(title="Agent-OS API", version="1.0.0")
+app = FastAPI(title="Argus API", version="1.0.0")
 
 class ScanRequest(BaseModel):
     paths: List[str]
@@ -599,8 +599,8 @@ streamlit run scripts/dashboard/app.py
 - ✅ **Week 2:** Feedback Collection System
 
 **Deliverables:**
-- Decision logs in `.agent-os/decisions.jsonl`
-- `agentos feedback` CLI command
+- Decision logs in `.argus/decisions.jsonl`
+- `argus feedback` CLI command
 - Updated CLAUDE.md with agent interaction patterns
 
 ### Phase 2: Extensibility (4 weeks)
@@ -608,9 +608,9 @@ streamlit run scripts/dashboard/app.py
 - ✅ **Week 5-6:** Security Rule DSL + Custom Rule Loader
 
 **Deliverables:**
-- `~/.agent-os/plugins/` directory for custom scanners
-- `~/.agent-os/custom-rules/` for security checks
-- `agentos list-scanners`, `agentos validate-rule` commands
+- `~/.argus/plugins/` directory for custom scanners
+- `~/.argus/custom-rules/` for security checks
+- `argus list-scanners`, `argus validate-rule` commands
 
 ### Phase 3: API & Observability (6 weeks)
 - ✅ **Week 7-8:** Agent Conversation API (FastAPI)
@@ -663,5 +663,5 @@ streamlit run scripts/dashboard/app.py
 
 ---
 
-*Document created: 2026-01-14 by Claude (Agent-OS analysis)*
+*Document created: 2026-01-14 by Claude (Argus analysis)*
 *Last updated: 2026-01-14*

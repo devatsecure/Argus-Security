@@ -2,12 +2,12 @@
 
 ## Overview
 
-The **Pairwise Comparison Engine** evaluates Agent-OS findings against independent Codex analysis using AI-powered judges. It determines which analysis is better for each finding and aggregates results to identify overall strengths and weaknesses of each tool.
+The **Pairwise Comparison Engine** evaluates Argus findings against independent Codex analysis using AI-powered judges. It determines which analysis is better for each finding and aggregates results to identify overall strengths and weaknesses of each tool.
 
 ## Key Features
 
 ### 1. **Pairwise Evaluation**
-- Compares findings from Agent-OS (Anthropic Claude) with Codex (OpenAI) independent analysis
+- Compares findings from Argus (Anthropic Claude) with Codex (OpenAI) independent analysis
 - Matches findings based on similarity (file path, rule ID, severity, message)
 - Handles both matched and unmatched findings
 
@@ -59,7 +59,7 @@ AI-powered evaluator using Claude or GPT-4:
 
 #### PairwiseComparator
 Main orchestrator that:
-1. Matches findings between Agent-OS and Codex
+1. Matches findings between Argus and Codex
 2. Runs judge comparisons on matched pairs
 3. Evaluates unmatched findings
 4. Aggregates all results
@@ -79,12 +79,12 @@ Individual comparison result:
 @dataclass
 class PairwiseComparison:
     finding_id: str
-    agent_os_finding: Optional[Dict]
+    argus_finding: Optional[Dict]
     codex_finding: Optional[Dict]
-    match_type: str  # matched, agent_os_only, codex_only
-    agent_os_score: int  # 1-5
+    match_type: str  # matched, argus_only, codex_only
+    argus_score: int  # 1-5
     codex_score: int  # 1-5
-    winner: str  # agent_os, codex, tie
+    winner: str  # argus, codex, tie
     judge_reasoning: str
     key_differences: List[str]
     agreement_aspects: List[str]
@@ -102,12 +102,12 @@ Aggregated statistics:
 class PairwiseAggregation:
     total_comparisons: int
     matched_findings: int
-    agent_os_only: int
+    argus_only: int
     codex_only: int
-    agent_os_wins: int
+    argus_wins: int
     codex_wins: int
     ties: int
-    avg_agent_os_score: float
+    avg_argus_score: float
     avg_codex_score: float
     overall_winner: str
     recommendation: str
@@ -120,7 +120,7 @@ class PairwiseAggregation:
 
 ```bash
 python scripts/pairwise_comparison.py \
-    --agent-os-findings agent_os_results.json \
+    --argus-findings argus_results.json \
     --codex-findings codex_results.json \
     --output comparison_report.json
 ```
@@ -129,7 +129,7 @@ python scripts/pairwise_comparison.py \
 
 ```bash
 python scripts/pairwise_comparison.py \
-    --agent-os-findings agent_os_results.json \
+    --argus-findings argus_results.json \
     --codex-findings codex_results.json \
     --output comparison_report.json \
     --output-markdown comparison_report.md
@@ -139,7 +139,7 @@ python scripts/pairwise_comparison.py \
 
 ```bash
 python scripts/pairwise_comparison.py \
-    --agent-os-findings agent_os_results.json \
+    --argus-findings argus_results.json \
     --codex-findings codex_results.json \
     --judge-model openai \
     --output comparison_report.json
@@ -150,7 +150,7 @@ python scripts/pairwise_comparison.py \
 ```bash
 # Only run first 10 comparisons
 python scripts/pairwise_comparison.py \
-    --agent-os-findings agent_os_results.json \
+    --argus-findings argus_results.json \
     --codex-findings codex_results.json \
     --max-comparisons 10 \
     --output comparison_report.json
@@ -161,7 +161,7 @@ python scripts/pairwise_comparison.py \
 ```bash
 # Use 0.8 threshold (80% similarity required)
 python scripts/pairwise_comparison.py \
-    --agent-os-findings agent_os_results.json \
+    --argus-findings argus_results.json \
     --codex-findings codex_results.json \
     --match-threshold 0.8 \
     --output comparison_report.json
@@ -171,7 +171,7 @@ python scripts/pairwise_comparison.py \
 
 | Option | Required | Default | Description |
 |--------|----------|---------|-------------|
-| `--agent-os-findings` | Yes | N/A | Path to Agent-OS findings JSON |
+| `--argus-findings` | Yes | N/A | Path to Argus findings JSON |
 | `--codex-findings` | Yes | N/A | Path to Codex findings JSON |
 | `--output` | No | `pairwise_comparison_report.json` | Output file for JSON report |
 | `--output-markdown` | No | N/A | Optional markdown report path |
@@ -189,9 +189,9 @@ python scripts/dual_audit.py /path/to/repo --project-type backend-api
 
 # Step 2: Run pairwise comparison
 python scripts/pairwise_comparison.py \
-    --agent-os-findings .agent-os/dual-audit/20250114-120000/agent_os_results.json \
-    --codex-findings .agent-os/dual-audit/20250114-120000/codex_validation.json \
-    --output-markdown .agent-os/dual-audit/20250114-120000/pairwise_comparison.md
+    --argus-findings .argus/dual-audit/20250114-120000/argus_results.json \
+    --codex-findings .argus/dual-audit/20250114-120000/codex_validation.json \
+    --output-markdown .argus/dual-audit/20250114-120000/pairwise_comparison.md
 ```
 
 ## Output Format
@@ -204,23 +204,23 @@ python scripts/pairwise_comparison.py \
   "aggregation": {
     "total_comparisons": 15,
     "matched_findings": 12,
-    "agent_os_only": 2,
+    "argus_only": 2,
     "codex_only": 1,
-    "agent_os_wins": 7,
+    "argus_wins": 7,
     "codex_wins": 4,
     "ties": 4,
-    "avg_agent_os_score": 4.1,
+    "avg_argus_score": 4.1,
     "avg_codex_score": 3.8,
-    "overall_winner": "agent_os",
-    "recommendation": "Agent-OS provided superior analysis..."
+    "overall_winner": "argus",
+    "recommendation": "Argus provided superior analysis..."
   },
   "comparisons": [
     {
       "finding_id": "finding_001",
       "match_type": "matched",
-      "agent_os_score": 5,
+      "argus_score": 5,
       "codex_score": 4,
-      "winner": "agent_os",
+      "winner": "argus",
       "judge_reasoning": "...",
       "confidence": 0.95
     },
@@ -293,12 +293,12 @@ To compare specific finding types, create filtered input files:
 import json
 
 # Filter for high-severity findings
-with open('agent_os_results.json') as f:
+with open('argus_results.json') as f:
     data = json.load(f)
 
 high_sev = [f for f in data['findings'] if f['severity'] in ['high', 'critical']]
 
-with open('agent_os_high_severity.json', 'w') as f:
+with open('argus_high_severity.json', 'w') as f:
     json.dump({'findings': high_sev}, f)
 
 # Then run comparison
@@ -314,7 +314,7 @@ Create a script to run multiple comparisons:
 for repo in repo1 repo2 repo3; do
     echo "Comparing $repo..."
     python scripts/pairwise_comparison.py \
-        --agent-os-findings $repo/agent_os_results.json \
+        --argus-findings $repo/argus_results.json \
         --codex-findings $repo/codex_results.json \
         --output $repo/comparison_report.json \
         --output-markdown $repo/comparison_report.md
@@ -382,7 +382,7 @@ Test with small finding sets before large runs:
 ```bash
 # Test with first 5 findings
 python scripts/pairwise_comparison.py \
-    --agent-os-findings agent_os.json \
+    --argus-findings argus.json \
     --codex-findings codex.json \
     --max-comparisons 5
 ```
@@ -453,7 +453,7 @@ python scripts/pairwise_comparison.py --judge-model openai ...
     ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
   run: |
     python scripts/pairwise_comparison.py \
-      --agent-os-findings results/agent_os.json \
+      --argus-findings results/argus.json \
       --codex-findings results/codex.json \
       --output results/comparison.json \
       --output-markdown results/comparison.md
@@ -466,7 +466,7 @@ stage('Pairwise Comparison') {
     steps {
         sh '''
             python scripts/pairwise_comparison.py \
-                --agent-os-findings agent_os.json \
+                --argus-findings argus.json \
                 --codex-findings codex.json \
                 --output comparison_report.json
         '''
@@ -485,12 +485,12 @@ from pairwise_comparison import (
 )
 
 # Load findings
-agent_os_findings = load_findings('agent_os.json')
+argus_findings = load_findings('argus.json')
 codex_findings = load_findings('codex.json')
 
 # Run comparison
 comparator = PairwiseComparator(
-    agent_os_findings,
+    argus_findings,
     codex_findings,
     judge_model='anthropic'
 )
@@ -498,7 +498,7 @@ aggregation = comparator.run_comparison()
 
 # Access results
 print(f"Winner: {aggregation.overall_winner}")
-print(f"Agent-OS Score: {aggregation.avg_agent_os_score:.1f}")
+print(f"Argus Score: {aggregation.avg_argus_score:.1f}")
 print(f"Codex Score: {aggregation.avg_codex_score:.1f}")
 ```
 
@@ -517,7 +517,7 @@ Potential improvements for future versions:
 
 ## Related Documentation
 
-- [Dual Audit Guide](./dual_audit_guide.md) - Running Agent-OS + Codex
+- [Dual Audit Guide](./dual_audit_guide.md) - Running Argus + Codex
 - [Finding Normalization](./normalizer_guide.md) - Understanding finding format
 - [Provider Integration](./provider_guide.md) - LLM provider details
 - [Architecture Overview](./architecture/overview.md) - System design

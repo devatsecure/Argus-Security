@@ -4,10 +4,10 @@
 
 A comprehensive monitoring system for dual-audit results has been successfully implemented. The system provides historical tracking, agreement trend analysis, criteria drift detection, and intelligent alerting to maintain security audit quality standards.
 
-**Location**: `/Users/waseem.ahmed/Repos/agent-os-action/scripts/audit_monitor.py`
-**Test Suite**: `/Users/waseem.ahmed/Repos/agent-os-action/tests/unit/test_audit_monitor.py`
-**Documentation**: `/Users/waseem.ahmed/Repos/agent-os-action/docs/audit_monitor_guide.md`
-**Integration Example**: `/Users/waseem.ahmed/Repos/agent-os-action/scripts/audit_monitor_integration_example.py`
+**Location**: `/Users/waseem.ahmed/Repos/argus-action/scripts/audit_monitor.py`
+**Test Suite**: `/Users/waseem.ahmed/Repos/argus-action/tests/unit/test_audit_monitor.py`
+**Documentation**: `/Users/waseem.ahmed/Repos/argus-action/docs/audit_monitor_guide.md`
+**Integration Example**: `/Users/waseem.ahmed/Repos/argus-action/scripts/audit_monitor_integration_example.py`
 
 ## Files Created
 
@@ -134,7 +134,7 @@ Complete metrics package for visualization:
   "current_run": {
     "id": "audit-20260114-abc123",
     "timestamp": "2026-01-14T12:34:56+00:00",
-    "agent_os_findings": 45,
+    "argus_findings": 45,
     "codex_findings": 48,
     "agreed_findings": 42,
     "severity_distribution": {...}
@@ -168,10 +168,10 @@ CREATE TABLE audit_runs (
   id TEXT PRIMARY KEY,
   timestamp TEXT NOT NULL,
   repo TEXT NOT NULL,
-  agent_os_findings_count INTEGER,
+  argus_findings_count INTEGER,
   codex_findings_count INTEGER,
   agreed_findings_count INTEGER,
-  agent_os_only_count INTEGER,
+  argus_only_count INTEGER,
   codex_only_count INTEGER,
   agreement_rate REAL NOT NULL,
   average_score_difference REAL,
@@ -187,11 +187,11 @@ CREATE TABLE findings_comparison (
   id TEXT PRIMARY KEY,
   audit_run_id TEXT NOT NULL,
   finding_id TEXT NOT NULL,
-  agent_os_score REAL NOT NULL,    -- 1.0-5.0 scale
+  argus_score REAL NOT NULL,    -- 1.0-5.0 scale
   codex_score REAL NOT NULL,       -- 1.0-5.0 scale
   score_difference REAL NOT NULL,
   agreed INTEGER NOT NULL,         -- 0 or 1
-  agent_os_verdict TEXT,
+  argus_verdict TEXT,
   codex_verdict TEXT,
   severity TEXT,                   -- critical, high, medium, low
   category TEXT,                   -- SAST, DEPS, SECRETS, IAC
@@ -314,7 +314,7 @@ pytest tests/unit/test_audit_monitor.py::TestDriftDetection -v
 from audit_monitor import AuditMonitor, AuditRun, FindingComparison
 
 monitor = AuditMonitor(
-    db_path=".agent-os/audit_monitor.db",
+    db_path=".argus/audit_monitor.db",
     agreement_threshold=0.75,
     drift_sensitivity=0.15
 )
@@ -327,10 +327,10 @@ audit_run = AuditRun(
     timestamp="2026-01-14T12:34:56Z",
     repo="my-repo",
     project_type="backend-api",
-    agent_os_findings_count=45,
+    argus_findings_count=45,
     codex_findings_count=48,
     agreed_findings_count=42,
-    agent_os_only_count=3,
+    argus_only_count=3,
     codex_only_count=6,
     agreement_rate=0.88,
     average_score_difference=0.22,
@@ -343,11 +343,11 @@ findings = [
         id="finding-001",
         audit_run_id=audit_run.id,
         finding_id="finding-001",
-        agent_os_score=4.8,
+        argus_score=4.8,
         codex_score=4.5,
         score_difference=0.3,
         agreed=True,
-        agent_os_verdict="definitely_valid",
+        argus_verdict="definitely_valid",
         codex_verdict="likely_valid",
         severity="critical",
         category="SAST",
@@ -380,7 +380,7 @@ metrics = monitor.generate_dashboard_metrics(days=30)
 
 See `scripts/audit_monitor_integration_example.py` for complete integration example:
 
-1. Run Agent-OS audit
+1. Run Argus audit
 2. Run Codex validation
 3. Compare findings and calculate agreement
 4. Create AuditRun with metrics

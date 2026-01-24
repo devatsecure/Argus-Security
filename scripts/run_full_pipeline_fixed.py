@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Fixed Agent-OS Security Pipeline - Skipping Foundation-Sec and Claude
+Fixed Argus Security Pipeline - Skipping Foundation-Sec and Claude
 Uses Cursor AI for AI analysis, all other components working
 
 Components:
@@ -26,7 +26,7 @@ class FixedPipelineOrchestrator:
     
     def __init__(self, target_repo: str, output_dir: str = None):
         self.target_repo = Path(target_repo).resolve()
-        self.output_dir = Path(output_dir or self.target_repo / ".agent-os" / "full-scan-fixed")
+        self.output_dir = Path(output_dir or self.target_repo / ".argus" / "full-scan-fixed")
         self.output_dir.mkdir(parents=True, exist_ok=True)
         
         self.results = {
@@ -283,7 +283,7 @@ class FixedPipelineOrchestrator:
     def run_full_pipeline(self):
         """Run the fixed pipeline"""
         print("\n" + "="*80)
-        print("🚀 FIXED AGENT-OS PIPELINE")
+        print("🚀 FIXED ARGUS PIPELINE")
         print("="*80)
         print(f"Target: {self.target_repo}")
         print(f"Output: {self.output_dir}")

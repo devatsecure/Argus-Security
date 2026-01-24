@@ -1,7 +1,7 @@
 # Dual-Audit Script Enhancements
 
 ## Overview
-Enhanced `/Users/waseem.ahmed/Repos/agent-os-action/scripts/dual_audit.py` with rigorous validation improvements including explicit scoring rubric, chain-of-thought reasoning, and temperature control for consistent security findings validation.
+Enhanced `/Users/waseem.ahmed/Repos/argus-action/scripts/dual_audit.py` with rigorous validation improvements including explicit scoring rubric, chain-of-thought reasoning, and temperature control for consistent security findings validation.
 
 ## Changes Summary
 
@@ -122,7 +122,7 @@ Enhancements:
 ## Implementation Details
 
 ### Code Location
-File: `/Users/waseem.ahmed/Repos/agent-os-action/scripts/dual_audit.py`
+File: `/Users/waseem.ahmed/Repos/argus-action/scripts/dual_audit.py`
 
 ### Key Changes
 
@@ -200,7 +200,7 @@ python scripts/dual_audit.py /path/to/repo --project-type backend-api
 ```
 
 The validation process now includes:
-1. Agent-OS generates initial findings
+1. Argus generates initial findings
 2. Codex performs structured chain-of-thought validation
 3. Each finding receives a 1-5 confidence score
 4. Comprehensive report includes validation methodology
@@ -213,13 +213,13 @@ To verify the enhancements:
 # Verify syntax
 python3 -m py_compile scripts/dual_audit.py
 
-# Run dual audit (requires Codex and Agent-OS installed)
+# Run dual audit (requires Codex and Argus installed)
 python scripts/dual_audit.py /path/to/target --project-type backend-api
 ```
 
 ## Files Modified
 
-- `/Users/waseem.ahmed/Repos/agent-os-action/scripts/dual_audit.py` - Enhanced with all improvements
+- `/Users/waseem.ahmed/Repos/argus-action/scripts/dual_audit.py` - Enhanced with all improvements
 
 ## Backward Compatibility
 

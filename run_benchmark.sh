@@ -1,11 +1,11 @@
 #!/bin/bash
-# Agent-OS v4.1.0 Quick Benchmark Script
+# Argus v4.1.0 Quick Benchmark Script
 
 set -e
 
 echo "╔══════════════════════════════════════════════════════════════════╗"
 echo "║                                                                  ║"
-echo "║         Agent-OS v4.1.0 Benchmark Scan                           ║"
+echo "║         Argus v4.1.0 Benchmark Scan                           ║"
 echo "║                                                                  ║"
 echo "╚══════════════════════════════════════════════════════════════════╝"
 echo ""

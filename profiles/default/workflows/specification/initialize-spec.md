@@ -16,7 +16,7 @@ IF you were given a description of the feature, then use that to initiate a new 
 
 OTHERWISE follow these steps to get the description:
 
-1. Check `@agent-os/product/roadmap.md` to find the next feature in the roadmap.
+1. Check `@argus/product/roadmap.md` to find the next feature in the roadmap.
 2. OUTPUT the following to user and WAIT for user's response:
 
 ```
@@ -43,7 +43,7 @@ SPEC_NAME="[kebab-case-name]"
 DATED_SPEC_NAME="${TODAY}-${SPEC_NAME}"
 
 # Store this path for output
-SPEC_PATH="agent-os/specs/$DATED_SPEC_NAME"
+SPEC_PATH="argus/specs/$DATED_SPEC_NAME"
 
 # Create folder structure following architecture
 mkdir -p $SPEC_PATH/planning

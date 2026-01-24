@@ -1,3 +1,3 @@
 """
-Test utilities for Agent-OS integration tests
+Test utilities for Argus integration tests
 """

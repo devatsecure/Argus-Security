@@ -126,8 +126,8 @@ async def main():
     with open(main_report_path, "w") as f:
         f.write(report)
 
-    # Also save to agent-os/reviews for comparison
-    comparison_path = Path(repo_path) / "agent-os" / "reviews" / "enhanced-audit-report.md"
+    # Also save to argus/reviews for comparison
+    comparison_path = Path(repo_path) / "argus" / "reviews" / "enhanced-audit-report.md"
     with open(comparison_path, "w") as f:
         f.write(report)
 

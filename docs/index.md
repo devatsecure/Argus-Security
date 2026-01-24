@@ -1,12 +1,12 @@
-# Agent-OS Documentation
+# Argus Documentation
 
-Welcome to Agent-OS, the most comprehensive open-source AI-powered security platform for code analysis.
+Welcome to Argus, the most comprehensive open-source AI-powered security platform for code analysis.
 
 ---
 
 ## 🚀 Getting Started
 
-Start here if you're new to Agent-OS:
+Start here if you're new to Argus:
 
 - **[Quick Start Guide](../QUICKSTART.md)** - Get up and running in 5 minutes
 - **[Installation & Setup](../README.md#installation)** - Detailed installation instructions
@@ -19,7 +19,7 @@ Start here if you're new to Agent-OS:
 
 ### Features
 
-Learn about Agent-OS capabilities:
+Learn about Argus capabilities:
 
 - **[Scanner Overview](references/scanner-reference.md)** - All 13 integrated security features
   - TruffleHog - Verified secret detection
@@ -57,7 +57,7 @@ Learn about Agent-OS capabilities:
 
 ### Guides
 
-How to use Agent-OS effectively:
+How to use Argus effectively:
 
 - **[Best Practices](best-practices.md)** - Recommended patterns and configurations
 - **[Usage Examples](EXAMPLES.md)** - Common use cases and workflows
@@ -83,7 +83,7 @@ Technical documentation and API reference:
 
 ## 🏗️ Architecture
 
-Understand how Agent-OS works:
+Understand how Argus works:
 
 - **[System Overview](architecture/overview.md)** - High-level architecture and data flow
 - **[Multi-Scanner Architecture](adrs/0002-multi-scanner-architecture.md)** - Why we use 4+ scanners in parallel
@@ -151,7 +151,7 @@ Real-world scenarios:
 Block PRs with verified threats:
 
 ```yaml
-- uses: securedotcom/agent-os-action@v1
+- uses: devatsecure/Argus-Security@v1
   with:
     anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
     fail-on-blockers: 'true'
@@ -187,7 +187,7 @@ python scripts/run_ai_audit.py --only-changed --max-files 20
 SOC 2, PCI-DSS audit reports:
 
 ```bash
-./scripts/agentos gate --stage release --sbom-present
+./scripts/argus gate --stage release --sbom-present
 ```
 
 **Benefits:** Automated compliance validation
@@ -221,15 +221,15 @@ SOC 2, PCI-DSS audit reports:
 ### Common Issues
 
 - **[FAQ](FAQ.md)** - Frequently asked questions
-- **[GitHub Issues](https://github.com/securedotcom/agent-os-action/issues)** - Known issues and bug reports
-- **[GitHub Discussions](https://github.com/securedotcom/agent-os-action/discussions)** - Community Q&A
+- **[GitHub Issues](https://github.com/devatsecure/Argus-Security/issues)** - Known issues and bug reports
+- **[GitHub Discussions](https://github.com/devatsecure/Argus-Security/discussions)** - Community Q&A
 
 ### Quick Fixes
 
 **"Cost limit exceeded"** → Use Ollama (free) or increase limit
 **"Scanner X not found"** → Scanners auto-install on first run
 **"Too many false positives"** → Enable AI triage with Claude
-**"Agent-OS is too slow"** → Use `--only-changed` and `--max-files 50`
+**"Argus is too slow"** → Use `--only-changed` and `--max-files 50`
 
 See [README.md Troubleshooting](../README.md#troubleshooting) for more.
 
@@ -247,11 +247,11 @@ See [README.md Troubleshooting](../README.md#troubleshooting) for more.
 
 - Reducing False Positives by 60-70% (coming soon)
 - How We Built an Agent-Native Security Platform (coming soon)
-- Migrating from Manual Security Reviews to Agent-OS (coming soon)
+- Migrating from Manual Security Reviews to Argus (coming soon)
 
 ### Community
 
-- **[GitHub Discussions](https://github.com/securedotcom/agent-os-action/discussions)** - Ask questions, share tips
+- **[GitHub Discussions](https://github.com/devatsecure/Argus-Security/discussions)** - Ask questions, share tips
 - **[Contributing Guide](../.github/CONTRIBUTING.md)** - How to contribute
 - **[Code of Conduct](../.github/CODE_OF_CONDUCT.md)** - Community guidelines
 
@@ -272,7 +272,7 @@ See what's coming next:
 
 ## 🤝 Contributing
 
-Agent-OS is open source and welcomes contributions!
+Argus is open source and welcomes contributions!
 
 - **[Contributing Guide](../.github/CONTRIBUTING.md)** - How to contribute code, docs, or ideas
 - **[Development Setup](../.github/CONTRIBUTING.md#development-setup)** - Set up your dev environment
@@ -295,14 +295,14 @@ Agent-OS is open source and welcomes contributions!
 
 - **Documentation:** You're here!
 - **FAQ:** [Frequently Asked Questions](FAQ.md)
-- **GitHub Issues:** [Report bugs](https://github.com/securedotcom/agent-os-action/issues)
-- **GitHub Discussions:** [Ask questions](https://github.com/securedotcom/agent-os-action/discussions)
+- **GitHub Issues:** [Report bugs](https://github.com/devatsecure/Argus-Security/issues)
+- **GitHub Discussions:** [Ask questions](https://github.com/devatsecure/Argus-Security/discussions)
 
 ### Enterprise Support
 
 For commercial support, SLA, custom integrations, or consulting:
 
-- **Email:** enterprise@agent-os.io
+- **Email:** enterprise@argus.io
 - **Enterprise Docs:** [PLATFORM.md](../PLATFORM.md)
 
 ---
@@ -315,14 +315,14 @@ For commercial support, SLA, custom integrations, or consulting:
 - [PLATFORM.md](../PLATFORM.md) - Platform deployment guide
 
 ### Code
-- [GitHub Repository](https://github.com/securedotcom/agent-os-action)
-- [GitHub Releases](https://github.com/securedotcom/agent-os-action/releases)
-- [Docker Images](https://github.com/securedotcom/agent-os-action/pkgs/container/agent-os-action)
+- [GitHub Repository](https://github.com/devatsecure/Argus-Security)
+- [GitHub Releases](https://github.com/devatsecure/Argus-Security/releases)
+- [Docker Images](https://github.com/devatsecure/Argus-Security/pkgs/container/argus-action)
 
 ### Community
-- [GitHub Discussions](https://github.com/securedotcom/agent-os-action/discussions)
-- [Issue Tracker](https://github.com/securedotcom/agent-os-action/issues)
-- [Pull Requests](https://github.com/securedotcom/agent-os-action/pulls)
+- [GitHub Discussions](https://github.com/devatsecure/Argus-Security/discussions)
+- [Issue Tracker](https://github.com/devatsecure/Argus-Security/issues)
+- [Pull Requests](https://github.com/devatsecure/Argus-Security/pulls)
 
 ---
 
@@ -332,6 +332,6 @@ For commercial support, SLA, custom integrations, or consulting:
 
 *Making security scanning intelligent, observable, and self-improving.*
 
-[⭐ Star on GitHub](https://github.com/securedotcom/agent-os-action) | [📖 Read the Docs](#) | [💬 Join Discussions](https://github.com/securedotcom/agent-os-action/discussions)
+[⭐ Star on GitHub](https://github.com/devatsecure/Argus-Security) | [📖 Read the Docs](#) | [💬 Join Discussions](https://github.com/devatsecure/Argus-Security/discussions)
 
 </div>

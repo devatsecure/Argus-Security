@@ -50,6 +50,6 @@ body:
         - Low - Nice to have
         - Medium - Would improve my workflow
         - High - Blocking my use case
-        - Critical - Can't use Agent-OS without it
+        - Critical - Can't use Argus without it
     validations:
       required: true

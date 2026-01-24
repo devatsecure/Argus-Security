@@ -2,7 +2,7 @@
 
 ## Overview
 
-The **Audit Monitor** (`audit_monitor.py`) is a sophisticated monitoring system that tracks and analyzes dual-audit results from Agent-OS and Codex validation. It provides historical tracking, trend analysis, criteria drift detection, and intelligent alerting to maintain high quality assurance standards.
+The **Audit Monitor** (`audit_monitor.py`) is a sophisticated monitoring system that tracks and analyzes dual-audit results from Argus and Codex validation. It provides historical tracking, trend analysis, criteria drift detection, and intelligent alerting to maintain high quality assurance standards.
 
 ## Architecture
 
@@ -46,10 +46,10 @@ CREATE TABLE audit_runs (
     timestamp TEXT NOT NULL,
     repo TEXT NOT NULL,
     project_type TEXT,
-    agent_os_findings_count INTEGER,
+    argus_findings_count INTEGER,
     codex_findings_count INTEGER,
     agreed_findings_count INTEGER,
-    agent_os_only_count INTEGER,
+    argus_only_count INTEGER,
     codex_only_count INTEGER,
     agreement_rate REAL NOT NULL,
     average_score_difference REAL,
@@ -66,18 +66,18 @@ CREATE TABLE audit_runs (
 - `severity_distribution`: Breakdown by severity levels (critical, high, medium, low)
 
 #### 2. `findings_comparison` Table
-Detailed comparison of individual findings between Agent-OS and Codex.
+Detailed comparison of individual findings between Argus and Codex.
 
 ```sql
 CREATE TABLE findings_comparison (
     id TEXT PRIMARY KEY,
     audit_run_id TEXT NOT NULL,
     finding_id TEXT NOT NULL,
-    agent_os_score REAL NOT NULL,      -- 1.0-5.0 scale
+    argus_score REAL NOT NULL,      -- 1.0-5.0 scale
     codex_score REAL NOT NULL,         -- 1.0-5.0 scale
-    score_difference REAL NOT NULL,    -- |agent_os - codex|
+    score_difference REAL NOT NULL,    -- |argus - codex|
     agreed INTEGER NOT NULL,           -- 0 or 1
-    agent_os_verdict TEXT,             -- definitely_valid, likely_valid, etc.
+    argus_verdict TEXT,             -- definitely_valid, likely_valid, etc.
     codex_verdict TEXT,
     severity TEXT,                     -- critical, high, medium, low
     category TEXT,                     -- SAST, DEPS, SECRETS, IAC, etc.
@@ -139,7 +139,7 @@ from audit_monitor import AuditMonitor, AuditRun, FindingComparison
 
 # Initialize monitor with custom settings
 monitor = AuditMonitor(
-    db_path=".agent-os/audit_monitor.db",
+    db_path=".argus/audit_monitor.db",
     agreement_threshold=0.75,    # Alert if agreement < 75%
     drift_sensitivity=0.15,      # Detect drift if change > 15%
     enable_cleanup=True           # Auto-cleanup old records
@@ -157,10 +157,10 @@ audit_run = AuditRun(
     timestamp=datetime.now(timezone.utc).isoformat(),
     repo="my-repo",
     project_type="backend-api",
-    agent_os_findings_count=45,
+    argus_findings_count=45,
     codex_findings_count=48,
     agreed_findings_count=42,
-    agent_os_only_count=3,
+    argus_only_count=3,
     codex_only_count=6,
     agreement_rate=0.88,
     average_score_difference=0.24,
@@ -183,11 +183,11 @@ findings = [
         id="finding-001",
         audit_run_id=audit_run.id,
         finding_id="finding-001",
-        agent_os_score=4.8,
+        argus_score=4.8,
         codex_score=4.5,
         score_difference=0.3,
         agreed=True,
-        agent_os_verdict="definitely_valid",
+        argus_verdict="definitely_valid",
         codex_verdict="likely_valid",
         severity="critical",
         category="SAST",
@@ -333,7 +333,7 @@ All drift detection algorithms are statistical and use configurable sensitivity 
 
 #### Score Distribution (Kolmogorov-Smirnov)
 ```
-1. Extract all score differences (agent_os_score - codex_score) for current run
+1. Extract all score differences (argus_score - codex_score) for current run
 2. Extract all score differences from historical runs
 3. Calculate empirical CDFs for both distributions
 4. K-S statistic = max|CDF_current - CDF_historical|
@@ -372,7 +372,7 @@ final = min(100.0, max(0.0, total))
 
 ```python
 monitor = AuditMonitor(
-    db_path=".agent-os/audit_monitor.db",    # Database location
+    db_path=".argus/audit_monitor.db",    # Database location
     agreement_threshold=0.75,                  # Alert threshold (0-1)
     drift_sensitivity=0.15,                    # Drift detection sensitivity (0-1, lower = more sensitive)
     enable_cleanup=True                        # Auto-cleanup old records
@@ -421,8 +421,8 @@ from audit_monitor import AuditMonitor, AuditRun, FindingComparison
 
 # Run dual audit
 orchestrator = DualAuditOrchestrator(target_repo, project_type)
-agent_os_results = orchestrator.run_agent_os_audit()
-codex_results = orchestrator.run_codex_validation(agent_os_results)
+argus_results = orchestrator.run_argus_audit()
+codex_results = orchestrator.run_codex_validation(argus_results)
 
 # Calculate agreement metrics
 findings_comparisons = []
@@ -431,11 +431,11 @@ for finding in codex_results["compared_findings"]:
         id=f"{finding['id']}-comparison",
         audit_run_id=run_id,
         finding_id=finding['id'],
-        agent_os_score=finding['agent_os_score'],
+        argus_score=finding['argus_score'],
         codex_score=finding['codex_score'],
-        score_difference=abs(finding['agent_os_score'] - finding['codex_score']),
+        score_difference=abs(finding['argus_score'] - finding['codex_score']),
         agreed=finding['agreed'],
-        agent_os_verdict=finding['agent_os_verdict'],
+        argus_verdict=finding['argus_verdict'],
         codex_verdict=finding['codex_verdict'],
         severity=finding['severity'],
         category=finding['category'],

@@ -1,7 +1,7 @@
 """
 Unified Finding Schema - Strict Pydantic v2 validation
 
-This is the core schema for all security findings in Agent-OS.
+This is the core schema for all security findings in Argus.
 All normalizers must output findings in this format.
 
 Key fixes:

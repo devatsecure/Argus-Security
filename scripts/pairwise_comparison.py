@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Pairwise Comparison Engine - Evaluate Agent-OS vs Independent Codex Findings
+Pairwise Comparison Engine - Evaluate Argus vs Independent Codex Findings
 Implements direct comparison with judge-based scoring to determine which analysis is better
 
 Usage:
     python scripts/pairwise_comparison.py \
-        --agent-os-findings agent_os_results.json \
+        --argus-findings argus_results.json \
         --codex-findings codex_results.json \
         --output comparison_report.json
 
@@ -52,14 +52,14 @@ class PairwiseComparison:
     """Comparison of a single finding pair"""
 
     finding_id: str
-    agent_os_finding: Optional[Dict[str, Any]] = None
+    argus_finding: Optional[Dict[str, Any]] = None
     codex_finding: Optional[Dict[str, Any]] = None
-    match_type: str = "unmatched"  # matched, agent_os_only, codex_only
+    match_type: str = "unmatched"  # matched, argus_only, codex_only
 
     # Judge scores (1-5 scale)
-    agent_os_score: int = 0  # 1=very poor, 5=excellent
+    argus_score: int = 0  # 1=very poor, 5=excellent
     codex_score: int = 0
-    winner: str = "tie"  # agent_os, codex, tie
+    winner: str = "tie"  # argus, codex, tie
 
     # Detailed reasoning
     judge_reasoning: str = ""
@@ -87,26 +87,26 @@ class PairwiseAggregation:
 
     total_comparisons: int = 0
     matched_findings: int = 0
-    agent_os_only: int = 0
+    argus_only: int = 0
     codex_only: int = 0
 
     # Win statistics
-    agent_os_wins: int = 0
+    argus_wins: int = 0
     codex_wins: int = 0
     ties: int = 0
 
     # Score aggregation
-    avg_agent_os_score: float = 0.0
+    avg_argus_score: float = 0.0
     avg_codex_score: float = 0.0
-    avg_agent_os_coverage: float = 0.0
+    avg_argus_coverage: float = 0.0
     avg_codex_coverage: float = 0.0
-    avg_agent_os_accuracy: float = 0.0
+    avg_argus_accuracy: float = 0.0
     avg_codex_accuracy: float = 0.0
-    avg_agent_os_actionability: float = 0.0
+    avg_argus_actionability: float = 0.0
     avg_codex_actionability: float = 0.0
 
     # Preference metrics
-    agent_os_win_rate: float = 0.0  # % of comparisons Agent-OS won
+    argus_win_rate: float = 0.0  # % of comparisons Argus won
     codex_win_rate: float = 0.0
     tie_rate: float = 0.0
 
@@ -116,18 +116,18 @@ class PairwiseAggregation:
     disagreement: int = 0  # Found different issues
 
     # Unique findings
-    critical_by_agent_os: int = 0
+    critical_by_argus: int = 0
     critical_by_codex: int = 0
-    high_by_agent_os: int = 0
+    high_by_argus: int = 0
     high_by_codex: int = 0
 
     # Overall winner
-    overall_winner: str = "tie"  # agent_os, codex, tie
+    overall_winner: str = "tie"  # argus, codex, tie
     recommendation: str = ""
 
 
 class FindingMatcher:
-    """Matches findings between Agent-OS and Codex results"""
+    """Matches findings between Argus and Codex results"""
 
     def __init__(self, match_threshold: float = 0.7):
         """Initialize matcher with configurable threshold
@@ -139,19 +139,19 @@ class FindingMatcher:
 
     def match_findings(
         self,
-        agent_os_findings: List[Dict[str, Any]],
+        argus_findings: List[Dict[str, Any]],
         codex_findings: List[Dict[str, Any]]
     ) -> Tuple[List[Tuple[Dict, Dict]], List[Dict], List[Dict]]:
         """Match findings between two sets based on similarity
 
         Returns:
-            Tuple of (matched_pairs, agent_os_only, codex_only)
+            Tuple of (matched_pairs, argus_only, codex_only)
         """
         matched_pairs: List[Tuple[Dict, Dict]] = []
         matched_codex_indices = set()
-        unmatched_agent_os = []
+        unmatched_argus = []
 
-        for agent_finding in agent_os_findings:
+        for agent_finding in argus_findings:
             best_match = None
             best_score = 0.0
             best_index = -1
@@ -170,14 +170,14 @@ class FindingMatcher:
                 matched_pairs.append((agent_finding, best_match))
                 matched_codex_indices.add(best_index)
             else:
-                unmatched_agent_os.append(agent_finding)
+                unmatched_argus.append(agent_finding)
 
         unmatched_codex = [
             f for idx, f in enumerate(codex_findings)
             if idx not in matched_codex_indices
         ]
 
-        return matched_pairs, unmatched_agent_os, unmatched_codex
+        return matched_pairs, unmatched_argus, unmatched_codex
 
     def _calculate_similarity(self, finding1: Dict[str, Any], finding2: Dict[str, Any]) -> float:
         """Calculate similarity score between two findings (0-1)
@@ -272,26 +272,26 @@ class PairwiseJudge:
     )
     def compare_matched_findings(
         self,
-        agent_os_finding: Dict[str, Any],
+        argus_finding: Dict[str, Any],
         codex_finding: Dict[str, Any]
     ) -> PairwiseComparison:
         """Compare two matched findings and return detailed comparison
 
         Args:
-            agent_os_finding: Finding from Agent-OS
+            argus_finding: Finding from Argus
             codex_finding: Finding from Codex independent analysis
 
         Returns:
             PairwiseComparison with scores and reasoning
         """
-        comparison_prompt = self._build_comparison_prompt(agent_os_finding, codex_finding)
+        comparison_prompt = self._build_comparison_prompt(argus_finding, codex_finding)
 
         response = self._get_judge_response(comparison_prompt)
 
         # Parse judge response and extract scores
         comparison = self._parse_judge_response(
             response,
-            agent_os_finding,
+            argus_finding,
             codex_finding,
             "matched"
         )
@@ -301,7 +301,7 @@ class PairwiseJudge:
     def compare_unmatched_finding(
         self,
         finding: Dict[str, Any],
-        tool_name: str  # "agent_os" or "codex"
+        tool_name: str  # "argus" or "codex"
     ) -> PairwiseComparison:
         """Evaluate an unmatched finding (found by only one tool)
 
@@ -327,21 +327,21 @@ class PairwiseJudge:
 
     def _build_comparison_prompt(
         self,
-        agent_os_finding: Dict[str, Any],
+        argus_finding: Dict[str, Any],
         codex_finding: Dict[str, Any]
     ) -> str:
         """Build prompt for comparing two matched findings"""
         prompt = f"""You are a security expert evaluating two security analysis reports.
 Both tools found a similar security issue. Your job is to compare their analyses and determine which one is better.
 
-AGENT-OS FINDING (Anthropic Claude):
-File: {agent_os_finding.get('path', 'unknown')}
-Severity: {agent_os_finding.get('severity', 'unknown')}
-Rule: {agent_os_finding.get('rule_id', agent_os_finding.get('rule_name', 'unknown'))}
-Message: {agent_os_finding.get('message', 'unknown')}
-Evidence: {json.dumps(agent_os_finding.get('evidence', {}), indent=2)}
-References: {json.dumps(agent_os_finding.get('references', []))}
-Confidence: {agent_os_finding.get('confidence', 'unknown')}
+ARGUS FINDING (Anthropic Claude):
+File: {argus_finding.get('path', 'unknown')}
+Severity: {argus_finding.get('severity', 'unknown')}
+Rule: {argus_finding.get('rule_id', argus_finding.get('rule_name', 'unknown'))}
+Message: {argus_finding.get('message', 'unknown')}
+Evidence: {json.dumps(argus_finding.get('evidence', {}), indent=2)}
+References: {json.dumps(argus_finding.get('references', []))}
+Confidence: {argus_finding.get('confidence', 'unknown')}
 
 CODEX FINDING (Independent Analysis):
 File: {codex_finding.get('path', 'unknown')}
@@ -368,7 +368,7 @@ For each tool, rate on the evaluation criteria above. Then determine:
 
 RESPOND WITH JSON ONLY, no other text:
 {{
-    "agent_os_scores": {{
+    "argus_scores": {{
         "coverage": <1-5>,
         "accuracy": <1-5>,
         "actionability": <1-5>,
@@ -382,7 +382,7 @@ RESPOND WITH JSON ONLY, no other text:
         "detail": <1-5>,
         "risk_assessment": <1-5>
     }},
-    "winner": "<agent_os|codex|tie>",
+    "winner": "<argus|codex|tie>",
     "reasoning": "<detailed explanation of why one is better>",
     "key_differences": ["<difference 1>", "<difference 2>", ...],
     "agreement_aspects": ["<aspect 1>", "<aspect 2>", ...],
@@ -393,7 +393,7 @@ RESPOND WITH JSON ONLY, no other text:
 
     def _build_evaluation_prompt(self, finding: Dict[str, Any], tool_name: str) -> str:
         """Build prompt for evaluating an unmatched finding"""
-        tool_label = "AGENT-OS (Anthropic Claude)" if tool_name == "agent_os" else "CODEX (Independent)"
+        tool_label = "ARGUS (Anthropic Claude)" if tool_name == "argus" else "CODEX (Independent)"
 
         prompt = f"""You are a security expert evaluating a security finding found by {tool_label}.
 
@@ -453,7 +453,7 @@ RESPOND WITH JSON ONLY:
     def _parse_judge_response(
         self,
         response: str,
-        agent_os_finding: Dict[str, Any],
+        argus_finding: Dict[str, Any],
         codex_finding: Dict[str, Any],
         match_type: str
     ) -> PairwiseComparison:
@@ -468,27 +468,27 @@ RESPOND WITH JSON ONLY:
                 data = json.loads(response)
 
             # Calculate average scores
-            agent_os_scores = data.get("agent_os_scores", {})
+            argus_scores = data.get("argus_scores", {})
             codex_scores = data.get("codex_scores", {})
 
-            agent_os_avg = sum(agent_os_scores.values()) / max(len(agent_os_scores), 1)
+            argus_avg = sum(argus_scores.values()) / max(len(argus_scores), 1)
             codex_avg = sum(codex_scores.values()) / max(len(codex_scores), 1)
 
             comparison = PairwiseComparison(
-                finding_id=agent_os_finding.get("id", f"comparison_{datetime.now().timestamp()}"),
-                agent_os_finding=agent_os_finding,
+                finding_id=argus_finding.get("id", f"comparison_{datetime.now().timestamp()}"),
+                argus_finding=argus_finding,
                 codex_finding=codex_finding,
                 match_type=match_type,
-                agent_os_score=int(agent_os_avg),
+                argus_score=int(argus_avg),
                 codex_score=int(codex_avg),
                 winner=data.get("winner", "tie"),
                 judge_reasoning=data.get("reasoning", ""),
                 key_differences=data.get("key_differences", []),
                 agreement_aspects=data.get("agreement_aspects", []),
                 disagreement_aspects=data.get("disagreement_aspects", []),
-                coverage_score=(agent_os_scores.get("coverage", 0) + codex_scores.get("coverage", 0)) / 2,
-                accuracy_score=(agent_os_scores.get("accuracy", 0) + codex_scores.get("accuracy", 0)) / 2,
-                actionability_score=(agent_os_scores.get("actionability", 0) + codex_scores.get("actionability", 0)) / 2,
+                coverage_score=(argus_scores.get("coverage", 0) + codex_scores.get("coverage", 0)) / 2,
+                accuracy_score=(argus_scores.get("accuracy", 0) + codex_scores.get("accuracy", 0)) / 2,
+                actionability_score=(argus_scores.get("actionability", 0) + codex_scores.get("actionability", 0)) / 2,
                 confidence=float(data.get("confidence", 0.9))
             )
 
@@ -498,11 +498,11 @@ RESPOND WITH JSON ONLY:
             logger.error(f"Failed to parse judge response: {e}")
             # Return neutral comparison
             return PairwiseComparison(
-                finding_id=agent_os_finding.get("id", "unknown"),
-                agent_os_finding=agent_os_finding,
+                finding_id=argus_finding.get("id", "unknown"),
+                argus_finding=argus_finding,
                 codex_finding=codex_finding,
                 match_type=match_type,
-                agent_os_score=3,
+                argus_score=3,
                 codex_score=3,
                 winner="tie",
                 judge_reasoning=f"Unable to parse judge response: {response[:200]}",
@@ -524,15 +524,15 @@ RESPOND WITH JSON ONLY:
             else:
                 data = json.loads(response)
 
-            if tool_name == "agent_os":
+            if tool_name == "argus":
                 comparison = PairwiseComparison(
-                    finding_id=finding.get("id", f"agent_os_{datetime.now().timestamp()}"),
-                    agent_os_finding=finding,
-                    match_type="agent_os_only",
-                    agent_os_score=int(sum(data.get("validity_score", 0) + data.get("coverage_score", 0) +
+                    finding_id=finding.get("id", f"argus_{datetime.now().timestamp()}"),
+                    argus_finding=finding,
+                    match_type="argus_only",
+                    argus_score=int(sum(data.get("validity_score", 0) + data.get("coverage_score", 0) +
                                            data.get("actionability_score", 0)) / 3),
                     codex_score=0,
-                    winner="agent_os" if data.get("likely_real") else "codex",
+                    winner="argus" if data.get("likely_real") else "codex",
                     judge_reasoning=data.get("reasoning", ""),
                     confidence=float(data.get("confidence", 0.9))
                 )
@@ -541,10 +541,10 @@ RESPOND WITH JSON ONLY:
                     finding_id=finding.get("id", f"codex_{datetime.now().timestamp()}"),
                     codex_finding=finding,
                     match_type="codex_only",
-                    agent_os_score=0,
+                    argus_score=0,
                     codex_score=int(sum(data.get("validity_score", 0) + data.get("coverage_score", 0) +
                                         data.get("actionability_score", 0)) / 3),
-                    winner="codex" if data.get("likely_real") else "agent_os",
+                    winner="codex" if data.get("likely_real") else "argus",
                     judge_reasoning=data.get("reasoning", ""),
                     confidence=float(data.get("confidence", 0.9))
                 )
@@ -555,10 +555,10 @@ RESPOND WITH JSON ONLY:
             logger.error(f"Failed to parse evaluation response: {e}")
             return PairwiseComparison(
                 finding_id=finding.get("id", "unknown"),
-                agent_os_finding=finding if tool_name == "agent_os" else None,
+                argus_finding=finding if tool_name == "argus" else None,
                 codex_finding=finding if tool_name == "codex" else None,
                 match_type=f"{tool_name}_only",
-                agent_os_score=3 if tool_name == "agent_os" else 0,
+                argus_score=3 if tool_name == "argus" else 0,
                 codex_score=3 if tool_name == "codex" else 0,
                 winner="tie",
                 confidence=0.3
@@ -570,7 +570,7 @@ class PairwiseComparator:
 
     def __init__(
         self,
-        agent_os_findings: List[Dict[str, Any]],
+        argus_findings: List[Dict[str, Any]],
         codex_findings: List[Dict[str, Any]],
         judge_model: str = "anthropic",
         match_threshold: float = 0.7
@@ -578,12 +578,12 @@ class PairwiseComparator:
         """Initialize comparator
 
         Args:
-            agent_os_findings: Findings from Agent-OS
+            argus_findings: Findings from Argus
             codex_findings: Findings from Codex independent analysis
             judge_model: "anthropic" or "openai"
             match_threshold: Similarity threshold for matching (0-1)
         """
-        self.agent_os_findings = agent_os_findings
+        self.argus_findings = argus_findings
         self.codex_findings = codex_findings
         self.matcher = FindingMatcher(match_threshold=match_threshold)
         self.judge = PairwiseJudge(judge_model=judge_model)
@@ -600,31 +600,31 @@ class PairwiseComparator:
         """
         logger.info(f"\n{'='*80}")
         logger.info(f"Pairwise Comparison Analysis")
-        logger.info(f"Agent-OS Findings: {len(self.agent_os_findings)}")
+        logger.info(f"Argus Findings: {len(self.argus_findings)}")
         logger.info(f"Codex Findings: {len(self.codex_findings)}")
         logger.info(f"{'='*80}\n")
 
         # Step 1: Match findings
-        logger.info("Step 1: Matching findings between Agent-OS and Codex...")
-        matched_pairs, agent_os_only, codex_only = self.matcher.match_findings(
-            self.agent_os_findings,
+        logger.info("Step 1: Matching findings between Argus and Codex...")
+        matched_pairs, argus_only, codex_only = self.matcher.match_findings(
+            self.argus_findings,
             self.codex_findings
         )
         logger.info(f"  Matched pairs: {len(matched_pairs)}")
-        logger.info(f"  Agent-OS only: {len(agent_os_only)}")
+        logger.info(f"  Argus only: {len(argus_only)}")
         logger.info(f"  Codex only: {len(codex_only)}\n")
 
         # Step 2: Compare matched findings
         logger.info("Step 2: Comparing matched findings with judge...")
         comparison_count = 0
-        for agent_os_finding, codex_finding in matched_pairs:
+        for argus_finding, codex_finding in matched_pairs:
             if max_comparisons and comparison_count >= max_comparisons:
                 logger.info(f"Reached max comparisons ({max_comparisons}), stopping...")
                 break
 
             logger.info(f"  Comparing {comparison_count + 1}/{len(matched_pairs)}...")
             try:
-                comparison = self.judge.compare_matched_findings(agent_os_finding, codex_finding)
+                comparison = self.judge.compare_matched_findings(argus_finding, codex_finding)
                 self.comparisons.append(comparison)
                 comparison_count += 1
             except Exception as e:
@@ -632,8 +632,8 @@ class PairwiseComparator:
                 # Add a neutral comparison
                 self.comparisons.append(
                     PairwiseComparison(
-                        finding_id=agent_os_finding.get("id", f"comparison_{comparison_count}"),
-                        agent_os_finding=agent_os_finding,
+                        finding_id=argus_finding.get("id", f"comparison_{comparison_count}"),
+                        argus_finding=argus_finding,
                         codex_finding=codex_finding,
                         match_type="matched",
                         winner="tie",
@@ -645,20 +645,20 @@ class PairwiseComparator:
         # Step 3: Evaluate unmatched findings
         logger.info(f"\nStep 3: Evaluating unmatched findings...")
 
-        for finding in agent_os_only:
+        for finding in argus_only:
             if max_comparisons and len(self.comparisons) >= max_comparisons:
                 break
-            logger.info(f"  Evaluating Agent-OS finding (not in Codex)...")
+            logger.info(f"  Evaluating Argus finding (not in Codex)...")
             try:
-                comparison = self.judge.compare_unmatched_finding(finding, "agent_os")
+                comparison = self.judge.compare_unmatched_finding(finding, "argus")
                 self.comparisons.append(comparison)
             except Exception as e:
-                logger.error(f"Failed to evaluate Agent-OS finding: {e}")
+                logger.error(f"Failed to evaluate Argus finding: {e}")
 
         for finding in codex_only:
             if max_comparisons and len(self.comparisons) >= max_comparisons:
                 break
-            logger.info(f"  Evaluating Codex finding (not in Agent-OS)...")
+            logger.info(f"  Evaluating Codex finding (not in Argus)...")
             try:
                 comparison = self.judge.compare_unmatched_finding(finding, "codex")
                 self.comparisons.append(comparison)
@@ -682,57 +682,57 @@ class PairwiseComparator:
 
         # Count match types
         agg.matched_findings = sum(1 for c in self.comparisons if c.match_type == "matched")
-        agg.agent_os_only = sum(1 for c in self.comparisons if c.match_type == "agent_os_only")
+        agg.argus_only = sum(1 for c in self.comparisons if c.match_type == "argus_only")
         agg.codex_only = sum(1 for c in self.comparisons if c.match_type == "codex_only")
 
         # Count wins
-        agg.agent_os_wins = sum(1 for c in self.comparisons if c.winner == "agent_os")
+        agg.argus_wins = sum(1 for c in self.comparisons if c.winner == "argus")
         agg.codex_wins = sum(1 for c in self.comparisons if c.winner == "codex")
         agg.ties = sum(1 for c in self.comparisons if c.winner == "tie")
 
         # Win rates
         if agg.total_comparisons > 0:
-            agg.agent_os_win_rate = agg.agent_os_wins / agg.total_comparisons
+            agg.argus_win_rate = agg.argus_wins / agg.total_comparisons
             agg.codex_win_rate = agg.codex_wins / agg.total_comparisons
             agg.tie_rate = agg.ties / agg.total_comparisons
 
         # Average scores
-        agent_os_scores = [c.agent_os_score for c in self.comparisons if c.agent_os_score > 0]
+        argus_scores = [c.argus_score for c in self.comparisons if c.argus_score > 0]
         codex_scores = [c.codex_score for c in self.comparisons if c.codex_score > 0]
 
-        if agent_os_scores:
-            agg.avg_agent_os_score = sum(agent_os_scores) / len(agent_os_scores)
+        if argus_scores:
+            agg.avg_argus_score = sum(argus_scores) / len(argus_scores)
         if codex_scores:
             agg.avg_codex_score = sum(codex_scores) / len(codex_scores)
 
         # Coverage/accuracy/actionability scores
-        agent_os_coverage = [c.coverage_score for c in self.comparisons if c.agent_os_finding]
+        argus_coverage = [c.coverage_score for c in self.comparisons if c.argus_finding]
         codex_coverage = [c.coverage_score for c in self.comparisons if c.codex_finding]
-        agent_os_accuracy = [c.accuracy_score for c in self.comparisons if c.agent_os_finding]
+        argus_accuracy = [c.accuracy_score for c in self.comparisons if c.argus_finding]
         codex_accuracy = [c.accuracy_score for c in self.comparisons if c.codex_finding]
-        agent_os_actionability = [c.actionability_score for c in self.comparisons if c.agent_os_finding]
+        argus_actionability = [c.actionability_score for c in self.comparisons if c.argus_finding]
         codex_actionability = [c.actionability_score for c in self.comparisons if c.codex_finding]
 
-        if agent_os_coverage:
-            agg.avg_agent_os_coverage = sum(agent_os_coverage) / len(agent_os_coverage)
+        if argus_coverage:
+            agg.avg_argus_coverage = sum(argus_coverage) / len(argus_coverage)
         if codex_coverage:
             agg.avg_codex_coverage = sum(codex_coverage) / len(codex_coverage)
-        if agent_os_accuracy:
-            agg.avg_agent_os_accuracy = sum(agent_os_accuracy) / len(agent_os_accuracy)
+        if argus_accuracy:
+            agg.avg_argus_accuracy = sum(argus_accuracy) / len(argus_accuracy)
         if codex_accuracy:
             agg.avg_codex_accuracy = sum(codex_accuracy) / len(codex_accuracy)
-        if agent_os_actionability:
-            agg.avg_agent_os_actionability = sum(agent_os_actionability) / len(agent_os_actionability)
+        if argus_actionability:
+            agg.avg_argus_actionability = sum(argus_actionability) / len(argus_actionability)
         if codex_actionability:
             agg.avg_codex_actionability = sum(codex_actionability) / len(codex_actionability)
 
         # Count severity findings
-        for finding in self.agent_os_findings:
+        for finding in self.argus_findings:
             severity = finding.get("severity", "").lower()
             if severity == "critical":
-                agg.critical_by_agent_os += 1
+                agg.critical_by_argus += 1
             elif severity == "high":
-                agg.high_by_agent_os += 1
+                agg.high_by_argus += 1
 
         for finding in self.codex_findings:
             severity = finding.get("severity", "").lower()
@@ -742,10 +742,10 @@ class PairwiseComparator:
                 agg.high_by_codex += 1
 
         # Determine overall winner
-        if agg.avg_agent_os_score > agg.avg_codex_score + 0.5:
-            agg.overall_winner = "agent_os"
-            agg.recommendation = "Agent-OS provided superior analysis overall with higher coverage and accuracy"
-        elif agg.avg_codex_score > agg.avg_agent_os_score + 0.5:
+        if agg.avg_argus_score > agg.avg_codex_score + 0.5:
+            agg.overall_winner = "argus"
+            agg.recommendation = "Argus provided superior analysis overall with higher coverage and accuracy"
+        elif agg.avg_codex_score > agg.avg_argus_score + 0.5:
             agg.overall_winner = "codex"
             agg.recommendation = "Codex provided superior analysis overall with higher coverage and accuracy"
         else:
@@ -794,19 +794,19 @@ Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 **Recommendation**: {aggregation.recommendation}
 
 ### Key Metrics
-| Metric | Agent-OS | Codex |
+| Metric | Argus | Codex |
 |--------|----------|-------|
-| **Wins** | {aggregation.agent_os_wins} ({aggregation.agent_os_win_rate*100:.1f}%) | {aggregation.codex_wins} ({aggregation.codex_win_rate*100:.1f}%) |
-| **Average Score** | {aggregation.avg_agent_os_score:.1f}/5 | {aggregation.avg_codex_score:.1f}/5 |
-| **Coverage** | {aggregation.avg_agent_os_coverage:.1f}/5 | {aggregation.avg_codex_coverage:.1f}/5 |
-| **Accuracy** | {aggregation.avg_agent_os_accuracy:.1f}/5 | {aggregation.avg_codex_accuracy:.1f}/5 |
-| **Actionability** | {aggregation.avg_agent_os_actionability:.1f}/5 | {aggregation.avg_codex_actionability:.1f}/5 |
-| **Critical Findings** | {aggregation.critical_by_agent_os} | {aggregation.critical_by_codex} |
-| **High Findings** | {aggregation.high_by_agent_os} | {aggregation.high_by_codex} |
+| **Wins** | {aggregation.argus_wins} ({aggregation.argus_win_rate*100:.1f}%) | {aggregation.codex_wins} ({aggregation.codex_win_rate*100:.1f}%) |
+| **Average Score** | {aggregation.avg_argus_score:.1f}/5 | {aggregation.avg_codex_score:.1f}/5 |
+| **Coverage** | {aggregation.avg_argus_coverage:.1f}/5 | {aggregation.avg_codex_coverage:.1f}/5 |
+| **Accuracy** | {aggregation.avg_argus_accuracy:.1f}/5 | {aggregation.avg_codex_accuracy:.1f}/5 |
+| **Actionability** | {aggregation.avg_argus_actionability:.1f}/5 | {aggregation.avg_codex_actionability:.1f}/5 |
+| **Critical Findings** | {aggregation.critical_by_argus} | {aggregation.critical_by_codex} |
+| **High Findings** | {aggregation.high_by_argus} | {aggregation.high_by_codex} |
 
 ### Comparison Breakdown
 - **Matched Findings**: {aggregation.matched_findings}
-- **Agent-OS Only**: {aggregation.agent_os_only}
+- **Argus Only**: {aggregation.argus_only}
 - **Codex Only**: {aggregation.codex_only}
 - **Ties**: {aggregation.ties}
 - **Total Comparisons**: {aggregation.total_comparisons}
@@ -825,10 +825,10 @@ Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
                 report += ComparisonReportGenerator._format_comparison(comp)
 
         # Add unmatched comparisons
-        agent_os_only_comps = [c for c in comparisons if c.match_type == "agent_os_only"]
-        if agent_os_only_comps:
-            report += f"\n### Agent-OS Only Findings ({len(agent_os_only_comps)})\n\n"
-            for comp in agent_os_only_comps:
+        argus_only_comps = [c for c in comparisons if c.match_type == "argus_only"]
+        if argus_only_comps:
+            report += f"\n### Argus Only Findings ({len(argus_only_comps)})\n\n"
+            for comp in argus_only_comps:
                 report += ComparisonReportGenerator._format_comparison(comp)
 
         codex_only_comps = [c for c in comparisons if c.match_type == "codex_only"]
@@ -854,20 +854,20 @@ Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
         if comp.match_type == "matched":
             text += f"**Status**: Both tools found this issue\n\n"
-            if comp.agent_os_finding:
-                text += f"**Agent-OS**: Score {comp.agent_os_score}/5\n"
-                text += f"- Severity: {comp.agent_os_finding.get('severity', 'unknown')}\n"
-                text += f"- Rule: {comp.agent_os_finding.get('rule_id', 'unknown')}\n"
+            if comp.argus_finding:
+                text += f"**Argus**: Score {comp.argus_score}/5\n"
+                text += f"- Severity: {comp.argus_finding.get('severity', 'unknown')}\n"
+                text += f"- Rule: {comp.argus_finding.get('rule_id', 'unknown')}\n"
             if comp.codex_finding:
                 text += f"\n**Codex**: Score {comp.codex_score}/5\n"
                 text += f"- Severity: {comp.codex_finding.get('severity', 'unknown')}\n"
                 text += f"- Rule: {comp.codex_finding.get('rule_id', 'unknown')}\n"
-        elif comp.match_type == "agent_os_only":
-            text += f"**Status**: Found by Agent-OS only\n\n"
-            text += f"**Score**: {comp.agent_os_score}/5\n"
-            if comp.agent_os_finding:
-                text += f"- Severity: {comp.agent_os_finding.get('severity', 'unknown')}\n"
-                text += f"- File: {comp.agent_os_finding.get('path', 'unknown')}\n"
+        elif comp.match_type == "argus_only":
+            text += f"**Status**: Found by Argus only\n\n"
+            text += f"**Score**: {comp.argus_score}/5\n"
+            if comp.argus_finding:
+                text += f"- Severity: {comp.argus_finding.get('severity', 'unknown')}\n"
+                text += f"- File: {comp.argus_finding.get('path', 'unknown')}\n"
         else:  # codex_only
             text += f"**Status**: Found by Codex only\n\n"
             text += f"**Score**: {comp.codex_score}/5\n"
@@ -902,14 +902,14 @@ Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
         summary = ""
 
         # Winner analysis
-        if aggregation.overall_winner == "agent_os":
-            summary += "### Agent-OS Advantage\n\n"
-            summary += f"Agent-OS won {aggregation.agent_os_wins} out of {aggregation.total_comparisons} comparisons "
-            summary += f"({aggregation.agent_os_win_rate*100:.1f}%), with an average score of {aggregation.avg_agent_os_score:.1f}/5.\n\n"
+        if aggregation.overall_winner == "argus":
+            summary += "### Argus Advantage\n\n"
+            summary += f"Argus won {aggregation.argus_wins} out of {aggregation.total_comparisons} comparisons "
+            summary += f"({aggregation.argus_win_rate*100:.1f}%), with an average score of {aggregation.avg_argus_score:.1f}/5.\n\n"
             summary += "**Strengths**:\n"
-            summary += f"- Higher coverage score ({aggregation.avg_agent_os_coverage:.1f}/5)\n"
-            summary += f"- Better accuracy assessment ({aggregation.avg_agent_os_accuracy:.1f}/5)\n"
-            summary += f"- More actionable recommendations ({aggregation.avg_agent_os_actionability:.1f}/5)\n\n"
+            summary += f"- Higher coverage score ({aggregation.avg_argus_coverage:.1f}/5)\n"
+            summary += f"- Better accuracy assessment ({aggregation.avg_argus_accuracy:.1f}/5)\n"
+            summary += f"- More actionable recommendations ({aggregation.avg_argus_actionability:.1f}/5)\n\n"
         elif aggregation.overall_winner == "codex":
             summary += "### Codex Advantage\n\n"
             summary += f"Codex won {aggregation.codex_wins} out of {aggregation.total_comparisons} comparisons "
@@ -920,22 +920,22 @@ Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
             summary += f"- More actionable recommendations ({aggregation.avg_codex_actionability:.1f}/5)\n\n"
         else:
             summary += "### Comparable Performance\n\n"
-            summary += f"Both tools performed similarly with Agent-OS winning {aggregation.agent_os_wins} comparisons "
+            summary += f"Both tools performed similarly with Argus winning {aggregation.argus_wins} comparisons "
             summary += f"and Codex winning {aggregation.codex_wins} comparisons.\n\n"
 
         # Coverage analysis
         summary += "### Coverage Analysis\n\n"
         summary += f"- Matched findings: {aggregation.matched_findings} ({aggregation.matched_findings/max(aggregation.total_comparisons, 1)*100:.1f}%)\n"
-        summary += f"- Agent-OS unique: {aggregation.agent_os_only} findings\n"
+        summary += f"- Argus unique: {aggregation.argus_only} findings\n"
         summary += f"- Codex unique: {aggregation.codex_only} findings\n\n"
 
         # Severity analysis
         summary += "### Severity Distribution\n\n"
         summary += "**Critical Findings**:\n"
-        summary += f"- Agent-OS: {aggregation.critical_by_agent_os}\n"
+        summary += f"- Argus: {aggregation.critical_by_argus}\n"
         summary += f"- Codex: {aggregation.critical_by_codex}\n\n"
         summary += "**High Severity Findings**:\n"
-        summary += f"- Agent-OS: {aggregation.high_by_agent_os}\n"
+        summary += f"- Argus: {aggregation.high_by_argus}\n"
         summary += f"- Codex: {aggregation.high_by_codex}\n\n"
 
         return summary
@@ -962,12 +962,12 @@ def load_findings(file_path: str) -> List[Dict[str, Any]]:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Run pairwise comparison of Agent-OS vs Codex findings"
+        description="Run pairwise comparison of Argus vs Codex findings"
     )
     parser.add_argument(
-        "--agent-os-findings",
+        "--argus-findings",
         required=True,
-        help="Path to Agent-OS findings JSON file"
+        help="Path to Argus findings JSON file"
     )
     parser.add_argument(
         "--codex-findings",
@@ -1004,9 +1004,9 @@ def main():
     args = parser.parse_args()
 
     # Load findings
-    logger.info(f"Loading Agent-OS findings from {args.agent_os_findings}...")
-    agent_os_findings = load_findings(args.agent_os_findings)
-    logger.info(f"  Loaded {len(agent_os_findings)} findings")
+    logger.info(f"Loading Argus findings from {args.argus_findings}...")
+    argus_findings = load_findings(args.argus_findings)
+    logger.info(f"  Loaded {len(argus_findings)} findings")
 
     logger.info(f"Loading Codex findings from {args.codex_findings}...")
     codex_findings = load_findings(args.codex_findings)
@@ -1014,7 +1014,7 @@ def main():
 
     # Run comparison
     comparator = PairwiseComparator(
-        agent_os_findings=agent_os_findings,
+        argus_findings=argus_findings,
         codex_findings=codex_findings,
         judge_model=args.judge_model,
         match_threshold=args.match_threshold
@@ -1042,10 +1042,10 @@ def main():
     logger.info(f"PAIRWISE COMPARISON COMPLETE")
     logger.info(f"{'='*80}")
     logger.info(f"\nWinner: {aggregation.overall_winner.upper()}")
-    logger.info(f"Agent-OS: {aggregation.avg_agent_os_score:.1f}/5 ({aggregation.agent_os_win_rate*100:.0f}% win rate)")
+    logger.info(f"Argus: {aggregation.avg_argus_score:.1f}/5 ({aggregation.argus_win_rate*100:.0f}% win rate)")
     logger.info(f"Codex: {aggregation.avg_codex_score:.1f}/5 ({aggregation.codex_win_rate*100:.0f}% win rate)")
     logger.info(f"\nMatched Findings: {aggregation.matched_findings}")
-    logger.info(f"Agent-OS Only: {aggregation.agent_os_only}")
+    logger.info(f"Argus Only: {aggregation.argus_only}")
     logger.info(f"Codex Only: {aggregation.codex_only}")
     logger.info(f"\n📊 Report: {args.output}")
     if args.output_markdown:

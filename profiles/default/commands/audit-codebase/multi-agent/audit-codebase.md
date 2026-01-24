@@ -63,7 +63,7 @@ Use the **review-orchestrator** subagent to:
 
 ## Audit Output
 
-Upon completion, the following files will be created in `agent-os/reviews/[date]-codebase-audit/`:
+Upon completion, the following files will be created in `argus/reviews/[date]-codebase-audit/`:
 
 ### Audit Report Files
 - `executive-summary.md` - High-level audit overview
@@ -164,6 +164,6 @@ Upon completion, display:
 ✅ Code quality analysis completed
 ✅ Comprehensive report generated
 
-📁 Audit report location: `agent-os/reviews/[date]-codebase-audit/`
+📁 Audit report location: `argus/reviews/[date]-codebase-audit/`
 
 👉 Review the executive summary and action items to prioritize fixes."

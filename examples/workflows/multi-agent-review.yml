@@ -24,7 +24,7 @@ jobs:
           fetch-depth: 0  # Full history for better analysis
       
       - name: Run Multi-Agent Review
-        uses: devatsecure/agent-os-action@v1
+        uses: devatsecure/argus-action@v1
         with:
           # AI Configuration
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -49,8 +49,8 @@ jobs:
         if: always()
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: .agent-os/reviews/results.sarif
-          category: agent-os
+          sarif_file: .argus/reviews/results.sarif
+          category: argus
       
       - name: Create Summary
         if: always()
@@ -58,7 +58,7 @@ jobs:
           echo "## 🤖 AI Code Review Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
-          if [ -f .agent-os/reviews/metrics.json ]; then
+          if [ -f .argus/reviews/metrics.json ]; then
             echo "### 📊 Metrics" >> $GITHUB_STEP_SUMMARY
-            cat .agent-os/reviews/metrics.json | jq -r '"- **Cost**: $\(.cost_usd)\n- **Files Analyzed**: \(.files_reviewed)\n- **Duration**: \(.duration_seconds)s\n- **Critical**: \(.findings.critical)\n- **High**: \(.findings.high)\n- **Medium**: \(.findings.medium)\n- **Low**: \(.findings.low)"' >> $GITHUB_STEP_SUMMARY
+            cat .argus/reviews/metrics.json | jq -r '"- **Cost**: $\(.cost_usd)\n- **Files Analyzed**: \(.files_reviewed)\n- **Duration**: \(.duration_seconds)s\n- **Critical**: \(.findings.critical)\n- **High**: \(.findings.high)\n- **Medium**: \(.findings.medium)\n- **Low**: \(.findings.low)"' >> $GITHUB_STEP_SUMMARY
           fi

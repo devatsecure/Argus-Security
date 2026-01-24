@@ -21,8 +21,8 @@ permissions:
 
 env:
   REPO: ${{ github.repository }}
-  IDEAS_URL: https://github.com/buildermethods/agent-os/discussions/categories/ideas
-  CONTRIBUTING_URL: https://github.com/buildermethods/agent-os/blob/main/.github/CONTRIBUTING.md
+  IDEAS_URL: https://github.com/buildermethods/argus/discussions/categories/ideas
+  CONTRIBUTING_URL: https://github.com/buildermethods/argus/blob/main/.github/CONTRIBUTING.md
 
 jobs:
   decline:
@@ -87,7 +87,7 @@ jobs:
             switch (reason) {
               case "Out of scope":
                 body =
-                  "Thanks for the PR! After review, this change isn’t on the current roadmap for Agent OS. " +
+                  "Thanks for the PR! After review, this change isn’t on the current roadmap for Argus. " +
                   "We keep core focused to manage long-term maintenance and compatibility.\n\n" +
                   `If you'd like to continue the conversation, please start a proposal in **Ideas**: ${IDEAS}\n` +
                   "If you publish a fork/plugin/example, feel free to share it in **Show & Tell** so others can try it.\n\n" +

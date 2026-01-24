@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Agent-OS Security Action - Health Check Script
+Argus Security Action - Health Check Script
 Version: 1.1.0
 
 Comprehensive environment validation that checks:
@@ -586,7 +586,7 @@ class HealthChecker:
         import datetime
 
         print("=" * 80)
-        print("Agent-OS Security Action - Health Check")
+        print("Argus Security Action - Health Check")
         print("=" * 80)
         print()
 
@@ -716,7 +716,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Agent-OS Security Action - Health Check",
+        description="Argus Security Action - Health Check",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(

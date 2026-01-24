@@ -2,7 +2,7 @@
 
 ## Overview
 
-Agent-OS integrates [OWASP pytm](https://github.com/OWASP/pytm) to provide **always-available, deterministic threat modeling** without requiring API keys or external services. This ensures every security analysis includes threat context for AI agents, even when running offline or without API access.
+Argus integrates [OWASP pytm](https://github.com/OWASP/pytm) to provide **always-available, deterministic threat modeling** without requiring API keys or external services. This ensures every security analysis includes threat context for AI agents, even when running offline or without API access.
 
 ## What is pytm?
 
@@ -14,10 +14,10 @@ pytm is a Pythonic framework for threat modeling that uses a **code-as-data** ap
 - **Open Source**: No API keys, no costs, no external dependencies
 - **Reproducible**: Perfect for CI/CD pipelines and compliance audits
 
-## Why pytm in Agent-OS?
+## Why pytm in Argus?
 
 ### The Problem
-Previously, Agent-OS threat modeling relied solely on Anthropic's Claude API:
+Previously, Argus threat modeling relied solely on Anthropic's Claude API:
 - ❌ Required API key ($$$)
 - ❌ Silent degradation when unavailable
 - ❌ No threat context for agents
@@ -25,7 +25,7 @@ Previously, Agent-OS threat modeling relied solely on Anthropic's Claude API:
 - ❌ Non-deterministic results
 
 ### The Solution: Hybrid Approach
-Agent-OS now uses a **hybrid threat modeling strategy**:
+Argus now uses a **hybrid threat modeling strategy**:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -69,7 +69,7 @@ Agent-OS now uses a **hybrid threat modeling strategy**:
 
 ## Architecture Detection
 
-Agent-OS automatically detects your application architecture and applies appropriate threat modeling templates:
+Argus automatically detects your application architecture and applies appropriate threat modeling templates:
 
 ### Supported Architectures
 
@@ -112,7 +112,7 @@ pytm automatically generates threats based on the STRIDE methodology:
 ```bash
 # No API key needed - pytm baseline only
 cd /path/to/your/repo
-python3 /path/to/agent-os/scripts/threat_model_generator.py
+python3 /path/to/argus/scripts/threat_model_generator.py
 ```
 
 Output:
@@ -120,7 +120,7 @@ Output:
 ℹ️  No ANTHROPIC_API_KEY provided - using pytm baseline only
    (Set API key for AI-enhanced threat modeling)
 ✅ pytm baseline: 6 threats
-✅ Threat model generated: .agent-os/threat-model.json
+✅ Threat model generated: .argus/threat-model.json
    Generator: pytm
 ```
 
@@ -129,14 +129,14 @@ Output:
 ```bash
 # With API key - pytm baseline + AI enhancement
 export ANTHROPIC_API_KEY=sk-ant-...
-python3 /path/to/agent-os/scripts/threat_model_generator.py
+python3 /path/to/argus/scripts/threat_model_generator.py
 ```
 
 Output:
 ```
 ✅ pytm baseline: 6 threats
 ✅ AI enhancement: 14 total threats
-✅ Threat model generated: .agent-os/threat-model.json
+✅ Threat model generated: .argus/threat-model.json
    Generator: pytm + anthropic
 ```
 
@@ -157,7 +157,7 @@ repo_context = generator.analyze_repository("/path/to/repo")
 threat_model = generator.generate_threat_model(repo_context)
 
 # Save
-generator.save_threat_model(threat_model, ".agent-os/threat-model.json")
+generator.save_threat_model(threat_model, ".argus/threat-model.json")
 
 print(f"Threats: {len(threat_model['threats'])}")
 print(f"Generator: {threat_model['generator']}")  # "pytm" or "pytm + anthropic"
@@ -167,7 +167,7 @@ print(f"Generator: {threat_model['generator']}")  # "pytm" or "pytm + anthropic"
 
 ```json
 {
-  "name": "Agent-OS Threat Model: my-app",
+  "name": "Argus Threat Model: my-app",
   "description": "Automated threat model for my-app (web_app)",
   "generated_at": "2025-11-07T10:30:00Z",
   "generator": "pytm",
@@ -315,11 +315,11 @@ When an Anthropic API key is provided, the hybrid generator enhances the pytm ba
 
 **= Total: 14 threats**
 
-## Integration with Agent-OS
+## Integration with Argus
 
 ### Automatic Threat Context
 
-When Agent-OS runs a security analysis, AI agents automatically receive threat model context:
+When Argus runs a security analysis, AI agents automatically receive threat model context:
 
 ```markdown
 ## THREAT MODEL CONTEXT
@@ -473,12 +473,12 @@ python3 -c "from anthropic import Anthropic; print(Anthropic().messages.create(m
 
 ### Caching
 
-Threat models are cached in `.agent-os/threat-model.json`. To regenerate:
+Threat models are cached in `.argus/threat-model.json`. To regenerate:
 
 ```bash
 # Force regeneration
-rm .agent-os/threat-model.json
-python3 /path/to/agent-os/scripts/threat_model_generator.py --force
+rm .argus/threat-model.json
+python3 /path/to/argus/scripts/threat_model_generator.py --force
 ```
 
 ## Best Practices
@@ -506,7 +506,7 @@ ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }} \
 ### 3. Version Control Threat Models
 ```bash
 # Commit threat models for audit trail
-git add .agent-os/threat-model.json
+git add .argus/threat-model.json
 git commit -m "chore: update threat model"
 ```
 
@@ -516,7 +516,7 @@ git commit -m "chore: update threat model"
 python3 scripts/threat_model_generator.py --force
 
 # Compare with previous version
-git diff .agent-os/threat-model.json
+git diff .argus/threat-model.json
 ```
 
 ## Comparison: pytm vs DefectDojo
@@ -559,13 +559,13 @@ A: Use AI enhancement (Anthropic) for context-aware threats. Or manually add thr
 
 - [OWASP pytm GitHub](https://github.com/OWASP/pytm)
 - [STRIDE Threat Modeling](https://docs.microsoft.com/en-us/azure/security/develop/threat-modeling-tool-threats)
-- [Agent-OS Documentation](../README.md)
+- [Argus Documentation](../README.md)
 - [Threat Modeling Best Practices](https://owasp.org/www-community/Threat_Modeling)
 
 ## Support
 
 For issues or questions:
-- GitHub Issues: https://github.com/securedotcom/agent-os-action/issues
+- GitHub Issues: https://github.com/devatsecure/Argus-Security/issues
 - Email: developer@secure.com
-- Documentation: https://github.com/securedotcom/agent-os-action#readme
+- Documentation: https://github.com/devatsecure/Argus-Security#readme
 

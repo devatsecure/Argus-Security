@@ -3,7 +3,7 @@
 Example usage of the Metrics Calculator module
 
 Demonstrates:
-1. Comparing Agent-OS and Codex findings
+1. Comparing Argus and Codex findings
 2. Calculating Cohen's Kappa agreement
 3. Computing Precision/Recall metrics
 4. Analyzing severity and category agreement
@@ -21,13 +21,13 @@ from metrics_calculator import MetricsCalculator, save_metrics_report
 
 
 def example_1_basic_comparison():
-    """Example 1: Basic comparison of Agent-OS vs Codex findings."""
+    """Example 1: Basic comparison of Argus vs Codex findings."""
     print("\n" + "=" * 70)
     print("EXAMPLE 1: BASIC COMPARISON")
     print("=" * 70)
 
-    # Sample findings from Agent-OS
-    agent_os_findings = [
+    # Sample findings from Argus
+    argus_findings = [
         {
             "path": "src/auth.py",
             "line": 42,
@@ -95,7 +95,7 @@ def example_1_basic_comparison():
             "category": "SAST",
             "cvss": 6.5,
         },
-        # Codex found an extra finding that Agent-OS missed
+        # Codex found an extra finding that Argus missed
         {
             "path": "src/logging.py",
             "line": 12,
@@ -109,13 +109,13 @@ def example_1_basic_comparison():
 
     # Run comparison
     calculator = MetricsCalculator()
-    report = calculator.compare_findings(agent_os_findings, codex_findings)
+    report = calculator.compare_findings(argus_findings, codex_findings)
 
     # Display summary
-    print(f"\nAgent-OS Findings: {report.agent_os_finding_count}")
+    print(f"\nArgus Findings: {report.argus_finding_count}")
     print(f"Codex Findings: {report.codex_finding_count}")
     print(f"Matched: {report.total_matches}")
-    print(f"Unique to Agent-OS: {report.total_unique_to_agent_os}")
+    print(f"Unique to Argus: {report.total_unique_to_argus}")
     print(f"Unique to Codex: {report.total_unique_to_codex}")
 
     print(f"\nSimple Agreement Rate: {report.simple_agreement_rate:.1%}")
@@ -152,7 +152,7 @@ def example_2_severity_analysis():
     print("EXAMPLE 2: SEVERITY-BASED AGREEMENT ANALYSIS")
     print("=" * 70)
 
-    agent_os_findings = [
+    argus_findings = [
         {"severity": "critical", "category": "SAST", "path": "a.py", "rule_id": "A"},
         {"severity": "critical", "category": "SAST", "path": "b.py", "rule_id": "B"},
         {"severity": "high", "category": "SECRETS", "path": "c.py", "rule_id": "C"},
@@ -171,14 +171,14 @@ def example_2_severity_analysis():
     ]
 
     calculator = MetricsCalculator()
-    report = calculator.compare_findings(agent_os_findings, codex_findings)
+    report = calculator.compare_findings(argus_findings, codex_findings)
 
     print("\nSeverity-Based Agreement:")
     print("-" * 50)
     for sev_agreement in report.severity_agreements:
         print(
             f"\n{sev_agreement.severity.upper()}:"
-            f"\n  Agent-OS: {sev_agreement.agent_os_count}"
+            f"\n  Argus: {sev_agreement.argus_count}"
             f"\n  Codex: {sev_agreement.codex_count}"
             f"\n  Both Agree: {sev_agreement.both_agree}"
             f"\n  Agreement Rate: {sev_agreement.agreement_rate:.1%}"
@@ -194,7 +194,7 @@ def example_3_category_analysis():
     print("EXAMPLE 3: CATEGORY-BASED AGREEMENT ANALYSIS")
     print("=" * 70)
 
-    agent_os_findings = [
+    argus_findings = [
         {"category": "SAST", "severity": "critical", "path": "a.py", "rule_id": "A"},
         {"category": "SAST", "severity": "high", "path": "b.py", "rule_id": "B"},
         {"category": "SECRETS", "severity": "critical", "path": "c.py", "rule_id": "C"},
@@ -211,14 +211,14 @@ def example_3_category_analysis():
     ]
 
     calculator = MetricsCalculator()
-    report = calculator.compare_findings(agent_os_findings, codex_findings)
+    report = calculator.compare_findings(argus_findings, codex_findings)
 
     print("\nCategory-Based Agreement:")
     print("-" * 50)
     for cat_agreement in report.category_agreements:
         print(
             f"\n{cat_agreement.category}:"
-            f"\n  Agent-OS: {cat_agreement.agent_os_count}"
+            f"\n  Argus: {cat_agreement.argus_count}"
             f"\n  Codex: {cat_agreement.codex_count}"
             f"\n  Both Agree: {cat_agreement.both_agree}"
             f"\n  Agreement Rate: {cat_agreement.agreement_rate:.1%}"
@@ -234,7 +234,7 @@ def example_4_visualization_data():
     print("EXAMPLE 4: VISUALIZATION-READY DATA")
     print("=" * 70)
 
-    agent_os_findings = [
+    argus_findings = [
         {"severity": "critical", "category": "SAST", "path": "a.py", "rule_id": "A"},
         {"severity": "critical", "category": "SECRETS", "path": "b.py", "rule_id": "B"},
         {"severity": "high", "category": "SAST", "path": "c.py", "rule_id": "C"},
@@ -252,7 +252,7 @@ def example_4_visualization_data():
     ]
 
     calculator = MetricsCalculator()
-    report = calculator.compare_findings(agent_os_findings, codex_findings)
+    report = calculator.compare_findings(argus_findings, codex_findings)
 
     # Severity distribution (for bar chart)
     print("\nSeverity Distribution (for bar chart):")
@@ -296,7 +296,7 @@ def example_6_statistical_significance():
     print("=" * 70)
 
     # Generate larger dataset for meaningful statistical test
-    agent_os_findings = [
+    argus_findings = [
         {"path": f"file{i}.py", "line": i, "rule_id": f"R{i}", "severity": "high", "category": "SAST"}
         for i in range(1, 51)
     ]
@@ -308,7 +308,7 @@ def example_6_statistical_significance():
     ]
 
     calculator = MetricsCalculator()
-    report = calculator.compare_findings(agent_os_findings, codex_findings)
+    report = calculator.compare_findings(argus_findings, codex_findings)
 
     print(f"\nSimple Agreement: {report.simple_agreement_rate:.1%}")
     print(f"\nCohen's Kappa Statistics:")
@@ -335,7 +335,7 @@ def example_7_json_output():
     print("EXAMPLE 7: JSON OUTPUT FOR INTEGRATION")
     print("=" * 70)
 
-    agent_os_findings = [
+    argus_findings = [
         {"path": "a.py", "rule_id": "A", "severity": "high", "category": "SAST"},
         {"path": "b.py", "rule_id": "B", "severity": "critical", "category": "SECRETS"},
     ]
@@ -345,7 +345,7 @@ def example_7_json_output():
     ]
 
     calculator = MetricsCalculator()
-    report = calculator.compare_findings(agent_os_findings, codex_findings)
+    report = calculator.compare_findings(argus_findings, codex_findings)
 
     # Convert to JSON
     json_report = report.to_json()

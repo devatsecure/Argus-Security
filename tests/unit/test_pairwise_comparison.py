@@ -175,34 +175,34 @@ class TestPairwiseComparison:
 
         comp = PairwiseComparison(
             finding_id="test_1",
-            agent_os_finding=agent_finding,
+            argus_finding=agent_finding,
             codex_finding=codex_finding,
             match_type="matched",
-            agent_os_score=4,
+            argus_score=4,
             codex_score=3,
-            winner="agent_os",
-            judge_reasoning="Agent-OS was more thorough",
+            winner="argus",
+            judge_reasoning="Argus was more thorough",
             confidence=0.95,
         )
 
         assert comp.finding_id == "test_1"
-        assert comp.agent_os_score == 4
+        assert comp.argus_score == 4
         assert comp.codex_score == 3
-        assert comp.winner == "agent_os"
+        assert comp.winner == "argus"
 
     def test_to_dict(self):
         """Test converting comparison to dict"""
         comp = PairwiseComparison(
             finding_id="test_1",
-            agent_os_score=4,
+            argus_score=4,
             codex_score=3,
-            winner="agent_os",
+            winner="argus",
         )
 
         d = comp.to_dict()
         assert d["finding_id"] == "test_1"
-        assert d["agent_os_score"] == 4
-        assert d["winner"] == "agent_os"
+        assert d["argus_score"] == 4
+        assert d["winner"] == "argus"
 
     def test_timestamp(self):
         """Test comparison includes timestamp"""
@@ -219,28 +219,28 @@ class TestPairwiseAggregation:
         agg = PairwiseAggregation(
             total_comparisons=10,
             matched_findings=8,
-            agent_os_wins=6,
+            argus_wins=6,
             codex_wins=2,
             ties=2,
         )
 
         assert agg.total_comparisons == 10
-        assert agg.agent_os_wins == 6
+        assert agg.argus_wins == 6
         assert agg.codex_wins == 2
 
     def test_win_rates(self):
         """Test win rate calculation"""
         agg = PairwiseAggregation()
         agg.total_comparisons = 10
-        agg.agent_os_wins = 6
+        agg.argus_wins = 6
         agg.codex_wins = 3
         agg.ties = 1
 
-        agg.agent_os_win_rate = agg.agent_os_wins / agg.total_comparisons
+        agg.argus_win_rate = agg.argus_wins / agg.total_comparisons
         agg.codex_win_rate = agg.codex_wins / agg.total_comparisons
         agg.tie_rate = agg.ties / agg.total_comparisons
 
-        assert agg.agent_os_win_rate == 0.6
+        assert agg.argus_win_rate == 0.6
         assert agg.codex_win_rate == 0.3
         assert agg.tie_rate == 0.1
 
@@ -279,7 +279,7 @@ class TestPairwiseJudge:
 
         prompt = judge._build_comparison_prompt(agent_finding, codex_finding)
 
-        assert "AGENT-OS FINDING" in prompt
+        assert "ARGUS FINDING" in prompt
         assert "CODEX FINDING" in prompt
         assert "EVALUATION CRITERIA" in prompt
         assert "Coverage" in prompt
@@ -291,7 +291,7 @@ class TestPairwiseJudge:
         judge._parse_judge_response = PairwiseJudge._parse_judge_response.__get__(judge)
 
         response = json.dumps({
-            "agent_os_scores": {
+            "argus_scores": {
                 "coverage": 5,
                 "accuracy": 4,
                 "actionability": 5,
@@ -305,8 +305,8 @@ class TestPairwiseJudge:
                 "detail": 4,
                 "risk_assessment": 4,
             },
-            "winner": "agent_os",
-            "reasoning": "Agent-OS provided better coverage and actionability",
+            "winner": "argus",
+            "reasoning": "Argus provided better coverage and actionability",
             "key_differences": ["Coverage depth", "Remediation clarity"],
             "agreement_aspects": ["Severity assessment"],
             "confidence": 0.95,
@@ -317,7 +317,7 @@ class TestPairwiseJudge:
 
         comp = judge._parse_judge_response(response, agent_finding, codex_finding, "matched")
 
-        assert comp.winner == "agent_os"
+        assert comp.winner == "argus"
         assert comp.confidence == 0.95
         assert len(comp.key_differences) > 0
 
@@ -332,13 +332,13 @@ class TestPairwiseComparator:
         codex_findings = [{"id": "2"}]
 
         comparator = PairwiseComparator(
-            agent_os_findings=agent_findings,
+            argus_findings=agent_findings,
             codex_findings=codex_findings,
             judge_model="anthropic",
             match_threshold=0.7,
         )
 
-        assert len(comparator.agent_os_findings) == 1
+        assert len(comparator.argus_findings) == 1
         assert len(comparator.codex_findings) == 1
         assert comparator.matcher.match_threshold == 0.7
 
@@ -351,25 +351,25 @@ class TestPairwiseComparator:
             PairwiseComparison(
                 finding_id="1",
                 match_type="matched",
-                agent_os_score=5,
+                argus_score=5,
                 codex_score=3,
-                winner="agent_os",
+                winner="argus",
                 confidence=0.95,
             ),
             PairwiseComparison(
                 finding_id="2",
                 match_type="matched",
-                agent_os_score=4,
+                argus_score=4,
                 codex_score=4,
                 winner="tie",
                 confidence=0.8,
             ),
             PairwiseComparison(
                 finding_id="3",
-                match_type="agent_os_only",
-                agent_os_score=4,
+                match_type="argus_only",
+                argus_score=4,
                 codex_score=0,
-                winner="agent_os",
+                winner="argus",
                 confidence=0.7,
             ),
         ]
@@ -385,8 +385,8 @@ class TestPairwiseComparator:
 
         assert agg.total_comparisons == 3
         assert agg.matched_findings == 2
-        assert agg.agent_os_only == 1
-        assert agg.agent_os_wins == 2
+        assert agg.argus_only == 1
+        assert agg.argus_wins == 2
         assert agg.ties == 1
 
 
@@ -398,15 +398,15 @@ class TestComparisonReportGenerator:
         comparisons = [
             PairwiseComparison(
                 finding_id="1",
-                agent_os_score=4,
+                argus_score=4,
                 codex_score=3,
-                winner="agent_os",
+                winner="argus",
             )
         ]
 
         agg = PairwiseAggregation(
             total_comparisons=1,
-            agent_os_wins=1,
+            argus_wins=1,
             codex_wins=0,
         )
 
@@ -432,12 +432,12 @@ class TestComparisonReportGenerator:
         comparisons = [
             PairwiseComparison(
                 finding_id="1",
-                agent_os_finding={"path": "api.py", "severity": "high"},
+                argus_finding={"path": "api.py", "severity": "high"},
                 codex_finding={"path": "api.py", "severity": "high"},
                 match_type="matched",
-                agent_os_score=4,
+                argus_score=4,
                 codex_score=3,
-                winner="agent_os",
+                winner="argus",
                 judge_reasoning="Better coverage",
             )
         ]
@@ -445,13 +445,13 @@ class TestComparisonReportGenerator:
         agg = PairwiseAggregation(
             total_comparisons=1,
             matched_findings=1,
-            agent_os_wins=1,
+            argus_wins=1,
             codex_wins=0,
             ties=0,
-            avg_agent_os_score=4.0,
+            avg_argus_score=4.0,
             avg_codex_score=3.0,
-            overall_winner="agent_os",
-            recommendation="Agent-OS is better",
+            overall_winner="argus",
+            recommendation="Argus is better",
         )
 
         output_file = tmp_path / "report.md"
@@ -468,7 +468,7 @@ class TestComparisonReportGenerator:
             content = f.read()
 
         assert "Pairwise Comparison Analysis Report" in content
-        assert "Agent-OS" in content
+        assert "Argus" in content
         assert "Codex" in content
 
 

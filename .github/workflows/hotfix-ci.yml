@@ -128,7 +128,7 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
       
-      - name: Install Agent-OS
+      - name: Install Argus
         run: |
           python -m pip install --upgrade pip
           # Install core dependencies (skip optional heavy ML dependencies)
@@ -139,8 +139,8 @@ jobs:
           echo "Running smoke tests to ensure basic functionality"
           
           # Test 1: CLI help
-          if command -v python3 scripts/agentos &> /dev/null; then
-            python3 scripts/agentos --help || echo "CLI test skipped"
+          if command -v python3 scripts/argus &> /dev/null; then
+            python3 scripts/argus --help || echo "CLI test skipped"
           fi
           
           # Test 2: Import test

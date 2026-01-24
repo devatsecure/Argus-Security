@@ -5,7 +5,7 @@ body:
       value: |
         ## 📊 Case Study
         
-        Share how Agent-OS helped your team!
+        Share how Argus helped your team!
         
   - type: input
     id: company
@@ -41,7 +41,7 @@ body:
   - type: textarea
     id: before
     attributes:
-      label: Before Agent-OS
+      label: Before Argus
       description: What was your security/code review process?
       placeholder: |
         - Manual security reviews taking 2-3 days
@@ -54,7 +54,7 @@ body:
     id: results
     attributes:
       label: Results & Impact
-      description: What changed after implementing Agent-OS?
+      description: What changed after implementing Argus?
       placeholder: |
         - Reduced review time from 3 days to 5 minutes (99% faster)
         - False positive rate: 90% → 8% (82% improvement)
@@ -80,7 +80,7 @@ body:
     id: feedback
     attributes:
       label: Feedback & Recommendations
-      description: What would you tell others considering Agent-OS?
+      description: What would you tell others considering Argus?
     validations:
       required: true
   

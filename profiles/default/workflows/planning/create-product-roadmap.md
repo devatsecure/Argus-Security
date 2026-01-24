@@ -1,10 +1,10 @@
-Generate `agent-os/product/roadmap.md` with an ordered feature checklist:
+Generate `argus/product/roadmap.md` with an ordered feature checklist:
 
 Do not include any tasks for initializing a new codebase or bootstrapping a new application. Assume the user is already inside the project's codebase and has a bare-bones application initialized.
 
 #### Creating the Roadmap:
 
-1. **Review the Mission** - Read `agent-os/product/mission.md` to understand the product's goals, target users, and success criteria.
+1. **Review the Mission** - Read `argus/product/mission.md` to understand the product's goals, target users, and success criteria.
 
 2. **Identify Features** - Based on the mission, determine 4–12 concrete features needed to achieve the product vision.
 

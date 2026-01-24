@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Agent-OS Observability Dashboard
+Argus Observability Dashboard
 Streamlit dashboard for visualizing AI decision quality and system metrics
 
 Features:
@@ -145,7 +145,7 @@ def render_feedback_metrics(collector, feedback):
     st.header("📝 User Feedback")
 
     if not feedback:
-        st.info("No feedback recorded yet. Use 'agentos feedback record' to mark findings as TP/FP.")
+        st.info("No feedback recorded yet. Use 'argus feedback record' to mark findings as TP/FP.")
         return
 
     stats = collector.get_feedback_stats()
@@ -367,13 +367,13 @@ def render_cache_stats(cache_stats):
 def main():
     """Main dashboard application"""
     st.set_page_config(
-        page_title="Agent-OS Observability",
+        page_title="Argus Observability",
         page_icon="🔒",
         layout="wide",
         initial_sidebar_state="expanded"
     )
 
-    st.title("🔒 Agent-OS Observability Dashboard")
+    st.title("🔒 Argus Observability Dashboard")
     st.markdown("Real-time insights into AI decision quality, feedback, and system performance")
 
     # Sidebar controls

@@ -17,7 +17,7 @@ jobs:
         uses: actions/checkout@v4
       
       - name: Run Cost-Optimized Scan
-        uses: devatsecure/agent-os-action@v1
+        uses: devatsecure/argus-action@v1
         with:
           # AI Provider (choose free/cheap options)
           ai_provider: auto  # Auto-selects cheapest available
@@ -44,8 +44,8 @@ jobs:
       - name: Cost Report
         if: always()
         run: |
-          if [ -f .agent-os/reviews/metrics.json ]; then
-            COST=$(jq -r '.cost_usd' .agent-os/reviews/metrics.json)
+          if [ -f .argus/reviews/metrics.json ]; then
+            COST=$(jq -r '.cost_usd' .argus/reviews/metrics.json)
             echo "💰 Total Cost: \$$COST" >> $GITHUB_STEP_SUMMARY
             
             if (( $(echo "$COST > 0.50" | bc -l) )); then

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Example workflow: Security Scan → Fix → Generate Regression Tests → CI/CD Integration
-# This demonstrates the complete regression testing workflow with Agent-OS
+# This demonstrates the complete regression testing workflow with Argus
 
 set -e
 

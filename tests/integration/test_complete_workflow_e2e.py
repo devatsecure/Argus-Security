@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Complete end-to-end workflow test for Agent-OS
+Complete end-to-end workflow test for Argus
 Tests the full security workflow: Scan → Enrich → Remediate → Test → Monitor
 
-This is the most comprehensive E2E test that validates the entire Agent-OS pipeline
+This is the most comprehensive E2E test that validates the entire Argus pipeline
 integrating all security features: SAST, DAST, Supply Chain, Fuzzing, Test Generation,
 and AI Correlation.
 """
@@ -37,7 +37,7 @@ except ImportError:
 
 
 class TestCompleteAgentOSWorkflow:
-    """Test complete Agent-OS security workflow end-to-end"""
+    """Test complete Argus security workflow end-to-end"""
 
     def setup_method(self):
         """Setup test environment for complete workflow"""

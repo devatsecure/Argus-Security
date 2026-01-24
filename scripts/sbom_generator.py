@@ -84,7 +84,7 @@ class SBOMGenerator:
         return True
 
     def _enrich_sbom(self, sbom: dict, path: str) -> dict:
-        """Add Agent-OS metadata to SBOM"""
+        """Add Argus metadata to SBOM"""
 
         # Add metadata section if not present
         if "metadata" not in sbom:
@@ -95,7 +95,7 @@ class SBOMGenerator:
 
         # Add tool info
         sbom["metadata"]["tools"] = [
-            {"vendor": "Agent-OS", "name": "Agent-OS Security Control Plane", "version": "1.0.0"},
+            {"vendor": "Argus", "name": "Argus Security Control Plane", "version": "1.0.0"},
             {"vendor": "Anchore", "name": "Syft", "version": self._get_syft_version()},
         ]
 

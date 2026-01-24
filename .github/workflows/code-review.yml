@@ -1,7 +1,7 @@
 name: Code Review (Example/Test Workflow)
 
 # NOTE: This is an EXAMPLE workflow that generates mock audit data for testing.
-# For PRODUCTION use, use the real Agent OS action with AI provider configuration.
+# For PRODUCTION use, use the real Argus action with AI provider configuration.
 # See action.yml and example-workflow.yml for production-ready implementations.
 
 on:
@@ -41,71 +41,71 @@ jobs:
         node-version: '18'
         cache: 'npm'
     
-    - name: Install Agent OS
+    - name: Install Argus
       run: |
-        echo "Setting up Agent OS base installation..."
-        mkdir -p $HOME/.agent-os/{scripts,profiles,standards}
+        echo "Setting up Argus base installation..."
+        mkdir -p $HOME/.argus/{scripts,profiles,standards}
         
         # Verify installation
-        if [ ! -d "$HOME/.agent-os" ]; then
-          echo "Agent OS installation failed"
+        if [ ! -d "$HOME/.argus" ]; then
+          echo "Argus installation failed"
           exit 1
         fi
-        echo "Agent OS installed successfully"
+        echo "Argus installed successfully"
     
     - name: Install Code Reviewer System
       run: |
         echo "Installing code reviewer system..."
         
         # Create directories
-        mkdir -p $HOME/.agent-os/profiles/default/agents
-        mkdir -p $HOME/.agent-os/profiles/default/workflows/review
-        mkdir -p $HOME/.agent-os/profiles/default/standards/review
-        mkdir -p $HOME/.agent-os/profiles/default/commands/audit-codebase/multi-agent
-        mkdir -p $HOME/.agent-os/profiles/default/commands/review-changes/multi-agent
-        mkdir -p $HOME/.agent-os/profiles/default/commands/security-scan/multi-agent
-        mkdir -p $HOME/.agent-os/profiles/default/roles
+        mkdir -p $HOME/.argus/profiles/default/agents
+        mkdir -p $HOME/.argus/profiles/default/workflows/review
+        mkdir -p $HOME/.argus/profiles/default/standards/review
+        mkdir -p $HOME/.argus/profiles/default/commands/audit-codebase/multi-agent
+        mkdir -p $HOME/.argus/profiles/default/commands/review-changes/multi-agent
+        mkdir -p $HOME/.argus/profiles/default/commands/security-scan/multi-agent
+        mkdir -p $HOME/.argus/profiles/default/roles
         
         # Copy code reviewer files from this repository
         if [ -d "profiles/default/agents" ]; then
-          cp -r profiles/default/agents/* $HOME/.agent-os/profiles/default/agents/
+          cp -r profiles/default/agents/* $HOME/.argus/profiles/default/agents/
           echo "Agents copied successfully"
         fi
         
         if [ -d "profiles/default/workflows/review" ]; then
-          cp -r profiles/default/workflows/review $HOME/.agent-os/profiles/default/workflows/
+          cp -r profiles/default/workflows/review $HOME/.argus/profiles/default/workflows/
           echo "Workflows copied successfully"
         fi
         
         if [ -d "profiles/default/standards/review" ]; then
-          cp -r profiles/default/standards/review $HOME/.agent-os/profiles/default/standards/
+          cp -r profiles/default/standards/review $HOME/.argus/profiles/default/standards/
           echo "Standards copied successfully"
         fi
         
         if [ -d "profiles/default/commands" ]; then
-          cp -r profiles/default/commands/audit-codebase $HOME/.agent-os/profiles/default/commands/
-          cp -r profiles/default/commands/review-changes $HOME/.agent-os/profiles/default/commands/
-          cp -r profiles/default/commands/security-scan $HOME/.agent-os/profiles/default/commands/
+          cp -r profiles/default/commands/audit-codebase $HOME/.argus/profiles/default/commands/
+          cp -r profiles/default/commands/review-changes $HOME/.argus/profiles/default/commands/
+          cp -r profiles/default/commands/security-scan $HOME/.argus/profiles/default/commands/
           echo "Commands copied successfully"
         fi
         
         if [ -f "profiles/default/roles/reviewers.yml" ]; then
-          cp profiles/default/roles/reviewers.yml $HOME/.agent-os/profiles/default/roles/
+          cp profiles/default/roles/reviewers.yml $HOME/.argus/profiles/default/roles/
           echo "Roles copied successfully"
         fi
         
         echo "Code reviewer system installed successfully"
     
-    - name: Install Agent OS to Project
+    - name: Install Argus to Project
       run: |
-        echo "Installing Agent OS to project..."
-        $HOME/.agent-os/scripts/project-install.sh
+        echo "Installing Argus to project..."
+        $HOME/.argus/scripts/project-install.sh
         
-        if [ ! -d ".agent-os" ]; then
+        if [ ! -d ".argus" ]; then
           echo "Project installation failed"
           exit 1
         fi
-        echo "Agent OS installed to project successfully"
+        echo "Argus installed to project successfully"
     
     - name: Run Code Review
       id: code-review
@@ -124,174 +124,174 @@ jobs:
         echo "Review type: $REVIEW_TYPE"
         
         # Create reviews directory
-        mkdir -p .agent-os/reviews
+        mkdir -p .argus/reviews
         
         # Run the appropriate review
         case "$REVIEW_TYPE" in
           "audit")
             echo "Running full codebase audit..."
-            echo "# Codebase Audit Report" > .agent-os/reviews/audit-report.md
-            echo "Generated: $(date)" >> .agent-os/reviews/audit-report.md
-            echo "Repository: ${{ github.repository }}" >> .agent-os/reviews/audit-report.md
-            echo "Branch: ${{ github.ref_name }}" >> .agent-os/reviews/audit-report.md
-            echo "Commit: ${{ github.sha }}" >> .agent-os/reviews/audit-report.md
-            echo "" >> .agent-os/reviews/audit-report.md
-            echo "## Executive Summary" >> .agent-os/reviews/audit-report.md
-            echo "**Review Date:** $(date)" >> .agent-os/reviews/audit-report.md
-            echo "**Repository:** ${{ github.repository }}" >> .agent-os/reviews/audit-report.md
-            echo "**Branch:** ${{ github.ref_name }}" >> .agent-os/reviews/audit-report.md
-            echo "**Commit:** ${{ github.sha }}" >> .agent-os/reviews/audit-report.md
-            echo "**Overall Status:** REQUIRES FIXES" >> .agent-os/reviews/audit-report.md
-            echo "**Risk Level:** HIGH" >> .agent-os/reviews/audit-report.md
-            echo "" >> .agent-os/reviews/audit-report.md
-            echo "### Summary Statistics" >> .agent-os/reviews/audit-report.md
-            echo "- **Total Issues Found:** 23" >> .agent-os/reviews/audit-report.md
-            echo "- **Merge Blockers:** 8 (Must fix before merge)" >> .agent-os/reviews/audit-report.md
-            echo "- **Suggestions:** 12 (Good to have improvements)" >> .agent-os/reviews/audit-report.md
-            echo "- **Nits:** 3 (Can ignore)" >> .agent-os/reviews/audit-report.md
-            echo "" >> .agent-os/reviews/audit-report.md
-            echo "## Merge Blockers (Must Fix Before Merge)" >> .agent-os/reviews/audit-report.md
-            echo "" >> .agent-os/reviews/audit-report.md
-            echo "### Security Issues" >> .agent-os/reviews/audit-report.md
-            echo "- **[BLOCKER]** Hardcoded API key detected in \`config.js:15\`" >> .agent-os/reviews/audit-report.md
-            echo "- **[BLOCKER]** SQL injection vulnerability in \`userService.js:42\`" >> .agent-os/reviews/audit-report.md
-            echo "- **[BLOCKER]** Missing authentication on \`/api/users\` endpoint" >> .agent-os/reviews/audit-report.md
-            echo "" >> .agent-os/reviews/audit-report.md
-            echo "### Performance Issues" >> .agent-os/reviews/audit-report.md
-            echo "- **[BLOCKER]** N+1 query pattern in \`userController.js:67\`" >> .agent-os/reviews/audit-report.md
-            echo "- **[BLOCKER]** Memory leak detected in \`service.js:23\`" >> .agent-os/reviews/audit-report.md
-            echo "" >> .agent-os/reviews/audit-report.md
-            echo "### Testing Issues" >> .agent-os/reviews/audit-report.md
-            echo "- **[BLOCKER]** Missing tests for critical business logic" >> .agent-os/reviews/audit-report.md
-            echo "- **[BLOCKER]** No regression tests for bug fixes" >> .agent-os/reviews/audit-report.md
-            echo "" >> .agent-os/reviews/audit-report.md
-            echo "## Suggestions (Good to Have)" >> .agent-os/reviews/audit-report.md
-            echo "" >> .agent-os/reviews/audit-report.md
-            echo "### Code Quality Improvements" >> .agent-os/reviews/audit-report.md
-            echo "- **[SUGGESTION]** Add input validation for user inputs" >> .agent-os/reviews/audit-report.md
-            echo "- **[SUGGESTION]** Implement database connection pooling" >> .agent-os/reviews/audit-report.md
-            echo "- **[SUGGESTION]** Add comprehensive security test suite" >> .agent-os/reviews/audit-report.md
-            echo "" >> .agent-os/reviews/audit-report.md
-            echo "## Action Items" >> .agent-os/reviews/audit-report.md
-            echo "" >> .agent-os/reviews/audit-report.md
-            echo "### Immediate (Merge Blockers)" >> .agent-os/reviews/audit-report.md
-            echo "1. **Fix hardcoded API key** - Use environment variables" >> .agent-os/reviews/audit-report.md
-            echo "2. **Fix SQL injection vulnerability** - Use parameterized queries" >> .agent-os/reviews/audit-report.md
-            echo "3. **Add authentication** - Implement auth middleware" >> .agent-os/reviews/audit-report.md
-            echo "4. **Fix N+1 query pattern** - Optimize database queries" >> .agent-os/reviews/audit-report.md
-            echo "5. **Add missing tests** - Implement comprehensive test suite" >> .agent-os/reviews/audit-report.md
-            echo "" >> .agent-os/reviews/audit-report.md
-            echo "### Follow-up (Suggestions)" >> .agent-os/reviews/audit-report.md
-            echo "1. **Implement input validation** - Add validation middleware" >> .agent-os/reviews/audit-report.md
-            echo "2. **Add connection pooling** - Configure database pooling" >> .agent-os/reviews/audit-report.md
-            echo "3. **Enhance error handling** - Improve error messages" >> .agent-os/reviews/audit-report.md
-            echo "" >> .agent-os/reviews/audit-report.md
-            echo "## Recommendation" >> .agent-os/reviews/audit-report.md
-            echo "**REQUIRES FIXES** - Critical security and performance issues must be resolved before merge." >> .agent-os/reviews/audit-report.md
+            echo "# Codebase Audit Report" > .argus/reviews/audit-report.md
+            echo "Generated: $(date)" >> .argus/reviews/audit-report.md
+            echo "Repository: ${{ github.repository }}" >> .argus/reviews/audit-report.md
+            echo "Branch: ${{ github.ref_name }}" >> .argus/reviews/audit-report.md
+            echo "Commit: ${{ github.sha }}" >> .argus/reviews/audit-report.md
+            echo "" >> .argus/reviews/audit-report.md
+            echo "## Executive Summary" >> .argus/reviews/audit-report.md
+            echo "**Review Date:** $(date)" >> .argus/reviews/audit-report.md
+            echo "**Repository:** ${{ github.repository }}" >> .argus/reviews/audit-report.md
+            echo "**Branch:** ${{ github.ref_name }}" >> .argus/reviews/audit-report.md
+            echo "**Commit:** ${{ github.sha }}" >> .argus/reviews/audit-report.md
+            echo "**Overall Status:** REQUIRES FIXES" >> .argus/reviews/audit-report.md
+            echo "**Risk Level:** HIGH" >> .argus/reviews/audit-report.md
+            echo "" >> .argus/reviews/audit-report.md
+            echo "### Summary Statistics" >> .argus/reviews/audit-report.md
+            echo "- **Total Issues Found:** 23" >> .argus/reviews/audit-report.md
+            echo "- **Merge Blockers:** 8 (Must fix before merge)" >> .argus/reviews/audit-report.md
+            echo "- **Suggestions:** 12 (Good to have improvements)" >> .argus/reviews/audit-report.md
+            echo "- **Nits:** 3 (Can ignore)" >> .argus/reviews/audit-report.md
+            echo "" >> .argus/reviews/audit-report.md
+            echo "## Merge Blockers (Must Fix Before Merge)" >> .argus/reviews/audit-report.md
+            echo "" >> .argus/reviews/audit-report.md
+            echo "### Security Issues" >> .argus/reviews/audit-report.md
+            echo "- **[BLOCKER]** Hardcoded API key detected in \`config.js:15\`" >> .argus/reviews/audit-report.md
+            echo "- **[BLOCKER]** SQL injection vulnerability in \`userService.js:42\`" >> .argus/reviews/audit-report.md
+            echo "- **[BLOCKER]** Missing authentication on \`/api/users\` endpoint" >> .argus/reviews/audit-report.md
+            echo "" >> .argus/reviews/audit-report.md
+            echo "### Performance Issues" >> .argus/reviews/audit-report.md
+            echo "- **[BLOCKER]** N+1 query pattern in \`userController.js:67\`" >> .argus/reviews/audit-report.md
+            echo "- **[BLOCKER]** Memory leak detected in \`service.js:23\`" >> .argus/reviews/audit-report.md
+            echo "" >> .argus/reviews/audit-report.md
+            echo "### Testing Issues" >> .argus/reviews/audit-report.md
+            echo "- **[BLOCKER]** Missing tests for critical business logic" >> .argus/reviews/audit-report.md
+            echo "- **[BLOCKER]** No regression tests for bug fixes" >> .argus/reviews/audit-report.md
+            echo "" >> .argus/reviews/audit-report.md
+            echo "## Suggestions (Good to Have)" >> .argus/reviews/audit-report.md
+            echo "" >> .argus/reviews/audit-report.md
+            echo "### Code Quality Improvements" >> .argus/reviews/audit-report.md
+            echo "- **[SUGGESTION]** Add input validation for user inputs" >> .argus/reviews/audit-report.md
+            echo "- **[SUGGESTION]** Implement database connection pooling" >> .argus/reviews/audit-report.md
+            echo "- **[SUGGESTION]** Add comprehensive security test suite" >> .argus/reviews/audit-report.md
+            echo "" >> .argus/reviews/audit-report.md
+            echo "## Action Items" >> .argus/reviews/audit-report.md
+            echo "" >> .argus/reviews/audit-report.md
+            echo "### Immediate (Merge Blockers)" >> .argus/reviews/audit-report.md
+            echo "1. **Fix hardcoded API key** - Use environment variables" >> .argus/reviews/audit-report.md
+            echo "2. **Fix SQL injection vulnerability** - Use parameterized queries" >> .argus/reviews/audit-report.md
+            echo "3. **Add authentication** - Implement auth middleware" >> .argus/reviews/audit-report.md
+            echo "4. **Fix N+1 query pattern** - Optimize database queries" >> .argus/reviews/audit-report.md
+            echo "5. **Add missing tests** - Implement comprehensive test suite" >> .argus/reviews/audit-report.md
+            echo "" >> .argus/reviews/audit-report.md
+            echo "### Follow-up (Suggestions)" >> .argus/reviews/audit-report.md
+            echo "1. **Implement input validation** - Add validation middleware" >> .argus/reviews/audit-report.md
+            echo "2. **Add connection pooling** - Configure database pooling" >> .argus/reviews/audit-report.md
+            echo "3. **Enhance error handling** - Improve error messages" >> .argus/reviews/audit-report.md
+            echo "" >> .argus/reviews/audit-report.md
+            echo "## Recommendation" >> .argus/reviews/audit-report.md
+            echo "**REQUIRES FIXES** - Critical security and performance issues must be resolved before merge." >> .argus/reviews/audit-report.md
             ;;
           "security")
             echo "Running security scan..."
-            echo "# Security Scan Report" > .agent-os/reviews/security-report.md
-            echo "Generated: $(date)" >> .agent-os/reviews/security-report.md
-            echo "Repository: ${{ github.repository }}" >> .agent-os/reviews/security-report.md
-            echo "Branch: ${{ github.ref_name }}" >> .agent-os/reviews/security-report.md
-            echo "Commit: ${{ github.sha }}" >> .agent-os/reviews/security-report.md
-            echo "" >> .agent-os/reviews/security-report.md
-            echo "## Security Summary" >> .agent-os/reviews/security-report.md
-            echo "**Scan Date:** $(date)" >> .agent-os/reviews/security-report.md
-            echo "**Repository:** ${{ github.repository }}" >> .agent-os/reviews/security-report.md
-            echo "**Overall Security Status:** CRITICAL" >> .agent-os/reviews/security-report.md
-            echo "**Critical Vulnerabilities:** 3 found" >> .agent-os/reviews/security-report.md
-            echo "**High-Priority Issues:** 8 found" >> .agent-os/reviews/security-report.md
-            echo "" >> .agent-os/reviews/security-report.md
-            echo "## Critical Security Issues (Merge Blockers)" >> .agent-os/reviews/security-report.md
-            echo "" >> .agent-os/reviews/security-report.md
-            echo "### Secrets Detection" >> .agent-os/reviews/security-report.md
-            echo "- **[BLOCKER]** Hardcoded API key in \`config.js:15\`" >> .agent-os/reviews/security-report.md
-            echo "- **[BLOCKER]** Database credentials in \`database.js:8\`" >> .agent-os/reviews/security-report.md
-            echo "" >> .agent-os/reviews/security-report.md
-            echo "### Injection Vulnerabilities" >> .agent-os/reviews/security-report.md
-            echo "- **[BLOCKER]** SQL injection in \`userService.js:42\`" >> .agent-os/reviews/security-report.md
-            echo "" >> .agent-os/reviews/security-report.md
-            echo "### Authentication Issues" >> .agent-os/reviews/security-report.md
-            echo "- **[BLOCKER]** Missing authentication on \`/api/users\` endpoint" >> .agent-os/reviews/security-report.md
-            echo "- **[BLOCKER]** Weak session management in \`auth.js:23\`" >> .agent-os/reviews/security-report.md
-            echo "" >> .agent-os/reviews/security-report.md
-            echo "## Security Recommendations" >> .agent-os/reviews/security-report.md
-            echo "" >> .agent-os/reviews/security-report.md
-            echo "### Immediate Actions" >> .agent-os/reviews/security-report.md
-            echo "1. **Remove hardcoded secrets** - Use environment variables" >> .agent-os/reviews/security-report.md
-            echo "2. **Fix SQL injection** - Use parameterized queries" >> .agent-os/reviews/security-report.md
-            echo "3. **Implement authentication** - Add auth middleware" >> .agent-os/reviews/security-report.md
-            echo "4. **Strengthen session management** - Use secure session handling" >> .agent-os/reviews/security-report.md
-            echo "" >> .agent-os/reviews/security-report.md
-            echo "### Follow-up Actions" >> .agent-os/reviews/security-report.md
-            echo "1. **Add input validation** - Implement comprehensive validation" >> .agent-os/reviews/security-report.md
-            echo "2. **Implement security headers** - Add CORS, CSP, X-Frame-Options" >> .agent-os/reviews/security-report.md
-            echo "3. **Add rate limiting** - Implement API rate limiting" >> .agent-os/reviews/security-report.md
-            echo "4. **Security monitoring** - Add security event logging" >> .agent-os/reviews/security-report.md
+            echo "# Security Scan Report" > .argus/reviews/security-report.md
+            echo "Generated: $(date)" >> .argus/reviews/security-report.md
+            echo "Repository: ${{ github.repository }}" >> .argus/reviews/security-report.md
+            echo "Branch: ${{ github.ref_name }}" >> .argus/reviews/security-report.md
+            echo "Commit: ${{ github.sha }}" >> .argus/reviews/security-report.md
+            echo "" >> .argus/reviews/security-report.md
+            echo "## Security Summary" >> .argus/reviews/security-report.md
+            echo "**Scan Date:** $(date)" >> .argus/reviews/security-report.md
+            echo "**Repository:** ${{ github.repository }}" >> .argus/reviews/security-report.md
+            echo "**Overall Security Status:** CRITICAL" >> .argus/reviews/security-report.md
+            echo "**Critical Vulnerabilities:** 3 found" >> .argus/reviews/security-report.md
+            echo "**High-Priority Issues:** 8 found" >> .argus/reviews/security-report.md
+            echo "" >> .argus/reviews/security-report.md
+            echo "## Critical Security Issues (Merge Blockers)" >> .argus/reviews/security-report.md
+            echo "" >> .argus/reviews/security-report.md
+            echo "### Secrets Detection" >> .argus/reviews/security-report.md
+            echo "- **[BLOCKER]** Hardcoded API key in \`config.js:15\`" >> .argus/reviews/security-report.md
+            echo "- **[BLOCKER]** Database credentials in \`database.js:8\`" >> .argus/reviews/security-report.md
+            echo "" >> .argus/reviews/security-report.md
+            echo "### Injection Vulnerabilities" >> .argus/reviews/security-report.md
+            echo "- **[BLOCKER]** SQL injection in \`userService.js:42\`" >> .argus/reviews/security-report.md
+            echo "" >> .argus/reviews/security-report.md
+            echo "### Authentication Issues" >> .argus/reviews/security-report.md
+            echo "- **[BLOCKER]** Missing authentication on \`/api/users\` endpoint" >> .argus/reviews/security-report.md
+            echo "- **[BLOCKER]** Weak session management in \`auth.js:23\`" >> .argus/reviews/security-report.md
+            echo "" >> .argus/reviews/security-report.md
+            echo "## Security Recommendations" >> .argus/reviews/security-report.md
+            echo "" >> .argus/reviews/security-report.md
+            echo "### Immediate Actions" >> .argus/reviews/security-report.md
+            echo "1. **Remove hardcoded secrets** - Use environment variables" >> .argus/reviews/security-report.md
+            echo "2. **Fix SQL injection** - Use parameterized queries" >> .argus/reviews/security-report.md
+            echo "3. **Implement authentication** - Add auth middleware" >> .argus/reviews/security-report.md
+            echo "4. **Strengthen session management** - Use secure session handling" >> .argus/reviews/security-report.md
+            echo "" >> .argus/reviews/security-report.md
+            echo "### Follow-up Actions" >> .argus/reviews/security-report.md
+            echo "1. **Add input validation** - Implement comprehensive validation" >> .argus/reviews/security-report.md
+            echo "2. **Implement security headers** - Add CORS, CSP, X-Frame-Options" >> .argus/reviews/security-report.md
+            echo "3. **Add rate limiting** - Implement API rate limiting" >> .argus/reviews/security-report.md
+            echo "4. **Security monitoring** - Add security event logging" >> .argus/reviews/security-report.md
             ;;
           "review")
             echo "Running code review..."
-            echo "# Code Review Report" > .agent-os/reviews/review-report.md
-            echo "Generated: $(date)" >> .agent-os/reviews/review-report.md
-            echo "Repository: ${{ github.repository }}" >> .agent-os/reviews/review-report.md
-            echo "Branch: ${{ github.ref_name }}" >> .agent-os/reviews/review-report.md
-            echo "Commit: ${{ github.sha }}" >> .agent-os/reviews/review-report.md
-            echo "" >> .agent-os/reviews/review-report.md
-            echo "## Review Summary" >> .agent-os/reviews/review-report.md
-            echo "**Review Date:** $(date)" >> .agent-os/reviews/review-report.md
-            echo "**Repository:** ${{ github.repository }}" >> .agent-os/reviews/review-report.md
-            echo "**Branch:** ${{ github.ref_name }}" >> .agent-os/reviews/review-report.md
-            echo "**Commit:** ${{ github.sha }}" >> .agent-os/reviews/review-report.md
-            echo "**Overall Status:** REQUIRES FIXES" >> .agent-os/reviews/review-report.md
-            echo "**Risk Level:** HIGH" >> .agent-os/reviews/review-report.md
-            echo "" >> .agent-os/reviews/review-report.md
-            echo "### Summary Statistics" >> .agent-os/reviews/review-report.md
-            echo "- **Total Issues Found:** 15" >> .agent-os/reviews/review-report.md
-            echo "- **Merge Blockers:** 5 (Must fix before merge)" >> .agent-os/reviews/review-report.md
-            echo "- **Suggestions:** 8 (Good to have improvements)" >> .agent-os/reviews/review-report.md
-            echo "- **Nits:** 2 (Can ignore)" >> .agent-os/reviews/review-report.md
-            echo "" >> .agent-os/reviews/review-report.md
-            echo "## Inline Comments" >> .agent-os/reviews/review-report.md
-            echo "" >> .agent-os/reviews/review-report.md
-            echo "### [BLOCKER] Critical Issues (Must Fix)" >> .agent-os/reviews/review-report.md
-            echo "" >> .agent-os/reviews/review-report.md
-            echo "#### File: \`src/config.js\`" >> .agent-os/reviews/review-report.md
-            echo "\`\`\`javascript" >> .agent-os/reviews/review-report.md
-            echo "// Line 15: [BLOCKER] Hardcoded API key detected" >> .agent-os/reviews/review-report.md
-            echo "const apiKey = \"sk-1234567890abcdef\"; // ❌ SECURITY RISK" >> .agent-os/reviews/review-report.md
-            echo "\`\`\`" >> .agent-os/reviews/review-report.md
-            echo "" >> .agent-os/reviews/review-report.md
-            echo "**Issue:** Hardcoded API key in source code" >> .agent-os/reviews/review-report.md
-            echo "**Risk:** High - API key could be exposed in version control" >> .agent-os/reviews/review-report.md
-            echo "**Fix:** Use environment variable: \`process.env.API_KEY\`" >> .agent-os/reviews/review-report.md
-            echo "" >> .agent-os/reviews/review-report.md
-            echo "#### File: \`src/services/userService.js\`" >> .agent-os/reviews/review-report.md
-            echo "\`\`\`javascript" >> .agent-os/reviews/review-report.md
-            echo "// Line 42: [BLOCKER] SQL injection vulnerability detected" >> .agent-os/reviews/review-report.md
-            echo "const query = \`SELECT * FROM users WHERE id = \${userId}\`; // ❌ SECURITY RISK" >> .agent-os/reviews/review-report.md
-            echo "\`\`\`" >> .agent-os/reviews/review-report.md
-            echo "" >> .agent-os/reviews/review-report.md
-            echo "**Issue:** SQL injection vulnerability in user query" >> .agent-os/reviews/review-report.md
-            echo "**Risk:** High - Could lead to data breach" >> .agent-os/reviews/review-report.md
-            echo "**Fix:** Use parameterized queries: \`SELECT * FROM users WHERE id = ?\`" >> .agent-os/reviews/review-report.md
-            echo "" >> .agent-os/reviews/review-report.md
-            echo "## Review Decision" >> .agent-os/reviews/review-report.md
-            echo "" >> .agent-os/reviews/review-report.md
-            echo "### Overall Assessment" >> .agent-os/reviews/review-report.md
-            echo "**Status:** REQUIRES FIXES" >> .agent-os/reviews/review-report.md
-            echo "" >> .agent-os/reviews/review-report.md
-            echo "### Reasoning" >> .agent-os/reviews/review-report.md
-            echo "- **Security:** Critical issues - Hardcoded secrets and SQL injection" >> .agent-os/reviews/review-report.md
-            echo "- **Performance:** Good - No major performance issues" >> .agent-os/reviews/review-report.md
-            echo "- **Testing:** Needs attention - Missing critical tests" >> .agent-os/reviews/review-report.md
-            echo "- **Quality:** Good - Code quality is acceptable" >> .agent-os/reviews/review-report.md
-            echo "" >> .agent-os/reviews/review-report.md
-            echo "### Next Steps" >> .agent-os/reviews/review-report.md
-            echo "1. **Address merge blockers** - Fix all [BLOCKER] issues" >> .agent-os/reviews/review-report.md
-            echo "2. **Consider suggestions** - Implement [SUGGESTION] items" >> .agent-os/reviews/review-report.md
-            echo "3. **Re-review** - Request re-review after fixes" >> .agent-os/reviews/review-report.md
+            echo "# Code Review Report" > .argus/reviews/review-report.md
+            echo "Generated: $(date)" >> .argus/reviews/review-report.md
+            echo "Repository: ${{ github.repository }}" >> .argus/reviews/review-report.md
+            echo "Branch: ${{ github.ref_name }}" >> .argus/reviews/review-report.md
+            echo "Commit: ${{ github.sha }}" >> .argus/reviews/review-report.md
+            echo "" >> .argus/reviews/review-report.md
+            echo "## Review Summary" >> .argus/reviews/review-report.md
+            echo "**Review Date:** $(date)" >> .argus/reviews/review-report.md
+            echo "**Repository:** ${{ github.repository }}" >> .argus/reviews/review-report.md
+            echo "**Branch:** ${{ github.ref_name }}" >> .argus/reviews/review-report.md
+            echo "**Commit:** ${{ github.sha }}" >> .argus/reviews/review-report.md
+            echo "**Overall Status:** REQUIRES FIXES" >> .argus/reviews/review-report.md
+            echo "**Risk Level:** HIGH" >> .argus/reviews/review-report.md
+            echo "" >> .argus/reviews/review-report.md
+            echo "### Summary Statistics" >> .argus/reviews/review-report.md
+            echo "- **Total Issues Found:** 15" >> .argus/reviews/review-report.md
+            echo "- **Merge Blockers:** 5 (Must fix before merge)" >> .argus/reviews/review-report.md
+            echo "- **Suggestions:** 8 (Good to have improvements)" >> .argus/reviews/review-report.md
+            echo "- **Nits:** 2 (Can ignore)" >> .argus/reviews/review-report.md
+            echo "" >> .argus/reviews/review-report.md
+            echo "## Inline Comments" >> .argus/reviews/review-report.md
+            echo "" >> .argus/reviews/review-report.md
+            echo "### [BLOCKER] Critical Issues (Must Fix)" >> .argus/reviews/review-report.md
+            echo "" >> .argus/reviews/review-report.md
+            echo "#### File: \`src/config.js\`" >> .argus/reviews/review-report.md
+            echo "\`\`\`javascript" >> .argus/reviews/review-report.md
+            echo "// Line 15: [BLOCKER] Hardcoded API key detected" >> .argus/reviews/review-report.md
+            echo "const apiKey = \"sk-1234567890abcdef\"; // ❌ SECURITY RISK" >> .argus/reviews/review-report.md
+            echo "\`\`\`" >> .argus/reviews/review-report.md
+            echo "" >> .argus/reviews/review-report.md
+            echo "**Issue:** Hardcoded API key in source code" >> .argus/reviews/review-report.md
+            echo "**Risk:** High - API key could be exposed in version control" >> .argus/reviews/review-report.md
+            echo "**Fix:** Use environment variable: \`process.env.API_KEY\`" >> .argus/reviews/review-report.md
+            echo "" >> .argus/reviews/review-report.md
+            echo "#### File: \`src/services/userService.js\`" >> .argus/reviews/review-report.md
+            echo "\`\`\`javascript" >> .argus/reviews/review-report.md
+            echo "// Line 42: [BLOCKER] SQL injection vulnerability detected" >> .argus/reviews/review-report.md
+            echo "const query = \`SELECT * FROM users WHERE id = \${userId}\`; // ❌ SECURITY RISK" >> .argus/reviews/review-report.md
+            echo "\`\`\`" >> .argus/reviews/review-report.md
+            echo "" >> .argus/reviews/review-report.md
+            echo "**Issue:** SQL injection vulnerability in user query" >> .argus/reviews/review-report.md
+            echo "**Risk:** High - Could lead to data breach" >> .argus/reviews/review-report.md
+            echo "**Fix:** Use parameterized queries: \`SELECT * FROM users WHERE id = ?\`" >> .argus/reviews/review-report.md
+            echo "" >> .argus/reviews/review-report.md
+            echo "## Review Decision" >> .argus/reviews/review-report.md
+            echo "" >> .argus/reviews/review-report.md
+            echo "### Overall Assessment" >> .argus/reviews/review-report.md
+            echo "**Status:** REQUIRES FIXES" >> .argus/reviews/review-report.md
+            echo "" >> .argus/reviews/review-report.md
+            echo "### Reasoning" >> .argus/reviews/review-report.md
+            echo "- **Security:** Critical issues - Hardcoded secrets and SQL injection" >> .argus/reviews/review-report.md
+            echo "- **Performance:** Good - No major performance issues" >> .argus/reviews/review-report.md
+            echo "- **Testing:** Needs attention - Missing critical tests" >> .argus/reviews/review-report.md
+            echo "- **Quality:** Good - Code quality is acceptable" >> .argus/reviews/review-report.md
+            echo "" >> .argus/reviews/review-report.md
+            echo "### Next Steps" >> .argus/reviews/review-report.md
+            echo "1. **Address merge blockers** - Fix all [BLOCKER] issues" >> .argus/reviews/review-report.md
+            echo "2. **Consider suggestions** - Implement [SUGGESTION] items" >> .argus/reviews/review-report.md
+            echo "3. **Re-review** - Request re-review after fixes" >> .argus/reviews/review-report.md
             ;;
         esac
         
@@ -302,7 +302,7 @@ jobs:
       uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874  # v4.4.0
       with:
         name: code-review-reports-${{ github.run_number }}
-        path: .agent-os/reviews/
+        path: .argus/reviews/
         retention-days: 30
     
     - name: Comment on PR
@@ -314,7 +314,7 @@ jobs:
           const path = require('path');
           
           // Read the review report
-          const reportPath = '.agent-os/reviews/review-report.md';
+          const reportPath = '.argus/reviews/review-report.md';
           let reportContent = '';
           
           if (fs.existsSync(reportPath)) {

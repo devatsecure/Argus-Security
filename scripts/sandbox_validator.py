@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Sandbox Validator for Agent-OS
+Sandbox Validator for Argus
 Safe exploit validation in isolated Docker containers
 
 Validates PoC exploits with:
@@ -110,7 +110,7 @@ class SandboxValidator:
         self.docker_manager = docker_manager or DockerManager()
 
         # Try default results location, fallback to /cache for Docker read-only workspaces
-        default_results = Path(results_dir) if results_dir else Path(".agent-os/sandbox-results")
+        default_results = Path(results_dir) if results_dir else Path(".argus/sandbox-results")
         try:
             default_results.mkdir(parents=True, exist_ok=True)
             # Test if writable
@@ -674,6 +674,6 @@ if __name__ == "__main__":
         print(f"  - {result_type}: {count}")
 
     # Export metrics
-    export_file = ".agent-os/sandbox-results/metrics-summary.json"
+    export_file = ".argus/sandbox-results/metrics-summary.json"
     validator.export_metrics(export_file)
     print(f"\nMetrics exported to: {export_file}")

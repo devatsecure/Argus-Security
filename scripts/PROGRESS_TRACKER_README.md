@@ -1,6 +1,6 @@
 # Progress Tracker - Beautiful Real-Time Progress Tracking
 
-Beautiful progress bars and real-time progress tracking for Agent OS using the `rich` library.
+Beautiful progress bars and real-time progress tracking for Argus using the `rich` library.
 
 ## Files Created
 
@@ -412,7 +412,7 @@ scripts/
 
 ## License
 
-Part of Agent OS - see repository license.
+Part of Argus - see repository license.
 
 ## Support
 

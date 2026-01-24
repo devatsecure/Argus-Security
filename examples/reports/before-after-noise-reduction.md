@@ -1,6 +1,6 @@
-# Agent-OS Noise Reduction: Before & After
+# Argus Noise Reduction: Before & After
 
-This document demonstrates how Agent-OS reduces false positives through ML-powered noise scoring.
+This document demonstrates how Argus reduces false positives through ML-powered noise scoring.
 
 ---
 
@@ -55,9 +55,9 @@ test/mocks/credentials.json:3: GitHub Token (pattern match)
 
 ---
 
-## ✅ After: Agent-OS with AI Triage (3 findings)
+## ✅ After: Argus with AI Triage (3 findings)
 
-Agent-OS applies ML-powered noise scoring to identify true positives:
+Argus applies ML-powered noise scoring to identify true positives:
 
 ### 🔴 Critical: Verified Secret (1 finding)
 
@@ -148,7 +148,7 @@ Signal Enhancement: 47x fewer findings to review
 
 ### Developer Experience
 
-**Without Agent-OS** (Raw scanners):
+**Without Argus** (Raw scanners):
 ```
 ❌ 50 findings to review
 ❌ 47 false positives
@@ -157,7 +157,7 @@ Signal Enhancement: 47x fewer findings to review
 ❌ Alert fatigue → ignoring all findings
 ```
 
-**With Agent-OS**:
+**With Argus**:
 ```
 ✅ 3 actionable findings
 ✅ 1 verified secret (immediate action)
@@ -169,7 +169,7 @@ Signal Enhancement: 47x fewer findings to review
 
 ### Team Impact
 
-| Metric | Without Agent-OS | With Agent-OS | Improvement |
+| Metric | Without Argus | With Argus | Improvement |
 |--------|-----------------|---------------|-------------|
 | **Findings to Review** | 50 | 3 | 94% reduction |
 | **True Positives** | 3 | 3 | 100% retained |
@@ -180,7 +180,7 @@ Signal Enhancement: 47x fewer findings to review
 
 ---
 
-## 🤖 How Agent-OS Achieves This
+## 🤖 How Argus Achieves This
 
 ### 1. Context-Aware Scoring
 
@@ -280,7 +280,7 @@ test/unit/auth.test.js:45: Hardcoded password detected
 Code: const password = "test123";
 ```
 
-**Agent-OS Analysis**:
+**Argus Analysis**:
 ```
 File Path: test/unit/auth.test.js  → Test file (+0.4)
 Variable Name: "password"           → Suspicious (-0.1)
@@ -303,7 +303,7 @@ docs/api.md:67: API key exposed
 Code: Authorization: Bearer sk_test_1234567890
 ```
 
-**Agent-OS Analysis**:
+**Argus Analysis**:
 ```
 File Path: docs/api.md              → Documentation (+0.3)
 Content: "sk_test_1234567890"       → Example format (+0.2)
@@ -325,7 +325,7 @@ Final Noise Score: 0.89 → SUPPRESSED ✅
 Code: AWS_SECRET_KEY=your_secret_key_here
 ```
 
-**Agent-OS Analysis**:
+**Argus Analysis**:
 ```
 File Name: .env.example             → Example file (+0.35)
 Value: "your_secret_key_here"       → Placeholder text (+0.3)
@@ -347,7 +347,7 @@ config/production.js:8: AWS access key detected
 Code: AWS_ACCESS_KEY_ID: "AKIAI44QH8DHBEXAMPLE"
 ```
 
-**Agent-OS Analysis**:
+**Argus Analysis**:
 ```
 File Name: config/production.js     → Production config (-0.2)
 Value: "AKIAI44QH8DHBEXAMPLE"       → Valid format (-0.1)
@@ -367,7 +367,7 @@ Final Noise Score: 0.02 → ACTIONABLE 🔴
 
 **Repository**: Node.js REST API, 15K lines of code, 247 files, 89 test files
 
-| Scanner | Raw Findings | After Agent-OS | Reduction | Time |
+| Scanner | Raw Findings | After Argus | Reduction | Time |
 |---------|--------------|----------------|-----------|------|
 | **Semgrep** | 38 | 2 | 95% | 12.7s |
 | **TruffleHog** | 8 | 1 | 87% | 8.3s |
@@ -407,11 +407,11 @@ Final Noise Score: 0.02 → ACTIONABLE 🔴
 
 ## 🚀 Try It Yourself
 
-Add Agent-OS to your repository and see your own noise reduction:
+Add Argus to your repository and see your own noise reduction:
 
 ```yaml
-# .github/workflows/agent-os.yml
-name: Agent-OS Security
+# .github/workflows/argus.yml
+name: Argus Security
 on: [pull_request]
 
 jobs:
@@ -419,7 +419,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: securedotcom/agent-os-action@v1
+      - uses: devatsecure/Argus-Security@v1
 ```
 
 **See the difference in your first PR!** 🎉

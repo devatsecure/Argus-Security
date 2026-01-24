@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Decision Analyzer for Agent-OS
+Decision Analyzer for Argus
 Analyzes AI triage decisions to discover patterns and suggest improvements
 
 Features:
@@ -64,7 +64,7 @@ class DecisionPattern:
 class DecisionAnalyzer:
     """Analyze AI triage decision quality over time"""
 
-    def __init__(self, decision_log_path: str = ".agent-os-cache/decisions.jsonl"):
+    def __init__(self, decision_log_path: str = ".argus-cache/decisions.jsonl"):
         """
         Initialize decision analyzer
 
@@ -521,7 +521,7 @@ def main():
     )
     parser.add_argument(
         "--log-file",
-        default=".agent-os-cache/decisions.jsonl",
+        default=".argus-cache/decisions.jsonl",
         help="Path to decision log file"
     )
     parser.add_argument(

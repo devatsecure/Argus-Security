@@ -73,8 +73,8 @@ echo ""
 
 # Create necessary directories
 echo "📁 Creating directories..."
-mkdir -p .agent-os/hybrid-results
-mkdir -p .agent-os/cache
+mkdir -p .argus/hybrid-results
+mkdir -p .argus/cache
 mkdir -p scripts/providers
 echo "✅ Directories created"
 echo ""
@@ -190,7 +190,7 @@ echo "   python3 scripts/hybrid_analyzer.py . \\"
 echo "     --enable-semgrep \\"
 echo "     --enable-trivy \\"
 echo "     --enable-foundation-sec \\"
-echo "     --enable-agent-os \\"
+echo "     --enable-argus \\"
 echo "     --severity-filter critical,high"
 echo ""
 echo "📚 Documentation:"

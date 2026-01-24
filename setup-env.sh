@@ -1,9 +1,9 @@
 #!/bin/bash
-# Setup script to securely configure environment variables for agent-os
+# Setup script to securely configure environment variables for argus
 
 set -e
 
-echo "🔐 Agent-OS Environment Setup"
+echo "🔐 Argus Environment Setup"
 echo "=============================="
 echo ""
 

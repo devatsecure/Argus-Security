@@ -199,8 +199,8 @@ class TestSimpleAgreement:
         calculator = MetricsCalculator()
 
         matches = [
-            FindingMatch(agent_os_finding={"path": "a.py"}, codex_finding={"path": "a.py"}),
-            FindingMatch(agent_os_finding={"path": "b.py"}, codex_finding={"path": "b.py"}),
+            FindingMatch(argus_finding={"path": "a.py"}, codex_finding={"path": "a.py"}),
+            FindingMatch(argus_finding={"path": "b.py"}, codex_finding={"path": "b.py"}),
         ]
 
         agreement = calculator._calculate_simple_agreement(matches)
@@ -212,8 +212,8 @@ class TestSimpleAgreement:
         calculator = MetricsCalculator()
 
         matches = [
-            FindingMatch(agent_os_finding={"path": "a.py"}, codex_finding={"path": "a.py"}),
-            FindingMatch(agent_os_finding={"path": "b.py"}, codex_finding=None),
+            FindingMatch(argus_finding={"path": "a.py"}, codex_finding={"path": "a.py"}),
+            FindingMatch(argus_finding={"path": "b.py"}, codex_finding=None),
         ]
 
         agreement = calculator._calculate_simple_agreement(matches)
@@ -225,8 +225,8 @@ class TestSimpleAgreement:
         calculator = MetricsCalculator()
 
         matches = [
-            FindingMatch(agent_os_finding={"path": "a.py"}, codex_finding=None),
-            FindingMatch(agent_os_finding={"path": "b.py"}, codex_finding=None),
+            FindingMatch(argus_finding={"path": "a.py"}, codex_finding=None),
+            FindingMatch(argus_finding={"path": "b.py"}, codex_finding=None),
         ]
 
         agreement = calculator._calculate_simple_agreement(matches)
@@ -305,12 +305,12 @@ class TestSeverityAgreement:
 
         matches = [
             FindingMatch(
-                agent_os_finding={"severity": "critical"},
+                argus_finding={"severity": "critical"},
                 codex_finding={"severity": "critical"},
                 severity_agreement=True,
             ),
             FindingMatch(
-                agent_os_finding={"severity": "critical"},
+                argus_finding={"severity": "critical"},
                 codex_finding=None,
                 severity_agreement=False,
             ),
@@ -320,7 +320,7 @@ class TestSeverityAgreement:
 
         critical = [a for a in agreements if a.severity == "critical"]
         assert len(critical) > 0
-        assert critical[0].agent_os_count == 2
+        assert critical[0].argus_count == 2
         assert critical[0].both_agree == 1
 
     def test_severity_agreement_multiple_levels(self):
@@ -329,17 +329,17 @@ class TestSeverityAgreement:
 
         matches = [
             FindingMatch(
-                agent_os_finding={"severity": "critical"},
+                argus_finding={"severity": "critical"},
                 codex_finding={"severity": "critical"},
                 severity_agreement=True,
             ),
             FindingMatch(
-                agent_os_finding={"severity": "high"},
+                argus_finding={"severity": "high"},
                 codex_finding={"severity": "high"},
                 severity_agreement=True,
             ),
             FindingMatch(
-                agent_os_finding={"severity": "medium"},
+                argus_finding={"severity": "medium"},
                 codex_finding=None,
                 severity_agreement=False,
             ),
@@ -359,12 +359,12 @@ class TestCategoryAgreement:
 
         matches = [
             FindingMatch(
-                agent_os_finding={"category": "SAST"},
+                argus_finding={"category": "SAST"},
                 codex_finding={"category": "SAST"},
                 category_agreement=True,
             ),
             FindingMatch(
-                agent_os_finding={"category": "SAST"},
+                argus_finding={"category": "SAST"},
                 codex_finding=None,
                 category_agreement=False,
             ),
@@ -374,7 +374,7 @@ class TestCategoryAgreement:
 
         sast = [a for a in agreements if a.category == "SAST"]
         assert len(sast) > 0
-        assert sast[0].agent_os_count == 2
+        assert sast[0].argus_count == 2
         assert sast[0].both_agree == 1
 
     def test_category_agreement_multiple_categories(self):
@@ -383,17 +383,17 @@ class TestCategoryAgreement:
 
         matches = [
             FindingMatch(
-                agent_os_finding={"category": "SAST"},
+                argus_finding={"category": "SAST"},
                 codex_finding={"category": "SAST"},
                 category_agreement=True,
             ),
             FindingMatch(
-                agent_os_finding={"category": "SECRETS"},
+                argus_finding={"category": "SECRETS"},
                 codex_finding={"category": "SECRETS"},
                 category_agreement=True,
             ),
             FindingMatch(
-                agent_os_finding={"category": "DEPS"},
+                argus_finding={"category": "DEPS"},
                 codex_finding=None,
                 category_agreement=False,
             ),
@@ -410,19 +410,19 @@ class TestMetricsReport:
     def test_metrics_report_creation(self):
         """Test creating a metrics report."""
         report = MetricsReport(
-            agent_os_finding_count=10,
+            argus_finding_count=10,
             codex_finding_count=12,
             total_matches=8,
         )
 
-        assert report.agent_os_finding_count == 10
+        assert report.argus_finding_count == 10
         assert report.codex_finding_count == 12
         assert report.total_matches == 8
 
     def test_metrics_report_to_dict(self):
         """Test converting report to dictionary."""
         report = MetricsReport(
-            agent_os_finding_count=10,
+            argus_finding_count=10,
             codex_finding_count=12,
             total_matches=8,
         )
@@ -430,14 +430,14 @@ class TestMetricsReport:
         report_dict = report.to_dict()
 
         assert isinstance(report_dict, dict)
-        assert report_dict["agent_os_finding_count"] == 10
+        assert report_dict["argus_finding_count"] == 10
         assert report_dict["codex_finding_count"] == 12
         assert "timestamp" in report_dict
 
     def test_metrics_report_to_json(self):
         """Test converting report to JSON."""
         report = MetricsReport(
-            agent_os_finding_count=10,
+            argus_finding_count=10,
             codex_finding_count=12,
             total_matches=8,
         )
@@ -446,7 +446,7 @@ class TestMetricsReport:
 
         assert isinstance(json_str, str)
         parsed = json.loads(json_str)
-        assert parsed["agent_os_finding_count"] == 10
+        assert parsed["argus_finding_count"] == 10
 
 
 class TestCompleteWorkflow:
@@ -456,7 +456,7 @@ class TestCompleteWorkflow:
         """Test complete comparison from findings to report."""
         calculator = MetricsCalculator()
 
-        agent_os_findings = [
+        argus_findings = [
             {
                 "path": "src/api.py",
                 "line": 10,
@@ -497,12 +497,12 @@ class TestCompleteWorkflow:
             },
         ]
 
-        report = calculator.compare_findings(agent_os_findings, codex_findings)
+        report = calculator.compare_findings(argus_findings, codex_findings)
 
-        assert report.agent_os_finding_count == 3
+        assert report.argus_finding_count == 3
         assert report.codex_finding_count == 2
         assert report.total_matches == 2
-        assert report.total_unique_to_agent_os == 1
+        assert report.total_unique_to_argus == 1
         assert report.simple_agreement_rate > 0.5
         assert report.cohens_kappa is not None
         assert report.precision_recall is not None
@@ -512,7 +512,7 @@ class TestCompleteWorkflow:
         """Test comparison with disagreement on severity."""
         calculator = MetricsCalculator()
 
-        agent_os_findings = [
+        argus_findings = [
             {
                 "path": "src/api.py",
                 "line": 10,
@@ -532,7 +532,7 @@ class TestCompleteWorkflow:
             },
         ]
 
-        report = calculator.compare_findings(agent_os_findings, codex_findings)
+        report = calculator.compare_findings(argus_findings, codex_findings)
 
         # Should still match but severity_agreement should be False
         assert report.total_matches >= 1
@@ -581,7 +581,7 @@ class TestFileIO:
     def test_save_metrics_report(self):
         """Test saving metrics report to file."""
         report = MetricsReport(
-            agent_os_finding_count=10,
+            argus_finding_count=10,
             codex_finding_count=12,
             total_matches=8,
         )
@@ -595,7 +595,7 @@ class TestFileIO:
 
             with open(temp_file) as f:
                 loaded = json.load(f)
-                assert loaded["agent_os_finding_count"] == 10
+                assert loaded["argus_finding_count"] == 10
         finally:
             Path(temp_file).unlink()
 

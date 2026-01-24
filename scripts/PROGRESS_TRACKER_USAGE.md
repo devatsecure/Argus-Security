@@ -1,6 +1,6 @@
 # Progress Tracker Usage Guide
 
-Beautiful real-time progress tracking for Agent OS using the `rich` library.
+Beautiful real-time progress tracking for Argus using the `rich` library.
 
 ## Installation
 
@@ -363,7 +363,7 @@ from scripts.trivy_scanner import TrivyScanner
 def main():
     # Initialize tracker
     tracker = ProgressTracker()
-    tracker.print_header("Agent OS Security Audit", "Comprehensive security analysis")
+    tracker.print_header("Argus Security Audit", "Comprehensive security analysis")
     tracker.start()
 
     repo_path = Path(".")

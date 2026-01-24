@@ -4,7 +4,7 @@
 
 The Dual-Audit workflow provides **high-confidence security assessment** by running two independent AI-powered security audits:
 
-1. **Agent-OS (Anthropic Claude)**: Comprehensive security analysis with multi-scanner orchestration
+1. **Argus (Anthropic Claude)**: Comprehensive security analysis with multi-scanner orchestration
 2. **Codex (OpenAI GPT-5.2)**: Independent validation and cross-verification
 
 This approach reduces false positives, increases detection accuracy, and provides consensus-based findings.
@@ -32,7 +32,7 @@ This approach reduces false positives, increases detection accuracy, and provide
 
 ## Prerequisites
 
-### 1. Agent-OS Setup
+### 1. Argus Setup
 
 ```bash
 # Install dependencies
@@ -74,21 +74,21 @@ python scripts/dual_audit.py /path/to/repo --project-type backend-api
 ### Full Example
 
 ```bash
-# Navigate to agent-os-action
-cd /path/to/agent-os-action
+# Navigate to argus-action
+cd /path/to/argus-action
 
 # Run dual-audit on target repository
 python scripts/dual_audit.py ../my-project --project-type web-app
 
 # Results saved to:
-# ../my-project/.agent-os/dual-audit/TIMESTAMP/
+# ../my-project/.argus/dual-audit/TIMESTAMP/
 ```
 
 ---
 
 ## Workflow Phases
 
-### Phase 1: Agent-OS Security Audit
+### Phase 1: Argus Security Audit
 
 **Duration**: 2-5 minutes
 **Model**: Claude Sonnet 4.5
@@ -102,10 +102,10 @@ python scripts/dual_audit.py ../my-project --project-type web-app
 - Generates comprehensive SARIF/JSON/Markdown reports
 
 **Output:**
-- `.agent-os/reviews/backend-api-report.md` - Human-readable report
-- `.agent-os/reviews/results.json` - Machine-readable results
-- `.agent-os/reviews/results.sarif` - SARIF format for tools
-- `.agent-os/threat-model.json` - Threat model
+- `.argus/reviews/backend-api-report.md` - Human-readable report
+- `.argus/reviews/results.json` - Machine-readable results
+- `.argus/reviews/results.sarif` - SARIF format for tools
+- `.argus/threat-model.json` - Threat model
 
 ### Phase 2: Codex Independent Validation
 
@@ -114,14 +114,14 @@ python scripts/dual_audit.py ../my-project --project-type web-app
 **Cost**: Included in Codex subscription
 
 **What it does:**
-- Reads Agent-OS findings
+- Reads Argus findings
 - Independently analyzes codebase
 - Cross-validates each finding
-- Identifies additional issues Agent-OS missed
-- Confirms or disputes Agent-OS findings
+- Identifies additional issues Argus missed
+- Confirms or disputes Argus findings
 
 **Output:**
-- `.agent-os/dual-audit/TIMESTAMP/codex_validation.txt` - Validation results
+- `.argus/dual-audit/TIMESTAMP/codex_validation.txt` - Validation results
 
 ### Phase 3: Comparison Report
 
@@ -129,14 +129,14 @@ python scripts/dual_audit.py ../my-project --project-type web-app
 **Cost**: Free (local processing)
 
 **What it does:**
-- Compares Agent-OS and Codex findings
+- Compares Argus and Codex findings
 - Generates consensus report
 - Highlights validated findings
 - Identifies discrepancies
 - Provides confidence metrics
 
 **Output:**
-- `.agent-os/dual-audit/TIMESTAMP/dual_audit_report.md` - Final report
+- `.argus/dual-audit/TIMESTAMP/dual_audit_report.md` - Final report
 
 ---
 
@@ -145,9 +145,9 @@ python scripts/dual_audit.py ../my-project --project-type web-app
 ### Report Structure
 
 ```
-.agent-os/dual-audit/TIMESTAMP/
-├── agent_os_report.md          # Agent-OS findings (copy)
-├── agent_os_results.json       # Agent-OS JSON output (copy)
+.argus/dual-audit/TIMESTAMP/
+├── argus_report.md          # Argus findings (copy)
+├── argus_results.json       # Argus JSON output (copy)
 ├── codex_validation.txt        # Codex validation output
 └── dual_audit_report.md        # Comparison report ⭐
 ```
@@ -161,14 +161,14 @@ The final `dual_audit_report.md` contains:
    - Tools and models used
    - High-level metrics
 
-2. **Agent-OS Results**
+2. **Argus Results**
    - Findings by severity (Critical/High/Medium/Low)
    - Findings by category (Security/Performance/Quality)
    - Cost and duration metrics
 
 3. **Codex Validation**
    - Independent findings
-   - Validation of Agent-OS results
+   - Validation of Argus results
    - Additional issues discovered
 
 4. **Cross-Validation Analysis**
@@ -184,12 +184,12 @@ The final `dual_audit_report.md` contains:
 ### Finding Priority
 
 **High Priority** (Fix Immediately):
-- ✅ Findings confirmed by BOTH Agent-OS AND Codex
+- ✅ Findings confirmed by BOTH Argus AND Codex
 - 🔴 Critical severity issues
 - 🟠 High severity security vulnerabilities
 
 **Medium Priority** (Fix Soon):
-- ✅ Findings from Agent-OS OR Codex (not both)
+- ✅ Findings from Argus OR Codex (not both)
 - 🟡 Medium severity issues
 - Security concerns in non-critical paths
 
@@ -205,7 +205,7 @@ The final `dual_audit_report.md` contains:
 ### Step 1: Run Dual-Audit
 
 ```bash
-cd /Users/waseem.ahmed/Repos/agent-os-action
+cd /Users/waseem.ahmed/Repos/argus-action
 python scripts/dual_audit.py /tmp/target-repo --project-type backend-api
 ```
 
@@ -213,7 +213,7 @@ python scripts/dual_audit.py /tmp/target-repo --project-type backend-api
 
 ```
 ================================================================================
-PHASE 1: Agent-OS Security Audit (Anthropic Claude)
+PHASE 1: Argus Security Audit (Anthropic Claude)
 ================================================================================
 
 ✅ Threat model generated: 16 threats identified
@@ -226,7 +226,7 @@ PHASE 1: Agent-OS Security Audit (Anthropic Claude)
 PHASE 2: Codex Independent Validation (OpenAI GPT-5.2)
 ================================================================================
 
-✅ Codex reviewed Agent-OS findings
+✅ Codex reviewed Argus findings
 ✅ Validated 15/18 findings
 🆕 Discovered 2 additional issues
 ❌ Disputed 1 finding (false positive)
@@ -236,14 +236,14 @@ Generating Dual-Audit Comparison Report
 ================================================================================
 
 ✅ Dual-audit report generated
-📊 Review comprehensive report: .agent-os/dual-audit/20260114-120000/dual_audit_report.md
+📊 Review comprehensive report: .argus/dual-audit/20260114-120000/dual_audit_report.md
 ```
 
 ### Step 3: Act on Findings
 
 ```bash
 # Review the final report
-cat /tmp/target-repo/.agent-os/dual-audit/20260114-120000/dual_audit_report.md
+cat /tmp/target-repo/.argus/dual-audit/20260114-120000/dual_audit_report.md
 
 # Focus on consensus findings
 # Address Critical/High severity first
@@ -276,10 +276,10 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Agent-OS
+      - name: Install Argus
         run: |
-          git clone https://github.com/securedotcom/agent-os-action
-          cd agent-os-action
+          git clone https://github.com/devatsecure/Argus-Security
+          cd argus-action
           pip install -r requirements.txt
 
       - name: Run Dual-Audit
@@ -287,13 +287,13 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          python agent-os-action/scripts/dual_audit.py . --project-type backend-api
+          python argus-action/scripts/dual_audit.py . --project-type backend-api
 
       - name: Upload Reports
         uses: actions/upload-artifact@v4
         with:
           name: dual-audit-reports
-          path: .agent-os/dual-audit/**/*.md
+          path: .argus/dual-audit/**/*.md
 ```
 
 ### GitLab CI
@@ -302,12 +302,12 @@ jobs:
 dual-audit:
   image: python:3.11
   script:
-    - git clone https://github.com/securedotcom/agent-os-action
-    - cd agent-os-action && pip install -r requirements.txt && cd ..
-    - python agent-os-action/scripts/dual_audit.py . --project-type backend-api
+    - git clone https://github.com/devatsecure/Argus-Security
+    - cd argus-action && pip install -r requirements.txt && cd ..
+    - python argus-action/scripts/dual_audit.py . --project-type backend-api
   artifacts:
     paths:
-      - .agent-os/dual-audit/
+      - .argus/dual-audit/
     expire_in: 30 days
   only:
     - merge_requests
@@ -327,7 +327,7 @@ dual-audit:
 ### 2. Review Both Reports
 
 - Don't rely solely on the comparison report
-- Review Agent-OS detailed findings
+- Review Argus detailed findings
 - Check Codex validation reasoning
 
 ### 3. Validate False Positives
@@ -340,7 +340,7 @@ dual-audit:
 
 ```bash
 # Save metrics for trending
-cp .agent-os/dual-audit/TIMESTAMP/dual_audit_report.md \
+cp .argus/dual-audit/TIMESTAMP/dual_audit_report.md \
    security-reports/$(date +%Y%m%d)-dual-audit.md
 ```
 
@@ -354,7 +354,7 @@ cp .agent-os/dual-audit/TIMESTAMP/dual_audit_report.md \
 
 ## Troubleshooting
 
-### Agent-OS Fails
+### Argus Fails
 
 ```bash
 # Check API key
@@ -399,7 +399,7 @@ timeout=1200  # 20 minutes instead of 10
 
 | Tool | Cost | Duration |
 |------|------|----------|
-| Agent-OS (Claude) | $0.20-0.50 | 2-5 min |
+| Argus (Claude) | $0.20-0.50 | 2-5 min |
 | Codex (GPT-5.2) | Included* | 1-3 min |
 | **Total** | **$0.20-0.50** | **3-8 min** |
 
@@ -407,7 +407,7 @@ timeout=1200  # 20 minutes instead of 10
 
 ### Monthly (100 repos, weekly scans)
 
-- Agent-OS: 400 audits × $0.35 = **$140/month**
+- Argus: 400 audits × $0.35 = **$140/month**
 - Codex: Included in subscription
 - **Total: ~$140/month + Codex subscription**
 
@@ -519,9 +519,9 @@ Quality Score = (Accuracy + Completeness + Actionability + Risk Assessment + Con
 
 ### Chain-of-Thought Reasoning
 
-Both Agent-OS and Codex provide explicit reasoning for each judgment:
+Both Argus and Codex provide explicit reasoning for each judgment:
 
-**Agent-OS (Claude) Analysis Process:**
+**Argus (Claude) Analysis Process:**
 1. Threat modeling identifies attack vectors
 2. Code review traces vulnerability paths
 3. Impact assessment evaluates risk
@@ -529,7 +529,7 @@ Both Agent-OS and Codex provide explicit reasoning for each judgment:
 
 **Codex (OpenAI) Validation Process:**
 1. Independent vulnerability identification
-2. Cross-reference with Agent-OS findings
+2. Cross-reference with Argus findings
 3. Agreement/disagreement assessment
 4. Additional issues identification
 
@@ -540,7 +540,7 @@ Each finding includes:
   "finding": "SQL Injection in user_search.py:42",
   "severity": "critical",
   "reasoning": {
-    "agent_os": "User input from search_query parameter is directly interpolated into SQL query without parameterization, allowing attacker to execute arbitrary SQL commands",
+    "argus": "User input from search_query parameter is directly interpolated into SQL query without parameterization, allowing attacker to execute arbitrary SQL commands",
     "codex": "Confirmed: Line 42 builds SQL with f-string concatenation of untrusted user input. Attack surface: search functionality is publicly exposed",
     "consensus": "Both agents identified identical vulnerability with consistent severity assessment"
   },
@@ -557,7 +557,7 @@ Each finding includes:
 
 #### Cohen's Kappa (Concordance)
 
-Measures agreement between two raters (Agent-OS and Codex):
+Measures agreement between two raters (Argus and Codex):
 
 ```
 κ = (p_o - p_e) / (1 - p_e)
@@ -577,7 +577,7 @@ p_e = expected agreement by chance
 
 **Example Calculation:**
 ```
-Agent-OS findings: 18 total
+Argus findings: 18 total
 Codex findings: 20 total
 Agreements (both found same issue): 15
 Expected by chance: ~10
@@ -632,7 +632,7 @@ PAIRWISE COMPARISON ANALYSIS
 ================================================================================
 
 Finding Comparison Matrix:
-ID  Type              Agent-OS  Codex    Agreement  Quality Score
+ID  Type              Argus  Codex    Agreement  Quality Score
 --- ---------------   --------  --------  ---------- --------
 1   SQL Injection      Critical  Critical  ✅ 100%    0.95
 2   XSS Vulnerability  High      High      ✅ 100%    0.92
@@ -718,7 +718,7 @@ METHODOLOGICAL SUMMARY
 - Audit Type: Dual-Audit with LLM-as-a-Judge evaluation
 - Primary Model: Claude Sonnet 4.5 (Anthropic)
 - Validation Model: GPT-5.2-codex (OpenAI)
-- Total Findings: 18 (Agent-OS: 18, Codex: 20)
+- Total Findings: 18 (Argus: 18, Codex: 20)
 - Consensus Findings: 15 (83% agreement)
 
 QUALITY METRICS
@@ -763,7 +763,7 @@ python scripts/dual_audit.py /path/to/repo \
 ## Support
 
 - **Documentation**: [docs/](../docs/)
-- **Issues**: https://github.com/securedotcom/agent-os-action/issues
+- **Issues**: https://github.com/devatsecure/Argus-Security/issues
 - **Examples**: [examples/dual-audit/](../examples/dual-audit/)
 
 ---
@@ -771,7 +771,7 @@ python scripts/dual_audit.py /path/to/repo \
 ## Version History
 
 - **v1.0.0** (2026-01-14): Initial dual-audit workflow
-  - Agent-OS + Codex integration
+  - Argus + Codex integration
   - Automated comparison reports
   - CI/CD examples
 

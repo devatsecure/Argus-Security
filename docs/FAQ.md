@@ -1,18 +1,18 @@
-# Agent-OS: Frequently Asked Questions
+# Argus: Frequently Asked Questions
 
 ## General Questions
 
-### What is Agent-OS?
+### What is Argus?
 
-Agent-OS is a security control plane that orchestrates multiple security scanners (Semgrep, Trivy, TruffleHog, Checkov), applies AI-powered triage to reduce false positives, and enforces policy gates. It can be used as a GitHub Action, CLI tool, or deployed platform.
+Argus is a security control plane that orchestrates multiple security scanners (Semgrep, Trivy, TruffleHog, Checkov), applies AI-powered triage to reduce false positives, and enforces policy gates. It can be used as a GitHub Action, CLI tool, or deployed platform.
 
-### Is Agent-OS free?
+### Is Argus free?
 
-Yes! Agent-OS is open source (MIT license) and free to use. You can choose from multiple AI providers including Claude (Anthropic), OpenAI, or Ollama for local inference. API costs vary depending on your chosen provider.
+Yes! Argus is open source (MIT license) and free to use. You can choose from multiple AI providers including Claude (Anthropic), OpenAI, or Ollama for local inference. API costs vary depending on your chosen provider.
 
 ### How is this different from GitHub's built-in security features?
 
-| Feature | GitHub Security | Agent-OS |
+| Feature | GitHub Security | Argus |
 |---------|----------------|----------|
 | **Secret Scanning** | Pattern-based | Pattern + API verification |
 | **Dependency Scanning** | Dependabot alerts | Trivy + reachability analysis |
@@ -21,15 +21,15 @@ Yes! Agent-OS is open source (MIT license) and free to use. You can choose from 
 | **Policy Enforcement** | Manual | Automated Rego gates |
 | **Fix Suggestions** | Limited | AI-generated remediations |
 
-Agent-OS **complements** GitHub Security (you can use both), but adds AI triage and policy automation.
+Argus **complements** GitHub Security (you can use both), but adds AI triage and policy automation.
 
 ---
 
 ## Setup & Configuration
 
-### Do I need an API key to use Agent-OS?
+### Do I need an API key to use Argus?
 
-**Yes, for most providers.** Agent-OS supports multiple AI providers:
+**Yes, for most providers.** Argus supports multiple AI providers:
 
 - **Claude (Anthropic)**: Requires `ANTHROPIC_API_KEY`
 - **OpenAI**: Requires `OPENAI_API_KEY`
@@ -37,7 +37,7 @@ Agent-OS **complements** GitHub Security (you can use both), but adds AI triage 
 
 ### How do I get started in under 5 minutes?
 
-1. Create `.github/workflows/agent-os.yml`:
+1. Create `.github/workflows/argus.yml`:
    ```yaml
    name: Security
    on: [pull_request]
@@ -46,14 +46,14 @@ Agent-OS **complements** GitHub Security (you can use both), but adds AI triage 
        runs-on: ubuntu-latest
        steps:
          - uses: actions/checkout@v4
-         - uses: securedotcom/agent-os-action@v1
+         - uses: devatsecure/Argus-Security@v1
    ```
 
-2. Open a PR → Agent-OS comments with findings
+2. Open a PR → Argus comments with findings
 
 3. Done! 🎉
 
-### What permissions does Agent-OS need?
+### What permissions does Argus need?
 
 **Minimum** (read-only audit):
 - `contents: read` - to scan code
@@ -65,13 +65,13 @@ Agent-OS **complements** GitHub Security (you can use both), but adds AI triage 
 **Optional** (for automated PRs):
 - `contents: write` - to create audit PRs
 
-### Can I run Agent-OS locally (not in GitHub Actions)?
+### Can I run Argus locally (not in GitHub Actions)?
 
 Yes! Install locally:
 
 ```bash
-git clone https://github.com/securedotcom/agent-os-action.git
-cd agent-os-action
+git clone https://github.com/devatsecure/Argus-Security.git
+cd argus-action
 pip install -r requirements.txt
 python3 scripts/run_ai_audit.py /path/to/your/repo audit
 ```
@@ -82,7 +82,7 @@ See [PLATFORM.md](../PLATFORM.md#usage) for full CLI documentation.
 
 ## Cost & Performance
 
-### How much does Agent-OS cost to run?
+### How much does Argus cost to run?
 
 | AI Provider | Cost per Run | Notes |
 |-------------|-------------|--------|
@@ -106,9 +106,9 @@ See [PLATFORM.md](../PLATFORM.md#usage) for full CLI documentation.
 - Set `max-files: '50'` to limit scope
 - Use `exclude-paths` to skip generated code
 
-### Will Agent-OS slow down my PR reviews?
+### Will Argus slow down my PR reviews?
 
-**No!** Agent-OS runs asynchronously. Developers can continue working while the scan completes (~3-5 min).
+**No!** Argus runs asynchronously. Developers can continue working while the scan completes (~3-5 min).
 
 **With noise reduction**, you get 3-5 actionable findings instead of 50+ raw alerts, which actually **speeds up** overall review time.
 
@@ -128,7 +128,7 @@ See [PLATFORM.md](../PLATFORM.md#usage) for full CLI documentation.
 
 ## Security & Privacy
 
-### What data does Agent-OS send externally?
+### What data does Argus send externally?
 
 | Mode | Data Sent | Recipient |
 |------|-----------|-----------|
@@ -138,28 +138,28 @@ See [PLATFORM.md](../PLATFORM.md#usage) for full CLI documentation.
 
 **Never sent**: Full repository, commit history, secrets, credentials.
 
-### Does Agent-OS store my data?
+### Does Argus store my data?
 
-**No.** Agent-OS is stateless. All processing happens in your GitHub Actions runner and artifacts are stored in GitHub (controlled by you).
+**No.** Argus is stateless. All processing happens in your GitHub Actions runner and artifacts are stored in GitHub (controlled by you).
 
-**Optional**: You can deploy Agent-OS with PostgreSQL for historical analysis (self-hosted, you control the data).
+**Optional**: You can deploy Argus with PostgreSQL for historical analysis (self-hosted, you control the data).
 
-### Is Agent-OS safe to use on private repositories?
+### Is Argus safe to use on private repositories?
 
-**Yes!** Agent-OS is designed for enterprise use:
+**Yes!** Argus is designed for enterprise use:
 - ✅ Open source (audit the code yourself)
 - ✅ No telemetry or phone-home
 - ✅ No credential storage
 - ✅ Runs entirely in your infrastructure
 - ✅ Optional: Use Ollama for local inference (no external API calls)
 
-### Can I run Agent-OS in air-gapped environments?
+### Can I run Argus in air-gapped environments?
 
 **Yes, with Ollama:**
 1. Install Ollama locally
 2. Download your chosen model (e.g., llama3, mistral)
-3. Configure Agent-OS to use Ollama endpoint
-4. Run Agent-OS (no internet required)
+3. Configure Argus to use Ollama endpoint
+4. Run Argus (no internet required)
 
 **No** with Claude or OpenAI (requires external API access).
 
@@ -169,7 +169,7 @@ See [PLATFORM.md](../PLATFORM.md#usage) for full CLI documentation.
 
 ### Why are some findings suppressed?
 
-Agent-OS auto-suppresses findings with high "noise scores" (>0.7 by default):
+Argus auto-suppresses findings with high "noise scores" (>0.7 by default):
 
 **Common suppression reasons**:
 - Test files (`test/`, `spec/`, `__tests__/`)
@@ -183,10 +183,10 @@ Agent-OS auto-suppresses findings with high "noise scores" (>0.7 by default):
 ### How do I suppress a false positive?
 
 **Option 1: React to PR comment**  
-React with 👎 and comment why. Agent-OS learns from feedback.
+React with 👎 and comment why. Argus learns from feedback.
 
 **Option 2: Add to allowlist**  
-Create `.agent-os/allowlist.yml`:
+Create `.argus/allowlist.yml`:
 ```yaml
 suppressions:
   - fingerprint: "abc123def456"  # From finding metadata
@@ -233,7 +233,7 @@ with:
 
 ## Scanners & Tools
 
-### Which security scanners does Agent-OS use?
+### Which security scanners does Argus use?
 
 | Scanner | Purpose | Enabled by Default |
 |---------|---------|-------------------|
@@ -274,9 +274,9 @@ rules:
     languages: [javascript, typescript]
 ```
 
-Agent-OS will automatically use your custom rules alongside the default `p/security-audit` ruleset.
+Argus will automatically use your custom rules alongside the default `p/security-audit` ruleset.
 
-### Does Agent-OS support language X?
+### Does Argus support language X?
 
 **Yes, for most languages:**
 
@@ -326,7 +326,7 @@ Agent-OS will automatically use your custom rules alongside the default `p/secur
 2. Check `fail-on` setting in workflow
 3. Set `fail-on-blockers: 'false'` to disable blocking
 
-### "Agent-OS is too slow"
+### "Argus is too slow"
 
 **Optimizations**:
 ```yaml
@@ -347,7 +347,7 @@ env:
   NOISE_THRESHOLD: '0.6'     # Lower threshold = more suppression (default: 0.7)
 ```
 
-Or create `.agent-os/allowlist.yml` to suppress specific patterns.
+Or create `.argus/allowlist.yml` to suppress specific patterns.
 
 ### "Important finding was suppressed"
 
@@ -357,9 +357,9 @@ Or create `.agent-os/allowlist.yml` to suppress specific patterns.
 2. **If test file but real risk**: Move to production code or adjust policy
 3. **If need manual override**: Lower noise threshold: `NOISE_THRESHOLD: '0.8'`
 
-### Does Agent-OS support caching?
+### Does Argus support caching?
 
-**Yes!** Agent-OS supports multiple caching strategies:
+**Yes!** Argus supports multiple caching strategies:
 
 1. **Scanner tool caching**: GitHub Actions automatically caches downloaded scanner binaries
 2. **Dependency caching**: Cache node_modules, pip packages, etc. to speed up scans
@@ -375,9 +375,9 @@ Or create `.agent-os/allowlist.yml` to suppress specific patterns.
     key: scanner-cache-${{ runner.os }}
 ```
 
-### Does Agent-OS show progress during scans?
+### Does Argus show progress during scans?
 
-**Yes!** Agent-OS displays real-time progress:
+**Yes!** Argus displays real-time progress:
 
 - Scanner execution status (running, completed, failed)
 - File analysis progress (X of Y files analyzed)
@@ -390,7 +390,7 @@ Progress is shown in GitHub Actions logs and can be monitored in real-time durin
 
 ## Advanced Usage
 
-### Can I run Agent-OS on multiple repositories?
+### Can I run Argus on multiple repositories?
 
 **Yes!** Use the multi-repo coordinator:
 
@@ -409,12 +409,12 @@ steps:
   - uses: actions/checkout@v4
     with:
       repository: ${{ matrix.repo }}
-  - uses: securedotcom/agent-os-action@v1
+  - uses: devatsecure/Argus-Security@v1
 ```
 
-### Can I integrate Agent-OS with Slack/Teams/etc?
+### Can I integrate Argus with Slack/Teams/etc?
 
-**Yes!** Agent-OS outputs JSON/SARIF that you can parse:
+**Yes!** Argus outputs JSON/SARIF that you can parse:
 
 ```yaml
 - name: Notify Slack
@@ -424,16 +424,16 @@ steps:
       -d "{\"text\": \"🚨 ${{ steps.security.outputs.blockers }} security issues found\"}"
 ```
 
-Or use `.agent-os/notifications.yml` (coming soon).
+Or use `.argus/notifications.yml` (coming soon).
 
-### Can I use Agent-OS in pre-commit hooks?
+### Can I use Argus in pre-commit hooks?
 
 **Yes!** But not recommended (too slow for pre-commit).
 
-**Better approach**: Use Agent-OS in CI/CD, and use faster tools locally:
+**Better approach**: Use Argus in CI/CD, and use faster tools locally:
 - `pre-commit` with `gitleaks` for secrets
 - `eslint` for JS linting
-- Agent-OS for comprehensive PR review
+- Argus for comprehensive PR review
 
 ### How do I generate SBOMs?
 
@@ -460,7 +460,7 @@ See [PLATFORM.md#sbom](../PLATFORM.md#sbom-generation-and-signing) for details.
 
 ### Can I use custom AI models?
 
-**Yes!** Agent-OS supports:
+**Yes!** Argus supports:
 - **Claude** (Anthropic API)
 - **OpenAI** (GPT-4)
 - **Ollama** (self-hosted, local)
@@ -477,9 +477,9 @@ with:
 
 ## Compliance & Enterprise
 
-### Does Agent-OS help with SOC 2 compliance?
+### Does Argus help with SOC 2 compliance?
 
-**Yes!** Agent-OS includes a SOC 2 compliance pack:
+**Yes!** Argus includes a SOC 2 compliance pack:
 
 - **CC6.1**: Access controls (no verified secrets)
 - **CC6.6**: Encryption + SBOM requirements
@@ -495,38 +495,38 @@ opa eval -d policy/rego/compliance_soc2.rego \
 
 See [PLATFORM.md#soc2](../PLATFORM.md#soc-2-compliance-pack) for full documentation.
 
-### Can I use Agent-OS for PCI-DSS compliance?
+### Can I use Argus for PCI-DSS compliance?
 
-**Partially.** Agent-OS addresses:
+**Partially.** Argus addresses:
 - ✅ PCI-DSS 6.2: Patch vulnerabilities
 - ✅ PCI-DSS 6.3: Secure development practices
 - ✅ PCI-DSS 6.5: Common vulnerabilities (OWASP Top 10)
 - ✅ PCI-DSS 8.2: No hardcoded credentials
 
-But Agent-OS alone doesn't cover full PCI-DSS (network security, physical access, etc.).
+But Argus alone doesn't cover full PCI-DSS (network security, physical access, etc.).
 
 ### Can I get a report for auditors?
 
-**Yes!** Agent-OS generates:
+**Yes!** Argus generates:
 - **Markdown reports**: Human-readable for auditors
 - **JSON**: Structured data for compliance tools
 - **SARIF**: Standard format for security tools
 
 Example audit workflow:
 ```yaml
-- uses: securedotcom/agent-os-action@v1
+- uses: devatsecure/Argus-Security@v1
   with:
     review-type: 'audit'
 - uses: actions/upload-artifact@v4
   with:
     name: audit-report-${{ github.run_id }}
-    path: .agent-os/reviews/
+    path: .argus/reviews/
     retention-days: 365  # Keep for audit trail
 ```
 
-### Does Agent-OS support role-based access control (RBAC)?
+### Does Argus support role-based access control (RBAC)?
 
-**Not directly.** Agent-OS inherits GitHub's RBAC:
+**Not directly.** Argus inherits GitHub's RBAC:
 - Who can trigger workflows (GitHub permissions)
 - Who can view artifacts (GitHub permissions)
 - Who can approve PRs (GitHub branch protection)
@@ -537,9 +537,9 @@ For enterprise deployments, see [PLATFORM.md#rbac](../PLATFORM.md#deployment) fo
 
 ## Comparison Questions
 
-### Agent-OS vs Snyk?
+### Argus vs Snyk?
 
-| Feature | Snyk | Agent-OS |
+| Feature | Snyk | Argus |
 |---------|------|----------|
 | **Focus** | Dependency vulnerabilities | Multi-scanner (secrets, SAST, CVE, IaC) |
 | **Pricing** | $0-$2,000+/month | Free (open source) |
@@ -548,11 +548,11 @@ For enterprise deployments, see [PLATFORM.md#rbac](../PLATFORM.md#deployment) fo
 | **SBOM** | Yes | ✅ Yes |
 | **Self-Hosted** | Limited | ✅ Full control |
 
-**Use both?** Yes! Snyk for dependency monitoring, Agent-OS for PR gates + AI triage.
+**Use both?** Yes! Snyk for dependency monitoring, Argus for PR gates + AI triage.
 
-### Agent-OS vs SonarQube?
+### Argus vs SonarQube?
 
-| Feature | SonarQube | Agent-OS |
+| Feature | SonarQube | Argus |
 |---------|-----------|----------|
 | **Focus** | Code quality + security | Security-first |
 | **Deployment** | Self-hosted server | GitHub Action or self-hosted |
@@ -560,11 +560,11 @@ For enterprise deployments, see [PLATFORM.md#rbac](../PLATFORM.md#deployment) fo
 | **Secret Scanning** | Basic | ✅ Verified (API validation) |
 | **Cost** | Free Community, $150+/month Enterprise | Free (open source) |
 
-**Use both?** Yes! SonarQube for ongoing quality, Agent-OS for PR security gates.
+**Use both?** Yes! SonarQube for ongoing quality, Argus for PR security gates.
 
-### Agent-OS vs GitHub Advanced Security?
+### Argus vs GitHub Advanced Security?
 
-| Feature | GitHub Advanced Security | Agent-OS |
+| Feature | GitHub Advanced Security | Argus |
 |---------|-------------------------|----------|
 | **Secret Scanning** | Pattern-based | ✅ Pattern + API verification |
 | **Code Scanning** | CodeQL | ✅ Semgrep + AI triage |
@@ -580,16 +580,16 @@ For enterprise deployments, see [PLATFORM.md#rbac](../PLATFORM.md#deployment) fo
 
 ### How do I report a bug?
 
-1. Check [existing issues](https://github.com/securedotcom/agent-os-action/issues)
-2. If new, [open an issue](https://github.com/securedotcom/agent-os-action/issues/new) with:
+1. Check [existing issues](https://github.com/devatsecure/Argus-Security/issues)
+2. If new, [open an issue](https://github.com/devatsecure/Argus-Security/issues/new) with:
    - Steps to reproduce
    - Expected vs actual behavior
    - Workflow file (sanitized)
-   - Agent-OS version
+   - Argus version
 
 ### How do I request a feature?
 
-1. Check [discussions](https://github.com/securedotcom/agent-os-action/discussions)
+1. Check [discussions](https://github.com/devatsecure/Argus-Security/discussions)
 2. If new, start a discussion with:
    - Use case / problem
    - Proposed solution
@@ -607,7 +607,7 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for:
 
 **Community support**: Free via GitHub Issues/Discussions
 
-**Enterprise support**: [Contact us](mailto:enterprise@agent-os.io) for:
+**Enterprise support**: [Contact us](mailto:enterprise@argus.io) for:
 - SLA-backed support
 - Custom integrations
 - Professional services
@@ -618,11 +618,11 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for:
 ## Still Have Questions?
 
 - 📖 **Documentation**: [PLATFORM.md](../PLATFORM.md)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/securedotcom/agent-os-action/discussions)
-- 🐛 **Issues**: [GitHub Issues](https://github.com/securedotcom/agent-os-action/issues)
-- 📧 **Email**: support@agent-os.io
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/devatsecure/Argus-Security/discussions)
+- 🐛 **Issues**: [GitHub Issues](https://github.com/devatsecure/Argus-Security/issues)
+- 📧 **Email**: support@argus.io
 
 ---
 
 *Last updated: November 2025*  
-*Agent-OS Version: v1.0.0*
+*Argus Version: v1.0.0*

@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-Successfully enhanced `/Users/waseem.ahmed/Repos/agent-os-action/scripts/dual_audit.py` with enterprise-grade validation improvements focusing on three key enhancements:
+Successfully enhanced `/Users/waseem.ahmed/Repos/argus-action/scripts/dual_audit.py` with enterprise-grade validation improvements focusing on three key enhancements:
 
 1. **Explicit 5-Point Scoring Rubric** - Clear criteria for confidence levels
 2. **Chain-of-Thought Reasoning** - Structured 5-step validation process
@@ -202,7 +202,7 @@ Criteria:""")
 #### A. Methodology Documentation
 ```
 This report presents findings from a dual-audit approach with rigorous validation:
-1. **Agent-OS (Anthropic Claude)**: Comprehensive AI-powered security analysis
+1. **Argus (Anthropic Claude)**: Comprehensive AI-powered security analysis
 2. **Codex (OpenAI GPT-5.2)**: Independent validation with chain-of-thought reasoning
 ```
 
@@ -417,17 +417,17 @@ echo "✓ Syntax valid"
 python scripts/dual_audit.py /path/to/repo --project-type backend-api
 
 # 3. Review generated files
-ls -la .agent-os/dual-audit/*/
-cat .agent-os/dual-audit/*/dual_audit_report.md
-cat .agent-os/dual-audit/*/codex_validation.txt
+ls -la .argus/dual-audit/*/
+cat .argus/dual-audit/*/dual_audit_report.md
+cat .argus/dual-audit/*/codex_validation.txt
 
 # 4. Check scores
-grep "SCORE:" .agent-os/dual-audit/*/codex_validation.txt
+grep "SCORE:" .argus/dual-audit/*/codex_validation.txt
 ```
 
 ### Expected Output
 ```
-Phase 1: Agent-OS audit with finding generation
+Phase 1: Argus audit with finding generation
 Phase 2: Codex validation with:
   - Structured scoring (1-5)
   - Chain-of-thought reasoning
@@ -498,13 +498,13 @@ Report: Comprehensive dual-audit report with validation methodology
 ## File Location Reference
 
 ```
-/Users/waseem.ahmed/Repos/agent-os-action/scripts/dual_audit.py
+/Users/waseem.ahmed/Repos/argus-action/scripts/dual_audit.py
 
 Structure:
 ├── Lines 1-22: Header and imports
 ├── Lines 23-75: SCORING_RUBRIC (NEW)
 ├── Lines 77-85: Class initialization
-├── Lines 87-144: run_agent_os_audit()
+├── Lines 87-144: run_argus_audit()
 ├── Lines 146-274: run_codex_validation() (ENHANCED)
 ├── Lines 276-322: _generate_findings_summary() (ENHANCED)
 ├── Lines 324-337: _format_scoring_rubric() (NEW)
@@ -593,11 +593,11 @@ All changes maintain 100% backward compatibility while providing significant qua
 
 ## Documentation Files Created
 
-1. `/Users/waseem.ahmed/Repos/agent-os-action/DUAL_AUDIT_ENHANCEMENTS.md` - Feature overview
-2. `/Users/waseem.ahmed/Repos/agent-os-action/DUAL_AUDIT_CODE_REFERENCE.md` - Code reference
-3. `/Users/waseem.ahmed/Repos/agent-os-action/ENHANCEMENT_SUMMARY.md` - Summary
-4. `/Users/waseem.ahmed/Repos/agent-os-action/QUICK_REFERENCE.md` - Quick guide
-5. `/Users/waseem.ahmed/Repos/agent-os-action/DUAL_AUDIT_COMPLETE.md` - This file
+1. `/Users/waseem.ahmed/Repos/argus-action/DUAL_AUDIT_ENHANCEMENTS.md` - Feature overview
+2. `/Users/waseem.ahmed/Repos/argus-action/DUAL_AUDIT_CODE_REFERENCE.md` - Code reference
+3. `/Users/waseem.ahmed/Repos/argus-action/ENHANCEMENT_SUMMARY.md` - Summary
+4. `/Users/waseem.ahmed/Repos/argus-action/QUICK_REFERENCE.md` - Quick guide
+5. `/Users/waseem.ahmed/Repos/argus-action/DUAL_AUDIT_COMPLETE.md` - This file
 
 ---
 

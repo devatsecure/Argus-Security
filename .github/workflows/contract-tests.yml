@@ -97,13 +97,13 @@ jobs:
       run: |
         echo "Testing report generation..."
         
-        if [ ! -d "./test-fixture/.agent-os/reviews" ]; then
+        if [ ! -d "./test-fixture/.argus/reviews" ]; then
           echo "❌ Reviews directory not created"
           exit 1
         fi
         
         # Check for at least one report file
-        if [ -z "$(ls -A ./test-fixture/.agent-os/reviews/*.md 2>/dev/null)" ]; then
+        if [ -z "$(ls -A ./test-fixture/.argus/reviews/*.md 2>/dev/null)" ]; then
           echo "❌ No markdown report generated"
           exit 1
         fi

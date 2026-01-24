@@ -1,6 +1,6 @@
 # Automated Remediation Engine
 
-The Automated Remediation Engine is an AI-powered component of Agent-OS that generates fix suggestions and patches for security vulnerabilities detected by scanners.
+The Automated Remediation Engine is an AI-powered component of Argus that generates fix suggestions and patches for security vulnerabilities detected by scanners.
 
 ## Overview
 
@@ -149,7 +149,7 @@ Or as a wrapper object:
 ```
 
 The engine is compatible with:
-- Agent-OS normalized findings
+- Argus normalized findings
 - Semgrep SARIF output
 - Trivy JSON output
 - TruffleHog JSON output
@@ -277,7 +277,7 @@ for suggestion in low_confidence:
     assign_to_security_team(suggestion)
 ```
 
-## Integration with Agent-OS Workflow
+## Integration with Argus Workflow
 
 ### 1. After Security Scan
 
@@ -297,7 +297,7 @@ python scripts/remediation_engine.py \
 
 ```yaml
 - name: Security Scan
-  uses: securedotcom/agent-os-action@v1
+  uses: devatsecure/Argus-Security@v1
   with:
     anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
     output-file: findings.json
@@ -380,7 +380,7 @@ If `AI_PROVIDER` is not set, the engine auto-detects based on available keys:
 
 ## Examples
 
-See `/home/user/agent-os-action/examples/remediation_example.py` for comprehensive examples:
+See `/home/user/argus-action/examples/remediation_example.py` for comprehensive examples:
 - Basic usage
 - Single finding processing
 - Export formats
@@ -533,4 +533,4 @@ Example:
 - [OWASP Top 10](https://owasp.org/www-project-top-ten/)
 - [CWE/SANS Top 25](https://cwe.mitre.org/top25/)
 - [NIST Secure Coding Guidelines](https://www.nist.gov/programs-projects/secure-coding)
-- [Agent-OS Documentation](../README.md)
+- [Argus Documentation](../README.md)

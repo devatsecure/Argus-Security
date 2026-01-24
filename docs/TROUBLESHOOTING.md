@@ -1,10 +1,10 @@
-# Agent-OS Troubleshooting Guide
+# Argus Troubleshooting Guide
 
 **Version:** 1.0.15
 **Last Updated:** January 2026
 **Status:** Production
 
-This comprehensive guide covers error codes, common issues, and solutions for Agent-OS Security Action.
+This comprehensive guide covers error codes, common issues, and solutions for Argus Security Action.
 
 ---
 
@@ -69,7 +69,7 @@ This comprehensive guide covers error codes, common issues, and solutions for Ag
 **Example:**
 ```yaml
 # Working GitHub Actions configuration
-- uses: securedotcom/agent-os-action@v1
+- uses: devatsecure/Argus-Security@v1
   with:
     ai-provider: 'anthropic'
   env:
@@ -140,8 +140,8 @@ sk-proj-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
    ```yaml
    - uses: actions/cache@v4
      with:
-       path: .agent-os-cache/
-       key: agent-os-cache-${{ hashFiles('**/*.py', '**/*.js') }}
+       path: .argus-cache/
+       key: argus-cache-${{ hashFiles('**/*.py', '**/*.js') }}
    ```
 
 3. Upgrade API tier or add delays:
@@ -161,7 +161,7 @@ sk-proj-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 **Example:**
 ```yaml
 # Rate-limit friendly configuration
-- uses: securedotcom/agent-os-action@v1
+- uses: devatsecure/Argus-Security@v1
   with:
     only-changed: 'true'  # Only scan changed files in PRs
     max-files: '50'       # Cap file count
@@ -326,7 +326,7 @@ jobs:
   security:
     timeout-minutes: 45
     steps:
-      - uses: securedotcom/agent-os-action@v1
+      - uses: devatsecure/Argus-Security@v1
         with:
           only-changed: 'true'
           max-files: '100'
@@ -372,7 +372,7 @@ jobs:
 
 4. Clear caches:
    ```bash
-   rm -rf .agent-os-cache/
+   rm -rf .argus-cache/
    ```
 
 **Prevention:**
@@ -385,7 +385,7 @@ jobs:
 # Memory-efficient configuration
 runs-on: ubuntu-latest
 steps:
-  - uses: securedotcom/agent-os-action@v1
+  - uses: devatsecure/Argus-Security@v1
     with:
       max-files: '50'
       max-file-size: '50000'
@@ -442,7 +442,7 @@ steps:
 **Example:**
 ```yaml
 # Cost-protected configuration
-- uses: securedotcom/agent-os-action@v1
+- uses: devatsecure/Argus-Security@v1
   with:
     cost-limit: '2.0'        # Max $2.00
     max-files: '100'         # Limit scope
@@ -480,26 +480,26 @@ steps:
      -H "x-api-key: $ANTHROPIC_API_KEY"
    ```
 
-3. Update to latest Agent-OS version:
+3. Update to latest Argus version:
    ```bash
    # In GitHub Actions
-   uses: securedotcom/agent-os-action@v1  # Latest stable
+   uses: devatsecure/Argus-Security@v1  # Latest stable
    ```
 
 **Prevention:**
 - Don't hardcode model names
 - Use provider defaults
-- Follow Agent-OS release notes for model updates
+- Follow Argus release notes for model updates
 
 **Example:**
 ```yaml
 # Recommended: Use defaults
-- uses: securedotcom/agent-os-action@v1
+- uses: devatsecure/Argus-Security@v1
   with:
     ai-provider: 'anthropic'  # Auto-selects best model
 
 # Advanced: Specify model
-- uses: securedotcom/agent-os-action@v1
+- uses: devatsecure/Argus-Security@v1
   with:
     ai-provider: 'anthropic'
     model: 'claude-sonnet-4-5-20250929'
@@ -520,7 +520,7 @@ steps:
 1. Re-run scan:
    ```bash
    # Force fresh scan
-   rm -rf .agent-os-cache/
+   rm -rf .argus-cache/
    python scripts/run_ai_audit.py /path/to/repo
    ```
 
@@ -537,7 +537,7 @@ steps:
 
 **Prevention:**
 - Keep scanners updated
-- Use stable Agent-OS releases
+- Use stable Argus releases
 - Enable debug mode for investigation
 
 ---
@@ -561,7 +561,7 @@ steps:
 2. Run with appropriate user:
    ```bash
    # In Docker
-   docker run -u $(id -u):$(id -g) agent-os
+   docker run -u $(id -u):$(id -g) argus
    ```
 
 3. Checkout submodules:
@@ -884,7 +884,7 @@ semgrep --version
 
 #### Issue: "Python version incompatible"
 
-**Cause:** Agent-OS requires Python 3.9+
+**Cause:** Argus requires Python 3.9+
 
 **Solution:**
 ```yaml
@@ -1015,7 +1015,7 @@ See [Scanner-Specific Issues](#scanner-specific-issues) for detailed troubleshoo
 
 **Solution:**
 1. Try again (retry logic should handle this)
-2. Update to latest Agent-OS version
+2. Update to latest Argus version
 3. Report issue with debug logs
 
 **Debug:**
@@ -1111,14 +1111,14 @@ with:
    ```yaml
    - uses: actions/cache@v4
      with:
-       path: .agent-os-cache/
-       key: agent-os-${{ hashFiles('**/*.py') }}
+       path: .argus-cache/
+       key: argus-${{ hashFiles('**/*.py') }}
    ```
 
 **Cost Tracking:**
 ```bash
 # View cost report in scan output
-grep "Total Cost" .agent-os/reviews/report.md
+grep "Total Cost" .argus/reviews/report.md
 ```
 
 ---
@@ -1157,7 +1157,7 @@ permissions:
    ```
 3. Validate SARIF:
    ```bash
-   jq . .agent-os/reviews/report.sarif
+   jq . .argus/reviews/report.sarif
    ```
 
 ---
@@ -1170,7 +1170,7 @@ permissions:
   if: always()  # Upload even on failure
   with:
     name: security-report
-    path: .agent-os/reviews/
+    path: .argus/reviews/
 ```
 
 ---
@@ -1195,9 +1195,9 @@ security-scan:
 ```yaml
 security-scan:
   cache:
-    key: agent-os-${CI_COMMIT_REF_SLUG}
+    key: argus-${CI_COMMIT_REF_SLUG}
     paths:
-      - .agent-os-cache/
+      - .argus-cache/
   script:
     - python scripts/run_ai_audit.py .
 ```
@@ -1432,7 +1432,7 @@ checkov --version  # Should be 3.0+
 
 #### GitHub Actions:
 ```yaml
-- uses: securedotcom/agent-os-action@v1
+- uses: devatsecure/Argus-Security@v1
   with:
     debug: 'true'
   env:
@@ -1481,7 +1481,7 @@ trivy --version
 trufflehog --version
 checkov --version
 
-# Agent-OS version
+# Argus version
 grep "version:" action.yml
 
 # Configuration (sanitized)
@@ -1538,7 +1538,7 @@ grep -A5 "Timeout" debug.log
 
 ### Before Opening an Issue
 
-1. **Search existing issues:** https://github.com/securedotcom/agent-os-action/issues
+1. **Search existing issues:** https://github.com/devatsecure/Argus-Security/issues
 2. **Check FAQ:** [docs/FAQ.md](/docs/FAQ.md)
 3. **Read documentation:** [PLATFORM.md](/PLATFORM.md)
 4. **Try debug mode:** See [Debug Mode](#debug-mode)
@@ -1548,7 +1548,7 @@ grep -A5 "Timeout" debug.log
 ### Opening a Bug Report
 
 **Include:**
-1. Agent-OS version
+1. Argus version
 2. Platform (GitHub Actions, GitLab CI, CLI)
 3. Scanner versions
 4. Minimal reproduction steps
@@ -1558,7 +1558,7 @@ grep -A5 "Timeout" debug.log
 
 **Template:**
 ```markdown
-**Agent-OS Version:** v1.0.15
+**Argus Version:** v1.0.15
 **Platform:** GitHub Actions
 **Error Code:** ERR-006
 
@@ -1592,16 +1592,16 @@ TimeoutExpired: Command 'semgrep' timed out after 300 seconds
 
 ### Community Support
 
-- **GitHub Discussions:** https://github.com/securedotcom/agent-os-action/discussions
+- **GitHub Discussions:** https://github.com/devatsecure/Argus-Security/discussions
 - **Discord:** (coming soon)
-- **Stack Overflow:** Tag `agent-os`
+- **Stack Overflow:** Tag `argus`
 
 ---
 
 ### Enterprise Support
 
 For SLA-backed support:
-- **Email:** enterprise@agent-os.io
+- **Email:** enterprise@argus.io
 - **Includes:**
   - 24/7 support
   - Priority bug fixes
@@ -1641,7 +1641,7 @@ curl https://api.anthropic.com/v1/models \
 yamllint .github/workflows/security.yml
 
 # Clear caches
-rm -rf .agent-os-cache/
+rm -rf .argus-cache/
 
 # Test scan (dry run)
 python scripts/run_ai_audit.py --debug --max-files 5 .

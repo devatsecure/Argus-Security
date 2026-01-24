@@ -31,7 +31,7 @@ class TestDockerManager(unittest.TestCase):
 
         manager = DockerManager()
         self.assertIsNotNone(manager)
-        self.assertEqual(manager.image, "agent-os-sandbox:latest")
+        self.assertEqual(manager.image, "argus-sandbox:latest")
         mock_docker.from_env.assert_called_once()
 
     @patch("docker_manager.docker")

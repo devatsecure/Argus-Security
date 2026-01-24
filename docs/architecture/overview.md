@@ -11,7 +11,7 @@ last_updated: 2024-11-10
 
 ## System Purpose
 
-Agent-OS Security Action is a **production security control plane** for GitHub repositories that orchestrates multiple security scanners (Semgrep, Trivy, TruffleHog, Checkov), applies AI-powered triage to suppress false positives, and enforces policy gates. It reduces security noise by 60-70% while maintaining high detection accuracy, enabling teams to focus on real threats.
+Argus Security Action is a **production security control plane** for GitHub repositories that orchestrates multiple security scanners (Semgrep, Trivy, TruffleHog, Checkov), applies AI-powered triage to suppress false positives, and enforces policy gates. It reduces security noise by 60-70% while maintaining high detection accuracy, enabling teams to focus on real threats.
 
 ## Major Features
 
@@ -340,7 +340,7 @@ graph TB
 
 ### Deployment
 - **Method**: GitHub Actions composite action
-- **Installation**: Add workflow file referencing `securedotcom/agent-os-action@v3`
+- **Installation**: Add workflow file referencing `devatsecure/Argus-Security@v3`
 - **Configuration**: Via `action.yml` inputs
 - **Secrets**: `ANTHROPIC_API_KEY` (optional)
 

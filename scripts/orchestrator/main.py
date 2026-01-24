@@ -152,7 +152,7 @@ class AuditOrchestrator:
                     logger.warning("Threat modeling libraries not available")
                     return False
 
-            threat_model_path = Path(self.repo_path) / ".agent-os/threat-model.json"
+            threat_model_path = Path(self.repo_path) / ".argus/threat-model.json"
             api_key = (
                 self.config.get("anthropic_api_key", "")
                 if self.config.get("enable_threat_modeling", "true").lower() == "true"
@@ -273,7 +273,7 @@ class AuditOrchestrator:
         logger.info("Generating reports...")
 
         if report_dir is None:
-            report_dir = Path(self.repo_path) / ".agent-os/reviews"
+            report_dir = Path(self.repo_path) / ".argus/reviews"
 
         report_dir.mkdir(parents=True, exist_ok=True)
 

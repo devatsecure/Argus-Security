@@ -1,6 +1,6 @@
 # Case Study Template
 
-Use this template to share how Agent-OS helped your team.
+Use this template to share how Argus helped your team.
 
 ---
 
@@ -17,7 +17,7 @@ Use this template to share how Agent-OS helped your team.
 
 ### What was the problem?
 
-Describe your security/code review challenges before Agent-OS:
+Describe your security/code review challenges before Argus:
 
 - **Manual Processes:** [Time spent on manual reviews]
 - **Tool Limitations:** [Issues with existing tools]
@@ -35,7 +35,7 @@ Describe your security/code review challenges before Agent-OS:
 
 ## Solution
 
-### How did you implement Agent-OS?
+### How did you implement Argus?
 
 - **Setup Time:** [How long did it take?]
 - **Integration:** [GitHub Actions, pre-commit hooks, CI/CD?]
@@ -45,7 +45,7 @@ Describe your security/code review challenges before Agent-OS:
 ### Implementation Details
 
 ```yaml
-# Share your .agent-os.yml (optional)
+# Share your .argus.yml (optional)
 ai_provider: anthropic
 agent_profile: lite
 multi_agent_mode: sequential
@@ -79,7 +79,7 @@ cost_limit: 0.50
 
 ### Notable Discoveries
 
-Share 2-3 interesting vulnerabilities Agent-OS found:
+Share 2-3 interesting vulnerabilities Argus found:
 
 1. **[Vulnerability Type]**
    - **File:** `path/to/file.py`
@@ -113,7 +113,7 @@ Share 2-3 interesting vulnerabilities Agent-OS found:
 
 ## Recommendations
 
-### For Teams Considering Agent-OS
+### For Teams Considering Argus
 
 - **Start with:** [Your recommendation for getting started]
 - **Focus on:** [What to prioritize]
@@ -131,7 +131,7 @@ Share 2-3 interesting vulnerabilities Agent-OS found:
 
 ## Future Plans
 
-- [How will you expand use of Agent-OS?]
+- [How will you expand use of Argus?]
 - [What features would you like to see?]
 - [Plans for broader adoption?]
 
@@ -151,4 +151,4 @@ Share 2-3 interesting vulnerabilities Agent-OS found:
 
 ---
 
-*Thank you for sharing your Agent-OS story!*
+*Thank you for sharing your Argus story!*

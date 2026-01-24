@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-A comprehensive Python module for calculating inter-rater agreement metrics between two sources of security findings (e.g., Agent-OS and Codex). Provides sophisticated statistical analysis with Cohen's Kappa, Precision/Recall metrics, confusion matrices, and detailed agreement breakdowns.
+A comprehensive Python module for calculating inter-rater agreement metrics between two sources of security findings (e.g., Argus and Codex). Provides sophisticated statistical analysis with Cohen's Kappa, Precision/Recall metrics, confusion matrices, and detailed agreement breakdowns.
 
 **Created:** January 14, 2026
 **Status:** Production Ready
@@ -20,7 +20,7 @@ A comprehensive Python module for calculating inter-rater agreement metrics betw
 
 ### Integration Module
 - **`/scripts/metrics_calculator_integration.py`** (15 KB, 395 lines)
-  - Convenience wrapper for Agent-OS workflow
+  - Convenience wrapper for Argus workflow
   - Methods for comparing with external tools
   - Grafana integration
   - Markdown report generation
@@ -134,7 +134,7 @@ Features:
 ```json
 {
   "timestamp": "2026-01-14T12:00:00.000000+00:00",
-  "agent_os_finding_count": 10,
+  "argus_finding_count": 10,
   "codex_finding_count": 12,
   "total_matches": 8,
   "simple_agreement_rate": 0.8,
@@ -170,7 +170,7 @@ Features:
 from metrics_calculator import MetricsCalculator
 
 calculator = MetricsCalculator()
-report = calculator.compare_findings(agent_os_findings, codex_findings)
+report = calculator.compare_findings(argus_findings, codex_findings)
 
 print(f"Cohen's Kappa: {report.cohens_kappa.kappa:.3f}")
 print(f"Precision: {report.precision_recall.precision:.3f}")
@@ -180,7 +180,7 @@ print(f"Agreement Rate: {report.simple_agreement_rate:.1%}")
 ### Command Line
 ```bash
 python scripts/metrics_calculator.py \
-  --agent-os-file agent_os_findings.json \
+  --argus-file argus_findings.json \
   --codex-file codex_findings.json \
   --output-file metrics_report.json
 ```
@@ -191,7 +191,7 @@ from metrics_calculator_integration import MetricsIntegration
 
 integration = MetricsIntegration()
 report = integration.compare_with_external_tool(
-    "agent_os_findings.json",
+    "argus_findings.json",
     "codex_findings.json",
     tool_name="codex"
 )
@@ -281,7 +281,7 @@ scripts/metrics_calculator.py   352 statements, 32 missed  91% coverage
 
 ## Integration Points
 
-### With Agent-OS Orchestrator
+### With Argus Orchestrator
 ```python
 from scripts.orchestrator.metrics_collector import ReviewMetrics
 from scripts.metrics_calculator import MetricsCalculator
@@ -301,7 +301,7 @@ metrics.metrics['metrics_agreement'] = report.simple_agreement_rate
 - name: Calculate Metrics
   run: |
     python scripts/metrics_calculator.py \
-      --agent-os-file findings_agent_os.json \
+      --argus-file findings_argus.json \
       --codex-file findings_codex.json \
       --output-file metrics.json
 
@@ -407,14 +407,14 @@ python examples/metrics_calculator_example.py
 
 # 3. Compare findings
 python scripts/metrics_calculator.py \
-  --agent-os-file findings1.json \
+  --argus-file findings1.json \
   --codex-file findings2.json \
   --output-file report.json
 
 # 4. Integrate in code
 from metrics_calculator import MetricsCalculator
 calculator = MetricsCalculator()
-report = calculator.compare_findings(agent_os, codex)
+report = calculator.compare_findings(argus, codex)
 ```
 
 ## References

@@ -1,5 +1,5 @@
 """
-Pydantic schemas for Agent-OS pipeline validation
+Pydantic schemas for Argus pipeline validation
 
 This package contains strict Pydantic schemas for all data flowing through
 the security analysis pipeline. Schemas enforce data consistency and catch

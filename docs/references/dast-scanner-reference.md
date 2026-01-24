@@ -2,7 +2,7 @@
 
 ## Overview
 
-The **DAST (Dynamic Application Security Testing) Scanner** integrates Nuclei to provide runtime vulnerability detection for Agent-OS. It complements the existing static analysis tools (Semgrep, Checkov) with dynamic testing capabilities.
+The **DAST (Dynamic Application Security Testing) Scanner** integrates Nuclei to provide runtime vulnerability detection for Argus. It complements the existing static analysis tools (Semgrep, Checkov) with dynamic testing capabilities.
 
 ## Features
 
@@ -147,7 +147,7 @@ result = scanner.scan(
 # Convert DAST findings to unified Finding format
 normalized_findings = scanner.normalize_to_findings(result)
 
-# Integrate with Agent-OS pipeline
+# Integrate with Argus pipeline
 for finding in normalized_findings:
     print(f"{finding['severity']}: {finding['rule_name']}")
     print(f"  PoC: {finding['evidence']['poc']}")
@@ -231,7 +231,7 @@ for finding in result.findings:
 
 ### Normalized Finding Format
 
-The scanner normalizes Nuclei findings to the Agent-OS unified `Finding` format:
+The scanner normalizes Nuclei findings to the Argus unified `Finding` format:
 
 ```json
 {
@@ -327,7 +327,7 @@ This spec generates:
 - `GET https://api.example.com/users/1`
 - `POST https://api.example.com/users/{id}` with JSON body
 
-## Integration with Agent-OS
+## Integration with Argus
 
 ### In Hybrid Analyzer
 
@@ -477,7 +477,7 @@ If the scanner completes but finds nothing:
 
 ## Examples
 
-See `/home/user/agent-os-action/examples/dast_scanner_example.py` for comprehensive examples:
+See `/home/user/argus-action/examples/dast_scanner_example.py` for comprehensive examples:
 
 1. Simple URL scan
 2. OpenAPI-based scan
@@ -517,6 +517,6 @@ Future enhancements:
 ## Support
 
 For issues or questions:
-- GitHub Issues: `securedotcom/agent-os-action`
-- Documentation: `/home/user/agent-os-action/docs/`
-- Examples: `/home/user/agent-os-action/examples/dast_scanner_example.py`
+- GitHub Issues: `devatsecure/Argus-Security`
+- Documentation: `/home/user/argus-action/docs/`
+- Examples: `/home/user/argus-action/examples/dast_scanner_example.py`

@@ -1,9 +1,9 @@
-# Agent-OS Security Action - Installation Guide
+# Argus Security Action - Installation Guide
 
 **Version:** 1.1.0
 **Updated:** 2026-01-15
 
-This guide covers complete installation and setup of Agent-OS Security Action, including all dependencies, external tools, and configuration.
+This guide covers complete installation and setup of Argus Security Action, including all dependencies, external tools, and configuration.
 
 ## Table of Contents
 
@@ -28,8 +28,8 @@ The fastest way to get started:
 
 ```bash
 # Clone repository
-git clone https://github.com/securedotcom/agent-os-action.git
-cd agent-os-action
+git clone https://github.com/devatsecure/Argus-Security.git
+cd argus-action
 
 # Run automated installer (macOS/Linux)
 ./scripts/install_dependencies.sh
@@ -125,23 +125,23 @@ See [External Security Tools](#external-security-tools) section for detailed ins
 
 ### Docker Installation
 
-Run Agent-OS in a container with all dependencies pre-installed:
+Run Argus in a container with all dependencies pre-installed:
 
 ```bash
 # Build Docker image
-docker build -t agent-os:latest .
+docker build -t argus:latest .
 
 # Run container
 docker run -v $(pwd):/workspace \
   -e ANTHROPIC_API_KEY="your-key" \
-  agent-os:latest \
+  argus:latest \
   --project-type backend-api
 ```
 
 **Using GitHub Actions:**
 
 ```yaml
-- uses: securedotcom/agent-os-action@v1
+- uses: devatsecure/Argus-Security@v1
   with:
     anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
     review-type: security
@@ -433,7 +433,7 @@ opa version
 
 ### Required API Keys
 
-Agent-OS requires at least one AI provider API key:
+Argus requires at least one AI provider API key:
 
 #### Anthropic Claude (Recommended)
 
@@ -480,16 +480,16 @@ For cost-free local development:
 export GITHUB_TOKEN="ghp_..."
 
 # Custom configuration paths
-export AGENT_OS_CONFIG="/path/to/config.yml"
-export AGENT_OS_POLICY="/path/to/policy.rego"
+export ARGUS_CONFIG="/path/to/config.yml"
+export ARGUS_POLICY="/path/to/policy.rego"
 ```
 
 ### Configuration Files
 
-Create `.agent-os-config.yml` in your project root:
+Create `.argus-config.yml` in your project root:
 
 ```yaml
-# Agent-OS Configuration
+# Argus Configuration
 version: "1.1.0"
 
 # AI Provider settings
@@ -541,7 +541,7 @@ python scripts/health_check.py
 
 ```
 ================================================================================
-Agent-OS Security Action - Health Check
+Argus Security Action - Health Check
 ================================================================================
 
 Platform:       Darwin 25.2.0
@@ -736,9 +736,9 @@ python scripts/run_ai_audit.py \
 
 ### Get Help
 
-- **Documentation**: https://github.com/securedotcom/agent-os-action/tree/main/docs
-- **Issues**: https://github.com/securedotcom/agent-os-action/issues
-- **Discussions**: https://github.com/securedotcom/agent-os-action/discussions
+- **Documentation**: https://github.com/devatsecure/Argus-Security/tree/main/docs
+- **Issues**: https://github.com/devatsecure/Argus-Security/issues
+- **Discussions**: https://github.com/devatsecure/Argus-Security/discussions
 
 ---
 
@@ -785,7 +785,7 @@ After installation:
 
 ## Updates
 
-To update Agent-OS and all dependencies:
+To update Argus and all dependencies:
 
 ```bash
 # Pull latest code
@@ -807,4 +807,4 @@ python scripts/health_check.py
 
 ---
 
-**Questions or issues?** Open an issue on [GitHub](https://github.com/securedotcom/agent-os-action/issues).
+**Questions or issues?** Open an issue on [GitHub](https://github.com/devatsecure/Argus-Security/issues).

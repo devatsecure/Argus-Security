@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Example usage of DAST Scanner for Agent-OS
+Example usage of DAST Scanner for Argus
 
 This demonstrates various ways to use the DASTScanner class.
 """

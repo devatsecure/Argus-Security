@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Agent-OS Fuzzing Engine provides AI-guided fuzzing for APIs, functions, and file parsers. It integrates with the existing security scanning pipeline to find runtime crashes and vulnerabilities.
+The Argus Fuzzing Engine provides AI-guided fuzzing for APIs, functions, and file parsers. It integrates with the existing security scanning pipeline to find runtime crashes and vulnerabilities.
 
 ## Features
 
@@ -111,7 +111,7 @@ Results are also exported to SARIF for GitHub Security tab integration:
   "runs": [{
     "tool": {
       "driver": {
-        "name": "Agent-OS Fuzzing Engine",
+        "name": "Argus Fuzzing Engine",
         "version": "1.0.0"
       }
     },

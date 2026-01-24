@@ -12,37 +12,37 @@ This guide explains how to test the new Docker container and release workflows.
 
 ```bash
 # Build for local testing
-docker build -t agent-os-action:test .
+docker build -t argus-action:test .
 
 # Build with build cache disabled (clean build)
-docker build --no-cache -t agent-os-action:test .
+docker build --no-cache -t argus-action:test .
 
 # Build for specific platform
-docker build --platform linux/amd64 -t agent-os-action:test .
-docker build --platform linux/arm64 -t agent-os-action:test .
+docker build --platform linux/amd64 -t argus-action:test .
+docker build --platform linux/arm64 -t argus-action:test .
 ```
 
 ### Test the Container
 
 ```bash
 # Test help command
-docker run --rm agent-os-action:test --help
+docker run --rm argus-action:test --help
 
 # Test on a sample repository
 docker run --rm \
   -v $(pwd):/workspace \
   -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
-  agent-os-action:test \
+  argus-action:test \
   /workspace audit
 
 # Interactive shell for debugging
 docker run --rm -it \
   -v $(pwd):/workspace \
   --entrypoint /bin/bash \
-  agent-os-action:test
+  argus-action:test
 
 # Check image size
-docker images agent-os-action:test
+docker images argus-action:test
 ```
 
 ### Expected Results
@@ -117,7 +117,7 @@ gh run view --log
 gh release view v${VERSION}
 
 # Verify container was published
-gh api /user/packages/container/agent-os-action/versions
+gh api /user/packages/container/argus-action/versions
 ```
 
 ## 🔍 Testing Container Publishing
@@ -132,13 +132,13 @@ docker buildx inspect --bootstrap
 # Build for multiple platforms (local only, no push)
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
-  -t agent-os-action:multi \
+  -t argus-action:multi \
   .
 
 # Build and push to local registry
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
-  -t localhost:5000/agent-os-action:test \
+  -t localhost:5000/argus-action:test \
   --push \
   .
 ```
@@ -147,19 +147,19 @@ docker buildx build \
 
 ```bash
 # After workflow completes, pull the image
-docker pull ghcr.io/devatsecure/agent-os-action:latest
+docker pull ghcr.io/devatsecure/argus-action:latest
 
 # Verify signature
 cosign verify \
-  --certificate-identity-regexp="https://github.com/devatsecure/agent-os-action" \
+  --certificate-identity-regexp="https://github.com/devatsecure/argus-action" \
   --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
-  ghcr.io/devatsecure/agent-os-action:latest
+  ghcr.io/devatsecure/argus-action:latest
 
 # Run the published image
 docker run --rm \
   -v $(pwd):/workspace \
   -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
-  ghcr.io/devatsecure/agent-os-action:latest \
+  ghcr.io/devatsecure/argus-action:latest \
   /workspace audit
 ```
 
@@ -198,10 +198,10 @@ docker run --rm \
 
 ```bash
 # Check for syntax errors in Dockerfile
-docker build --progress=plain -t agent-os-action:test . 2>&1 | grep -i error
+docker build --progress=plain -t argus-action:test . 2>&1 | grep -i error
 
 # Build with verbose output
-docker build --progress=plain --no-cache -t agent-os-action:test .
+docker build --progress=plain --no-cache -t argus-action:test .
 ```
 
 ### Workflow Fails
@@ -224,13 +224,13 @@ gh run view <run-id> --log
 docker logs <container-id>
 
 # Debug interactively
-docker run -it --entrypoint /bin/bash agent-os-action:test
+docker run -it --entrypoint /bin/bash argus-action:test
 
 # Check Python installation
-docker run --rm agent-os-action:test python --version
+docker run --rm argus-action:test python --version
 
 # Check installed packages
-docker run --rm agent-os-action:test pip list
+docker run --rm argus-action:test pip list
 ```
 
 ## 📈 Performance Testing
@@ -239,23 +239,23 @@ docker run --rm agent-os-action:test pip list
 
 ```bash
 # Time a clean build
-time docker build --no-cache -t agent-os-action:test .
+time docker build --no-cache -t argus-action:test .
 
 # Time an incremental build
-time docker build -t agent-os-action:test .
+time docker build -t argus-action:test .
 ```
 
 ### Measure Image Size
 
 ```bash
 # Check image size
-docker images agent-os-action:test
+docker images argus-action:test
 
 # Analyze layers
-docker history agent-os-action:test
+docker history argus-action:test
 
 # Use dive for detailed analysis
-dive agent-os-action:test
+dive argus-action:test
 ```
 
 ### Expected Performance

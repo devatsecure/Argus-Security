@@ -1,4 +1,4 @@
-name: Agent-OS Security Scan (Advanced)
+name: Argus Security Scan (Advanced)
 
 on:
   # Multiple triggers
@@ -69,8 +69,8 @@ jobs:
         node-version: '18'
         cache: 'npm'
     
-    - name: Run Agent-OS Security Scan
-      uses: securedotcom/agent-os-action@v1
+    - name: Run Argus Security Scan
+      uses: devatsecure/Argus-Security@v1
       with:
         review-type: ${{ github.event.inputs.review_type || 'audit' }}
         project-path: '.'
@@ -88,7 +88,7 @@ jobs:
       uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874  # v4.4.0
       with:
         name: code-review-reports-${{ github.run_number }}
-        path: .agent-os/reviews/
+        path: .argus/reviews/
         retention-days: 90
     
     # Comment on PR - pinned by SHA
@@ -98,7 +98,7 @@ jobs:
       with:
         script: |
           const fs = require('fs');
-          const reportPath = '.agent-os/reviews/audit-report.md';
+          const reportPath = '.argus/reviews/audit-report.md';
           
           if (fs.existsSync(reportPath)) {
             const report = fs.readFileSync(reportPath, 'utf8');
@@ -106,7 +106,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
-              body: `## 🔍 Agent-OS Security Report\n\n${report}`
+              body: `## 🔍 Argus Security Report\n\n${report}`
             });
           }
 

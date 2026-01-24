@@ -120,7 +120,7 @@ Date:   Sun Jan 19 [timestamp]
 
 **1. Navigate to PR creation:**
 ```
-https://github.com/securedotcom/agent-os-action/compare/main...claude/multi-agent-system-DDpRw
+https://github.com/devatsecure/Argus-Security/compare/main...claude/multi-agent-system-DDpRw
 ```
 
 **2. Fill in PR details:**
@@ -226,7 +226,7 @@ gh pr merge --merge --delete-branch
 
 ### Create the PR (2 minutes)
 
-1. Go to: https://github.com/securedotcom/agent-os-action/compare/main...claude/multi-agent-system-DDpRw
+1. Go to: https://github.com/devatsecure/Argus-Security/compare/main...claude/multi-agent-system-DDpRw
 
 2. Click "Create Pull Request"
 

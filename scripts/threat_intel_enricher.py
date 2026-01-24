@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Threat Intelligence Integration for Agent-OS
+Threat Intelligence Integration for Argus
 Enriches findings with real-time threat intelligence from multiple sources.
 
 Features:
@@ -109,7 +109,7 @@ class ThreatIntelEnricher:
             use_progress: Whether to show progress bars (requires rich)
         """
         # Try default cache location, fallback to /cache for Docker read-only workspaces
-        default_cache = cache_dir or Path(".agent-os-cache/threat-intel")
+        default_cache = cache_dir or Path(".argus-cache/threat-intel")
         try:
             default_cache.mkdir(parents=True, exist_ok=True)
             # Test if writable
@@ -395,7 +395,7 @@ class ThreatIntelEnricher:
         self._rate_limit("kev")
 
         req = urllib.request.Request(self.CISA_KEV_URL)
-        req.add_header("User-Agent", "Agent-OS-Security-Scanner/1.0")
+        req.add_header("User-Agent", "Argus-Security-Scanner/1.0")
 
         with urllib.request.urlopen(req, timeout=30) as response:
             data = json.loads(response.read())
@@ -461,7 +461,7 @@ class ThreatIntelEnricher:
         url = f"{self.EPSS_API_URL}?cve={cve_id}"
 
         req = urllib.request.Request(url)
-        req.add_header("User-Agent", "Agent-OS-Security-Scanner/1.0")
+        req.add_header("User-Agent", "Argus-Security-Scanner/1.0")
 
         with urllib.request.urlopen(req, timeout=15) as response:
             data = json.loads(response.read())
@@ -518,7 +518,7 @@ class ThreatIntelEnricher:
         url = f"{self.NVD_API_URL}?cveId={cve_id}"
 
         req = urllib.request.Request(url)
-        req.add_header("User-Agent", "Agent-OS-Security-Scanner/1.0")
+        req.add_header("User-Agent", "Argus-Security-Scanner/1.0")
 
         with urllib.request.urlopen(req, timeout=20) as response:
             data = json.loads(response.read())
@@ -642,7 +642,7 @@ class ThreatIntelEnricher:
         url = f"{self.GITHUB_ADVISORY_URL}?{params}"
 
         req = urllib.request.Request(url)
-        req.add_header("User-Agent", "Agent-OS-Security-Scanner/1.0")
+        req.add_header("User-Agent", "Argus-Security-Scanner/1.0")
         req.add_header("Accept", "application/vnd.github+json")
 
         with urllib.request.urlopen(req, timeout=15) as response:
@@ -710,7 +710,7 @@ class ThreatIntelEnricher:
         url = f"{self.OSV_API_URL}/{cve_id}"
 
         req = urllib.request.Request(url)
-        req.add_header("User-Agent", "Agent-OS-Security-Scanner/1.0")
+        req.add_header("User-Agent", "Argus-Security-Scanner/1.0")
 
         with urllib.request.urlopen(req, timeout=15) as response:
             data = json.loads(response.read())
@@ -1094,7 +1094,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Threat Intelligence Enrichment for Agent-OS",
+        description="Threat Intelligence Enrichment for Argus",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -1118,7 +1118,7 @@ Examples:
     )
     parser.add_argument(
         "--cache-dir",
-        help="Cache directory (default: .agent-os-cache/threat-intel)",
+        help="Cache directory (default: .argus-cache/threat-intel)",
         type=Path,
     )
     parser.add_argument(

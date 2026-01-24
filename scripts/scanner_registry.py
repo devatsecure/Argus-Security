@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Scanner Registry for Agent-OS
+Scanner Registry for Argus
 Discover and load security scanners dynamically (built-in + plugins)
 
 Features:
 - Auto-discovery of built-in scanners
-- Plugin loading from ~/.agent-os/plugins/
+- Plugin loading from ~/.argus/plugins/
 - Scanner capability filtering
 - Version tracking and compatibility
 - Graceful failure handling
@@ -64,14 +64,14 @@ class ScannerRegistry:
         Initialize scanner registry
 
         Args:
-            plugin_dir: Directory for plugin scanners (default: ~/.agent-os/plugins)
+            plugin_dir: Directory for plugin scanners (default: ~/.argus/plugins)
         """
         self._scanners: Dict[str, Type[BaseScannerInterface]] = {}
         self._scanner_instances: Dict[str, BaseScannerInterface] = {}
 
         # Default plugin directory
         if plugin_dir is None:
-            plugin_dir = Path.home() / ".agent-os" / "plugins"
+            plugin_dir = Path.home() / ".argus" / "plugins"
 
         self.plugin_dir = Path(plugin_dir)
 
@@ -281,7 +281,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Manage Agent-OS scanner registry"
+        description="Manage Argus scanner registry"
     )
     parser.add_argument(
         "--plugin-dir",

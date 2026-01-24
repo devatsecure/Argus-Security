@@ -13,10 +13,10 @@ last_updated: 2024-11-10
 
 ### 1. Add Workflow File
 
-Create `.github/workflows/agent-os-security.yml`:
+Create `.github/workflows/argus-security.yml`:
 
 ```yaml
-name: Agent-OS Security
+name: Argus Security
 on: [pull_request]
 
 jobs:
@@ -29,7 +29,7 @@ jobs:
     
     steps:
       - uses: actions/checkout@v4
-      - uses: securedotcom/agent-os-action@v3
+      - uses: devatsecure/Argus-Security@v3
         with:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
 ```
@@ -51,7 +51,7 @@ gh secret set OPENAI_API_KEY --body "sk-..."
 git checkout -b test-security
 git commit --allow-empty -m "Test security scan"
 git push origin test-security
-gh pr create --title "Test" --body "Testing Agent-OS"
+gh pr create --title "Test" --body "Testing Argus"
 ```
 
 **Done!** Check PR for security findings.
@@ -74,7 +74,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: securedotcom/agent-os-action@v3
+      - uses: devatsecure/Argus-Security@v3
 with:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
   review-type: 'security'
@@ -100,7 +100,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: securedotcom/agent-os-action@v3
+      - uses: devatsecure/Argus-Security@v3
 with:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
   review-type: 'audit'
@@ -117,7 +117,7 @@ with:
 
 **Configuration**:
 ```yaml
-- uses: securedotcom/agent-os-action@v3
+- uses: devatsecure/Argus-Security@v3
 with:
     # Use free Ollama for local inference
     ai-provider: 'ollama'
@@ -137,7 +137,7 @@ with:
 
 **Configuration**:
 ```yaml
-- uses: securedotcom/agent-os-action@v3
+- uses: devatsecure/Argus-Security@v3
 with:
     anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
     review-type: 'security'
@@ -154,7 +154,7 @@ with:
 
 **Configuration**:
 ```yaml
-- uses: securedotcom/agent-os-action@v3
+- uses: devatsecure/Argus-Security@v3
 with:
     ai-provider: 'ollama'
     max-files: 20
@@ -231,7 +231,7 @@ jobs:
   dev-scan:
     if: github.event_name == 'pull_request'
     steps:
-- uses: securedotcom/agent-os-action@v3
+- uses: devatsecure/Argus-Security@v3
   with:
           ai-provider: 'ollama'
           max-files: 20
@@ -240,7 +240,7 @@ jobs:
   prod-scan:
     if: github.ref == 'refs/heads/main'
     steps:
-- uses: securedotcom/agent-os-action@v3
+- uses: devatsecure/Argus-Security@v3
   with:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           ai-provider: 'anthropic'
@@ -252,7 +252,7 @@ jobs:
 
 ```yaml
 # Fail on critical in dev, high+ in staging, medium+ in prod
-  - uses: securedotcom/agent-os-action@v3
+  - uses: devatsecure/Argus-Security@v3
     with:
     fail-on: ${{ 
       github.ref == 'refs/heads/main' && 'security:medium,security:high,security:critical' ||
@@ -263,10 +263,10 @@ jobs:
 
 ### Pattern 3: Custom Rego Policies
 
-Create `.agent-os/policies/custom.rego`:
+Create `.argus/policies/custom.rego`:
 
 ```rego
-package agent_os
+package argus
 
 # Block any secrets in production code
 deny[msg] {
@@ -287,9 +287,9 @@ allow[msg] {
 
 Reference in workflow:
 ```yaml
-- uses: securedotcom/agent-os-action@v3
+- uses: devatsecure/Argus-Security@v3
   with:
-    custom-policies: '.agent-os/policies/'
+    custom-policies: '.argus/policies/'
 ```
 
 ## Related Documentation

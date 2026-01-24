@@ -2,7 +2,7 @@
 
 ## Overview
 
-Comprehensive documentation has been created for the LLM-as-a-Judge evaluation methodology improvements in Agent-OS Security Action. These documents provide production-ready guidance on implementing rigorous evaluation frameworks for LLM-powered security scanning.
+Comprehensive documentation has been created for the LLM-as-a-Judge evaluation methodology improvements in Argus Security Action. These documents provide production-ready guidance on implementing rigorous evaluation frameworks for LLM-powered security scanning.
 
 **Documents Created/Updated:**
 1. **DUAL_AUDIT_WORKFLOW.md** - Updated with comprehensive LLM-as-a-Judge section (1,656 lines total)
@@ -68,7 +68,7 @@ Quality Score = (Accuracy + Completeness + Actionability + Risk Assessment + Con
 
 Documents explicit reasoning from both agents:
 
-**Agent-OS (Claude) Analysis:**
+**Argus (Claude) Analysis:**
 1. Threat modeling identifies attack vectors
 2. Code review traces vulnerability paths
 3. Impact assessment evaluates risk
@@ -76,7 +76,7 @@ Documents explicit reasoning from both agents:
 
 **Codex (OpenAI) Validation:**
 1. Independent vulnerability identification
-2. Cross-reference with Agent-OS findings
+2. Cross-reference with Argus findings
 3. Agreement/disagreement assessment
 4. Additional issues identification
 
@@ -179,7 +179,7 @@ Example cron job for weekly audits with metrics tracking
 
 **Dual-Agent Evaluation System:**
 - Visual ASCII diagram of architecture
-- Agent-OS (Claude Sonnet 4.5) details
+- Argus (Claude Sonnet 4.5) details
 - Codex Validator (GPT-5.2) details
 - LLM Judge (Consensus Engine) details
 - Component strengths and weaknesses
@@ -628,7 +628,7 @@ The LLM-as-a-Judge documentation provides a complete, production-ready framework
 - **Complete compliance checklist** for implementation
 - **Academic rigor** with Evidently AI research integration
 
-Teams can confidently deploy Agent-OS Security Action with measurable, objective quality assurance across all security findings.
+Teams can confidently deploy Argus Security Action with measurable, objective quality assurance across all security findings.
 
 ---
 

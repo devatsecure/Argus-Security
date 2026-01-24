@@ -1,6 +1,6 @@
 # Git Flow Branching Strategy
 
-Agent-OS follows the **Git Flow** branching model, a robust workflow designed for projects with scheduled releases and continuous development.
+Argus follows the **Git Flow** branching model, a robust workflow designed for projects with scheduled releases and continuous development.
 
 ---
 
@@ -220,7 +220,7 @@ git push origin --tags
 
 # 5. Create GitHub Release
 gh release create v3.2.0 \
-  --title "Agent-OS v3.2.0 - [Title]" \
+  --title "Argus v3.2.0 - [Title]" \
   --notes-file RELEASE_NOTES.md \
   --latest
 ```
@@ -254,7 +254,7 @@ git push origin --tags
 
 # 5. Create GitHub Release
 gh release create v3.1.1 \
-  --title "Agent-OS v3.1.1 - Security Hotfix" \
+  --title "Argus v3.1.1 - Security Hotfix" \
   --notes "Critical security patch for secret detector" \
   --latest
 ```
@@ -421,5 +421,5 @@ All contributors must follow this Git Flow workflow. See [CONTRIBUTING.md](CONTR
 
 **Version**: 1.0.0  
 **Last Updated**: November 7, 2025  
-**Maintainer**: Agent-OS Community
+**Maintainer**: Argus Community
 

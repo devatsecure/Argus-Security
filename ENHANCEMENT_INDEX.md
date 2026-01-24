@@ -50,7 +50,7 @@ Full report: **[DUAL_AUDIT_COMPLETE.md](DUAL_AUDIT_COMPLETE.md)**
 
 ### File Modified
 ```
-/Users/waseem.ahmed/Repos/agent-os-action/scripts/dual_audit.py
+/Users/waseem.ahmed/Repos/argus-action/scripts/dual_audit.py
 ```
 
 ### Changes Summary
@@ -249,7 +249,7 @@ ENHANCEMENT_INDEX.md (this file)
 ## Files Modified
 
 ### Primary
-- `/Users/waseem.ahmed/Repos/agent-os-action/scripts/dual_audit.py` (536 lines)
+- `/Users/waseem.ahmed/Repos/argus-action/scripts/dual_audit.py` (536 lines)
 
 ### Documentation Created
 - `QUICK_REFERENCE.md`

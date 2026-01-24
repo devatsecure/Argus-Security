@@ -1,4 +1,4 @@
-# 🐳 Agent-OS Docker Quick Start
+# 🐳 Argus Docker Quick Start
 
 Run complete 6-phase security scans without installing dependencies!
 
@@ -118,7 +118,7 @@ brew install opa
 docker run --rm \
   -v $(which opa):/usr/local/bin/opa \
   -v /path/to/repo:/workspace:ro \
-  ... agent-os-scanner:latest
+  ... argus-scanner:latest
 ```
 
 Alternatively, run scans directly on the host without Docker to enable all 6 phases.
@@ -144,7 +144,7 @@ export OUTPUT_DIR=./scan-results
 export ANTHROPIC_API_KEY=your-key
 
 # Run scan
-docker-compose run --rm agent-os-scanner \
+docker-compose run --rm argus-scanner \
   /workspace \
   --enable-ai-enrichment \
   --ai-provider anthropic \
@@ -166,7 +166,7 @@ docker run --rm \
   -v $(pwd)/output:/output \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
-  agent-os-scanner:latest \
+  argus-scanner:latest \
   /workspace \
   --enable-ai-enrichment \
   --ai-provider anthropic \
@@ -195,7 +195,7 @@ The container includes:
 | **Checkov** | 3.2.491 | IaC security |
 | **GitHub CLI** | Latest | Issue reporting |
 | **Docker CLI** | Latest | Sandbox validation |
-| **Agent-OS** | Latest | All Python deps |
+| **Argus** | Latest | All Python deps |
 
 ---
 
@@ -227,7 +227,7 @@ volumes:
   - /path/to/repo:/workspace:ro          # Target (read-only)
   - /path/to/output:/output              # Results (read-write)
   - /var/run/docker.sock:/var/run/docker.sock  # Phase 4 sandbox
-  - agent-os-cache:/cache                # Persistent cache
+  - argus-cache:/cache                # Persistent cache
 ```
 
 ---
@@ -277,7 +277,7 @@ docker ps  # Check running containers
 
 ```bash
 # Pre-download DB
-docker run --rm agent-os-scanner:latest \
+docker run --rm argus-scanner:latest \
   trivy image --download-db-only
 ```
 
@@ -307,7 +307,7 @@ After scanning:
 ## 📚 Additional Resources
 
 - [Full Documentation](./README.md)
-- [Agent-OS GitHub](https://github.com/securedotcom/agent-os-action)
+- [Argus GitHub](https://github.com/devatsecure/Argus-Security)
 - [6-Phase Pipeline Details](./docs/architecture/6-phase-pipeline.md)
 
 ---

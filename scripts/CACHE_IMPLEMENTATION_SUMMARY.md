@@ -2,7 +2,7 @@
 
 ## Overview
 
-Successfully implemented a comprehensive intelligent caching system for Agent OS Action security scanners. The system provides dramatic performance improvements while maintaining accuracy through smart invalidation strategies.
+Successfully implemented a comprehensive intelligent caching system for Argus Action security scanners. The system provides dramatic performance improvements while maintaining accuracy through smart invalidation strategies.
 
 ## Files Created
 
@@ -116,7 +116,7 @@ OK
 **Updated to exclude:**
 ```gitignore
 # Cache directory
-.agent-os-cache/
+.argus-cache/
 ```
 
 ## Technical Implementation Details
@@ -124,7 +124,7 @@ OK
 ### Cache Architecture
 
 ```
-.agent-os-cache/
+.argus-cache/
 ├── semgrep/
 │   ├── {file_hash_1}.json
 │   └── {file_hash_2}.json

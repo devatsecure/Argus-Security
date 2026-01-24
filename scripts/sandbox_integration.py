@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Sandbox Integration for Agent-OS
+Sandbox Integration for Argus
 Integrates sandbox validation with the security-test-generator agent
 
 This module extends ReviewMetrics with sandbox validation metrics

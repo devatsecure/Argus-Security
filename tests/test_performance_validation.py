@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Performance Validation Tests for Agent-OS Caching and Progress Bars
+Performance Validation Tests for Argus Caching and Progress Bars
 
 This module validates the caching system and progress bar implementations:
 1. Cache hits and misses with timing

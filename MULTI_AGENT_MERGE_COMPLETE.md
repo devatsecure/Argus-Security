@@ -20,7 +20,7 @@
 
 ### Commits Merged
 ```
-cebccde Merge pull request #43 from securedotcom/claude/multi-agent-system-DDpRw
+cebccde Merge pull request #43 from devatsecure/claude/multi-agent-system-DDpRw
 5c00624 docs: Add comprehensive multi-agent security analysis documentation
 d27bfc7 docs: Add comprehensive integration completion summary
 9e08270 feat: Integrate multi-agent system into hybrid_analyzer.py
@@ -179,7 +179,7 @@ a02e03c docs: Add comprehensive test suite documentation
 4. ⏳ **Create GitHub Release** - Publish v4.2.0 with release notes
 
 ### Short Term (This Week)
-5. **Run Benchmark Validation** - Test on agent-os-action repo itself
+5. **Run Benchmark Validation** - Test on argus-action repo itself
 6. **Beta Test** - Deploy to 3-5 friendly customers
 7. **Monitor Performance** - Track cost and accuracy metrics
 8. **Collect Feedback** - Gather initial user feedback
@@ -272,7 +272,7 @@ action.yml                                   +18 lines
 - **Examples:** [examples/multi-agent-workflow.yml](examples/multi-agent-workflow.yml)
 
 ### External:
-- **Merged PR:** https://github.com/securedotcom/agent-os-action/pull/43
+- **Merged PR:** https://github.com/devatsecure/Argus-Security/pull/43
 - **Inspiration:** [Slack Engineering: Security Investigation Agents](https://slack.engineering/streamlining-security-investigations-with-agents/)
 
 ---

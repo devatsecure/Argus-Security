@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Automated Remediation Engine for Agent-OS
+Automated Remediation Engine for Argus
 AI-powered fix generation for security vulnerabilities
 
 This module generates fix suggestions for security findings using AI (Claude/GPT/Ollama)
@@ -135,6 +135,7 @@ class RemediationEngine:
         "xss": {
             "pattern": r"innerHTML|dangerouslySetInnerHTML|document\.write",
             "template": "Escape user input before rendering to prevent XSS",
+            "context_aware": True,  # Enable context-aware remediation
             "example": {
                 "javascript": {
                     "before": "element.innerHTML = userInput",
@@ -144,6 +145,15 @@ class RemediationEngine:
                     "before": "return f'<div>{user_data}</div>'",
                     "after": "from html import escape\nreturn f'<div>{escape(user_data)}</div>'",
                 },
+            },
+            "cli_context": {
+                "explanation": "False positive - terminal output in CLI tool. No browser rendering. Mark as suppressed.",
+                "confidence": "high",
+                "fixed_code": "# No fix needed - CLI output is safe from XSS\n{original_code}",
+            },
+            "web_context": {
+                "explanation": "Escape user input before rendering to prevent XSS. Use textContent or template engine auto-escaping.",
+                "confidence": "high",
             },
             "testing": [
                 "Test with XSS payloads (e.g., <script>alert(1)</script>)",
@@ -363,6 +373,21 @@ def transfer():
         "buffer_overflow": ["CWE-120", "CWE-787"],
     }
 
+    # CLI tool safe patterns for XSS context detection
+    CLI_SAFE_PATTERNS = [
+        r"console\.(log|info|warn|error|debug)",
+        r"print\(",
+        r"logger\.",
+        r"logging\.",
+        r"sys\.stdout\.write",
+        r"sys\.stderr\.write",
+        r"process\.stdout\.write",
+        r"process\.stderr\.write",
+        r"fmt\.Print",
+        r"System\.out\.print",
+        r"System\.err\.print",
+    ]
+
     def __init__(self, llm_manager=None, config: Dict = None):
         """Initialize RemediationEngine
 
@@ -560,23 +585,72 @@ Generate ONLY the JSON response, no markdown code blocks or additional text.
             testing = ["Manual security testing required", "Consult OWASP guidelines"]
             confidence = "low"
         else:
-            # Use language-specific example if available
-            examples = template["example"]
-            if language in examples:
-                fixed_code = examples[language]["after"]
-                explanation = template["template"]
-            elif "python" in examples:
-                # Default to Python example
-                fixed_code = examples["python"]["after"]
-                explanation = template["template"] + f" (Note: Example is in Python, adapt for {language})"
-            else:
-                # Use first available example
-                first_lang = next(iter(examples.keys()))
-                fixed_code = examples[first_lang]["after"]
-                explanation = template["template"] + f" (Note: Example is in {first_lang}, adapt for {language})"
+            # Check for context-aware remediation (e.g., XSS in CLI vs web)
+            if template.get("context_aware") and normalized_type == "xss":
+                output_dest = self._detect_output_destination(code_snippet, file_path)
 
-            testing = template.get("testing", ["Test with malicious input", "Test with normal input"])
-            confidence = "medium"
+                if output_dest == "terminal":
+                    # CLI context - likely false positive
+                    cli_context = template.get("cli_context", {})
+                    fixed_code = cli_context.get("fixed_code", "{original_code}").format(original_code=code_snippet)
+                    explanation = cli_context.get("explanation", template["template"])
+                    confidence = cli_context.get("confidence", "high")
+                    testing = [
+                        "Verify output destination is terminal/console only",
+                        "Confirm no browser rendering occurs",
+                        "Mark as false positive if CLI tool context confirmed",
+                    ]
+                elif output_dest in ["browser", "http-response"]:
+                    # Web context - real XSS vulnerability
+                    web_context = template.get("web_context", {})
+                    # Use language-specific example
+                    examples = template["example"]
+                    if language in examples:
+                        fixed_code = examples[language]["after"]
+                    elif "python" in examples:
+                        fixed_code = examples["python"]["after"]
+                    else:
+                        first_lang = next(iter(examples.keys()))
+                        fixed_code = examples[first_lang]["after"]
+
+                    explanation = web_context.get("explanation", template["template"])
+                    confidence = web_context.get("confidence", "high")
+                    testing = template.get("testing", ["Test with malicious input", "Test with normal input"])
+                else:
+                    # Unknown context - use default template behavior
+                    examples = template["example"]
+                    if language in examples:
+                        fixed_code = examples[language]["after"]
+                        explanation = template["template"]
+                    elif "python" in examples:
+                        fixed_code = examples["python"]["after"]
+                        explanation = template["template"] + f" (Note: Example is in Python, adapt for {language})"
+                    else:
+                        first_lang = next(iter(examples.keys()))
+                        fixed_code = examples[first_lang]["after"]
+                        explanation = template["template"] + f" (Note: Example is in {first_lang}, adapt for {language})"
+
+                    explanation += f" Context: {output_dest}"
+                    confidence = "medium"
+                    testing = template.get("testing", ["Test with malicious input", "Test with normal input"])
+            else:
+                # Non-context-aware template - use standard behavior
+                examples = template["example"]
+                if language in examples:
+                    fixed_code = examples[language]["after"]
+                    explanation = template["template"]
+                elif "python" in examples:
+                    # Default to Python example
+                    fixed_code = examples["python"]["after"]
+                    explanation = template["template"] + f" (Note: Example is in Python, adapt for {language})"
+                else:
+                    # Use first available example
+                    first_lang = next(iter(examples.keys()))
+                    fixed_code = examples[first_lang]["after"]
+                    explanation = template["template"] + f" (Note: Example is in {first_lang}, adapt for {language})"
+
+                testing = template.get("testing", ["Test with malicious input", "Test with normal input"])
+                confidence = "medium"
 
         # Generate unified diff
         original_lines = code_snippet.split("\n") if code_snippet else [""]
@@ -591,6 +665,13 @@ Generate ONLY the JSON response, no markdown code blocks or additional text.
             )
         )
 
+        # Add context metadata for XSS findings
+        metadata = {"generator": "template"}
+        if normalized_type == "xss":
+            output_dest = self._detect_output_destination(code_snippet, file_path)
+            metadata["output_destination"] = output_dest
+            metadata["context_aware"] = True
+
         return RemediationSuggestion(
             finding_id=finding.get("id", "unknown"),
             vulnerability_type=vuln_type,
@@ -603,7 +684,7 @@ Generate ONLY the JSON response, no markdown code blocks or additional text.
             testing_recommendations=testing,
             confidence=confidence,
             cwe_references=self._get_cwe_references(vuln_type),
-            metadata={"generator": "template"},
+            metadata=metadata,
         )
 
     def generate_batch_fixes(self, findings: List[Dict], max_findings: int = None) -> List[RemediationSuggestion]:
@@ -710,6 +791,78 @@ Generate ONLY the JSON response, no markdown code blocks or additional text.
             json.dump(data, f, indent=2)
 
         logger.info(f"Exported remediation suggestions to {output_file}")
+
+    def _detect_output_destination(self, code_snippet: str, file_path: str = "") -> str:
+        """Detect the output destination for code snippet
+
+        Analyzes the code to determine if output goes to terminal, browser, HTTP response, etc.
+        This helps identify false positives (e.g., XSS in CLI tools that output to terminal).
+
+        Args:
+            code_snippet: Code to analyze
+            file_path: Optional file path for additional context
+
+        Returns:
+            One of: "terminal", "browser", "http-response", "file", "unknown"
+        """
+        if not code_snippet:
+            return "unknown"
+
+        code_lower = code_snippet.lower()
+
+        # Check for CLI/terminal output patterns
+        for pattern in self.CLI_SAFE_PATTERNS:
+            if re.search(pattern, code_snippet, re.IGNORECASE):
+                return "terminal"
+
+        # Check for browser DOM manipulation
+        browser_patterns = [
+            r"innerHTML",
+            r"dangerouslySetInnerHTML",
+            r"document\.write",
+            r"\.html\(",  # jQuery .html()
+            r"outerHTML",
+        ]
+        for pattern in browser_patterns:
+            if re.search(pattern, code_snippet, re.IGNORECASE):
+                return "browser"
+
+        # Check for HTTP response patterns
+        http_patterns = [
+            r"res\.send",
+            r"res\.write",
+            r"response\.write",
+            r"HttpResponse",
+            r"render_template",
+            r"render\(",
+            r"\.render",
+        ]
+        for pattern in http_patterns:
+            if re.search(pattern, code_snippet, re.IGNORECASE):
+                return "http-response"
+
+        # Check for file output
+        file_patterns = [
+            r"\.write\(",
+            r"file\.write",
+            r"fs\.writeFile",
+            r"fwrite\(",
+        ]
+        for pattern in file_patterns:
+            if re.search(pattern, code_snippet, re.IGNORECASE):
+                return "file"
+
+        # Use file path as additional context
+        if file_path:
+            path_lower = file_path.lower()
+            # CLI tools often have these patterns in path
+            if any(indicator in path_lower for indicator in ["cli", "cmd", "console", "terminal", "bin/"]):
+                return "terminal"
+            # Web apps often have these patterns
+            if any(indicator in path_lower for indicator in ["web", "http", "server", "api", "routes", "controllers", "views"]):
+                return "http-response"
+
+        return "unknown"
 
     def _detect_language(self, file_path: str) -> str:
         """Detect programming language from file extension

@@ -1,8 +1,8 @@
-# Agent-OS Security Action - External Tool Dependencies
+# Argus Security Action - External Tool Dependencies
 # Version: 1.1.0
 # Updated: 2026-01-15
 #
-# This file defines all external tools required by Agent-OS Security Action
+# This file defines all external tools required by Argus Security Action
 # Format:
 #   - name: Tool name
 #     version: Minimum version requirement (use >= operator)

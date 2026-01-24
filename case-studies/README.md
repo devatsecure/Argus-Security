@@ -1,6 +1,6 @@
 # Case Studies
 
-Real-world examples of how teams use Agent-OS to improve security and velocity.
+Real-world examples of how teams use Argus to improve security and velocity.
 
 ---
 
@@ -8,7 +8,7 @@ Real-world examples of how teams use Agent-OS to improve security and velocity.
 
 Have a success story? [Share it with us!](../.github/DISCUSSION_TEMPLATE/05-case-studies.yml)
 
-We love hearing how Agent-OS helps teams ship secure code faster.
+We love hearing how Argus helps teams ship secure code faster.
 
 ---
 
@@ -111,14 +111,14 @@ We love hearing how Agent-OS helps teams ship secure code faster.
 
 **Typical Team (20 developers):**
 
-### Before Agent-OS
+### Before Argus
 - Manual security reviews: 10 hours/week × $100/hour = **$52,000/year**
 - Security audit: 2x/year × $50,000 = **$100,000/year**
 - Breaches: 1 incident × $250,000 = **$250,000/year**
 - **Total Cost: $402,000/year**
 
-### After Agent-OS
-- Agent-OS cost: $500/month = **$6,000/year**
+### After Argus
+- Argus cost: $500/month = **$6,000/year**
 - Manual reviews (reduced 90%): **$5,200/year**
 - Security audit (reduced 50%): **$50,000/year**
 - Breaches (prevented): **$0/year**
@@ -140,7 +140,7 @@ We love hearing how Agent-OS helps teams ship secure code faster.
 ### What to Include
 
 - **Challenge:** What problem did you face?
-- **Solution:** How did you implement Agent-OS?
+- **Solution:** How did you implement Argus?
 - **Results:** What improved? (metrics!)
 - **Learnings:** What would you tell others?
 
@@ -159,9 +159,9 @@ Teams that share case studies get:
 
 ## Questions?
 
-- 💬 **Ask in Discussions:** [GitHub Discussions](https://github.com/devatsecure/agent-os-action/discussions)
+- 💬 **Ask in Discussions:** [GitHub Discussions](https://github.com/devatsecure/argus-action/discussions)
 - 📧 **Email us:** devatsecure@users.noreply.github.com
-- 🐛 **Report issues:** [GitHub Issues](https://github.com/devatsecure/agent-os-action/issues)
+- 🐛 **Report issues:** [GitHub Issues](https://github.com/devatsecure/argus-action/issues)
 
 ---
 

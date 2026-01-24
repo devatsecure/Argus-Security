@@ -1,6 +1,6 @@
 # ⚡ 5-Minute Quick Start Guide
 
-Get Agent-OS running in 5 minutes or less!
+Get Argus running in 5 minutes or less!
 
 ---
 
@@ -19,11 +19,11 @@ Get Agent-OS running in 5 minutes or less!
 docker run --rm \
   -v $(pwd):/workspace \
   -e ANTHROPIC_API_KEY=your_key_here \
-  ghcr.io/devatsecure/agent-os-action:latest \
+  ghcr.io/devatsecure/argus-action:latest \
   /workspace audit
 
 # 3. Check results
-cat .agent-os/reviews/audit-report.md
+cat .argus/reviews/audit-report.md
 ```
 
 **That's it!** ✅
@@ -50,7 +50,7 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: AI Security Review
-        uses: devatsecure/agent-os-action@v1
+        uses: devatsecure/argus-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           severity_threshold: high
@@ -67,16 +67,16 @@ jobs:
 
 ```bash
 # 1. Install via pip
-pip install git+https://github.com/devatsecure/agent-os-action.git
+pip install git+https://github.com/devatsecure/argus-action.git
 
 # 2. Set API key
 export ANTHROPIC_API_KEY=your_key_here
 
 # 3. Run audit
-agent-os /path/to/repo audit
+argus /path/to/repo audit
 
 # 4. View results
-cat .agent-os/reviews/audit-report.md
+cat .argus/reviews/audit-report.md
 ```
 
 ---
@@ -91,11 +91,11 @@ Try it on our demo repository:
 git clone https://github.com/devatsecure/vulnerable-demo-app
 cd vulnerable-demo-app
 
-# Run Agent-OS
+# Run Argus
 docker run --rm \
   -v $(pwd):/workspace \
   -e ANTHROPIC_API_KEY=your_key_here \
-  ghcr.io/devatsecure/agent-os-action:latest \
+  ghcr.io/devatsecure/argus-action:latest \
   /workspace audit
 ```
 
@@ -120,7 +120,7 @@ docker run --rm \
 
 ### Use Case 1: PR Review Automation
 
-**Before Agent-OS:**
+**Before Argus:**
 ```
 1. Developer creates PR
 2. Wait for security team review (2-3 days)
@@ -128,10 +128,10 @@ docker run --rm \
 4. Finally merge after 1 week
 ```
 
-**After Agent-OS:**
+**After Argus:**
 ```
 1. Developer creates PR
-2. Agent-OS reviews in 5 minutes
+2. Argus reviews in 5 minutes
 3. Clear findings with fix suggestions
 4. Merge same day ✅
 ```
@@ -153,7 +153,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: devatsecure/agent-os-action@v1
+      - uses: devatsecure/argus-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           create_issue: true  # Auto-create GitHub issues
@@ -167,12 +167,12 @@ jobs:
 # .git/hooks/pre-commit
 #!/bin/bash
 
-echo "🔍 Running Agent-OS security check..."
+echo "🔍 Running Argus security check..."
 
 docker run --rm \
   -v $(pwd):/workspace \
   -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
-  ghcr.io/devatsecure/agent-os-action:latest \
+  ghcr.io/devatsecure/argus-action:latest \
   /workspace audit --fail-on-critical
 
 if [ $? -ne 0 ]; then
@@ -189,7 +189,7 @@ echo "✅ Security check passed!"
 
 ### Basic Configuration
 
-Create `.agent-os.yml` in your repo root:
+Create `.argus.yml` in your repo root:
 
 ```yaml
 # Minimal configuration
@@ -273,7 +273,7 @@ docker run -e ANTHROPIC_API_KEY=sk-ant-... ...
 docker run --rm \
   -v $(pwd):/workspace:rw \  # Add :rw
   -e ANTHROPIC_API_KEY=... \
-  ghcr.io/devatsecure/agent-os-action:latest
+  ghcr.io/devatsecure/argus-action:latest
 ```
 
 ### Issue 3: "Rate limit exceeded"
@@ -301,10 +301,10 @@ rate_limit:
 
 ### Output Files
 
-After running Agent-OS:
+After running Argus:
 
 ```
-.agent-os/
+.argus/
 ├── reviews/
 │   ├── audit-report.md          # Human-readable report
 │   ├── security-findings.json   # Machine-readable findings
@@ -347,9 +347,9 @@ cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
 ## 🎓 Learning Resources
 
 ### Tutorials
-- [Video: Agent-OS in 5 Minutes](https://youtube.com/placeholder)
+- [Video: Argus in 5 Minutes](https://youtube.com/placeholder)
 - [Blog: Reducing False Positives by 60%](https://blog.placeholder.com)
-- [Case Study: How Company X Uses Agent-OS](https://example.com)
+- [Case Study: How Company X Uses Argus](https://example.com)
 
 ### Documentation
 - [Full Documentation](./README.md)
@@ -358,9 +358,9 @@ cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
 - [Agent Profiles](./profiles/default/)
 
 ### Community
-- [GitHub Discussions](https://github.com/devatsecure/agent-os-action/discussions)
+- [GitHub Discussions](https://github.com/devatsecure/argus-action/discussions)
 - [Discord Server](https://discord.gg/placeholder)
-- [Stack Overflow Tag](https://stackoverflow.com/questions/tagged/agent-os)
+- [Stack Overflow Tag](https://stackoverflow.com/questions/tagged/argus)
 
 ---
 
@@ -368,7 +368,7 @@ cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
 
 1. ✅ **Run your first scan** (you just did!)
 2. 📖 **Read the [full README](./README.md)** for advanced features
-3. ⚙️ **Configure** `.agent-os.yml` for your needs
+3. ⚙️ **Configure** `.argus.yml` for your needs
 4. 🔄 **Add to CI/CD** (GitHub Actions, GitLab, Jenkins)
 5. 📊 **Set up dashboards** for tracking metrics
 6. 👥 **Join the community** (Discord, GitHub Discussions)
@@ -385,7 +385,7 @@ cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
 docker run --rm \
   -v $(pwd)/src/app.py:/workspace/app.py \
   -e ANTHROPIC_API_KEY=... \
-  ghcr.io/devatsecure/agent-os-action:latest \
+  ghcr.io/devatsecure/argus-action:latest \
   /workspace app.py
 ```
 
@@ -397,7 +397,7 @@ max_files: 20     # Scan only 20 files
 
 ### Tip 3: Cache Results
 ```bash
-# Results cached in .agent-os/
+# Results cached in .argus/
 # Re-run is instant if no code changed
 ```
 
@@ -416,9 +416,9 @@ integrations:
 repos:
   - repo: local
     hooks:
-      - id: agent-os
-        name: Agent-OS Security Check
-        entry: docker run --rm -v $(pwd):/workspace -e ANTHROPIC_API_KEY ghcr.io/devatsecure/agent-os-action:latest /workspace
+      - id: argus
+        name: Argus Security Check
+        entry: docker run --rm -v $(pwd):/workspace -e ANTHROPIC_API_KEY ghcr.io/devatsecure/argus-action:latest /workspace
         language: system
         pass_filenames: false
 ```
@@ -427,8 +427,8 @@ repos:
 
 ## 🆘 Need Help?
 
-- 🐛 **Bug?** [Open an issue](https://github.com/devatsecure/agent-os-action/issues)
-- 💬 **Question?** [GitHub Discussions](https://github.com/devatsecure/agent-os-action/discussions)
+- 🐛 **Bug?** [Open an issue](https://github.com/devatsecure/argus-action/issues)
+- 💬 **Question?** [GitHub Discussions](https://github.com/devatsecure/argus-action/discussions)
 - 💼 **Enterprise?** [Contact us](mailto:devatsecure@users.noreply.github.com)
 - 📖 **Documentation?** [Read the docs](./README.md)
 
