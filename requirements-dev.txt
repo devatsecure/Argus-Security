@@ -41,6 +41,6 @@ memory-profiler>=0.61.0,<1.0.0    # Memory usage profiler
 
 # Build tools
 build>=1.0.0,<2.0.0               # PEP 517 build frontend
-twine>=5.0.0,<6.0.0               # PyPI package uploader
+twine>=5.0.0,<7.0.0               # PyPI package uploader
 wheel>=0.43.0                     # Wheel packaging
 setuptools>=69.0.0                # Package setup tools
