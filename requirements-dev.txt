@@ -9,7 +9,7 @@
 pytest>=7.0.0,<9.0.0              # Testing framework
 pytest-cov>=4.0.0,<6.0.0          # Coverage reporting
 pytest-mock>=3.10.0,<4.0.0        # Mocking support
-pytest-asyncio>=0.21.0,<1.0.0     # Async test support
+pytest-asyncio>=0.21.0,<2.0.0     # Async test support
 pytest-timeout>=2.1.0,<3.0.0      # Test timeout handling
 pytest-xdist>=3.3.0,<4.0.0        # Parallel test execution
 
