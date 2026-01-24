@@ -32,7 +32,7 @@ myst-parser>=2.0.0,<3.0.0         # Markdown support for Sphinx
 # Development utilities
 ipython>=8.12.0,<9.0.0            # Interactive Python shell
 ipdb>=0.13.13,<1.0.0              # IPython debugger
-pre-commit>=3.5.0,<4.0.0          # Git pre-commit hooks
+pre-commit>=3.5.0,<5.0.0          # Git pre-commit hooks
 tox>=4.0.0,<5.0.0                 # Testing automation
 
 # Performance profiling
