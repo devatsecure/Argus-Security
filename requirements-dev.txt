@@ -27,7 +27,7 @@ safety>=3.0.0,<4.0.0              # Dependency vulnerability scanner
 # Documentation
 sphinx>=7.0.0,<8.0.0              # Documentation generator
 sphinx-rtd-theme>=2.0.0,<3.0.0    # ReadTheDocs theme
-myst-parser>=2.0.0,<3.0.0         # Markdown support for Sphinx
+myst-parser>=2.0.0,<4.0.0         # Markdown support for Sphinx
 
 # Development utilities
 ipython>=8.12.0,<9.0.0            # Interactive Python shell
