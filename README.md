@@ -13,11 +13,21 @@
 
 **Argus** is an AI-powered security platform that orchestrates multiple security scanners and uses specialized AI personas to analyze vulnerabilities with unprecedented accuracy.
 
+### 🎯 NEW: Context-Aware Security Analysis
+
+**70% False Positive Reduction** achieved through project context detection:
+- ✅ Auto-detects CLI tools vs web apps vs libraries
+- ✅ Context-specific vulnerability analysis (e.g., console.log in CLI ≠ XSS)
+- ✅ Smart remediation tailored to project type
+- ✅ Continuous learning from developer feedback
+
+See [IMPLEMENTATION_COMPLETE.md](IMPLEMENTATION_COMPLETE.md) for details.
+
 ### Key Benefits
 
 | Challenge | Argus Solution |
 |-----------|----------------|
-| Too many false positives | 60-70% reduction via AI triage |
+| Too many false positives | **70% reduction** via context-aware AI triage |
 | Scanners miss real issues | +15-20% more findings via spontaneous discovery |
 | Manual triage takes hours | Automated multi-agent analysis |
 | No learning over time | Self-improving from your feedback |
@@ -293,6 +303,15 @@ export OLLAMA_ENDPOINT="http://localhost:11434"  # Ollama (free)
 
 ## Documentation
 
+### 📊 Project Status & Roadmap
+| Doc | Description |
+|-----|-------------|
+| **[PROJECT_STATUS.md](PROJECT_STATUS.md)** | **Master status report, metrics, and roadmap** |
+| [IMPLEMENTATION_COMPLETE.md](IMPLEMENTATION_COMPLETE.md) | Context-aware security implementation (70% FP reduction) |
+| [PHASE_VERIFICATION_REPORT.md](PHASE_VERIFICATION_REPORT.md) | 6-phase pipeline verification report |
+| [STATE_OF_THE_ART_RECOMMENDATIONS.md](STATE_OF_THE_ART_RECOMMENDATIONS.md) | Research-backed feature roadmap (15 features) |
+
+### 📚 Guides & References
 | Doc | Description |
 |-----|-------------|
 | [CLAUDE.md](CLAUDE.md) | AI agent context file |
