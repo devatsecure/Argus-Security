@@ -31,7 +31,7 @@ jobs:
     steps:
       - name: Determine PR number and reason (from label or dispatch)
         id: vars
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             let prNumber = "";
@@ -72,7 +72,7 @@ jobs:
       - name: Build canned message
         if: steps.vars.outputs.skip != 'true' && steps.vars.outputs.pr != '' && steps.vars.outputs.reason != ''
         id: msg
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           REASON: ${{ steps.vars.outputs.reason }}          # <-- pass raw string
           IDEAS_URL: ${{ env.IDEAS_URL }}
