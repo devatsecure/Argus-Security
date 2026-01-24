@@ -25,7 +25,7 @@ jobs:
       critical-count: ${{ steps.scan.outputs.critical_count }}
     
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       
       - name: Install scanners (all open source)
         run: |
@@ -99,7 +99,7 @@ jobs:
       sbom-path: ${{ steps.sbom.outputs.path }}
     
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       
       - name: Install Syft (Apache 2.0)
         run: |
@@ -137,7 +137,7 @@ jobs:
       contents: write
     
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       
       - name: Download SBOM
         uses: actions/download-artifact@v4
@@ -195,7 +195,7 @@ jobs:
     needs: [security-scan, build-sbom, sign-attest]
     
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       
       - name: Download all artifacts
         uses: actions/download-artifact@v4
