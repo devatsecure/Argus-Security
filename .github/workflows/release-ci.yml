@@ -207,7 +207,7 @@ jobs:
           echo "✅ SBOM signed"
       
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: release-artifacts
           path: |

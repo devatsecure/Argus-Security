@@ -167,7 +167,7 @@ jobs:
           echo "✅ Hotfix SBOM generated"
       
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: hotfix-artifacts
           path: |

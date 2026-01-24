@@ -68,7 +68,7 @@ jobs:
 
       - name: Upload test results
         if: always() && steps.check_tests.outputs.has_tests == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: regression-test-results
           path: tests/security_regression/latest_results.json

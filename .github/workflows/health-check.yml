@@ -169,7 +169,7 @@ jobs:
 
       - name: Upload health check report
         if: always() && inputs.save-report
-        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874  # v4.4.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f  # v6.0.0
         with:
           name: health-check-report-py${{ inputs.python-version }}
           path: health-report.json
