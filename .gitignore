@@ -88,13 +88,5 @@ COMPREHENSIVE_IMPROVEMENT_PLAN.md
 # Cache and output directories
 .argus-cache/
 .argus/
-
-# Argus cache and generated files
-.argus-cache/
 .agent-os-cache/
---help/
---project-type/
---target/
-*.pyc
-__pycache__/
-
+.agent-os/

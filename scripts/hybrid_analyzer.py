@@ -1825,7 +1825,7 @@ Respond with JSON only:"""
                         "driver": {
                             "name": "Hybrid Security Analyzer",
                             "version": "1.0.0",
-                            "informationUri": "https://github.com/devatsecure/Argus-Security",
+                            "informationUri": "https://github.com/securedotcom/argus",
                             "rules": [],
                         }
                     },
