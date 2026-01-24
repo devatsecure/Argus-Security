@@ -1,4 +1,4 @@
-# Agent-OS Security Action - Development Dependencies
+# Argus Security - Development Dependencies
 # Version: 1.1.0
 # Updated: 2026-01-15
 

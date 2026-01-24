@@ -13,7 +13,7 @@ Finding:
   
   origin:
     type: enum
-    values: [semgrep, trivy, trufflehog, gitleaks, checkov, terrascan, agent-os, aardvark, foundation-sec]
+    values: [semgrep, trivy, trufflehog, gitleaks, checkov, terrascan, argus, aardvark]
     required: true
     description: Tool that generated this finding
   

@@ -1,9 +1,9 @@
-# Agent-OS PR Policy (Enhanced with Velocity Metrics)
+# Argus Security - PR Policy (Enhanced with Velocity Metrics)
 # Purpose: Deterministic gates for pull requests with delivery velocity tracking
 # Decision: pass/fail based on verified secrets, critical IaC, exploitable SAST
-# NEW: Tracks velocity metrics, noise filtering, and auto-fix opportunities
+# Features: Velocity metrics, noise filtering, and auto-fix opportunities
 
-package agentos.pr
+package argus.pr
 
 import future.keywords.if
 import future.keywords.in

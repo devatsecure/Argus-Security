@@ -13,7 +13,7 @@
     "buildDefinition": {
       "buildType": "https://agentos.dev/build-types/default@v1",
       "externalParameters": {
-        "repository": "https://github.com/securedotcom/agent-os",
+        "repository": "https://github.com/devatsecure/Argus-Security",
         "ref": "abc123"
       },
       "internalParameters": {},
@@ -23,7 +23,7 @@
       "builder": {
         "id": "https://agentos.dev/builder@v1",
         "version": {
-          "agent-os": "1.0.0"
+          "argus-security": "1.0.0"
         }
       },
       "metadata": {

@@ -1,8 +1,8 @@
-# Agent-OS Release Policy
+# Argus Security - Release Policy
 # Purpose: Deterministic gates for releases
 # Decision: pass/fail based on SBOM, signing, and critical CVEs
 
-package agentos.release
+package argus.release
 
 import future.keywords.if
 import future.keywords.in

@@ -1,8 +1,8 @@
 {
   "repositories": [
     {
-      "repo_url": "https://github.com/securedotcom/spring_auth",
-      "repo_name": "securedotcom/spring_auth",
+      "repo_url": "https://github.com/example/spring_auth",
+      "repo_name": "example/spring_auth",
       "branch": "main",
       "scan_types": ["secrets", "sast", "iac", "vuln"]
     },

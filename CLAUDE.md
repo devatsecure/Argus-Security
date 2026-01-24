@@ -1,10 +1,23 @@
 # CLAUDE.md - Argus Security
 
-> Enterprise-grade AI Security Platform for code security analysis.
+> Enterprise-grade AI Security Platform with 6-phase analysis pipeline.
 
 ## What This Does
 
-Argus Security orchestrates 5 security scanners (TruffleHog, Gitleaks, Semgrep, Trivy, Checkov) with Claude AI-powered triage to find vulnerabilities and reduce false positives by 60-70%.
+Argus Security runs a **6-phase security pipeline** that combines traditional scanners with Claude AI-powered triage:
+
+```
+Phase 1: Scanner Orchestration    → TruffleHog, Gitleaks, Semgrep, Trivy, Checkov
+Phase 2: AI Enrichment            → Claude/OpenAI analysis, noise scoring, CWE mapping
+Phase 3: Multi-Agent Review       → 5 specialized AI personas analyze findings
+Phase 4: Sandbox Validation       → Docker-based exploit verification
+Phase 5: Policy Gates             → Rego/OPA pass/fail enforcement
+Phase 6: Reporting                → SARIF, JSON, Markdown outputs
+```
+
+**Results:** 60-70% false positive reduction, +15-20% more findings via spontaneous discovery.
+
+---
 
 ## Quick Start
 
@@ -14,76 +27,83 @@ git clone https://github.com/devatsecure/Argus-Security
 cd Argus-Security && pip install -r requirements.txt
 export ANTHROPIC_API_KEY="your-key"
 
-# Run security audit
+# Run full 6-phase audit
 python scripts/run_ai_audit.py --project-type backend-api
 ```
 
-## Essential Commands
+---
+
+## Commands for Claude Code
 
 | Command | Purpose |
 |---------|---------|
-| `python scripts/run_ai_audit.py --project-type backend-api` | Full security audit with AI triage |
-| `./scripts/argus gate --stage pr --input findings.json` | Apply policy gate (pass/fail) |
-| `./scripts/argus feedback record <id> --mark fp` | Mark finding as false positive |
+| `python scripts/run_ai_audit.py --project-type backend-api` | Full 6-phase security audit |
+| `./scripts/argus gate --stage pr --input findings.json` | Apply policy gate |
+| `./scripts/argus feedback record <id> --mark fp` | Record false positive feedback |
 | `pytest -v --cov=scripts` | Run tests |
 
-## How Claude Code Can Use This
+---
 
-### 1. Run a Security Scan
-```bash
-python scripts/run_ai_audit.py \
-  --project-type backend-api \
-  --output-file report.json
-```
+## 6-Phase Pipeline Details
 
-### 2. Check Specific Files for Injection Vulnerabilities
-```bash
-python scripts/run_ai_audit.py \
-  --only-changed src/auth.py src/api.py \
-  --output-file findings.json
-```
+### Phase 1: Scanner Orchestration (30-60 sec)
+Runs 5 scanners in parallel:
+- **Semgrep** - SAST with 2000+ rules
+- **Trivy** - CVE/dependency scanning
+- **Checkov** - IaC security (Terraform, K8s)
+- **TruffleHog** - Verified secret detection
+- **Gitleaks** - Pattern-based secrets
 
-### 3. Apply Policy Gates
-```bash
-# Check if findings pass security policy
-./scripts/argus gate --stage pr --input findings.json
-# Exit 0 = pass, Exit 1 = fail
-```
+### Phase 2: AI Enrichment (2-5 min)
+- Claude/OpenAI/Ollama triage
+- Noise scoring & false positive prediction
+- CWE mapping & risk scoring
 
-### 4. Record Feedback to Improve Future Scans
-```bash
-./scripts/argus feedback record finding-123 --mark fp --reason "test file"
-```
+### Phase 3: Multi-Agent Review
+5 specialized AI personas:
+- 🕵️ **SecretHunter** - Credentials expert
+- 🏗️ **ArchitectureReviewer** - Design flaws
+- ⚔️ **ExploitAssessor** - Exploitability analysis
+- 🎯 **FalsePositiveFilter** - Noise elimination
+- 🔍 **ThreatModeler** - Attack chain mapping
+
+### Phase 4: Sandbox Validation
+Docker-based exploit verification:
+- Isolated container execution
+- Multi-language support (Python, JS, Java, Go)
+- Results: EXPLOITABLE, NOT_EXPLOITABLE, PARTIAL
+
+### Phase 5: Policy Gates
+Rego/OPA policies enforce pass/fail:
+- PR gates block verified secrets, critical CVEs
+- Release gates require SBOM + signature
+
+### Phase 6: Reporting
+- **SARIF** - GitHub code scanning integration
+- **JSON** - Programmatic access
+- **Markdown** - PR comments
+
+---
 
 ## Project Structure
 
 ```
 Argus-Security/
 ├── scripts/
-│   ├── run_ai_audit.py       # Main entry point
-│   ├── hybrid_analyzer.py    # Multi-scanner orchestrator
-│   ├── agent_personas.py     # 5 AI personas for analysis
+│   ├── run_ai_audit.py       # Main orchestrator (all 6 phases)
+│   ├── hybrid_analyzer.py    # Multi-scanner coordination
+│   ├── agent_personas.py     # Phase 3: Multi-agent review
+│   ├── sandbox_validator.py  # Phase 4: Docker validation
 │   ├── remediation_engine.py # Auto-fix generation
-│   └── argus                 # CLI tool
-├── policy/rego/              # OPA policies for gates
+│   └── argus                 # CLI entry point
+├── policy/rego/              # Phase 5: OPA policies
 ├── tests/                    # Test suite
 └── action.yml                # GitHub Action definition
 ```
 
-## Development
+---
 
-```bash
-# Lint and format
-ruff check scripts/ && ruff format scripts/
-
-# Run tests with coverage
-pytest -v --cov=scripts
-
-# Type checking
-mypy scripts/*.py
-```
-
-## GitHub Action Usage
+## GitHub Action
 
 ```yaml
 - uses: devatsecure/Argus-Security@v1
@@ -93,9 +113,29 @@ mypy scripts/*.py
     fail-on-blockers: true
 ```
 
+---
+
 ## Docker
 
 ```bash
+# Build
 docker build -t argus .
-docker run -v $(pwd):/workspace argus
+
+# Run 6-phase audit
+docker run -v $(pwd):/workspace -e ANTHROPIC_API_KEY argus --project-type backend-api
+```
+
+---
+
+## Development
+
+```bash
+# Lint and format
+ruff check scripts/ && ruff format scripts/
+
+# Run tests
+pytest -v --cov=scripts
+
+# Type check
+mypy scripts/*.py
 ```

@@ -1,8 +1,8 @@
 FROM python:3.11-slim-bookworm
 
-LABEL org.opencontainers.image.title="Agent-OS Complete Security Scanner"
-LABEL org.opencontainers.image.description="All-in-one security scanner with 6-phase pipeline: SAST, CVE scanning, IaC security, secrets detection, AI triage, and sandbox validation"
-LABEL org.opencontainers.image.vendor="Agent OS"
+LABEL org.opencontainers.image.title="Argus Security - Complete Scanner"
+LABEL org.opencontainers.image.description="Enterprise AI Security Platform with 6-phase pipeline: SAST, CVE scanning, IaC security, secrets detection, AI triage, and sandbox validation"
+LABEL org.opencontainers.image.vendor="Argus Security"
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \

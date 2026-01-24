@@ -1,11 +1,10 @@
-# Agent-OS Security Sandbox
+# Argus Security Sandbox
 # Isolated environment for safe exploit validation
-# Adapted from Strix's security testing container
 
 FROM ubuntu:22.04
 
-LABEL description="Agent-OS Sandbox for Safe Exploit Validation"
-LABEL maintainer="agent-os"
+LABEL description="Argus Security Sandbox for Safe Exploit Validation"
+LABEL maintainer="Argus Security"
 
 # Prevent interactive prompts during installation
 ENV DEBIAN_FRONTEND=noninteractive
@@ -117,7 +116,7 @@ RUN python3 -m venv /home/sandbox/venv && \
 # Setup bashrc
 RUN echo 'export PS1="\[\033[01;32m\]sandbox\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ "' >> /home/sandbox/.bashrc && \
     echo 'export PATH="/usr/local/go/bin:/home/sandbox/.local/bin:$PATH"' >> /home/sandbox/.bashrc && \
-    echo 'echo "Agent-OS Security Sandbox - Safe Exploit Validation Environment"' >> /home/sandbox/.bashrc
+    echo 'echo "Argus Security Sandbox - Safe Exploit Validation Environment"' >> /home/sandbox/.bashrc
 
 # Set working directory
 WORKDIR /workspace

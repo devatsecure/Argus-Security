@@ -1,13 +1,13 @@
-# Agent-OS Code Reviewer - Production Container
+# Argus Security - Production Container
 # Optimized for fast builds and minimal size
 
 FROM python:3.11-slim-bookworm
 
-LABEL org.opencontainers.image.title="Agent-OS Code Reviewer"
-LABEL org.opencontainers.image.description="AI-Powered Automated Code Review System"
-LABEL org.opencontainers.image.vendor="Agent OS"
+LABEL org.opencontainers.image.title="Argus Security"
+LABEL org.opencontainers.image.description="Enterprise-grade AI Security Platform with multi-agent analysis"
+LABEL org.opencontainers.image.vendor="Argus Security"
 LABEL org.opencontainers.image.licenses="MIT"
-LABEL org.opencontainers.image.source="https://github.com/devatsecure/agent-os-action"
+LABEL org.opencontainers.image.source="https://github.com/devatsecure/Argus-Security"
 
 # Install uv for fast dependency resolution (10x faster than pip)
 COPY --from=ghcr.io/astral-sh/uv:0.5.11 /uv /bin/uv

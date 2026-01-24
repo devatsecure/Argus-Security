@@ -3,14 +3,14 @@ requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "agent-os-code-reviewer"
+name = "argus-security"
 version = "1.1.0"
-description = "AI-Powered Automated Code Review System"
+description = "Enterprise-grade AI Security Platform with multi-agent analysis"
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}
 authors = [
-    {name = "Agent OS Team", email = "devatsecure@users.noreply.github.com"}
+    {name = "Argus Security Team", email = "devatsecure@users.noreply.github.com"}
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

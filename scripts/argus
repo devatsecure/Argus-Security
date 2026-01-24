@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Agent-OS CLI
+Argus Security CLI
 Main command-line interface for security control plane
 """
 
@@ -162,7 +162,7 @@ def cmd_dashboard(args):
         print(f"❌ Dashboard not found: {dashboard_path}")
         sys.exit(1)
 
-    print("🚀 Launching Agent-OS Observability Dashboard...")
+    print("🚀 Launching Argus Security Observability Dashboard...")
     print(f"📊 Opening at http://localhost:8501")
     print("\n💡 Tip: Press Ctrl+C to stop the dashboard\n")
 
@@ -479,7 +479,7 @@ def cmd_regression_test(args):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Agent-OS Security Control Plane",
+        description="Argus Security Control Plane",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
