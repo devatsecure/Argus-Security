@@ -44,7 +44,7 @@ jobs:
     
     # Initialize CodeQL tools for scanning
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@afb54ba388a7dca6ecae48f608c4ff05ff4cc77a  # v3.25.15
+      uses: github/codeql-action/init@19b2f06db2b6f5108140aeb04014ef02b648f789  # v4.31.11
       with:
         languages: ${{ matrix.language }}
         # Use config file to explicitly control what gets scanned
@@ -54,11 +54,11 @@ jobs:
     
     # Autobuild attempts to build any compiled languages
     - name: Autobuild
-      uses: github/codeql-action/autobuild@afb54ba388a7dca6ecae48f608c4ff05ff4cc77a  # v3.25.15
+      uses: github/codeql-action/autobuild@19b2f06db2b6f5108140aeb04014ef02b648f789  # v4.31.11
     
     # Perform CodeQL Analysis
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@afb54ba388a7dca6ecae48f608c4ff05ff4cc77a  # v3.25.15
+      uses: github/codeql-action/analyze@19b2f06db2b6f5108140aeb04014ef02b648f789  # v4.31.11
       with:
         category: "/language:${{matrix.language}}"
         upload: true
