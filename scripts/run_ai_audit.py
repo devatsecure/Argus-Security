@@ -1376,7 +1376,7 @@ def get_model_name(provider, config):
     defaults = {
         "anthropic": "claude-sonnet-4-5-20250929",
         "openai": "gpt-4-turbo-preview",
-        "ollama": "llama3",
+        "ollama": "llama3.2:3b",
     }
 
     return defaults.get(provider, "claude-sonnet-4-5-20250929")

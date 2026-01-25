@@ -1487,7 +1487,7 @@ class HybridSecurityAnalyzer:
 """
 
             # Special handling for XSS findings
-            if "xss" in finding.title.lower() or "cross-site" in finding.description.lower():
+            if (finding.title and "xss" in finding.title.lower()) or (finding.description and "cross-site" in finding.description.lower()):
                 output_dest = self._analyze_xss_output_destination(finding)
                 if output_dest == "terminal" or output_dest == "console":
                     prompt += f"""

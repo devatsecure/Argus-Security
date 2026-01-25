@@ -294,7 +294,7 @@ class LLMManager:
     DEFAULT_MODELS = {
         "anthropic": "claude-sonnet-4-5-20250929",
         "openai": "gpt-4-turbo-preview",
-        "ollama": "llama3",
+        "ollama": "llama3.2:3b",
     }
 
     # Model fallback chain for Anthropic
