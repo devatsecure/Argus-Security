@@ -73,6 +73,14 @@ except ImportError:
     ProjectContext = None  # type: ignore
     logger.warning("⚠️  project_context_detector not available - context-aware triage disabled")
 
+# Import IRIS analyzer for semantic vulnerability analysis
+try:
+    from iris_analyzer import IRISAnalyzer, IRISFinding, load_code_context
+    IRIS_AVAILABLE = True
+except ImportError:
+    IRIS_AVAILABLE = False
+    logger.warning("⚠️  IRIS analyzer not available - semantic analysis disabled")
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
@@ -98,6 +106,9 @@ class HybridFinding:
     confidence: float = 1.0
     llm_enriched: bool = False
     sandbox_validated: bool = False
+    iris_verified: bool = False  # IRIS semantic analysis verification
+    iris_confidence: Optional[float] = None  # IRIS confidence score (0.0-1.0)
+    iris_verdict: Optional[str] = None  # 'true_positive', 'false_positive', 'uncertain'
 
     def __post_init__(self):
         if self.references is None:
@@ -148,6 +159,7 @@ class HybridSecurityAnalyzer:
         enable_multi_agent: bool = True,  # Use specialized agent personas
         enable_spontaneous_discovery: bool = True,  # Discover issues beyond scanner rules
         enable_collaborative_reasoning: bool = False,  # Multi-agent discussion (opt-in, more expensive)
+        enable_iris: bool = True,  # IRIS-style semantic analysis (arXiv 2405.17238)
         ai_provider: Optional[str] = None,
         dast_target_url: Optional[str] = None,
         fuzzing_duration: int = 300,  # 5 minutes default
@@ -175,6 +187,7 @@ class HybridSecurityAnalyzer:
             enable_multi_agent: Use specialized agent personas (SecretHunter, ArchitectureReviewer, etc.)
             enable_spontaneous_discovery: Discover issues beyond traditional scanner rules
             enable_collaborative_reasoning: Enable multi-agent discussion and debate (opt-in, adds cost)
+            enable_iris: Enable IRIS-style semantic analysis (research-proven 2x improvement, arXiv 2405.17238)
             ai_provider: AI provider name (anthropic, openai, etc.)
             dast_target_url: Target URL for DAST scanning
             fuzzing_duration: Fuzzing duration in seconds (default: 300)
@@ -198,6 +211,7 @@ class HybridSecurityAnalyzer:
         self.enable_multi_agent = enable_multi_agent
         self.enable_spontaneous_discovery = enable_spontaneous_discovery
         self.enable_collaborative_reasoning = enable_collaborative_reasoning
+        self.enable_iris = enable_iris
         self.ai_provider = ai_provider
         self.dast_target_url = dast_target_url
         self.fuzzing_duration = fuzzing_duration
@@ -223,6 +237,7 @@ class HybridSecurityAnalyzer:
         self.agent_personas = None
         self.spontaneous_discovery = None
         self.collaborative_reasoning = None
+        self.iris_analyzer = None  # IRIS semantic analyzer
 
         # Initialize project context for context-aware AI triage
         self.project_context = None
@@ -266,6 +281,20 @@ class HybridSecurityAnalyzer:
                 logger.warning(f"⚠️  Could not load spontaneous discovery: {e}")
                 logger.info("   💡 Continuing without spontaneous discovery")
                 self.enable_spontaneous_discovery = False
+
+        # Initialize IRIS semantic analyzer (requires AI client)
+        if self.enable_iris and IRIS_AVAILABLE and self.enable_ai_enrichment and self.ai_client:
+            try:
+                self.iris_analyzer = IRISAnalyzer(ai_provider=self.ai_client, confidence_threshold=0.85)
+                logger.info("✅ IRIS semantic analyzer initialized (arXiv 2405.17238 research)")
+            except Exception as e:
+                logger.warning(f"⚠️  Could not initialize IRIS analyzer: {e}")
+                logger.info("   💡 Continuing without IRIS semantic analysis")
+                self.enable_iris = False
+        elif self.enable_iris and not IRIS_AVAILABLE:
+            logger.warning("⚠️  IRIS analyzer module not available")
+            logger.info("   💡 Continuing without IRIS semantic analysis")
+            self.enable_iris = False
 
         if self.enable_collaborative_reasoning and self.enable_ai_enrichment and self.ai_client:
             try:
@@ -609,6 +638,36 @@ class HybridSecurityAnalyzer:
             logger.info(f"   ⏱️  Phase 2 duration: {phase_timings['phase2_ai_enrichment']:.1f}s")
         elif self.enable_ai_enrichment and not all_findings:
             logger.info("   ⚠️  Skipping Phase 2: No findings to enrich")
+
+        # PHASE 2.3: IRIS Semantic Analysis (Optional)
+        if self.enable_iris and all_findings and self.iris_analyzer:
+            logger.info("")
+            logger.info("─" * 80)
+            logger.info("🔬 PHASE 2.3: IRIS Semantic Analysis (Research-Proven Deep Analysis)")
+            logger.info("─" * 80)
+
+            phase2_3_start = time.time()
+
+            try:
+                # Run IRIS semantic analysis on high-severity findings
+                iris_enriched = self._enrich_with_iris(all_findings, target_path=target_path)
+                all_findings = iris_enriched
+
+                # Get IRIS statistics
+                iris_stats = self.iris_analyzer.get_statistics()
+                logger.info(f"   ✅ IRIS analysis complete")
+                logger.info(f"      Findings analyzed: {iris_stats['total_findings_analyzed']}")
+                logger.info(f"      True positives: {iris_stats['true_positives']}")
+                logger.info(f"      False positives: {iris_stats['false_positives']}")
+                logger.info(f"      Cost: ${iris_stats['total_cost_usd']}")
+            except Exception as e:
+                logger.error(f"   ❌ IRIS semantic analysis failed: {e}")
+                logger.info("   💡 Continuing with basic AI enrichment...")
+
+            phase_timings["phase2_3_iris"] = time.time() - phase2_3_start
+            logger.info(f"   ⏱️  Phase 2.3 duration: {phase_timings['phase2_3_iris']:.1f}s")
+        elif self.enable_iris and not all_findings:
+            logger.info("   ⚠️  Skipping Phase 2.3: No findings to analyze with IRIS")
 
         # PHASE 2.5: Automated Remediation (Optional)
         if self.enable_remediation and all_findings and self.remediation_engine:
@@ -1367,6 +1426,142 @@ class HybridSecurityAnalyzer:
 
         return enriched
 
+    def _enrich_with_iris(self, findings: list[HybridFinding], target_path: str) -> list[HybridFinding]:
+        """
+        Enrich findings with IRIS semantic analysis
+
+        IRIS (arXiv 2405.17238) provides multi-step LLM reasoning:
+        1. Data flow analysis
+        2. Vulnerability assessment
+        3. Impact analysis
+        4. Confidence scoring
+
+        Only analyzes CRITICAL/HIGH severity findings to manage cost.
+
+        Args:
+            findings: List of findings to analyze
+            target_path: Repository root path for loading code context
+
+        Returns:
+            Findings with IRIS analysis results
+        """
+        if not self.iris_analyzer:
+            logger.warning("⚠️  IRIS analyzer not available")
+            return findings
+
+        enriched = []
+        analyzed_count = 0
+
+        # Focus on high-severity findings
+        high_severity_findings = [
+            f for f in findings
+            if f.severity.lower() in ['critical', 'high']
+        ]
+
+        logger.info(f"   🎯 Analyzing {len(high_severity_findings)}/{len(findings)} CRITICAL/HIGH severity findings")
+
+        for finding in findings:
+            # Skip findings that aren't high severity
+            if finding.severity.lower() not in ['critical', 'high']:
+                enriched.append(finding)
+                continue
+
+            try:
+                # Skip if already IRIS verified
+                if finding.iris_verified:
+                    enriched.append(finding)
+                    continue
+
+                # Build finding dict for IRIS
+                finding_dict = {
+                    'id': finding.finding_id,
+                    'type': finding.title,
+                    'severity': finding.severity,
+                    'cwe_id': finding.cwe_id,
+                    'description': finding.description,
+                    'file_path': finding.file_path,
+                    'line_number': finding.line_number or 1,
+                }
+
+                # Load code context
+                code_context = ""
+                if finding.file_path and Path(finding.file_path).exists():
+                    # Make path absolute if relative to target
+                    file_path = finding.file_path
+                    if not Path(file_path).is_absolute():
+                        file_path = str(Path(target_path) / file_path)
+
+                    code_context = load_code_context(
+                        file_path=file_path,
+                        line_number=finding.line_number or 1,
+                        lines_before=20,
+                        lines_after=20
+                    )
+                else:
+                    logger.debug(f"   ⚠️  Skipping IRIS for {finding.finding_id}: file not found")
+                    enriched.append(finding)
+                    continue
+
+                # Repository context (frameworks, etc.)
+                repo_context = {}
+                if hasattr(self, 'project_context') and self.project_context:
+                    repo_context = {
+                        'frameworks': [self.project_context.framework] if self.project_context.framework else [],
+                        'type': self.project_context.type,
+                        'runtime': self.project_context.runtime,
+                    }
+
+                # Run IRIS analysis
+                logger.debug(f"   🔬 IRIS analyzing {finding.finding_id}...")
+                iris_finding = self.iris_analyzer.analyze_finding(
+                    finding=finding_dict,
+                    code_context=code_context,
+                    repo_context=repo_context
+                )
+
+                # Update finding with IRIS results
+                if iris_finding.iris_verified:
+                    finding.iris_verified = True
+                    finding.iris_confidence = iris_finding.iris_analysis.confidence
+                    finding.iris_verdict = iris_finding.iris_analysis.verdict.value
+
+                    # Update exploitability if IRIS has higher confidence
+                    if iris_finding.iris_analysis.exploitation_complexity != "UNKNOWN":
+                        complexity_map = {
+                            "LOW": "trivial",
+                            "MEDIUM": "moderate",
+                            "HIGH": "complex"
+                        }
+                        finding.exploitability = complexity_map.get(
+                            iris_finding.iris_analysis.exploitation_complexity,
+                            finding.exploitability
+                        )
+
+                    # Add IRIS attack vector to description if available
+                    if iris_finding.iris_analysis.attack_vector:
+                        finding.description += f"\n\n**IRIS Attack Vector:** {iris_finding.iris_analysis.attack_vector}"
+
+                    analyzed_count += 1
+                    logger.debug(
+                        f"   ✅ IRIS: {finding.finding_id} - {iris_finding.iris_verdict} "
+                        f"(confidence: {iris_finding.iris_confidence:.2f})"
+                    )
+                else:
+                    logger.debug(f"   ℹ️  IRIS: {finding.finding_id} - not verified")
+
+                enriched.append(finding)
+
+            except Exception as e:
+                logger.warning(f"⚠️  IRIS analysis failed for {finding.finding_id}: {e}")
+                enriched.append(finding)
+
+        if analyzed_count > 0:
+            logger.info(f"   ✅ IRIS verified {analyzed_count}/{len(high_severity_findings)} high-severity findings")
+        else:
+            logger.info("   ℹ️  No findings were IRIS-verified")
+
+        return enriched
+
     def _analyze_xss_output_destination(self, finding: HybridFinding) -> Optional[str]:
         """
         Analyze XSS finding to determine output destination (browser vs. terminal)
@@ -1991,6 +2186,12 @@ def main():
         default=False,
         help="Enable AI enrichment with Claude/OpenAI",
     )
+    parser.add_argument(
+        "--enable-iris",
+        action="store_true",
+        default=True,
+        help="Enable IRIS semantic analysis (research-proven 2x improvement, arXiv 2405.17238)",
+    )
     parser.add_argument("--ai-provider", help="AI provider (anthropic, openai, ollama)")
     parser.add_argument("--dast-target-url", help="Target URL for DAST scanning (required if --enable-dast)")
     parser.add_argument("--fuzzing-duration", type=int, default=300, help="Fuzzing duration in seconds (default: 300)")
@@ -2053,6 +2254,7 @@ def main():
         enable_runtime_security=enable_runtime_security,
         enable_regression_testing=enable_regression_testing,
         enable_ai_enrichment=args.enable_ai_enrichment,
+        enable_iris=args.enable_iris,  # IRIS semantic analysis
         ai_provider=args.ai_provider,
         dast_target_url=dast_target_url,
         fuzzing_duration=fuzzing_duration,
