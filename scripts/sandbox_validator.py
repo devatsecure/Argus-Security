@@ -32,6 +32,7 @@ class ExploitType(Enum):
     SQL_INJECTION = "sql_injection"
     XSS = "xss"
     COMMAND_INJECTION = "command_injection"
+    CODE_INJECTION = "code_injection"  # exec/eval injection (CWE-95)
     PATH_TRAVERSAL = "path_traversal"
     SSRF = "ssrf"
     DESERIALIZATION = "deserialization"

