@@ -1,0 +1,418 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# ARGUS SECURITY: COMPLETE 6-PHASE PIPELINE ON GITHUB ACTIONS
+# ═══════════════════════════════════════════════════════════════════════════════
+# 
+# This workflow executes ALL 6 phases of Argus Security analysis:
+#   ✅ Phase 1: Fast Deterministic Scanning (Semgrep, Trivy, Checkov, etc.)
+#   ✅ Phase 2: AI Enrichment (Claude/OpenAI/Ollama)
+#   ✅ Phase 2.5: Automated Remediation (AI-generated fixes)
+#   ✅ Phase 2.6: Spontaneous Discovery (hidden vulnerabilities)
+#   ✅ Phase 3: Multi-Agent Persona Review (5 specialized AI agents)
+#   ✅ Phase 4: Sandbox Validation (Docker-based exploit testing)
+#   ✅ Phase 5: Policy Gate Evaluation (Rego/OPA)
+#   ✅ Phase 6: Reporting (SARIF, JSON, Markdown)
+#
+# Duration: 2-5 minutes per run
+# Cost: ~$0.50-1.50 per run (depending on codebase size)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+name: Complete 6-Phase Security Scan
+
+on:
+  # Run on PRs to main/master
+  pull_request:
+    branches: [main, master, develop]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/**'
+  
+  # Run on pushes to protected branches
+  push:
+    branches: [main, master]
+  
+  # Schedule: Weekly deep scan on Monday at 9 AM UTC
+  schedule:
+    - cron: '0 9 * * 1'
+  
+  # Allow manual triggers
+  workflow_dispatch:
+    inputs:
+      scan-mode:
+        description: 'Scan mode'
+        required: false
+        default: 'full'
+        type: choice
+        options:
+          - full
+          - quick
+          - deep
+
+permissions:
+  contents: read          # Read repository contents
+  pull-requests: write    # Comment on PRs
+  security-events: write  # Upload SARIF to Code Scanning
+  issues: write          # Create security issues
+
+jobs:
+  # ═══════════════════════════════════════════════════════════════════════════
+  # JOB 1: COMPLETE 6-PHASE SECURITY SCAN
+  # ═══════════════════════════════════════════════════════════════════════════
+  complete-security-scan:
+    name: 🔒 Complete 6-Phase Security Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 30  # Prevent runaway jobs
+    
+    # Service containers for Phase 4 (Sandbox Validation)
+    services:
+      docker:
+        image: docker:dind
+        options: --privileged
+    
+    steps:
+      # ─────────────────────────────────────────────────────────────────────
+      # SETUP
+      # ─────────────────────────────────────────────────────────────────────
+      - name: 🔐 Harden Runner
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+          disable-sudo: false
+      
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better threat modeling
+      
+      - name: 🐍 Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: 🔧 Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      # ─────────────────────────────────────────────────────────────────────
+      # PHASE 1-6: RUN COMPLETE ARGUS SECURITY PIPELINE
+      # ─────────────────────────────────────────────────────────────────────
+      - name: 🔒 Run Complete 6-Phase Security Scan
+        id: security-scan
+        uses: devatsecure/Argus-Security@v4.2.0  # Use latest version
+        with:
+          # ═══════════════════════════════════════════════════════════
+          # AI PROVIDER CONFIGURATION
+          # ═══════════════════════════════════════════════════════════
+          ai-provider: 'anthropic'
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Alternative providers:
+          # openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          # ollama-endpoint: 'http://localhost:11434'
+          
+          # ═══════════════════════════════════════════════════════════
+          # PHASE 1: STATIC ANALYSIS (Fast Deterministic Scanning)
+          # ═══════════════════════════════════════════════════════════
+          semgrep-enabled: 'true'              # SAST with 2,000+ rules
+          enable-api-security: 'true'          # OWASP API Top 10
+          enable-supply-chain: 'true'          # Dependency analysis
+          enable-threat-intel: 'true'          # CISA KEV, EPSS, NVD
+          enable-regression-testing: 'true'    # Security regression detection
+          
+          # ═══════════════════════════════════════════════════════════
+          # PHASE 2: AI ENRICHMENT
+          # ═══════════════════════════════════════════════════════════
+          # (Automatically enabled with anthropic-api-key)
+          # - Claude Sonnet 4.5 deep code analysis
+          # - CWE mapping & risk scoring
+          # - Noise scoring & false positive prediction
+          # - Threat model generation (pytm + AI)
+          
+          # ═══════════════════════════════════════════════════════════
+          # PHASE 2.5: AUTOMATED REMEDIATION
+          # ═══════════════════════════════════════════════════════════
+          enable-remediation: 'true'           # AI-generated fix suggestions
+          # Generates fixes for:
+          # - SQL Injection → Parameterized queries
+          # - XSS → Output escaping, CSP
+          # - Command Injection → Input sanitization
+          # - Path Traversal, SSRF, XXE, CSRF, etc.
+          
+          # ═══════════════════════════════════════════════════════════
+          # PHASE 2.6: SPONTANEOUS DISCOVERY
+          # ═══════════════════════════════════════════════════════════
+          enable-spontaneous-discovery: 'true' # Find issues BEYOND scanner rules
+          # Discovers:
+          # - Architecture risks (missing auth, weak crypto)
+          # - Hidden vulnerabilities (race conditions, logic flaws)
+          # - Configuration security issues
+          # - Data security problems (PII exposure)
+          # Result: +15-20% more real findings
+          
+          # ═══════════════════════════════════════════════════════════
+          # PHASE 3: MULTI-AGENT PERSONA REVIEW
+          # ═══════════════════════════════════════════════════════════
+          enable-multi-agent: 'true'           # 5 specialized AI agents
+          multi-agent-mode: 'sequential'       # or 'parallel' for speed
+          # Agents:
+          # 1. SecretHunter      - API keys, credentials expert
+          # 2. ArchitectureReviewer - Design flaws, security gaps
+          # 3. ExploitAssessor   - Real-world exploitability
+          # 4. FalsePositiveFilter - Noise suppression
+          # 5. ThreatModeler     - Attack chains, STRIDE
+          
+          enable-collaborative-reasoning: 'false'  # Optional: +30-40% less FP, +40% cost
+          
+          # ═══════════════════════════════════════════════════════════
+          # PHASE 4: SANDBOX VALIDATION
+          # ═══════════════════════════════════════════════════════════
+          # Docker-based exploit validation (requires Docker socket)
+          # Validates exploitability in isolated containers
+          # Supports 14 exploit types (SQL injection, XSS, etc.)
+          # Results: EXPLOITABLE, NOT_EXPLOITABLE, PARTIAL, etc.
+          # (Automatically enabled when Docker is available)
+          
+          # ═══════════════════════════════════════════════════════════
+          # PHASE 5: POLICY GATE EVALUATION
+          # ═══════════════════════════════════════════════════════════
+          # Rego/OPA policy evaluation → PASS/FAIL
+          # (Automatically runs if OPA is installed)
+          fail-on-blockers: 'true'
+          fail-on: 'security:critical,security:high'
+          exploitability-threshold: 'trivial'  # Block on trivially exploitable
+          
+          # ═══════════════════════════════════════════════════════════
+          # PHASE 6: REPORTING
+          # ═══════════════════════════════════════════════════════════
+          upload-reports: 'true'
+          comment-on-pr: 'true'
+          # Outputs:
+          # - SARIF (GitHub Code Scanning)
+          # - JSON (programmatic access)
+          # - Markdown (PR comments)
+          
+          # ═══════════════════════════════════════════════════════════
+          # ADDITIONAL FEATURES
+          # ═══════════════════════════════════════════════════════════
+          enable-exploit-analysis: 'true'      # Aardvark mode: exploit chains
+          generate-security-tests: 'true'      # Auto-generate tests
+          enable-dast: 'false'                 # Dynamic testing (optional)
+          enable-fuzzing: 'false'              # AI-guided fuzzing (optional)
+          enable-runtime-security: 'false'     # Container monitoring (optional)
+          
+          # ═══════════════════════════════════════════════════════════
+          # COST & PERFORMANCE GUARDRAILS
+          # ═══════════════════════════════════════════════════════════
+          only-changed: 'true'                 # PR mode: only changed files
+          max-files: 100
+          max-tokens: 8000
+          cost-limit: '2.0'                    # Max $2 per run
+          max-file-size: '100000'              # 100KB
+          
+          # ═══════════════════════════════════════════════════════════
+          # FILE FILTERING
+          # ═══════════════════════════════════════════════════════════
+          exclude-paths: |
+            .github/**
+            node_modules/**
+            vendor/**
+            *.lock
+            *.min.js
+            *.bundle.js
+            test/**
+            tests/**
+            __tests__/**
+      
+      # ─────────────────────────────────────────────────────────────────────
+      # RESULTS PROCESSING
+      # ─────────────────────────────────────────────────────────────────────
+      - name: 📊 Display Scan Summary
+        if: always()
+        run: |
+          echo "╔══════════════════════════════════════════════════════════════╗"
+          echo "║           ARGUS 6-PHASE SECURITY SCAN COMPLETE               ║"
+          echo "╚══════════════════════════════════════════════════════════════╝"
+          echo ""
+          echo "📈 RESULTS SUMMARY"
+          echo "─────────────────────────────────────────────────────────────"
+          echo "🔴 Critical/High Issues:  ${{ steps.security-scan.outputs.blockers }}"
+          echo "🟡 Medium/Low Issues:     ${{ steps.security-scan.outputs.suggestions }}"
+          echo "💣 Exploit Chains Found:  ${{ steps.security-scan.outputs.exploit-chains-found }}"
+          echo "⚡ Trivially Exploitable: ${{ steps.security-scan.outputs.exploitability-trivial }}"
+          echo "🧪 Tests Generated:       ${{ steps.security-scan.outputs.tests-generated }}"
+          echo ""
+          echo "📁 FILES & PERFORMANCE"
+          echo "─────────────────────────────────────────────────────────────"
+          echo "📄 Files Analyzed:        ${{ steps.security-scan.outputs.files-analyzed }}"
+          echo "⏱️  Duration:              ${{ steps.security-scan.outputs.duration-seconds }}s"
+          echo "💰 Cost:                  \$${{ steps.security-scan.outputs.cost-estimate }}"
+          echo ""
+          echo "📋 REPORT FILES"
+          echo "─────────────────────────────────────────────────────────────"
+          echo "📝 Markdown Report:       ${{ steps.security-scan.outputs.report-path }}"
+          echo "🔍 SARIF Report:          ${{ steps.security-scan.outputs.sarif-path }}"
+          echo "📊 JSON Results:          ${{ steps.security-scan.outputs.json-path }}"
+          echo "════════════════════════════════════════════════════════════════"
+      
+      # ─────────────────────────────────────────────────────────────────────
+      # UPLOAD TO GITHUB CODE SCANNING
+      # ─────────────────────────────────────────────────────────────────────
+      - name: 📤 Upload SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ${{ steps.security-scan.outputs.sarif-path }}
+          category: argus-6-phase-complete
+        continue-on-error: true
+      
+      # ─────────────────────────────────────────────────────────────────────
+      # UPLOAD ARTIFACTS
+      # ─────────────────────────────────────────────────────────────────────
+      - name: 📦 Upload Complete Scan Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: argus-6-phase-security-reports-${{ github.run_id }}
+          path: |
+            .argus/reviews/
+            .argus/threat-model.json
+            .argus/tests/
+          retention-days: 90
+      
+      # ─────────────────────────────────────────────────────────────────────
+      # CREATE GITHUB ISSUE (if critical vulnerabilities found)
+      # ─────────────────────────────────────────────────────────────────────
+      - name: 🚨 Create Security Issue
+        if: steps.security-scan.outputs.blockers > 0 && github.event_name != 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const reportPath = '${{ steps.security-scan.outputs.report-path }}';
+            const reportContent = fs.readFileSync(reportPath, 'utf8');
+            
+            const issueTitle = `🔒 Security: ${{ steps.security-scan.outputs.blockers }} Critical/High Vulnerabilities Found`;
+            const issueBody = `## 🚨 Argus Security Scan Results
+            
+            **Scan Date:** ${new Date().toISOString()}
+            **Workflow Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            **Commit:** ${{ github.sha }}
+            
+            ### 📊 Summary
+            - **Critical/High Issues:** ${{ steps.security-scan.outputs.blockers }}
+            - **Medium/Low Issues:** ${{ steps.security-scan.outputs.suggestions }}
+            - **Exploit Chains:** ${{ steps.security-scan.outputs.exploit-chains-found }}
+            - **Trivially Exploitable:** ${{ steps.security-scan.outputs.exploitability-trivial }}
+            
+            ### 🔍 Scan Configuration
+            - ✅ Phase 1: Static Analysis (Semgrep, Trivy, Checkov)
+            - ✅ Phase 2: AI Enrichment (Claude Sonnet 4.5)
+            - ✅ Phase 2.5: Automated Remediation
+            - ✅ Phase 2.6: Spontaneous Discovery
+            - ✅ Phase 3: Multi-Agent Review (5 specialists)
+            - ✅ Phase 4: Sandbox Validation
+            - ✅ Phase 5: Policy Gates
+            - ✅ Phase 6: Reporting
+            
+            ### 📋 Detailed Report
+            
+            ${reportContent}
+            
+            ### 📁 Artifacts
+            Download full reports: [Workflow Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            
+            ---
+            **Generated by Argus Security 6-Phase Pipeline**`;
+            
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: issueTitle,
+              body: issueBody,
+              labels: ['security', 'vulnerability', 'automated']
+            });
+      
+      # ─────────────────────────────────────────────────────────────────────
+      # NOTIFY ON SLACK/DISCORD (Optional)
+      # ─────────────────────────────────────────────────────────────────────
+      - name: 💬 Send Slack Notification
+        if: steps.security-scan.outputs.blockers > 0
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "text": "🚨 Security Alert: ${{ steps.security-scan.outputs.blockers }} critical/high vulnerabilities found",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*🔒 Argus Security Scan Alert*\n\n*Repository:* ${{ github.repository }}\n*Critical/High:* ${{ steps.security-scan.outputs.blockers }}\n*Exploit Chains:* ${{ steps.security-scan.outputs.exploit-chains-found }}\n\n<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Report>"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        continue-on-error: true
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# USAGE INSTRUCTIONS
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# 1. Copy this file to: .github/workflows/security-complete.yml
+#
+# 2. Add required secrets in GitHub Settings → Secrets and variables → Actions:
+#    - ANTHROPIC_API_KEY (required for AI analysis)
+#    - SLACK_WEBHOOK_URL (optional for notifications)
+#
+# 3. Customize the workflow:
+#    - Adjust triggers (on: section)
+#    - Modify cost limits and file filtering
+#    - Enable/disable specific phases
+#    - Configure notification channels
+#
+# 4. First run will take 2-5 minutes depending on codebase size
+#
+# 5. View results in:
+#    - Pull Request comments (for PR triggers)
+#    - Security tab → Code scanning alerts (SARIF upload)
+#    - Workflow artifacts (complete reports)
+#    - Issues (if critical vulnerabilities found)
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# COST ESTIMATES
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Per-scan costs (Claude Sonnet 4.5):
+# - Small repo (<50 files):    $0.30 - $0.60
+# - Medium repo (50-200 files): $0.60 - $1.20
+# - Large repo (200+ files):    $1.20 - $2.50
+#
+# Monthly costs (based on usage):
+# - 10 PRs/week:   ~$12-25/month
+# - 50 PRs/week:   ~$60-125/month
+# - 200 PRs/week:  ~$240-500/month
+#
+# Cost optimization:
+# - Use only-changed: true for PRs
+# - Reduce max-files for large repos
+# - Use scheduled scans for deep analysis
+# - Disable expensive features (collaborative-reasoning, fuzzing)
+#
+# ═══════════════════════════════════════════════════════════════════════════════
+# PERFORMANCE BENCHMARKS
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# Typical scan durations:
+# - Phase 1 (Static):        15-30 seconds
+# - Phase 2 (AI):            20-60 seconds
+# - Phase 2.5 (Remediation): 5-15 seconds
+# - Phase 2.6 (Discovery):   10-30 seconds
+# - Phase 3 (Multi-Agent):   30-90 seconds (5 agents)
+# - Phase 4 (Sandbox):       10-30 seconds (if exploits found)
+# - Phase 5 (Policy):        1-5 seconds
+# - Phase 6 (Reporting):     2-5 seconds
+#
+# Total: 2-5 minutes (varies by codebase size)
+#
+# ═══════════════════════════════════════════════════════════════════════════════

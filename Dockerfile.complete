@@ -66,8 +66,8 @@ RUN trivy image --download-db-only || true
 
 WORKDIR /workspace
 
-# Set entrypoint to the main scanner
-ENTRYPOINT ["python", "/app/scripts/run_ai_audit.py"]
+# Set entrypoint to the hybrid analyzer for complete 6-phase scanning
+ENTRYPOINT ["python", "/app/scripts/hybrid_analyzer.py"]
 
 # Default: show help
 CMD ["--help"]

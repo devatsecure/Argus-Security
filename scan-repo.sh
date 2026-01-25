@@ -46,12 +46,31 @@ echo ""
 
 # Run the scan (with Docker socket for Phase 4 sandbox validation)
 docker run --rm \
-    -v "$(realpath $REPO_PATH):/workspace" \
+    -v "$(realpath $REPO_PATH):/workspace:ro" \
     -v "$(realpath $OUTPUT_DIR):/output" \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -e ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
+    -e ENABLE_REMEDIATION=true \
+    -e ENABLE_THREAT_INTEL=true \
+    -e ENABLE_MULTI_AGENT=true \
+    -e ENABLE_SANDBOX=true \
+    -e ENABLE_SPONTANEOUS_DISCOVERY=true \
+    -e SEMGREP_ENABLED=true \
+    -e TRIVY_ENABLED=true \
+    -e CHECKOV_ENABLED=true \
     argus:complete \
-    . security --provider anthropic
+    /workspace \
+    --enable-ai-enrichment \
+    --ai-provider anthropic \
+    --enable-semgrep \
+    --enable-trivy \
+    --enable-checkov \
+    --enable-api-security \
+    --enable-supply-chain \
+    --enable-threat-intel \
+    --enable-remediation \
+    --enable-regression-testing \
+    --output-dir /output
 
 echo ""
 echo -e "${GREEN}✅ Scan complete!${NC}"
