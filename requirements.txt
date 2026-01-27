@@ -25,3 +25,6 @@ defusedxml>=0.7.1  # Prevent XML bomb attacks (billion laughs, entity expansion)
 
 # Progress tracking and UI
 rich>=13.0.0  # Beautiful progress bars and terminal UI
+
+# Vulnerability chaining (Phase 5.5)
+networkx>=3.0  # Graph algorithms for attack chain detection

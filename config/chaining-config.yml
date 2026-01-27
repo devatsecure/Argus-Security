@@ -1,0 +1,103 @@
+# Vulnerability Chaining Configuration
+# Configure how the chaining system analyzes attack paths
+
+# Core settings
+chaining:
+  enabled: true
+  max_chain_length: 4              # Maximum vulnerabilities in a chain
+  min_risk_threshold: 5.0          # Only report chains with risk >= this value
+  
+  # Entry point detection
+  entry_points:
+    require_trivial_exploit: false  # If true, only trivial exploits are entry points
+    require_external_access: true   # Entry points must be externally accessible
+    fallback_to_all: true           # Use all vulns as entry points if none found
+  
+  # High-value target categories
+  high_value_targets:
+    - DATA_BREACH
+    - RCE
+    - ACCOUNT_TAKEOVER
+    - PRIVILEGE_ESCALATION
+    - BACKDOOR_INSTALLATION
+    - DATA_EXFILTRATION
+    - CREDENTIAL_EXPOSURE
+    - SYSTEM_ACCESS
+  
+  # Risk calculation
+  risk_calculation:
+    amplification_base: 1.5         # Base for exponential amplification (1.5^n)
+    max_risk_score: 10.0            # Cap risk score at this value
+    severity_weights:
+      critical: 10.0
+      high: 7.5
+      medium: 5.0
+      low: 2.5
+      info: 1.0
+  
+  # Complexity determination
+  complexity:
+    trivial_max_steps: 1
+    low_max_steps: 2
+    medium_max_steps: 3
+    # 4+ steps = HIGH complexity
+
+# Custom chaining rules (in addition to built-in rules)
+custom_rules:
+  # Example: API misconfiguration → data exposure
+  - source: API_MISCONFIGURATION
+    target: DATA_EXPOSURE
+    probability: 0.85
+    description: "API misconfigurations often expose sensitive data"
+  
+  # Example: Weak crypto → credential theft
+  - source: WEAK_CRYPTO
+    target: CREDENTIAL_THEFT
+    probability: 0.75
+    description: "Weak encryption enables credential extraction"
+
+# Reporting settings
+reporting:
+  max_chains_in_report: 10          # Max chains to include in reports
+  include_low_risk: false            # Include chains below threshold in detailed reports
+  generate_attack_scenarios: true   # Generate human-readable attack scenarios
+  estimate_exploit_time: true       # Estimate time to exploit each chain
+  
+  # Output formats
+  formats:
+    json: true
+    markdown: true
+    console: true
+  
+  # Console output
+  console:
+    use_colors: true
+    max_chains: 5
+  
+  # Markdown output
+  markdown:
+    include_remediation: true
+    include_references: true
+    max_description_length: 200
+
+# Integration with Argus phases
+integration:
+  run_after_phase: 1                # Run after Phase 1 (static analysis)
+  merge_with_main_report: true      # Include chains in main report
+  fail_on_critical_chains: false    # Fail build if critical chains found
+  critical_chain_threshold: 9.0     # Risk score threshold for critical chains
+
+# Performance settings
+performance:
+  max_graph_size: 1000              # Max vulnerabilities in graph
+  path_finding_timeout: 30          # Timeout for path finding (seconds)
+  parallel_processing: false        # Enable parallel chain detection (experimental)
+  cache_chain_results: true         # Cache results for faster re-analysis
+
+# Advanced settings
+advanced:
+  use_networkx: true                # Use NetworkX library if available
+  fallback_graph: true              # Use fallback graph implementation if NetworkX unavailable
+  normalize_categories: true        # Normalize vulnerability categories
+  match_same_file: true             # Consider vulns in same file as chainable
+  file_proximity_weight: 0.6        # Probability boost for same-file chains

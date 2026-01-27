@@ -877,6 +877,67 @@ class HybridSecurityAnalyzer:
         else:
             logger.info("   ⚠️  Skipping Phase 5: No findings to evaluate")
 
+        # PHASE 5.5: Vulnerability Chaining Analysis (Optional)
+        vulnerability_chains = None
+        enable_chaining = os.environ.get("ENABLE_VULNERABILITY_CHAINING", "false").lower() == "true"
+        
+        if enable_chaining and all_findings:
+            logger.info("─" * 80)
+            logger.info("🔗 PHASE 5.5: Vulnerability Chaining Analysis")
+            logger.info("─" * 80)
+            
+            phase55_start = time.time()
+            
+            try:
+                # Import chaining engine
+                from vulnerability_chaining_engine import VulnerabilityChainer
+                
+                # Convert findings to dict format for chaining
+                findings_dict = [asdict(f) for f in all_findings]
+                
+                # Run chaining analysis
+                logger.info("   🔍 Analyzing attack chains...")
+                chainer = VulnerabilityChainer(
+                    max_chain_length=int(os.environ.get("CHAIN_MAX_LENGTH", "4")),
+                    min_risk_threshold=float(os.environ.get("CHAIN_MIN_RISK", "5.0"))
+                )
+                
+                vulnerability_chains = chainer.analyze(findings_dict)
+                
+                logger.info(f"   ✅ Found {vulnerability_chains['total_chains']} attack chains")
+                
+                if vulnerability_chains['total_chains'] > 0:
+                    stats = vulnerability_chains['statistics']
+                    logger.info(f"      • Critical chains: {stats.get('critical_chains', 0)}")
+                    logger.info(f"      • High-risk chains: {stats.get('high_chains', 0)}")
+                    logger.info(f"      • Average chain length: {stats.get('avg_chain_length', 0):.1f}")
+                    logger.info(f"      • Maximum risk score: {stats.get('max_risk_score', 0):.1f}/10.0")
+                    
+                    # Save chain report
+                    if output_dir:
+                        from chain_visualizer import ChainVisualizer
+                        
+                        visualizer = ChainVisualizer()
+                        chain_report_path = Path(output_dir) / "vulnerability-chains.md"
+                        chain_json_path = Path(output_dir) / "vulnerability-chains.json"
+                        
+                        visualizer.generate_markdown_report(vulnerability_chains, str(chain_report_path))
+                        visualizer.generate_json_summary(vulnerability_chains, str(chain_json_path))
+                        
+                        logger.info(f"   📄 Chain report: {chain_report_path}")
+                else:
+                    logger.info("   ℹ️  No significant attack chains found")
+                
+            except ImportError:
+                logger.warning("   ⚠️  Vulnerability chaining engine not available")
+                logger.info("   💡 Install networkx: pip install networkx")
+            except Exception as e:
+                logger.error(f"   ❌ Vulnerability chaining failed: {e}")
+                logger.info("   💡 Continuing without chain analysis...")
+            
+            phase_timings["phase5.5_vulnerability_chaining"] = time.time() - phase55_start
+            logger.info(f"   ⏱️  Phase 5.5 duration: {phase_timings['phase5.5_vulnerability_chaining']:.1f}s")
+
         # Calculate statistics
         overall_duration = time.time() - overall_start
 
@@ -901,6 +962,10 @@ class HybridSecurityAnalyzer:
             tools_used=self._get_enabled_tools(),
             llm_enrichment_enabled=self.enable_ai_enrichment,
         )
+        
+        # Attach vulnerability chains to result if available
+        if vulnerability_chains:
+            result.__dict__['vulnerability_chains'] = vulnerability_chains
 
         # Save results
         if output_dir:
