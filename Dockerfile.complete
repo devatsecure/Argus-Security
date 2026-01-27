@@ -27,6 +27,25 @@ RUN curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main
 # Install Gitleaks
 RUN wget -qO - https://github.com/gitleaks/gitleaks/releases/download/v8.18.1/gitleaks_8.18.1_linux_x64.tar.gz | tar -xzC /usr/local/bin
 
+# Install unzip (required for Nuclei)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    unzip \
+    openjdk-17-jre-headless \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Nuclei (for DAST)
+RUN wget -q https://github.com/projectdiscovery/nuclei/releases/download/v3.1.0/nuclei_3.1.0_linux_amd64.zip -O /tmp/nuclei.zip && \
+    unzip /tmp/nuclei.zip -d /usr/local/bin && \
+    rm /tmp/nuclei.zip && \
+    chmod +x /usr/local/bin/nuclei && \
+    nuclei -update-templates || true
+
+# Install OWASP ZAP (for DAST)
+RUN wget -q https://github.com/zaproxy/zaproxy/releases/download/v2.14.0/ZAP_2.14.0_Linux.tar.gz -O /tmp/zap.tar.gz && \
+    tar -xzf /tmp/zap.tar.gz -C /opt && \
+    rm /tmp/zap.tar.gz && \
+    ln -s /opt/ZAP_2.14.0/zap.sh /usr/local/bin/zap.sh || true
+
 # Set Python environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -49,13 +68,15 @@ RUN pip install --no-cache-dir -r requirements.txt && \
     tenacity \
     pyyaml \
     requests \
-    rich
+    rich \
+    networkx
 
 # Copy application code
 COPY scripts/ ./scripts/
 COPY policy/ ./policy/
 COPY profiles/ ./profiles/
 COPY schemas/ ./schemas/
+COPY config/ ./config/
 
 # Create workspace and output directories
 RUN mkdir -p /workspace /output && \
