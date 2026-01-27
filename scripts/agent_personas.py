@@ -21,6 +21,13 @@ from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass, field
 from typing import Any, Optional
 
+# Import enhanced FP detector
+try:
+    from enhanced_fp_detector import EnhancedFalsePositiveDetector
+    ENHANCED_FP_AVAILABLE = True
+except ImportError:
+    ENHANCED_FP_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 
@@ -534,6 +541,9 @@ class FalsePositiveFilter(BaseAgentPersona):
             "safe_contexts",
             "development_code",
             "intentional_patterns",
+            "oauth2_public_clients",  # Added
+            "file_permissions",  # Added
+            "locking_mechanisms",  # Added
         ]
         self.focus_areas = [
             "test files",
@@ -541,7 +551,10 @@ class FalsePositiveFilter(BaseAgentPersona):
             "documentation",
             "commented code",
             "safe wrappers",
+            "dev_only_configs",  # Added
         ]
+        # Initialize enhanced detector if available
+        self.enhanced_detector = EnhancedFalsePositiveDetector() if ENHANCED_FP_AVAILABLE else None
 
     def analyze(self, finding: dict[str, Any]) -> AgentAnalysis:
         """
@@ -554,6 +567,23 @@ class FalsePositiveFilter(BaseAgentPersona):
             AgentAnalysis with false positive assessment
         """
         logger.debug(f"{self.name}: Analyzing finding {finding.get('id', 'unknown')}")
+
+        # First try enhanced detector if available
+        if self.enhanced_detector:
+            enhanced_result = self.enhanced_detector.analyze(finding)
+            if enhanced_result:
+                logger.debug(f"Enhanced FP detector result: {enhanced_result.category}, FP={enhanced_result.is_false_positive}, confidence={enhanced_result.confidence}")
+
+                # If high confidence from enhanced detector, use that result
+                if enhanced_result.confidence > 0.7:
+                    return AgentAnalysis(
+                        agent_name=self.name,
+                        confidence=enhanced_result.confidence,
+                        verdict="false_positive" if enhanced_result.is_false_positive else "confirmed",
+                        reasoning=enhanced_result.reasoning,
+                        evidence=enhanced_result.evidence,
+                        recommendations=["No action needed - false positive" if enhanced_result.is_false_positive else "Address security issue"],
+                    )
 
         base_context = self._build_base_prompt(finding)
 
@@ -569,6 +599,10 @@ Focus Areas:
 3. Are there safe wrappers or security controls that mitigate this?
 4. Is this commented-out code or documentation?
 5. Is the context safe (e.g., admin-only endpoint, localhost-only)?
+6. OAuth2: Is this a public client (SPA/mobile) that doesn't need a secret?
+7. File Storage: Does the file have proper restrictive permissions?
+8. Dev Config: Is this a dev-only flag that won't run in production?
+9. Locking: Is this a proper mutex/file lock preventing race conditions?
 
 Analysis Guidelines:
 - Check file path for test/mock/example/fixture indicators
@@ -576,6 +610,10 @@ Analysis Guidelines:
 - Identify if security controls are properly used
 - Evaluate if the finding is in dead/unreachable code
 - Consider if this is intentionally designed for security testing
+- For OAuth2: Check for PKCE, public client patterns, absence of client_secret
+- For file storage: Validate file permissions (should not be world-readable)
+- For config flags: Check if wrapped in environment conditionals
+- For locking: Distinguish mutex (thread sync) vs file locks (process sync)
 
 Common False Positive Patterns:
 - Test files with mock credentials
@@ -583,6 +621,10 @@ Common False Positive Patterns:
 - Security test fixtures
 - Commented-out experimental code
 - Development-only endpoints (when properly restricted)
+- OAuth2 public clients using PKCE instead of secrets
+- Config files with proper Unix permissions (600/644)
+- Debug flags wrapped in NODE_ENV checks
+- Proper mutex/lock usage preventing race conditions
 
 Provide your analysis in this format:
 

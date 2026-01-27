@@ -234,7 +234,8 @@ services:
 |---------|-------------|
 | **Multi-Scanner** | TruffleHog, Semgrep, Trivy, Checkov, Gitleaks |
 | **AI Triage** | Claude/OpenAI/Ollama for intelligent analysis |
-| **60-70% FP Reduction** | ML noise scoring + AI triage |
+| **Enhanced FP Detection** | OAuth2 public clients, file permissions, dev configs, mutex/locks |
+| **60-70% FP Reduction** | ML noise scoring + AI triage + pattern intelligence |
 | **Spontaneous Discovery** | Find issues beyond scanner rules |
 | **Self-Improving** | Learns from your feedback |
 | **Threat Intelligence** | CVE, CISA KEV, EPSS enrichment |
@@ -317,6 +318,7 @@ export OLLAMA_ENDPOINT="http://localhost:11434"  # Ollama (free)
 | [CLAUDE.md](CLAUDE.md) | AI agent context file |
 | [docs/QUICKSTART.md](docs/QUICKSTART.md) | 5-minute guide |
 | [docs/MULTI_AGENT_GUIDE.md](docs/MULTI_AGENT_GUIDE.md) | Multi-agent details |
+| [docs/enhanced-fp-detection.md](docs/enhanced-fp-detection.md) | Enhanced false positive detection |
 | [docs/DOCKER_TESTING_GUIDE.md](docs/DOCKER_TESTING_GUIDE.md) | Docker deployment |
 | [docs/FAQ.md](docs/FAQ.md) | Common questions |
 
