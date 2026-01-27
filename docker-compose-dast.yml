@@ -1,0 +1,88 @@
+# Docker Compose for DAST Phase 1 MVP
+# Multi-agent security scanning with Nuclei + ZAP
+
+version: '3.8'
+
+services:
+  dast-scanner:
+    build:
+      context: .
+      dockerfile: docker/dast-mvp.dockerfile
+    image: argus-dast:mvp
+    container_name: argus-dast-scanner
+    volumes:
+      # Mount Docker socket for ZAP container execution
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Mount output directory
+      - ./dast-results:/output
+      # Optional: Mount config
+      - ./config/dast-config.yml:/app/config/dast-config.yml:ro
+    environment:
+      # Scan target (override via docker-compose run)
+      DAST_TARGET: ${DAST_TARGET:-https://example.com}
+      
+      # Agent configuration
+      ENABLE_NUCLEI: ${ENABLE_NUCLEI:-true}
+      ENABLE_ZAP: ${ENABLE_ZAP:-true}
+      PARALLEL_AGENTS: ${PARALLEL_AGENTS:-true}
+      
+      # Scan profile
+      SCAN_PROFILE: ${SCAN_PROFILE:-balanced}
+      
+      # Optional: OpenAPI spec
+      OPENAPI_SPEC: ${OPENAPI_SPEC:-}
+      
+      # Optional: Authentication
+      AUTH_HEADER: ${AUTH_HEADER:-}
+      
+      # Performance settings
+      MAX_DURATION: ${MAX_DURATION:-900}
+      NUCLEI_RATE_LIMIT: ${NUCLEI_RATE_LIMIT:-150}
+      NUCLEI_CONCURRENCY: ${NUCLEI_CONCURRENCY:-25}
+    command: >
+      ${DAST_TARGET}
+      --agents nuclei,zap
+      --profile ${SCAN_PROFILE:-balanced}
+      --output /output
+      --verbose
+    networks:
+      - dast-network
+  
+  # Optional: Separate ZAP service for persistent scanning
+  zap:
+    image: ghcr.io/zaproxy/zaproxy:stable
+    container_name: argus-zap
+    ports:
+      - "8080:8080"
+      - "8090:8090"
+    volumes:
+      - ./zap-data:/zap/wrk:rw
+    command: zap-webswing.sh
+    networks:
+      - dast-network
+
+networks:
+  dast-network:
+    driver: bridge
+
+# Example usage:
+#
+# 1. Build the image:
+#    docker-compose -f docker-compose-dast.yml build
+#
+# 2. Run a scan:
+#    DAST_TARGET=https://example.com docker-compose -f docker-compose-dast.yml run --rm dast-scanner
+#
+# 3. Run with OpenAPI:
+#    DAST_TARGET=https://api.example.com \
+#    OPENAPI_SPEC=/app/openapi.yaml \
+#    docker-compose -f docker-compose-dast.yml run --rm dast-scanner
+#
+# 4. Fast scan (Nuclei only):
+#    DAST_TARGET=https://example.com \
+#    ENABLE_ZAP=false \
+#    SCAN_PROFILE=fast \
+#    docker-compose -f docker-compose-dast.yml run --rm dast-scanner
+#
+# 5. View results:
+#    cat dast-results/dast-results.json | jq

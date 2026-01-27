@@ -1,0 +1,179 @@
+# DAST Multi-Agent Configuration for Argus Security
+# Phase 1 MVP - Enhanced DAST Integration
+
+orchestrator:
+  max_duration: 900  # 15 minutes total
+  parallel_agents: true
+  failure_threshold: 0.5  # Allow 50% agent failures
+  enable_nuclei: true
+  enable_zap: true
+  enable_correlation: true
+  enable_deduplication: true
+
+# Nuclei Agent Configuration
+nuclei:
+  enabled: true
+  
+  # Severity filter
+  severity:
+    - critical
+    - high
+    - medium
+  
+  # Performance settings
+  rate_limit: 150  # Requests per second
+  timeout: 5  # Request timeout in seconds
+  retries: 1
+  concurrency: 25
+  max_duration: 600  # 10 minutes max
+  
+  # Template management
+  templates: []  # Empty = use intelligent selection
+  exclude_templates: []
+  enable_caching: true
+  enable_incremental: true
+  
+  # Authentication
+  headers: {}
+    # Example: Authorization: "Bearer token123"
+
+# ZAP Agent Configuration
+zap:
+  enabled: true
+  
+  # Scan profile: fast, balanced, comprehensive
+  profile: balanced
+  
+  # Spider configuration
+  spider:
+    max_depth: 3
+    max_duration: 300  # 5 minutes
+    max_children: 10
+  
+  # AJAX Spider (for SPAs)
+  ajax_spider:
+    enabled: true
+    max_duration: 120  # 2 minutes
+  
+  # Active scanning
+  active_scan:
+    enabled: true
+    policy: "Default Policy"  # or "OWASP Top 10"
+    max_duration: 600  # 10 minutes
+  
+  # API scanning
+  api_scan:
+    enabled: true
+    format: null  # auto-detect: openapi, soap, graphql
+  
+  # Authentication
+  auth:
+    type: none  # none, bearer, basic, cookie, form
+    credentials: {}
+  
+  # Advanced settings
+  custom_headers: {}
+  target_exclusions: []
+  alert_threshold: medium  # low, medium, high
+  max_alerts_per_url: 10
+
+# Correlation Configuration
+correlation:
+  enabled: true
+  confidence_threshold: 0.7
+  
+  # SAST sources to correlate with
+  sast_sources:
+    - semgrep
+    - trivy
+    - checkov
+  
+  # Auto-upgrade severity for correlated findings
+  auto_upgrade_severity: true
+  
+  # Mark as exploitable if DAST confirmed
+  mark_exploitable: true
+
+# Reporting Configuration
+reporting:
+  formats:
+    - sarif
+    - json
+    - markdown
+  
+  include_correlation: true
+  include_poc: true
+  include_request_response: true
+  max_evidence_length: 1000
+  
+  # Output paths
+  output_dir: ./dast-results
+  separate_agent_reports: true
+
+# GitHub Actions Integration
+github_actions:
+  enabled: false
+  
+  # Fail PR if findings exceed threshold
+  fail_on_findings: true
+  critical_threshold: 0
+  high_threshold: 5
+  
+  # Comment on PR with summary
+  comment_on_pr: true
+  
+  # Upload to GitHub Code Scanning
+  upload_sarif: true
+
+# Performance & Resource Limits
+limits:
+  max_targets: 100
+  max_findings_per_agent: 1000
+  memory_limit_mb: 2048
+  cpu_limit_cores: 2
+
+# Tech Stack Detection (for intelligent template selection)
+tech_stack_detection:
+  enabled: true
+  scan_depth: 3
+  
+  # Patterns for detection
+  patterns:
+    django:
+      - manage.py
+      - settings.py
+      - "**/migrations/**"
+    
+    fastapi:
+      - main.py
+      - "**/*fastapi*"
+    
+    flask:
+      - app.py
+      - application.py
+      - "**/*flask*"
+    
+    nextjs:
+      - next.config.js
+      - "pages/**"
+      - "app/**"
+    
+    react:
+      - "src/**/*.jsx"
+      - "src/**/*.tsx"
+    
+    spring:
+      - pom.xml
+      - build.gradle
+      - "src/main/java/**"
+    
+    express:
+      - package.json
+      - app.js
+      - server.js
+
+# Logging & Debug
+logging:
+  level: INFO  # DEBUG, INFO, WARNING, ERROR
+  save_logs: true
+  log_file: ./dast-scan.log
