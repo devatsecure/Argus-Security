@@ -271,7 +271,7 @@ class AISLEEngine:
         if self._proactive_scanner is None:
             try:
                 from proactive_ai_scanner import ProactiveAIScanner
-                self._proactive_scanner = ProactiveAIScanner(llm_provider=self.llm)
+                self._proactive_scanner = ProactiveAIScanner(llm_manager=self.llm)
                 logger.info("Proactive AI Scanner module loaded")
             except ImportError as e:
                 logger.warning(f"Proactive AI Scanner not available: {e}")
@@ -295,7 +295,7 @@ class AISLEEngine:
         if self._zero_day_hypothesizer is None:
             try:
                 from zero_day_hypothesizer import ZeroDayHypothesizer
-                self._zero_day_hypothesizer = ZeroDayHypothesizer(llm_provider=self.llm)
+                self._zero_day_hypothesizer = ZeroDayHypothesizer(ai_provider=self.llm)
                 logger.info("Zero-Day Hypothesizer module loaded")
             except ImportError as e:
                 logger.warning(f"Zero-Day Hypothesizer not available: {e}")
@@ -464,7 +464,8 @@ class AISLEEngine:
 
         for file_path, content in file_contents.items():
             try:
-                twin = self.semantic_twin.build_twin(content, file_path)
+                # Use analyze_file method from SemanticCodeTwin
+                twin = self.semantic_twin.analyze_file(file_path, content)
                 if twin:
                     code_twins[file_path] = twin
             except Exception as e:
@@ -482,31 +483,48 @@ class AISLEEngine:
         findings = []
 
         try:
+            # ProactiveAIScanner.scan expects file_paths list and project_context dict
             scanner_results = self.proactive_scanner.scan(
-                file_contents,
-                context={
+                file_paths=list(file_contents.keys()),
+                project_context={
                     "project_type": project_type,
                     "code_twins": code_twins
                 }
             )
 
             for result in scanner_results:
-                finding = AISLEFinding(
-                    id=self._generate_id("proactive", result),
-                    source="proactive-scanner",
-                    title=result.get("title", "Potential Vulnerability"),
-                    description=result.get("description", ""),
-                    severity=FindingSeverity(result.get("severity", "medium")),
-                    confidence=result.get("confidence", 0.5),
-                    file_path=result.get("file", "unknown"),
-                    line_number=result.get("line", 0),
-                    code_snippet=result.get("snippet", ""),
-                    reasoning_chain=result.get("reasoning", []),
-                    attack_scenario=result.get("attack_scenario"),
-                    cwe_id=result.get("cwe_id"),
-                    suggested_fix=result.get("suggested_fix")
-                )
-                findings.append(finding)
+                # Convert ProactiveFinding to AISLEFinding
+                # ProactiveFinding has: vulnerability_type, description, confidence, call_chain,
+                # reasoning_steps, exploit_scenario, cwe_id, severity, remediation, etc.
+                try:
+                    # Get file info from call_chain
+                    file_path = "unknown"
+                    line_number = 0
+                    code_snippet = ""
+                    if hasattr(result, 'call_chain') and result.call_chain:
+                        if hasattr(result.call_chain, 'sink'):
+                            file_path = result.call_chain.sink.file_path
+                            line_number = result.call_chain.sink.line_number
+                            code_snippet = result.call_chain.sink.code_snippet
+
+                    finding = AISLEFinding(
+                        id=result.finding_id if hasattr(result, 'finding_id') and result.finding_id else self._generate_id("proactive", result.to_dict() if hasattr(result, 'to_dict') else str(result)),
+                        source="proactive-scanner",
+                        title=f"{result.vulnerability_type.value.replace('_', ' ').title()}" if hasattr(result, 'vulnerability_type') else "Potential Vulnerability",
+                        description=result.description if hasattr(result, 'description') else "",
+                        severity=FindingSeverity(result.severity.value if hasattr(result, 'severity') and hasattr(result.severity, 'value') else "medium"),
+                        confidence=result.confidence if hasattr(result, 'confidence') else 0.5,
+                        file_path=file_path,
+                        line_number=line_number,
+                        code_snippet=code_snippet,
+                        reasoning_chain=result.reasoning_steps if hasattr(result, 'reasoning_steps') else [],
+                        attack_scenario=result.exploit_scenario if hasattr(result, 'exploit_scenario') else None,
+                        cwe_id=result.cwe_id if hasattr(result, 'cwe_id') else None,
+                        suggested_fix=result.remediation if hasattr(result, 'remediation') else None
+                    )
+                    findings.append(finding)
+                except Exception as e:
+                    logger.debug(f"Could not convert proactive finding: {e}")
 
         except Exception as e:
             logger.error(f"Proactive scan failed: {e}")
@@ -521,23 +539,42 @@ class AISLEEngine:
         findings = []
 
         try:
-            taint_results = self.taint_analyzer.analyze(file_contents)
+            # TaintAnalyzer uses analyze_file for each file
+            all_taint_flows = []
+            for file_path in file_contents.keys():
+                if file_path.endswith('.py'):  # Taint analyzer currently supports Python
+                    try:
+                        flows = self.taint_analyzer.analyze_file(file_path)
+                        all_taint_flows.extend(flows)
+                    except Exception as e:
+                        logger.debug(f"Could not analyze {file_path} for taint: {e}")
 
-            for flow in taint_results:
-                if not flow.get("sanitized", True):
+            for flow in all_taint_flows:
+                # TaintFlow object - check if sanitized
+                is_sanitized = flow.sanitized if hasattr(flow, 'sanitized') else flow.get("sanitized", True)
+                if not is_sanitized:
+                    # Convert TaintFlow to dict-like access
+                    flow_dict = flow.to_dict() if hasattr(flow, 'to_dict') else flow
+                    source_type = flow.source.source_type if hasattr(flow, 'source') else flow_dict.get('source_type', 'unknown')
+                    sink_type = flow.sink.sink_type if hasattr(flow, 'sink') else flow_dict.get('sink_type', 'unknown')
+                    sink_file = flow.sink.location.file_path if hasattr(flow, 'sink') else flow_dict.get('sink_file', 'unknown')
+                    sink_line = flow.sink.location.line_number if hasattr(flow, 'sink') else flow_dict.get('sink_line', 0)
+                    sink_code = flow.sink.location.code_snippet if hasattr(flow, 'sink') else flow_dict.get('sink_code', '')
+                    confidence = flow.confidence if hasattr(flow, 'confidence') else flow_dict.get('confidence', 0.7)
+
                     finding = AISLEFinding(
-                        id=self._generate_id("taint", flow),
+                        id=self._generate_id("taint", flow_dict),
                         source="taint-analyzer",
-                        title=f"Unsanitized Data Flow: {flow.get('source_type', 'unknown')} → {flow.get('sink_type', 'unknown')}",
-                        description=self._build_taint_description(flow),
-                        severity=self._taint_severity(flow),
-                        confidence=flow.get("confidence", 0.7),
-                        file_path=flow.get("sink_file", "unknown"),
-                        line_number=flow.get("sink_line", 0),
-                        code_snippet=flow.get("sink_code", ""),
-                        reasoning_chain=self._build_taint_reasoning(flow),
-                        attack_scenario=self._build_taint_attack(flow),
-                        cwe_id=self._taint_to_cwe(flow)
+                        title=f"Unsanitized Data Flow: {source_type} → {sink_type}",
+                        description=self._build_taint_description({"source_type": source_type, "sink_type": sink_type, "path": flow_dict.get('path', [])}),
+                        severity=self._taint_severity({"sink_type": sink_type}),
+                        confidence=confidence,
+                        file_path=sink_file,
+                        line_number=sink_line,
+                        code_snippet=sink_code,
+                        reasoning_chain=self._build_taint_reasoning({"source_type": source_type, "sink_type": sink_type, "source_file": flow_dict.get('source_file', ''), "source_line": flow_dict.get('source_line', 0), "path": flow_dict.get('path', [])}),
+                        attack_scenario=self._build_taint_attack({"sink_type": sink_type}),
+                        cwe_id=self._taint_to_cwe({"sink_type": sink_type})
                     )
                     findings.append(finding)
 
@@ -556,27 +593,29 @@ class AISLEEngine:
         findings = []
 
         try:
+            # ZeroDayHypothesizer.hypothesize expects files list
             hypotheses = self.zero_day_hypothesizer.hypothesize(
-                file_contents,
-                code_twins=code_twins,
-                known_vulnerabilities=existing_findings
+                files=list(file_contents.keys())
             )
 
             for hyp in hypotheses:
-                if hyp.get("confidence", 0) >= 0.75:  # Higher threshold for hypotheses
+                # ZeroDayHypothesis dataclass - convert to AISLEFinding
+                confidence = hyp.confidence if hasattr(hyp, 'confidence') else hyp.get("confidence", 0)
+                if confidence >= 0.75:  # Higher threshold for hypotheses
+                    hyp_dict = hyp.to_dict() if hasattr(hyp, 'to_dict') else hyp
                     finding = AISLEFinding(
-                        id=self._generate_id("zeroday", hyp),
+                        id=self._generate_id("zeroday", hyp_dict),
                         source="zero-day-hypothesizer",
-                        title=f"[Hypothesis] {hyp.get('title', 'Potential Novel Vulnerability')}",
-                        description=hyp.get("hypothesis", ""),
-                        severity=FindingSeverity(hyp.get("severity", "medium")),
-                        confidence=hyp.get("confidence", 0.5),
-                        file_path=hyp.get("file", "unknown"),
-                        line_number=hyp.get("line", 0),
-                        code_snippet=hyp.get("snippet", ""),
-                        reasoning_chain=hyp.get("reasoning", []),
-                        attack_scenario=hyp.get("attack_scenario"),
-                        cwe_id=hyp.get("cwe_id")
+                        title=f"[Hypothesis] {hyp.title if hasattr(hyp, 'title') else hyp_dict.get('title', 'Potential Novel Vulnerability')}",
+                        description=hyp.hypothesis if hasattr(hyp, 'hypothesis') else hyp_dict.get("hypothesis", ""),
+                        severity=FindingSeverity(hyp.severity.value if hasattr(hyp, 'severity') and hasattr(hyp.severity, 'value') else hyp_dict.get("severity", "medium")),
+                        confidence=confidence,
+                        file_path=hyp.location.file_path if hasattr(hyp, 'location') else hyp_dict.get("file", "unknown"),
+                        line_number=hyp.location.line_number if hasattr(hyp, 'location') else hyp_dict.get("line", 0),
+                        code_snippet=hyp.location.snippet if hasattr(hyp, 'location') else hyp_dict.get("snippet", ""),
+                        reasoning_chain=hyp.reasoning_steps if hasattr(hyp, 'reasoning_steps') else hyp_dict.get("reasoning", []),
+                        attack_scenario=hyp.attack_scenario if hasattr(hyp, 'attack_scenario') else hyp_dict.get("attack_scenario"),
+                        cwe_id=hyp.cwe_id if hasattr(hyp, 'cwe_id') else hyp_dict.get("cwe_id")
                     )
                     findings.append(finding)
 
