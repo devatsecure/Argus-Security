@@ -178,7 +178,7 @@ jobs:
           NOTES_END
       
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@c062e08bd532815e2082a85e87e3ef29c3e6d191  # v2.0.8
+        uses: softprops/action-gh-release@78237c54eb15310cb292a15480c4be010be47aeb  # v2.0.8
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           name: Release ${{ steps.version.outputs.version }}
