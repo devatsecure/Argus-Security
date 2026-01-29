@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Integration tests for AISLE modules.
+Integration tests for Argus Deep Analysis modules.
 
 These tests verify:
 1. API contracts between modules match
@@ -320,7 +320,8 @@ class TestDataclassAttributes:
         source = TaintSource(
             source_type="user_input",
             location=loc,
-            variable_name="x"
+            variable="x",
+            source_pattern="request.args"
         )
 
         assert hasattr(source, 'source_type')
@@ -336,7 +337,8 @@ class TestDataclassAttributes:
         sink = TaintSink(
             sink_type="sql",
             location=loc,
-            function_name="execute"
+            operation="execute",
+            sink_pattern="cursor.execute"
         )
 
         assert hasattr(sink, 'sink_type')
@@ -353,10 +355,10 @@ class TestAISLEIntegration:
     """End-to-end integration tests"""
 
     def test_aisle_engine_runs_without_crash(self, temp_python_file):
-        """Test that AISLE engine can run on a real file"""
-        from aisle_engine import AISLEEngine
+        """Test that Deep Analysis engine can run on a real file"""
+        from argus_deep_analysis import DeepAnalysisEngine
 
-        engine = AISLEEngine(
+        engine = DeepAnalysisEngine(
             enable_verification=False,
             confidence_threshold=0.3
         )
@@ -415,10 +417,10 @@ class TestAISLEIntegration:
 class TestCodeQuality:
     """Use AST to check for common code issues"""
 
-    def test_no_bare_except_in_aisle_modules(self):
+    def test_no_bare_except_in_deep_analysis_modules(self):
         """Check that we don't swallow exceptions silently"""
         modules = [
-            "scripts/aisle_engine.py",
+            "scripts/argus_deep_analysis.py",
             "scripts/proactive_ai_scanner.py",
             "scripts/semantic_code_twin.py",
             "scripts/taint_analyzer.py",

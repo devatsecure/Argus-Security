@@ -1,25 +1,36 @@
 #!/usr/bin/env python3
 """
-AISLE Engine - AI Security Learning Engine for Argus
+Argus Deep Analysis Engine - Phase 2.7 of Argus Security Pipeline
 
-Inspired by AISLE (https://aisle.com), this module provides:
+Advanced AI-powered security analysis that goes beyond traditional scanners:
 - Autonomous vulnerability discovery via LLM reasoning
 - Semantic code understanding (Code Twins)
 - Cross-function taint analysis
 - Zero-day hypothesis generation
 - Automated patch generation and verification
 
-This is the main orchestrator that combines:
-- semantic_code_twin.py: Deep code understanding
-- proactive_ai_scanner.py: VulnHuntr-style autonomous scanning
+Integrates as Phase 2.7 in the Argus 6-phase pipeline:
+  Phase 1: Scanner Orchestration
+  Phase 2: AI Enrichment
+  Phase 2.5: Remediation
+  Phase 2.6: Spontaneous Discovery
+  Phase 2.7: Deep Analysis (THIS MODULE) ← NEW
+  Phase 3: Multi-Agent Review
+  Phase 4: Sandbox Validation
+  Phase 5: Policy Gates
+  Phase 6: Reporting
+
+Sub-modules:
+- semantic_code_twin.py: Deep code understanding with intent analysis
+- proactive_ai_scanner.py: Autonomous vulnerability reasoning
 - taint_analyzer.py: Inter-procedural data flow analysis
-- zero_day_hypothesizer.py: Novel vulnerability hypothesis
+- zero_day_hypothesizer.py: Novel vulnerability hypothesis generation
 
 Research References:
 - IRIS: LLM-Assisted Static Analysis (arXiv 2405.17238)
 - VulnHuntr: Zero-shot vulnerability discovery
 - GPTScan: GPT + program analysis (ICSE'24)
-- Pysa: Facebook's taint analysis framework
+- Pysa/Scalpel: Inter-procedural taint analysis
 """
 
 import hashlib
@@ -37,8 +48,8 @@ from typing import Any, Dict, List, Optional, Tuple
 logger = logging.getLogger(__name__)
 
 
-class AISLEPhase(Enum):
-    """AISLE analysis phases"""
+class DeepAnalysisPhase(Enum):
+    """Deep Analysis phases"""
     SEMANTIC_ANALYSIS = "semantic_analysis"
     PROACTIVE_SCAN = "proactive_scan"
     TAINT_ANALYSIS = "taint_analysis"
@@ -48,7 +59,7 @@ class AISLEPhase(Enum):
 
 
 class FindingSeverity(Enum):
-    """Severity levels for AISLE findings"""
+    """Severity levels for Deep Analysis findings"""
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
@@ -57,12 +68,12 @@ class FindingSeverity(Enum):
 
 
 @dataclass
-class AISLEFinding:
+class DeepAnalysisFinding:
     """
-    Unified finding format for AISLE-discovered vulnerabilities
+    Unified finding format for Deep Analysis-discovered vulnerabilities
     """
     id: str
-    source: str  # Which AISLE module found this
+    source: str  # Which Deep Analysis module found this
     title: str
     description: str
     severity: FindingSeverity
@@ -73,7 +84,7 @@ class AISLEFinding:
     line_number: int
     code_snippet: str
 
-    # AISLE-specific metadata
+    # Deep Analysis-specific metadata
     reasoning_chain: List[str]  # How the AI reached this conclusion
     attack_scenario: Optional[str] = None
     cwe_id: Optional[str] = None
@@ -121,7 +132,7 @@ class AISLEFinding:
         """Convert to Argus unified Finding format"""
         return {
             "id": self.id,
-            "origin": f"aisle-{self.source}",
+            "origin": f"deep-analysis-{self.source}",
             "repo": repo,
             "commit_sha": commit_sha,
             "branch": branch,
@@ -130,7 +141,7 @@ class AISLEFinding:
             "asset_type": "code",
             "rule_id": f"aisle-{self.source}-{self.cwe_id or 'unknown'}",
             "rule_name": self.title,
-            "category": "AISLE",
+            "category": "DeepAnalysis",
             "severity": self.severity.value,
             "cwe": self.cwe_id,
             "evidence": {
@@ -138,7 +149,7 @@ class AISLEFinding:
                 "code_snippet": self.code_snippet,
                 "reasoning_chain": self.reasoning_chain,
                 "attack_scenario": self.attack_scenario,
-                "aisle_source": self.source,
+                "deep_analysis_source": self.source,
                 "ai_analyzed": True
             },
             "confidence": self.confidence,
@@ -151,9 +162,9 @@ class AISLEFinding:
 
 
 @dataclass
-class AISLEAnalysisResult:
-    """Result of a complete AISLE analysis"""
-    findings: List[AISLEFinding]
+class DeepAnalysisResult:
+    """Result of a complete Deep Analysis run"""
+    findings: List[DeepAnalysisFinding]
 
     # Statistics
     files_analyzed: int
@@ -197,9 +208,9 @@ class AISLEAnalysisResult:
         }
 
 
-class AISLEEngine:
+class DeepAnalysisEngine:
     """
-    AISLE Engine - Main orchestrator for AI-powered security analysis
+    Argus Deep Analysis Engine - Main orchestrator for AI-powered security analysis
 
     Combines multiple AI-driven analysis techniques:
     1. Semantic Code Twins - Deep understanding of code intent vs behavior
@@ -208,7 +219,7 @@ class AISLEEngine:
     4. Zero-Day Hypothesizer - Novel vulnerability hypothesis generation
 
     Usage:
-        engine = AISLEEngine(llm_provider=claude_provider)
+        engine = DeepAnalysisEngine(llm_provider=claude_provider)
         result = engine.analyze(
             files=["/path/to/file1.py", "/path/to/file2.py"],
             project_type="backend-api"
@@ -227,7 +238,7 @@ class AISLEEngine:
         max_workers: int = 4
     ):
         """
-        Initialize AISLE Engine
+        Initialize Deep Analysis Engine
 
         Args:
             llm_provider: LLM provider for AI analysis (Anthropic, OpenAI, etc.)
@@ -251,7 +262,7 @@ class AISLEEngine:
         self.total_tokens = 0
         self.total_cost = 0.0
 
-        logger.info(f"AISLE Engine initialized (confidence threshold: {confidence_threshold})")
+        logger.info(f"Deep Analysis Engine initialized (confidence threshold: {confidence_threshold})")
 
     @property
     def semantic_twin(self):
@@ -318,8 +329,8 @@ class AISLEEngine:
         files: List[str],
         project_type: str = "backend-api",
         existing_findings: Optional[List[Dict]] = None,
-        phases: Optional[List[AISLEPhase]] = None
-    ) -> AISLEAnalysisResult:
+        phases: Optional[List[DeepAnalysisPhase]] = None
+    ) -> DeepAnalysisResult:
         """
         Run complete AISLE analysis on provided files
 
@@ -330,21 +341,21 @@ class AISLEEngine:
             phases: Specific phases to run (default: all)
 
         Returns:
-            AISLEAnalysisResult with all findings and statistics
+            DeepAnalysisResult with all findings and statistics
         """
         start_time = time.time()
-        all_findings: List[AISLEFinding] = []
+        all_findings: List[DeepAnalysisFinding] = []
 
         # Default to all phases
         if phases is None:
             phases = [
-                AISLEPhase.SEMANTIC_ANALYSIS,
-                AISLEPhase.PROACTIVE_SCAN,
-                AISLEPhase.TAINT_ANALYSIS,
-                AISLEPhase.ZERO_DAY_HYPOTHESIS
+                DeepAnalysisPhase.SEMANTIC_ANALYSIS,
+                DeepAnalysisPhase.PROACTIVE_SCAN,
+                DeepAnalysisPhase.TAINT_ANALYSIS,
+                DeepAnalysisPhase.ZERO_DAY_HYPOTHESIS
             ]
 
-        logger.info(f"🚀 Starting AISLE analysis on {len(files)} files")
+        logger.info(f"🚀 Starting Deep Analysis on {len(files)} files")
         logger.info(f"   Project type: {project_type}")
         logger.info(f"   Phases: {[p.value for p in phases]}")
 
@@ -362,14 +373,14 @@ class AISLEEngine:
 
         # Phase 1: Semantic Analysis (build code twins)
         code_twins = {}
-        if AISLEPhase.SEMANTIC_ANALYSIS in phases and self.semantic_twin:
+        if DeepAnalysisPhase.SEMANTIC_ANALYSIS in phases and self.semantic_twin:
             logger.info("📊 Phase 1: Building Semantic Code Twins...")
             code_twins = self._run_semantic_analysis(file_contents)
             stats["semantic_twins"] = len(code_twins)
             logger.info(f"   Created {len(code_twins)} code twins")
 
         # Phase 2: Proactive AI Scanning
-        if AISLEPhase.PROACTIVE_SCAN in phases and self.proactive_scanner:
+        if DeepAnalysisPhase.PROACTIVE_SCAN in phases and self.proactive_scanner:
             logger.info("🔍 Phase 2: Running Proactive AI Scanner...")
             proactive_findings = self._run_proactive_scan(
                 file_contents,
@@ -381,7 +392,7 @@ class AISLEEngine:
             logger.info(f"   Found {len(proactive_findings)} potential vulnerabilities")
 
         # Phase 3: Taint Analysis
-        if AISLEPhase.TAINT_ANALYSIS in phases and self.taint_analyzer:
+        if DeepAnalysisPhase.TAINT_ANALYSIS in phases and self.taint_analyzer:
             logger.info("🔗 Phase 3: Running Cross-Function Taint Analysis...")
             taint_findings = self._run_taint_analysis(file_contents)
             all_findings.extend(taint_findings)
@@ -389,7 +400,7 @@ class AISLEEngine:
             logger.info(f"   Found {len(taint_findings)} taint flow vulnerabilities")
 
         # Phase 4: Zero-Day Hypothesis Generation
-        if AISLEPhase.ZERO_DAY_HYPOTHESIS in phases and self.zero_day_hypothesizer:
+        if DeepAnalysisPhase.ZERO_DAY_HYPOTHESIS in phases and self.zero_day_hypothesizer:
             logger.info("💡 Phase 4: Generating Zero-Day Hypotheses...")
             hypotheses = self._run_zero_day_hypothesizer(
                 file_contents,
@@ -424,7 +435,7 @@ class AISLEEngine:
         total_time = time.time() - start_time
 
         # Build result
-        result = AISLEAnalysisResult(
+        result = DeepAnalysisResult(
             findings=high_confidence_findings,
             files_analyzed=len(files),
             functions_analyzed=stats["functions_analyzed"],
@@ -438,7 +449,7 @@ class AISLEEngine:
             estimated_cost_usd=self.total_cost
         )
 
-        logger.info(f"✨ AISLE analysis complete!")
+        logger.info(f"✨ Deep Analysis complete!")
         logger.info(f"   Total findings: {len(high_confidence_findings)}")
         logger.info(f"   Time: {total_time:.2f}s")
 
@@ -478,7 +489,7 @@ class AISLEEngine:
         file_contents: Dict[str, str],
         code_twins: Dict[str, Any],
         project_type: str
-    ) -> List[AISLEFinding]:
+    ) -> List[DeepAnalysisFinding]:
         """Run proactive AI scanning"""
         findings = []
 
@@ -507,7 +518,7 @@ class AISLEEngine:
                             line_number = result.call_chain.sink.line_number
                             code_snippet = result.call_chain.sink.code_snippet
 
-                    finding = AISLEFinding(
+                    finding = DeepAnalysisFinding(
                         id=result.finding_id if hasattr(result, 'finding_id') and result.finding_id else self._generate_id("proactive", result.to_dict() if hasattr(result, 'to_dict') else str(result)),
                         source="proactive-scanner",
                         title=f"{result.vulnerability_type.value.replace('_', ' ').title()}" if hasattr(result, 'vulnerability_type') else "Potential Vulnerability",
@@ -534,7 +545,7 @@ class AISLEEngine:
     def _run_taint_analysis(
         self,
         file_contents: Dict[str, str]
-    ) -> List[AISLEFinding]:
+    ) -> List[DeepAnalysisFinding]:
         """Run cross-function taint analysis"""
         findings = []
 
@@ -562,7 +573,7 @@ class AISLEEngine:
                     sink_code = flow.sink.location.code_snippet if hasattr(flow, 'sink') else flow_dict.get('sink_code', '')
                     confidence = flow.confidence if hasattr(flow, 'confidence') else flow_dict.get('confidence', 0.7)
 
-                    finding = AISLEFinding(
+                    finding = DeepAnalysisFinding(
                         id=self._generate_id("taint", flow_dict),
                         source="taint-analyzer",
                         title=f"Unsanitized Data Flow: {source_type} → {sink_type}",
@@ -588,7 +599,7 @@ class AISLEEngine:
         file_contents: Dict[str, str],
         code_twins: Dict[str, Any],
         existing_findings: List[Dict]
-    ) -> List[AISLEFinding]:
+    ) -> List[DeepAnalysisFinding]:
         """Run zero-day hypothesis generation"""
         findings = []
 
@@ -603,7 +614,7 @@ class AISLEEngine:
                 confidence = hyp.confidence if hasattr(hyp, 'confidence') else hyp.get("confidence", 0)
                 if confidence >= 0.75:  # Higher threshold for hypotheses
                     hyp_dict = hyp.to_dict() if hasattr(hyp, 'to_dict') else hyp
-                    finding = AISLEFinding(
+                    finding = DeepAnalysisFinding(
                         id=self._generate_id("zeroday", hyp_dict),
                         source="zero-day-hypothesizer",
                         title=f"[Hypothesis] {hyp.title if hasattr(hyp, 'title') else hyp_dict.get('title', 'Potential Novel Vulnerability')}",
@@ -624,7 +635,7 @@ class AISLEEngine:
 
         return findings
 
-    def _verify_findings(self, findings: List[AISLEFinding]) -> int:
+    def _verify_findings(self, findings: List[DeepAnalysisFinding]) -> int:
         """Verify findings with sandbox validation"""
         verified_count = 0
 
@@ -644,9 +655,9 @@ class AISLEEngine:
 
     def _deduplicate(
         self,
-        findings: List[AISLEFinding],
+        findings: List[DeepAnalysisFinding],
         existing: List[Dict]
-    ) -> List[AISLEFinding]:
+    ) -> List[DeepAnalysisFinding]:
         """Remove findings that duplicate existing scanner findings"""
         existing_signatures = set()
 
@@ -726,14 +737,15 @@ class AISLEEngine:
         return cwe_map.get(sink, "CWE-20")
 
 
-def run_aisle_analysis(
+def run_deep_analysis(
     target_path: str,
     project_type: str = "backend-api",
     output_file: Optional[str] = None,
-    llm_provider: Optional[Any] = None
-) -> AISLEAnalysisResult:
+    llm_provider: Optional[Any] = None,
+    enable_verification: bool = False
+) -> DeepAnalysisResult:
     """
-    Convenience function to run AISLE analysis
+    Convenience function to run Deep Analysis
 
     Args:
         target_path: Path to directory or file to analyze
@@ -742,7 +754,7 @@ def run_aisle_analysis(
         llm_provider: Optional LLM provider
 
     Returns:
-        AISLEAnalysisResult
+        DeepAnalysisResult
     """
     # Gather files
     target = Path(target_path)
@@ -765,7 +777,10 @@ def run_aisle_analysis(
     logger.info(f"Found {len(files)} files to analyze")
 
     # Run analysis
-    engine = AISLEEngine(llm_provider=llm_provider)
+    engine = DeepAnalysisEngine(
+        llm_provider=llm_provider,
+        enable_verification=enable_verification
+    )
     result = engine.analyze(files, project_type=project_type)
 
     # Write output if requested
@@ -777,11 +792,19 @@ def run_aisle_analysis(
     return result
 
 
+# Backward compatibility aliases
+AISLEFinding = DeepAnalysisFinding
+AISLEAnalysisResult = DeepAnalysisResult
+AISLEEngine = DeepAnalysisEngine
+AISLEPhase = DeepAnalysisPhase
+run_aisle_analysis = run_deep_analysis
+
+
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="AISLE Engine - AI Security Learning Engine"
+        description="Argus Deep Analysis Engine - AI-powered vulnerability discovery"
     )
     parser.add_argument("path", help="Path to analyze")
     parser.add_argument("--project-type", default="backend-api",
@@ -800,11 +823,11 @@ if __name__ == "__main__":
         logging.basicConfig(level=logging.INFO)
 
     print("=" * 60)
-    print("AISLE Engine - AI Security Learning Engine")
-    print("Inspired by AISLE (aisle.com)")
+    print("Argus Deep Analysis Engine")
+    print("Phase 2.7 of Argus Security Pipeline")
     print("=" * 60)
 
-    result = run_aisle_analysis(
+    result = run_deep_analysis(
         args.path,
         project_type=args.project_type,
         output_file=args.output

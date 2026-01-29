@@ -858,6 +858,33 @@ class TaintAnalyzer:
 
         return filtered_flows
 
+    def _parse_file(
+        self,
+        file_path: str
+    ) -> Tuple[List[FunctionInfo], List[TaintSource], List[TaintSink]]:
+        """
+        Parse a single file for functions, sources, and sinks
+
+        Args:
+            file_path: Path to source file
+
+        Returns:
+            Tuple of (functions, sources, sinks)
+        """
+        # Find appropriate parser
+        ext = Path(file_path).suffix
+        parser = None
+        for p in self.parsers:
+            if p.supports_extension(ext):
+                parser = p
+                break
+
+        if not parser:
+            return [], [], []
+
+        # Parse file
+        return parser.parse_file(file_path)
+
     def _gather_files(
         self,
         project_path: str,

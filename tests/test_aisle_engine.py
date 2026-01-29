@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Tests for AISLE Engine and its sub-modules
+Tests for Argus Deep Analysis Engine and its sub-modules
 
 Tests cover:
-- AISLEEngine orchestration
+- DeepAnalysisEngine orchestration
 - SemanticCodeTwin code understanding
 - ProactiveAIScanner vulnerability detection
 - TaintAnalyzer cross-function data flow
@@ -22,13 +22,13 @@ import pytest
 # Add scripts to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
-from aisle_engine import (
-    AISLEEngine,
-    AISLEFinding,
-    AISLEAnalysisResult,
-    AISLEPhase,
+from argus_deep_analysis import (
+    DeepAnalysisEngine as AISLEEngine,
+    DeepAnalysisFinding as AISLEFinding,
+    DeepAnalysisResult as AISLEAnalysisResult,
+    DeepAnalysisPhase as AISLEPhase,
     FindingSeverity,
-    run_aisle_analysis,
+    run_deep_analysis as run_aisle_analysis,
 )
 
 
@@ -189,7 +189,7 @@ class TestAISLEFinding:
             branch="main"
         )
 
-        assert unified["origin"] == "aisle-zero-day-hypothesizer"
+        assert unified["origin"] == "deep-analysis-zero-day-hypothesizer"
         assert unified["repo"] == "test/repo"
         assert unified["cwe"] == "CWE-367"
         assert unified["llm_enriched"] is True
@@ -338,7 +338,7 @@ class TestAISLEIntegration:
 
     def test_analyze_empty_files(self):
         """Test analyzing empty file list"""
-        engine = AISLEEngine()
+        engine = AISLEEngine(enable_verification=False)
         result = engine.analyze(files=[], project_type="backend-api")
 
         assert result.files_analyzed == 0
@@ -351,7 +351,7 @@ class TestAISLEIntegration:
             str(Path(temp_project) / "server.js")
         ]
 
-        engine = AISLEEngine()
+        engine = AISLEEngine(enable_verification=False)
         # Run without LLM modules (they won't be available in test)
         result = engine.analyze(
             files=files,
@@ -392,9 +392,9 @@ class TestModuleImports:
     """Test that all AISLE modules can be imported"""
 
     def test_aisle_engine_import(self):
-        """Test importing AISLE engine"""
-        from aisle_engine import AISLEEngine
-        assert AISLEEngine is not None
+        """Test importing Deep Analysis engine"""
+        from argus_deep_analysis import DeepAnalysisEngine
+        assert DeepAnalysisEngine is not None
 
     def test_semantic_twin_import(self):
         """Test importing Semantic Code Twin module"""

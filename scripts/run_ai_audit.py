@@ -53,6 +53,15 @@ try:
 except ImportError:
     SANDBOX_VALIDATION_AVAILABLE = False
     logger.warning("Sandbox validator not available")
+
+# Import Deep Analysis Engine (Phase 2.7)
+try:
+    from argus_deep_analysis import DeepAnalysisEngine, DeepAnalysisPhase
+
+    DEEP_ANALYSIS_AVAILABLE = True
+except ImportError:
+    DEEP_ANALYSIS_AVAILABLE = False
+    logger.warning("Deep Analysis Engine not available")
 """
 Heuristic Scanner and Consensus Builder classes
 Extracted from real_multi_agent_review.py for merging into run_ai_audit.py
@@ -3277,6 +3286,84 @@ def run_audit(repo_path, config, review_type="audit"):
             logger.warning(f"Semgrep scan failed: {e}")
             print(f"   ⚠️  Semgrep scan failed: {e}")
 
+    # Run Deep Analysis (Phase 2.7) - AI-powered vulnerability discovery
+    deep_analysis_results = {}
+    enable_deep_analysis = config.get("enable_deep_analysis", True)
+
+    if enable_deep_analysis and DEEP_ANALYSIS_AVAILABLE:
+        try:
+            print("🧠 Running Deep Analysis (Phase 2.7)...")
+
+            # Get file paths for analysis
+            file_paths = [f["path"] for f in files]
+
+            # Initialize Deep Analysis Engine
+            deep_engine = DeepAnalysisEngine(
+                llm_provider=client if provider == "anthropic" else None,
+                confidence_threshold=0.70,
+                enable_verification=SANDBOX_VALIDATION_AVAILABLE
+            )
+
+            # Run analysis with semantic and taint phases (skip zero-day without LLM)
+            phases_to_run = [
+                DeepAnalysisPhase.SEMANTIC_ANALYSIS,
+                DeepAnalysisPhase.TAINT_ANALYSIS,
+            ]
+
+            # Add proactive scan and zero-day if LLM available
+            if client and provider in ["anthropic", "openai"]:
+                phases_to_run.extend([
+                    DeepAnalysisPhase.PROACTIVE_SCAN,
+                    DeepAnalysisPhase.ZERO_DAY_HYPOTHESIS,
+                ])
+
+            deep_result = deep_engine.analyze(
+                files=file_paths,
+                project_type=config.get("project_type", "backend-api"),
+                existing_findings=semgrep_results.get("findings", []),
+                phases=phases_to_run
+            )
+
+            if deep_result.findings:
+                deep_count = len(deep_result.findings)
+                print(f"   ⚠️  Deep Analysis found {deep_count} additional issues:")
+
+                severity_counts = {}
+                for finding in deep_result.findings:
+                    sev = finding.severity.value
+                    severity_counts[sev] = severity_counts.get(sev, 0) + 1
+
+                for severity in ["critical", "high", "medium", "low"]:
+                    if severity in severity_counts:
+                        print(f"      - {severity_counts[severity]} {severity} severity")
+
+                # Show top findings
+                for finding in deep_result.findings[:3]:
+                    print(f"      - {finding.file_path}:{finding.line_number} ({finding.title})")
+
+                if deep_count > 3:
+                    print(f"      ... and {deep_count - 3} more issues")
+
+                # Track in metrics
+                metrics.record("deep_analysis_findings", deep_count)
+                for severity, count in severity_counts.items():
+                    metrics.record(f"deep_analysis_{severity}_severity", count)
+
+                # Store results for later integration
+                deep_analysis_results = {
+                    "findings": [f.to_dict() for f in deep_result.findings],
+                    "summary": deep_result.to_dict()["summary"]
+                }
+            else:
+                print("   ✅ Deep Analysis: no additional issues found")
+                metrics.record("deep_analysis_findings", 0)
+
+        except Exception as e:
+            logger.warning(f"Deep Analysis failed: {e}")
+            print(f"   ⚠️  Deep Analysis failed: {e}")
+    elif not DEEP_ANALYSIS_AVAILABLE:
+        print("   ⚠️  Deep Analysis not available (module not installed)")
+
     # Estimate cost
     estimated_cost, est_input, est_output = estimate_cost(files, max_tokens, provider)
     if provider == "ollama":
@@ -3931,6 +4018,7 @@ if __name__ == "__main__":
         "fuzzing_duration": int(os.environ.get("FUZZING_DURATION", "300")),
         "enable_threat_intel": os.environ.get("ENABLE_THREAT_INTEL", "true").lower() == "true",
         "enable_remediation": os.environ.get("ENABLE_REMEDIATION", "true").lower() == "true",
+        "enable_deep_analysis": os.environ.get("ENABLE_DEEP_ANALYSIS", "true").lower() == "true",
         "enable_runtime_security": os.environ.get("ENABLE_RUNTIME_SECURITY", "false").lower() == "true",
         "runtime_monitoring_duration": int(os.environ.get("RUNTIME_MONITORING_DURATION", "60")),
         "enable_regression_testing": os.environ.get("ENABLE_REGRESSION_TESTING", "true").lower() == "true",
