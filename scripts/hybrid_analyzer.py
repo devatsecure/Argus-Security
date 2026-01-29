@@ -791,7 +791,7 @@ class HybridSecurityAnalyzer:
             try:
                 validated_findings = self._run_sandbox_validation(all_findings, target_path)
                 all_findings = validated_findings
-                logger.info(f"   ✅ Sandbox validation complete: {len(all_findings)} findings validated")
+                logger.info(f"   ⚠️  Phase 4 checked {len(all_findings)} findings (validation not yet implemented)")
             except Exception as e:
                 logger.error(f"   ❌ Sandbox validation failed: {e}")
                 logger.info("   💡 Continuing with unvalidated findings...")
@@ -1959,18 +1959,21 @@ Respond with JSON only:"""
                 continue
 
             try:
-                logger.info(f"   🧪 Validating: {finding.finding_id}...")
+                logger.info(f"   🧪 Checking: {finding.finding_id}...")
                 validation_count += 1
 
-                # Note: Actual exploit validation would require:
-                # 1. PoC exploit code generation
+                # TODO: Implement automatic PoC exploit generation
+                # Current limitation: Sandbox validation requires:
+                # 1. PoC exploit code generation (not yet implemented)
                 # 2. Target environment setup
                 # 3. Safe execution in Docker
-                # For now, mark as validated without actual execution
-                # Real implementation would call: self.sandbox_validator.validate_exploit(...)
+                #
+                # The sandbox_validator infrastructure exists and works,
+                # but automatic exploit generation is not yet implemented.
+                # For now, mark findings as NOT validated (accurate status)
 
-                finding.sandbox_validated = True
-                finding.description = f"[Sandbox: Validated] {finding.description}"
+                finding.sandbox_validated = False
+                # Do not modify description - validation didn't actually happen
 
                 validated_findings.append(finding)
 
@@ -1980,7 +1983,7 @@ Respond with JSON only:"""
                 validated_findings.append(finding)
 
         if validation_count > 0:
-            logger.info(f"   📊 Validated {validation_count} high-risk findings")
+            logger.info(f"   ⚠️  Checked {validation_count} high-risk findings (validation not yet implemented)")
         else:
             logger.info("   ℹ️  No findings required sandbox validation")
 
