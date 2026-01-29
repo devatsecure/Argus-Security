@@ -995,18 +995,21 @@ class HybridSecurityAnalyzer:
                     findings_list = semgrep_results
 
                 for result in findings_list:
+                    # SemgrepScanner returns: rule_id, file_path, start_line, message
+                    rule_id = result.get('rule_id', 'unknown')
                     finding = HybridFinding(
-                        finding_id=f"semgrep-{result.get('check_id', 'unknown')}",
+                        finding_id=f"semgrep-{rule_id}",
                         source_tool="semgrep",
                         severity=self._normalize_severity(result.get("severity", "medium")),
                         category="security",
-                        title=result.get("check_id", "Unknown Issue"),
+                        title=rule_id,  # Use rule_id as title
                         description=result.get("message", ""),
-                        file_path=result.get("path", ""),
-                        line_number=result.get("line", None),
+                        file_path=result.get("file_path", ""),  # Changed from 'path'
+                        line_number=result.get("start_line", None),  # Changed from 'line'
                         recommendation=result.get("fix", ""),
                         references=result.get("references", []),
                         confidence=0.9,  # Semgrep has low false positive rate
+                        cwe_id=result.get("cwe", None),  # Add CWE if available
                     )
                     findings.append(finding)
 
