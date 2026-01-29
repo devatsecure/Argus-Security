@@ -180,6 +180,32 @@ inputs:
     required: false
     default: '1.0'
 
+  # Phase 2.7: Deep Analysis Configuration
+  deep-analysis-mode:
+    description: 'Phase 2.7 Deep Analysis mode (off, semantic-only, conservative, full)'
+    required: false
+    default: 'off'
+
+  max-files-deep-analysis:
+    description: 'Maximum files for Phase 2.7 Deep Analysis'
+    required: false
+    default: '50'
+
+  deep-analysis-cost-ceiling:
+    description: 'Cost ceiling in USD for Phase 2.7'
+    required: false
+    default: '5.0'
+
+  deep-analysis-timeout:
+    description: 'Timeout in seconds for Phase 2.7'
+    required: false
+    default: '300'
+
+  benchmark:
+    description: 'Enable benchmark reporting'
+    required: false
+    default: 'false'
+
 outputs:
   review-completed:
     description: 'Whether the review completed successfully'
@@ -412,6 +438,12 @@ runs:
         # NEW: Phase 1 feature flags
         ENABLE_THREAT_MODELING: 'true'
         ENABLE_SANDBOX_VALIDATION: 'true'
+        # Phase 2.7: Deep Analysis Configuration
+        DEEP_ANALYSIS_MODE: ${{ inputs.deep-analysis-mode }}
+        MAX_FILES_DEEP_ANALYSIS: ${{ inputs.max-files-deep-analysis }}
+        DEEP_ANALYSIS_COST_CEILING: ${{ inputs.deep-analysis-cost-ceiling }}
+        DEEP_ANALYSIS_TIMEOUT: ${{ inputs.deep-analysis-timeout }}
+        BENCHMARK: ${{ inputs.benchmark }}
       run: |
         echo "🤖 Running AI-Powered Code Review..."
         cd "${{ inputs.project-path }}"
@@ -436,7 +468,24 @@ runs:
         echo "   - Max files: ${{ inputs.max-files }}"
         echo "   - Cost limit: \$${{ inputs.cost-limit }}"
         
-        python3 $HOME/.argus/scripts/run_ai_audit.py "$(pwd)" "${{ inputs.review-type }}"
+        # Build command with Phase 2.7 parameters
+        CMD="python3 $HOME/.argus/scripts/run_ai_audit.py \"$(pwd)\" \"${{ inputs.review-type }}\""
+
+        # Add Phase 2.7 Deep Analysis parameters if enabled
+        if [ "${{ inputs.deep-analysis-mode }}" != "off" ]; then
+          CMD="$CMD --deep-analysis-mode ${{ inputs.deep-analysis-mode }}"
+          CMD="$CMD --max-files-deep-analysis ${{ inputs.max-files-deep-analysis }}"
+          CMD="$CMD --deep-analysis-cost-ceiling ${{ inputs.deep-analysis-cost-ceiling }}"
+          CMD="$CMD --deep-analysis-timeout ${{ inputs.deep-analysis-timeout }}"
+        fi
+
+        # Add benchmark flag if enabled
+        if [ "${{ inputs.benchmark }}" = "true" ]; then
+          CMD="$CMD --benchmark"
+        fi
+
+        # Execute the command
+        eval $CMD
         
         # Check if analysis succeeded
         REPORT_FILE=".argus/reviews/${{ inputs.review-type }}-report.md"

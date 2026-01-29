@@ -78,17 +78,24 @@ COPY profiles/ ./profiles/
 COPY schemas/ ./schemas/
 COPY config/ ./config/
 
-# Create workspace and output directories
+# Create non-root user for security (matches base Dockerfile)
+RUN groupadd -r agentuser && useradd -r -g agentuser -u 1000 agentuser
+
+# Create workspace and output directories with proper permissions
 RUN mkdir -p /workspace /output && \
-    chmod 755 /workspace /output
+    chmod 755 /workspace /output && \
+    chown -R agentuser:agentuser /app /workspace /output
 
 # Initialize Trivy database
 RUN trivy image --download-db-only || true
 
 WORKDIR /workspace
 
-# Set entrypoint to the hybrid analyzer for complete 6-phase scanning
-ENTRYPOINT ["python", "/app/scripts/hybrid_analyzer.py"]
+# Switch to non-root user for security
+USER agentuser
+
+# Set entrypoint to run_ai_audit.py for complete 6-phase scanning with Phase 2.7 support
+ENTRYPOINT ["python", "/app/scripts/run_ai_audit.py"]
 
 # Default: show help
 CMD ["--help"]

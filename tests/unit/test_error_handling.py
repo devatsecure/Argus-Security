@@ -8,21 +8,24 @@ import time
 from unittest.mock import Mock, patch
 import sys
 from pathlib import Path
+import importlib.util
 
-# Add scripts to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "scripts"))
+# Load error_handling module directly to avoid conflicts with tests/utils
+scripts_utils_path = Path(__file__).parent.parent.parent / "scripts" / "utils" / "error_handling.py"
+spec = importlib.util.spec_from_file_location("error_handling", scripts_utils_path)
+error_handling = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(error_handling)
 
-from utils.error_handling import (
-    CircuitBreaker,
-    CircuitBreakerOpen,
-    CircuitState,
-    graceful_degradation,
-    retry_with_backoff,
-    RateLimiter,
-    safe_api_call,
-    sanitize_error_message,
-    handle_malformed_data,
-)
+# Import from loaded module
+CircuitBreaker = error_handling.CircuitBreaker
+CircuitBreakerOpen = error_handling.CircuitBreakerOpen
+CircuitState = error_handling.CircuitState
+graceful_degradation = error_handling.graceful_degradation
+retry_with_backoff = error_handling.retry_with_backoff
+RateLimiter = error_handling.RateLimiter
+safe_api_call = error_handling.safe_api_call
+sanitize_error_message = error_handling.sanitize_error_message
+handle_malformed_data = error_handling.handle_malformed_data
 
 
 class TestCircuitBreaker:
@@ -401,10 +404,12 @@ class TestSanitizeErrorMessage:
 
     def test_sanitize_truncates_long_messages(self):
         """Test long messages are truncated"""
-        long_message = "Error: " + ("x" * 300)
+        # Use a message that won't be redacted (not matching base64/sensitive patterns)
+        long_message = "Error occurred at step " + ("9 " * 150)  # ~300 chars, not base64-like
         error = ValueError(long_message)
         sanitized = sanitize_error_message(error, max_length=100)
-        assert len(sanitized) <= 120  # 100 + "ValueError: " + "..."
+        # Should be truncated: "ValueError: " (12) + message (100) + "..." (3) = 115 max
+        assert len(sanitized) <= 116
         assert sanitized.endswith("...")
 
 

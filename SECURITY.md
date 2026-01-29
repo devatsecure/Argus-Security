@@ -6,9 +6,9 @@ We release patches for security vulnerabilities. Currently supported versions:
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 3.1.x   | :white_check_mark: |
-| 3.0.x   | :white_check_mark: |
-| < 3.0   | :x:                |
+| 1.1.x   | :white_check_mark: |
+| 1.0.x   | :white_check_mark: |
+| < 1.0   | :x:                |
 
 ## Reporting a Vulnerability
 
@@ -18,7 +18,7 @@ We take the security of Argus seriously. If you believe you have found a securit
 
 **Please do NOT report security vulnerabilities through public GitHub issues.**
 
-Instead, please report them via email to: **developer@secure.com**
+Instead, please report them via email to: **security@devatsecure.com**
 
 ### What to Include
 
@@ -166,10 +166,10 @@ We believe in responsible disclosure and will credit security researchers who re
 
 ## Questions?
 
-If you have questions about this security policy, please contact: developer@secure.com
+If you have questions about this security policy, please contact: security@devatsecure.com
 
 ---
 
-**Last Updated**: November 7, 2025  
-**Version**: 1.0
+**Last Updated**: January 29, 2026  
+**Version**: 1.1
 

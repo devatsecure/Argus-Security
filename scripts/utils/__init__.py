@@ -5,6 +5,7 @@ Utility modules for Argus
 from .error_handling import (
     CircuitBreaker,
     CircuitBreakerOpen,
+    CircuitState,
     graceful_degradation,
     retry_with_backoff,
     safe_api_call,
@@ -16,6 +17,7 @@ from .error_handling import (
 __all__ = [
     "CircuitBreaker",
     "CircuitBreakerOpen",
+    "CircuitState",
     "graceful_degradation",
     "retry_with_backoff",
     "safe_api_call",
