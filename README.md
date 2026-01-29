@@ -122,6 +122,18 @@ python scripts/run_ai_audit.py --project-type backend-api
 │  ├─ Noise scoring & false positive prediction              │
 │  └─ Threat intelligence enrichment                         │
 │                                                             │
+│  PHASE 2.5: Remediation Engine                              │
+│  └─ AI-generated fix suggestions                           │
+│                                                             │
+│  PHASE 2.6: Spontaneous Discovery                           │
+│  └─ Find issues beyond scanner rules                       │
+│                                                             │
+│  PHASE 2.7: Deep Analysis (AISLE-inspired)                  │
+│  ├─ Semantic Code Twin (AST-based intent analysis)         │
+│  ├─ Proactive AI Scanner (autonomous reasoning)            │
+│  ├─ Taint Analyzer (inter-procedural data flow)            │
+│  └─ Zero-Day Hypothesizer (novel vulnerability discovery)  │
+│                                                             │
 │  PHASE 3: Multi-Agent Persona Review                        │
 │  ├─ SecretHunter - credentials expert                      │
 │  ├─ ArchitectureReviewer - design flaws                    │
@@ -134,6 +146,22 @@ python scripts/run_ai_audit.py --project-type backend-api
 │  PHASE 5: Policy Gates (Rego/OPA)                           │
 │                                                             │
 │  PHASE 6: Reporting (SARIF/JSON/Markdown)                   │
+│                                                             │
+│  ═══════════════════════════════════════════════════════   │
+│  ADDITIONAL FEATURES (Standalone Tools)                     │
+│  ═══════════════════════════════════════════════════════   │
+│                                                             │
+│  🌐 DAST Integration (Runtime Security Testing)             │
+│  ├─ Nuclei Agent (template-based scanning)                 │
+│  ├─ ZAP Agent (spider + active scan)                       │
+│  ├─ SAST-DAST Correlation (30-40% FP reduction)            │
+│  └─ Intelligent orchestration & tech stack detection       │
+│                                                             │
+│  🔗 Vulnerability Chaining (Attack Path Discovery)          │
+│  ├─ Multi-step attack scenario discovery                   │
+│  ├─ Attack graph generation                                │
+│  ├─ Exploitability scoring                                 │
+│  └─ Attack complexity analysis                             │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -161,6 +189,89 @@ Beyond scanner rules, Argus **proactively finds hidden issues**:
 - Supply chain risks
 
 **Result:** +15-20% more real issues discovered
+
+---
+
+## DAST Integration (Runtime Security Testing)
+
+Argus includes **standalone DAST tools** for runtime application security testing:
+
+### Quick Start
+
+```bash
+# Basic DAST scan with Nuclei + ZAP
+python scripts/dast_orchestrator.py --target https://example.com
+
+# With SAST-DAST correlation
+python scripts/dast_orchestrator.py \
+  --target https://example.com \
+  --sast-findings .argus/reviews/results.json \
+  --enable-correlation
+```
+
+### Features
+
+- **Parallel Execution**: Nuclei + ZAP run concurrently
+- **Tech Stack Detection**: Auto-selects relevant templates
+- **SAST-DAST Correlation**: Confirms exploitability (30-40% FP reduction)
+- **Multi-Agent Orchestration**: Intelligent routing & failure handling
+
+### Example Workflow
+
+```yaml
+# .github/workflows/dast.yml
+- name: Run DAST Scan
+  run: |
+    python scripts/dast_orchestrator.py \
+      --target ${{ env.STAGING_URL }} \
+      --output dast-results.json
+```
+
+**Documentation**: `DAST_MVP_DELIVERY_SUMMARY.md`, `docs/references/dast-scanner-reference.md`
+
+---
+
+## Vulnerability Chaining (Attack Path Discovery)
+
+Discover **multi-step attack scenarios** by chaining individual vulnerabilities:
+
+### Quick Start
+
+```bash
+# Analyze findings for attack chains
+python scripts/vulnerability_chaining_engine.py \
+  --findings .argus/reviews/results.json \
+  --output attack-chains.json
+
+# Generate attack graph visualization
+python scripts/chain_visualizer.py \
+  --chains attack-chains.json \
+  --output attack-graph.html
+```
+
+### Features
+
+- **Attack Graph Generation**: Visualize multi-step attack paths
+- **Exploitability Scoring**: CRITICAL, HIGH, MODERATE, LOW, UNLIKELY
+- **Attack Complexity Analysis**: TRIVIAL, LOW, MEDIUM, HIGH
+- **Chain Prioritization**: Focus on highest-impact attack scenarios
+
+### Example: SQL Injection → RCE Chain
+
+```json
+{
+  "chain_id": "chain_001",
+  "exploitability": "CRITICAL",
+  "complexity": "LOW",
+  "steps": [
+    {"vuln_id": "sql-001", "severity": "high", "type": "SQL Injection"},
+    {"vuln_id": "file-002", "severity": "medium", "type": "Arbitrary File Write"},
+    {"vuln_id": "exec-003", "severity": "critical", "type": "Remote Code Execution"}
+  ]
+}
+```
+
+**Documentation**: `CHAINING_QUICKSTART.md`
 
 ---
 
@@ -236,7 +347,10 @@ services:
 | **AI Triage** | Claude/OpenAI/Ollama for intelligent analysis |
 | **Enhanced FP Detection** | OAuth2 public clients, file permissions, dev configs, mutex/locks |
 | **60-70% FP Reduction** | ML noise scoring + AI triage + pattern intelligence |
+| **Phase 2.7 Deep Analysis** | AISLE-inspired semantic analysis with 4 AI modules |
 | **Spontaneous Discovery** | Find issues beyond scanner rules |
+| **DAST Integration** | Nuclei + ZAP runtime testing with SAST correlation |
+| **Vulnerability Chaining** | Multi-step attack path discovery and visualization |
 | **Self-Improving** | Learns from your feedback |
 | **Threat Intelligence** | CVE, CISA KEV, EPSS enrichment |
 | **Auto-Remediation** | AI-generated fix suggestions |
@@ -250,7 +364,10 @@ services:
 
 | Command | Purpose |
 |---------|---------|
-| `python scripts/run_ai_audit.py` | Run full security audit |
+| `python scripts/run_ai_audit.py` | Run full security audit (6-phase pipeline) |
+| `python scripts/run_ai_audit.py --deep-analysis-mode=conservative` | Run with Phase 2.7 Deep Analysis |
+| `python scripts/dast_orchestrator.py --target URL` | Run DAST scan (Nuclei + ZAP) |
+| `python scripts/vulnerability_chaining_engine.py --findings FILE` | Discover attack chains |
 | `./scripts/argus gate --stage pr` | Apply policy gate |
 | `./scripts/argus feedback record` | Mark findings as TP/FP |
 | `./scripts/argus dashboard` | Launch observability dashboard |
@@ -273,19 +390,63 @@ export OLLAMA_ENDPOINT="http://localhost:11434"  # Ollama (free)
 - uses: devatsecure/Argus-Security@v1
         with:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
-    
+
     # Multi-Agent Features
     enable-multi-agent: 'true'
     enable-spontaneous-discovery: 'true'
     enable-collaborative-reasoning: 'false'
-    
+
+    # Phase 2.7: Deep Analysis (NEW)
+    deep-analysis-mode: 'conservative'  # off, semantic-only, conservative, full
+    max-files-deep-analysis: '50'
+    deep-analysis-cost-ceiling: '5.0'
+    deep-analysis-timeout: '300'
+    benchmark: 'true'
+
     # Core Features
           enable-threat-intel: 'true'
           enable-remediation: 'true'
-    
+
     # Optional
     fail-on-blockers: 'true'
     only-changed: 'true'
+```
+
+#### Phase 2.7 Deep Analysis Examples
+
+**Basic with Phase 2.7:**
+```yaml
+- uses: devatsecure/Argus-Security@main
+  with:
+    anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+    review-type: security
+    deep-analysis-mode: conservative
+    benchmark: true
+```
+
+**Semantic Analysis Only:**
+```yaml
+- uses: devatsecure/Argus-Security@main
+  with:
+    anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+    review-type: security
+    deep-analysis-mode: semantic-only
+    max-files-deep-analysis: 100
+    deep-analysis-cost-ceiling: 3.0
+    deep-analysis-timeout: 180
+```
+
+**Full Deep Analysis:**
+```yaml
+- uses: devatsecure/Argus-Security@main
+  with:
+    anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+    review-type: security
+    deep-analysis-mode: full
+    max-files-deep-analysis: 200
+    deep-analysis-cost-ceiling: 10.0
+    deep-analysis-timeout: 600
+    benchmark: true
 ```
 
 ---
@@ -319,6 +480,10 @@ export OLLAMA_ENDPOINT="http://localhost:11434"  # Ollama (free)
 | [docs/QUICKSTART.md](docs/QUICKSTART.md) | 5-minute guide |
 | [docs/MULTI_AGENT_GUIDE.md](docs/MULTI_AGENT_GUIDE.md) | Multi-agent details |
 | [docs/enhanced-fp-detection.md](docs/enhanced-fp-detection.md) | Enhanced false positive detection |
+| [docs/deep-analysis-migration.md](docs/deep-analysis-migration.md) | Phase 2.7 Deep Analysis rollout guide |
+| [DEEP_ANALYSIS_EXAMPLES.md](DEEP_ANALYSIS_EXAMPLES.md) | Phase 2.7 usage examples |
+| [DAST_MVP_DELIVERY_SUMMARY.md](DAST_MVP_DELIVERY_SUMMARY.md) | DAST integration guide |
+| [CHAINING_QUICKSTART.md](CHAINING_QUICKSTART.md) | Vulnerability chaining guide |
 | [docs/DOCKER_TESTING_GUIDE.md](docs/DOCKER_TESTING_GUIDE.md) | Docker deployment |
 | [docs/FAQ.md](docs/FAQ.md) | Common questions |
 
