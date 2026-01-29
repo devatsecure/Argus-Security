@@ -25,17 +25,8 @@ from typing import Any, Optional
 from verdict_taxonomy import VerdictType, VerdictClassifier, VerdictMetadata
 
 # Import enhanced FP detector and suppression policy
-try:
-    from enhanced_fp_detector import EnhancedFalsePositiveDetector
-    ENHANCED_FP_AVAILABLE = True
-except ImportError:
-    ENHANCED_FP_AVAILABLE = False
-
-try:
-    from suppression_policy import SuppressionPolicy
-    SUPPRESSION_POLICY_AVAILABLE = True
-except ImportError:
-    SUPPRESSION_POLICY_AVAILABLE = False
+from enhanced_fp_detector import EnhancedFalsePositiveDetector
+from suppression_policy import SuppressionPolicy
 
 logger = logging.getLogger(__name__)
 
@@ -145,13 +136,14 @@ Your Expertise: {", ".join(self.expertise)}
 """
         return context
 
-    def _parse_llm_response(self, response: str, agent_name: str) -> AgentAnalysis:
+    def _parse_llm_response(self, response: str, agent_name: str, finding: dict[str, Any] = None) -> AgentAnalysis:
         """
         Parse LLM response into structured AgentAnalysis with new verdict taxonomy
 
         Args:
             response: Raw LLM response text
             agent_name: Name of the agent
+            finding: Finding dictionary to extract severity (optional, defaults to "medium")
 
         Returns:
             Structured AgentAnalysis
@@ -180,9 +172,9 @@ Your Expertise: {", ".join(self.expertise)}
         elif "verdict: needs review" in response.lower() or "needs_review" in response.lower():
             verdict_str = "needs_review"
 
-        # Classify using new taxonomy
+        # Classify using new taxonomy with ACTUAL severity from finding
         analysis_complete = "analysis incomplete" not in response.lower()
-        severity = "medium"  # Default, should be extracted from finding if available
+        severity = finding.get("severity", "medium") if finding else "medium"
 
         verdict_type = VerdictClassifier.classify_verdict(
             confidence, analysis_complete, severity
@@ -360,8 +352,16 @@ Analysis Guidelines:
 
 Provide your analysis in this format:
 
-Verdict: [confirmed/false_positive/needs_review]
+Verdict: [confirmed/likely_true/uncertain/likely_fp/false_positive/needs_review]
 Confidence: [0.0-1.0]
+
+Verdict Guidelines:
+- confirmed (0.9-1.0): Definite vulnerability
+- likely_true (0.7-0.9): Probably vulnerable
+- uncertain (0.4-0.7): Need more information
+- likely_fp (0.2-0.4): Probably false positive
+- false_positive (0.0-0.2): Definitely not vulnerable
+- needs_review: Analysis inconclusive
 
 Reasoning:
 [Explain your assessment focusing on secret-specific indicators]
@@ -381,7 +381,7 @@ Recommendations:
 """
 
         response = self._call_llm(prompt, max_tokens=800)
-        analysis = self._parse_llm_response(response, self.name)
+        analysis = self._parse_llm_response(response, self.name, finding)
 
         # Additional secret-specific heuristics
         evidence = finding.get("evidence", {})
@@ -468,8 +468,16 @@ Analysis Guidelines:
 
 Provide your analysis in this format:
 
-Verdict: [confirmed/false_positive/needs_review]
+Verdict: [confirmed/likely_true/uncertain/likely_fp/false_positive/needs_review]
 Confidence: [0.0-1.0]
+
+Verdict Guidelines:
+- confirmed (0.9-1.0): Definite vulnerability
+- likely_true (0.7-0.9): Probably vulnerable
+- uncertain (0.4-0.7): Need more information
+- likely_fp (0.2-0.4): Probably false positive
+- false_positive (0.0-0.2): Definitely not vulnerable
+- needs_review: Analysis inconclusive
 
 Reasoning:
 [Explain the architectural security implications]
@@ -488,7 +496,7 @@ Recommendations:
 """
 
         response = self._call_llm(prompt, max_tokens=800)
-        analysis = self._parse_llm_response(response, self.name)
+        analysis = self._parse_llm_response(response, self.name, finding)
 
         return analysis
 
@@ -549,9 +557,17 @@ Analysis Guidelines:
 
 Provide your analysis in this format:
 
-Verdict: [confirmed/false_positive/needs_review]
+Verdict: [confirmed/likely_true/uncertain/likely_fp/false_positive/needs_review]
 Confidence: [0.0-1.0]
 Exploitability: [trivial/moderate/complex/theoretical]
+
+Verdict Guidelines:
+- confirmed (0.9-1.0): Definite vulnerability
+- likely_true (0.7-0.9): Probably vulnerable
+- uncertain (0.4-0.7): Need more information
+- likely_fp (0.2-0.4): Probably false positive
+- false_positive (0.0-0.2): Definitely not vulnerable
+- needs_review: Analysis inconclusive
 
 Reasoning:
 [Explain the exploitability assessment with specific attack scenarios]
@@ -570,7 +586,7 @@ Recommendations:
 """
 
         response = self._call_llm(prompt, max_tokens=800)
-        analysis = self._parse_llm_response(response, self.name)
+        analysis = self._parse_llm_response(response, self.name, finding)
 
         # Extract exploitability score
         exploit_match = re.search(
@@ -615,10 +631,9 @@ class FalsePositiveFilter(BaseAgentPersona):
             "safe wrappers",
             "dev_only_configs",  # Added
         ]
-        # Initialize enhanced detector if available
-        self.enhanced_detector = EnhancedFalsePositiveDetector() if ENHANCED_FP_AVAILABLE else None
-        # Initialize suppression policy
-        self.suppression_policy = SuppressionPolicy() if SUPPRESSION_POLICY_AVAILABLE else None
+        # Initialize enhanced detector and suppression policy
+        self.enhanced_detector = EnhancedFalsePositiveDetector()
+        self.suppression_policy = SuppressionPolicy()
 
     def analyze(self, finding: dict[str, Any]) -> AgentAnalysis:
         """
@@ -632,44 +647,43 @@ class FalsePositiveFilter(BaseAgentPersona):
         """
         logger.debug(f"{self.name}: Analyzing finding {finding.get('id', 'unknown')}")
 
-        # First try enhanced detector if available
-        if self.enhanced_detector:
-            enhanced_result = self.enhanced_detector.analyze(finding)
-            if enhanced_result:
-                logger.debug(f"Enhanced FP detector result: {enhanced_result.category}, FP={enhanced_result.is_false_positive}, confidence={enhanced_result.confidence}")
+        # First try enhanced detector
+        enhanced_result = self.enhanced_detector.analyze(finding)
+        if enhanced_result:
+            logger.debug(f"Enhanced FP detector result: {enhanced_result.category}, FP={enhanced_result.is_false_positive}, confidence={enhanced_result.confidence}")
 
-                # Evaluate suppression policy if available
-                if self.suppression_policy and enhanced_result.is_false_positive:
-                    suppression_decision = self.suppression_policy.evaluate_suppression(
-                        enhanced_result, finding
-                    )
+            # Evaluate suppression policy
+            if enhanced_result.is_false_positive:
+                suppression_decision = self.suppression_policy.evaluate_suppression(
+                    enhanced_result, finding
+                )
 
-                    if suppression_decision.can_suppress:
-                        logger.info(f"✅ Suppression approved: {suppression_decision.reasoning}")
-                        return AgentAnalysis(
-                            agent_name=self.name,
-                            confidence=enhanced_result.confidence,
-                            verdict="false_positive",
-                            reasoning=enhanced_result.reasoning,
-                            evidence=enhanced_result.evidence + [
-                                f"Policy: {suppression_decision.reasoning}"
-                            ],
-                            recommendations=["No action needed - false positive"],
-                        )
-                    else:
-                        logger.warning(f"⚠️ Suppression denied: {suppression_decision.reasoning}")
-                        # Fall through to LLM analysis
-
-                # Fallback: If no policy available, use old confidence-only check
-                elif enhanced_result.confidence > 0.7:
+                if suppression_decision.can_suppress:
+                    logger.info(f"✅ Suppression approved: {suppression_decision.reasoning}")
                     return AgentAnalysis(
                         agent_name=self.name,
                         confidence=enhanced_result.confidence,
-                        verdict="false_positive" if enhanced_result.is_false_positive else "confirmed",
+                        verdict="false_positive",
                         reasoning=enhanced_result.reasoning,
-                        evidence=enhanced_result.evidence,
-                        recommendations=["No action needed - false positive" if enhanced_result.is_false_positive else "Address security issue"],
+                        evidence=enhanced_result.evidence + [
+                            f"Policy: {suppression_decision.reasoning}"
+                        ],
+                        recommendations=["No action needed - false positive"],
                     )
+                else:
+                    logger.warning(f"⚠️ Suppression denied: {suppression_decision.reasoning}")
+                    # Fall through to LLM analysis
+
+            # Fallback: Use confidence-only check if suppression not evaluated
+            elif enhanced_result.confidence > 0.7:
+                return AgentAnalysis(
+                    agent_name=self.name,
+                    confidence=enhanced_result.confidence,
+                    verdict="false_positive" if enhanced_result.is_false_positive else "confirmed",
+                    reasoning=enhanced_result.reasoning,
+                    evidence=enhanced_result.evidence,
+                    recommendations=["No action needed - false positive" if enhanced_result.is_false_positive else "Address security issue"],
+                )
 
         base_context = self._build_base_prompt(finding)
 
@@ -714,8 +728,16 @@ Common False Positive Patterns:
 
 Provide your analysis in this format:
 
-Verdict: [confirmed/false_positive/needs_review]
+Verdict: [confirmed/likely_true/uncertain/likely_fp/false_positive/needs_review]
 Confidence: [0.0-1.0]
+
+Verdict Guidelines:
+- confirmed (0.9-1.0): Definite vulnerability
+- likely_true (0.7-0.9): Probably vulnerable
+- uncertain (0.4-0.7): Need more information
+- likely_fp (0.2-0.4): Probably false positive
+- false_positive (0.0-0.2): Definitely not vulnerable
+- needs_review: Analysis inconclusive
 
 Reasoning:
 [Explain why this is or isn't a false positive]
@@ -730,7 +752,7 @@ Recommendations:
 """
 
         response = self._call_llm(prompt, max_tokens=800)
-        analysis = self._parse_llm_response(response, self.name)
+        analysis = self._parse_llm_response(response, self.name, finding)
 
         # Apply heuristic rules for common FP patterns
         fp_indicators = {
@@ -829,9 +851,17 @@ Analysis Guidelines:
 
 Provide your analysis in this format:
 
-Verdict: [confirmed/false_positive/needs_review]
+Verdict: [confirmed/likely_true/uncertain/likely_fp/false_positive/needs_review]
 Confidence: [0.0-1.0]
 STRIDE Categories: [e.g., "Information Disclosure, Elevation of Privilege"]
+
+Verdict Guidelines:
+- confirmed (0.9-1.0): Definite vulnerability
+- likely_true (0.7-0.9): Probably vulnerable
+- uncertain (0.4-0.7): Need more information
+- likely_fp (0.2-0.4): Probably false positive
+- false_positive (0.0-0.2): Definitely not vulnerable
+- needs_review: Analysis inconclusive
 
 Reasoning:
 [Explain the threat modeling analysis]
@@ -850,7 +880,7 @@ Recommendations:
 """
 
         response = self._call_llm(prompt, max_tokens=1000)
-        analysis = self._parse_llm_response(response, self.name)
+        analysis = self._parse_llm_response(response, self.name, finding)
 
         # Extract attack scenarios
         scenario_section = re.search(

@@ -46,12 +46,7 @@ except ImportError:
         logger.warning("No threat modeling available (install pytm: pip install pytm)")
 
 # Import AST deduplicator for enhanced consensus grouping
-try:
-    from ast_deduplicator import ASTDeduplicator
-    AST_DEDUP_AVAILABLE = True
-except ImportError:
-    AST_DEDUP_AVAILABLE = False
-    logger.warning("AST deduplicator not available - falling back to line bucket grouping")
+from ast_deduplicator import ASTDeduplicator
 
 # Import sandbox validator
 try:
@@ -407,13 +402,9 @@ class ConsensusBuilder:
         self.agents = agents
         self.total_agents = len(agents)
 
-        # Initialize AST deduplicator if available
-        if AST_DEDUP_AVAILABLE:
-            self.deduplicator = ASTDeduplicator()
-            logger.info("ConsensusBuilder: Using AST-based deduplication for enhanced accuracy")
-        else:
-            self.deduplicator = None
-            logger.info("ConsensusBuilder: Using legacy line bucket deduplication")
+        # Initialize AST deduplicator
+        self.deduplicator = ASTDeduplicator()
+        logger.info("ConsensusBuilder: Using AST-based deduplication for enhanced accuracy")
 
     def aggregate_findings(self, agent_findings: dict) -> list:
         """Aggregate findings from multiple agents with enhanced AST-based consensus scoring
@@ -434,16 +425,8 @@ class ConsensusBuilder:
         for agent_name, findings in agent_findings.items():
             for finding in findings:
                 # Create enhanced deduplication key using AST context
-                if self.deduplicator:
-                    # AST-based: Use function/class boundaries
-                    key = self.deduplicator.create_dedup_key(finding)
-                else:
-                    # Legacy fallback: Use line buckets
-                    file_path = finding.get("file_path", "unknown")
-                    line = finding.get("line_number", 0)
-                    issue_type = finding.get("rule_id", "unknown")
-                    line_bucket = (line // 10) * 10
-                    key = f"{file_path}:{issue_type}:L{line_bucket}"
+                # AST-based: Use function/class boundaries
+                key = self.deduplicator.create_dedup_key(finding)
 
                 if key not in grouped:
                     grouped[key] = {"agents": [], "findings": [], "votes": 0}

@@ -85,16 +85,17 @@ class SuppressionPolicy:
                 f"{self.MIN_CONFIDENCE_AUTO_SUPPRESS}"
             )
 
-        # Check evidence count
-        evidence_count = len(analysis.evidence)
+        # Check evidence count (excluding metadata)
+        real_evidence = [e for e in analysis.evidence if not e.startswith("[METADATA]")]
+        evidence_count = len(real_evidence)
         if evidence_count < self.MIN_EVIDENCE_AUTO_SUPPRESS:
             violations.append(
                 f"Evidence count {evidence_count} below minimum "
                 f"{self.MIN_EVIDENCE_AUTO_SUPPRESS}"
             )
 
-        # Calculate evidence quality score
-        quality_score = self._calculate_evidence_quality(analysis.evidence)
+        # Calculate evidence quality score (excluding metadata)
+        quality_score = self._calculate_evidence_quality(real_evidence)
         if quality_score < self.MIN_EVIDENCE_QUALITY_SCORE:
             violations.append(
                 f"Evidence quality score {quality_score:.1f} below minimum "

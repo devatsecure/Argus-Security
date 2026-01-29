@@ -762,11 +762,20 @@ class EnhancedFalsePositiveDetector:
         # Adjust result confidence based on routing confidence
         if result:
             original_confidence = result.confidence
-            result.confidence *= routing.confidence
+
+            # Blended approach - routing has reduced impact (70/30 split)
+            # This prevents strong analyzer signals from being overly weakened by uncertain routing
+            result.confidence = (0.7 * result.confidence) + (0.3 * routing.confidence)
+
+            # Apply minimum confidence floor to prevent over-reduction
+            # Don't reduce analyzer confidence below 70% of original
+            min_confidence = original_confidence * 0.7
+            result.confidence = max(result.confidence, min_confidence)
+
             result.evidence.insert(
                 0,
-                f"Routing confidence: {routing.confidence:.2f} "
-                f"(adjusted from {original_confidence:.2f} to {result.confidence:.2f})"
+                f"[METADATA] Routing confidence: {routing.confidence:.2f} "
+                f"(blended from {original_confidence:.2f} to {result.confidence:.2f} with 70/30 weighting and floor)"
             )
             logger.debug(
                 f"Analysis complete: is_fp={result.is_false_positive}, "

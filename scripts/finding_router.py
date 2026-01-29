@@ -46,8 +46,8 @@ class FindingRouter:
                 'weight': 1.0
             },
             FindingType.FILE_PERMISSION: {
-                'required_terms': ['permission'],  # Only require 'permission' to be more flexible
-                'supporting_terms': ['file', 'chmod', 'access', 'read', 'write', 'plaintext', 'storage', 'mode', 'readable', 'writable'],
+                'required_terms': [['permission', 'storage', 'access', 'readable', 'writable']],  # Any one of these terms
+                'supporting_terms': ['file', 'chmod', 'read', 'write', 'plaintext', 'mode'],
                 'excluded_terms': ['oauth', 'client_id'],
                 'weight': 1.0
             },
@@ -59,8 +59,8 @@ class FindingRouter:
                 'min_support_terms': 2  # Require at least 2 supporting terms
             },
             FindingType.LOCKING_MECHANISM: {
-                'required_terms': ['lock'],
-                'supporting_terms': ['mutex', 'synchron', 'race', 'thread', 'deadlock', 'concurrent'],
+                'required_terms': [['lock', 'race', 'mutex', 'deadlock', 'concurrent']],  # Any one of these terms
+                'supporting_terms': ['synchron', 'thread', 'semaphore', 'condition'],
                 'excluded_terms': ['unlock', 'key'],
                 'weight': 1.0
             },
@@ -138,13 +138,24 @@ class FindingRouter:
         """
         confidence = 0.0
 
-        # Check required terms (all must be present)
+        # Check required terms
         required_terms = rules.get('required_terms', [])
         if required_terms:
-            required_matches = sum(1 for term in required_terms if term in text)
-            if required_matches < len(required_terms):
-                return 0.0  # Hard requirement not met
-            confidence += 0.5
+            # Check if required_terms is a list of alternatives (list of lists)
+            # Format: [['term1', 'term2', 'term3']] means ANY one of these terms
+            if required_terms and isinstance(required_terms[0], list):
+                # Alternative terms: at least one term from the inner list must match
+                alternatives = required_terms[0]
+                has_match = any(term in text for term in alternatives)
+                if not has_match:
+                    return 0.0  # Hard requirement not met
+                confidence += 0.5
+            else:
+                # Traditional format: all terms must be present
+                required_matches = sum(1 for term in required_terms if term in text)
+                if required_matches < len(required_terms):
+                    return 0.0  # Hard requirement not met
+                confidence += 0.5
         else:
             # No required terms, start with a base confidence
             confidence = 0.2
@@ -239,7 +250,14 @@ class FindingRouter:
             confidence = self._calculate_routing_confidence(combined_text, rules)
 
             # Calculate detailed breakdown
-            required = [term for term in rules.get('required_terms', []) if term in combined_text]
+            required_terms = rules.get('required_terms', [])
+            if required_terms and isinstance(required_terms[0], list):
+                # Alternative terms format - flatten and check
+                required = [term for term in required_terms[0] if term in combined_text]
+            else:
+                # Traditional format
+                required = [term for term in required_terms if term in combined_text]
+
             supporting = [term for term in rules.get('supporting_terms', []) if term in combined_text]
             excluded = [term for term in rules.get('excluded_terms', []) if term in combined_text]
 
