@@ -2066,6 +2066,31 @@ Respond with JSON only:"""
             json.dump(asdict(result), f, indent=2, default=str)
         logger.info(f"💾 JSON results: {json_file}")
 
+        # QUALITY VALIDATION: Prevent pi-mono disaster incidents
+        # Validate report quality before any external submission
+        logger.info("🔍 Running report quality validation...")
+        try:
+            from report_quality_validator import ReportQualityValidator
+
+            validator = ReportQualityValidator()
+            validation_report = validator.validate_report_file(json_file)
+
+            # Save validation report
+            validation_output = output_path / f"quality-report-{timestamp}.json"
+            validator.save_validation_report(validation_report, validation_output)
+
+            # Print validation summary
+            if not validation_report.overall_passed:
+                logger.warning(f"⚠️  QUALITY CHECK FAILED: {validation_report.failed_findings}/{validation_report.total_findings} findings below quality threshold")
+                logger.warning(f"⚠️  See {validation_output} for details")
+                logger.warning("⚠️  DO NOT submit this report to external repositories without fixing quality issues!")
+            else:
+                logger.info(f"✅ Quality validation PASSED: All {validation_report.passed_findings} findings meet quality standards")
+        except ImportError:
+            logger.warning("⚠️  report_quality_validator not available - skipping quality check")
+        except Exception as e:
+            logger.warning(f"⚠️  Quality validation failed: {e}")
+
         # Save SARIF
         sarif_file = output_path / f"hybrid-scan-{timestamp}.sarif"
         sarif_data = self._convert_to_sarif(result)

@@ -1,0 +1,222 @@
+name: Argus Phase 2.7 Deep Analysis
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main]
+  schedule:
+    # Run weekly deep analysis on Sundays at 2 AM UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+    inputs:
+      analysis-mode:
+        description: 'Deep analysis mode'
+        required: true
+        type: choice
+        options:
+          - semantic-only
+          - conservative
+          - full
+        default: 'conservative'
+      max-files:
+        description: 'Maximum files to analyze'
+        required: false
+        default: '50'
+      cost-ceiling:
+        description: 'Cost ceiling in USD'
+        required: false
+        default: '5.0'
+
+jobs:
+  # Quick semantic analysis for PRs
+  pr-semantic-analysis:
+    name: PR Semantic Analysis
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Semantic Analysis
+        uses: devatsecure/Argus-Security@main
+        with:
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          review-type: security
+          deep-analysis-mode: semantic-only
+          max-files-deep-analysis: 100
+          deep-analysis-cost-ceiling: 2.0
+          deep-analysis-timeout: 180
+          only-changed: true
+          benchmark: true
+          fail-on-blockers: true
+          comment-on-pr: true
+
+  # Conservative analysis for main branch
+  main-conservative-analysis:
+    name: Main Branch Conservative Analysis
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Conservative Analysis
+        uses: devatsecure/Argus-Security@main
+        with:
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          review-type: security
+          deep-analysis-mode: conservative
+          max-files-deep-analysis: 50
+          deep-analysis-cost-ceiling: 5.0
+          deep-analysis-timeout: 300
+          benchmark: true
+          fail-on-blockers: false
+          upload-reports: true
+
+      - name: Upload Deep Analysis Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase-27-conservative-report
+          path: .argus/reviews/
+          retention-days: 90
+
+  # Full deep analysis weekly
+  weekly-full-analysis:
+    name: Weekly Full Deep Analysis
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Full Deep Analysis
+        uses: devatsecure/Argus-Security@main
+        with:
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          review-type: security
+          deep-analysis-mode: full
+          max-files-deep-analysis: 200
+          deep-analysis-cost-ceiling: 15.0
+          deep-analysis-timeout: 900
+          benchmark: true
+          fail-on-blockers: false
+          upload-reports: true
+          # Enable all advanced features for weekly comprehensive scan
+          enable-multi-agent: true
+          enable-spontaneous-discovery: true
+          enable-exploit-analysis: true
+          enable-threat-intel: true
+          enable-remediation: true
+
+      - name: Upload Full Analysis Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase-27-full-weekly-report-${{ github.run_number }}
+          path: .argus/reviews/
+          retention-days: 365
+
+      - name: Create Issue for Critical Findings
+        if: steps.code-review.outputs.blockers > 0
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            // Read the report
+            const reportPath = '.argus/reviews/security-report.md';
+            let reportContent = '';
+
+            if (fs.existsSync(reportPath)) {
+              reportContent = fs.readFileSync(reportPath, 'utf8');
+            }
+
+            // Create issue
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Weekly Security Analysis: ${context.payload.repository.updated_at} Critical Findings Found`,
+              body: `## Weekly Full Deep Analysis Results\n\n**Date:** ${new Date().toISOString()}\n**Blockers Found:** ${context.payload.blockers || 0}\n\n### Report\n\n${reportContent}\n\n---\n\n**Run:** ${context.payload.repository.html_url}/actions/runs/${context.runId}`,
+              labels: ['security', 'weekly-scan', 'automated']
+            });
+
+  # Manual on-demand analysis
+  manual-analysis:
+    name: Manual Deep Analysis
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Manual Analysis
+        uses: devatsecure/Argus-Security@main
+        with:
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          review-type: security
+          deep-analysis-mode: ${{ github.event.inputs.analysis-mode || 'conservative' }}
+          max-files-deep-analysis: ${{ github.event.inputs.max-files || '50' }}
+          deep-analysis-cost-ceiling: ${{ github.event.inputs.cost-ceiling || '5.0' }}
+          deep-analysis-timeout: 600
+          benchmark: true
+          fail-on-blockers: false
+          upload-reports: true
+
+      - name: Upload Manual Analysis Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: phase-27-manual-analysis-${{ github.run_number }}
+          path: .argus/reviews/
+          retention-days: 90
+
+  # Benchmark comparison job
+  benchmark-comparison:
+    name: Phase 2.7 Benchmark Comparison
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run with Phase 2.7 OFF (Baseline)
+        uses: devatsecure/Argus-Security@main
+        with:
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          review-type: security
+          deep-analysis-mode: off
+          benchmark: true
+
+      - name: Rename baseline reports
+        run: |
+          mkdir -p benchmarks/baseline
+          cp -r .argus/reviews/* benchmarks/baseline/
+
+      - name: Run with Phase 2.7 Conservative
+        uses: devatsecure/Argus-Security@main
+        with:
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          review-type: security
+          deep-analysis-mode: conservative
+          max-files-deep-analysis: 50
+          deep-analysis-cost-ceiling: 5.0
+          benchmark: true
+
+      - name: Rename conservative reports
+        run: |
+          mkdir -p benchmarks/conservative
+          cp -r .argus/reviews/* benchmarks/conservative/
+
+      - name: Upload Benchmark Comparison
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-27-benchmark-comparison-${{ github.run_number }}
+          path: benchmarks/
+          retention-days: 90

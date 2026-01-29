@@ -8,12 +8,18 @@ Adds intelligent detection for:
 4. Different locking mechanisms (mutex vs file-based)
 """
 
+import logging
 import os
 import re
 import stat
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
+
+from finding_router import FindingRouter, RoutingDecision
+from file_metadata_validator import FileMetadataValidator, MetadataValidationResult
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -31,6 +37,12 @@ class EnhancedFalsePositiveDetector:
 
     def __init__(self):
         """Initialize detector with common patterns"""
+        # Initialize intelligent router
+        self.router = FindingRouter()
+
+        # Initialize metadata validator for file permission checks
+        self.metadata_validator = FileMetadataValidator()
+
         # OAuth2 public client patterns (no secret needed)
         self.oauth2_public_patterns = [
             r"client_id\s*[:=]\s*['\"][\w-]+['\"]",  # Public client ID
@@ -58,7 +70,10 @@ class EnhancedFalsePositiveDetector:
             r"--debug|--verbose",  # CLI debug flags
             r"console\.(log|debug|trace)",  # Debug logging
             r"#\s*(TODO|FIXME|HACK|XXX)",  # Development comments
-            r"mock_|fake_|dummy_|test_",  # Test prefixes
+            r"mock_|fake_|dummy_|test_|debug_",  # Test/debug prefixes
+            r"#.*[Ee]xample|#.*[Dd]emo|#.*[Dd]ocumentation|#.*DO NOT USE",  # Example/demo comments
+            r"//.*[Ee]xample|//.*[Dd]emo|//.*[Dd]ocumentation|//.*DO NOT USE",  # Example/demo comments
+            r"#.*[Dd]ebug|//.*[Dd]ebug|#.*local testing|//.*local testing",  # Debug comments
         ]
 
         # Locking mechanism patterns
@@ -164,6 +179,7 @@ class EnhancedFalsePositiveDetector:
     def analyze_file_permissions(self, finding: dict[str, Any]) -> EnhancedFPAnalysis:
         """
         Validate file permissions before flagging plaintext storage
+        Now with metadata fallback when file not accessible
 
         Args:
             finding: Security finding dictionary
@@ -178,7 +194,7 @@ class EnhancedFalsePositiveDetector:
         is_false_positive = False
         confidence = 0.0
 
-        # Check if file exists and get permissions
+        # Try direct file check first
         if file_path and os.path.exists(file_path):
             try:
                 file_stat = os.stat(file_path)
@@ -214,22 +230,21 @@ class EnhancedFalsePositiveDetector:
             except (OSError, IOError) as e:
                 evidence.append(f"Could not check file permissions: {str(e)}")
 
-        # Check file location patterns
-        secure_locations = [
-            r"/etc/[^/]+\.conf$",  # System config files (often have proper perms)
-            r"\.ssh/",  # SSH directory (should be 700)
-            r"/root/",  # Root directory (restricted)
-            r"/var/lib/[^/]+/",  # System service dirs
-            r"\.gnupg/",  # GPG directory (should be 700)
-        ]
+            # Check file location patterns
+            secure_locations = [
+                r"/etc/[^/]+\.conf$",  # System config files (often have proper perms)
+                r"\.ssh/",  # SSH directory (should be 700)
+                r"/root/",  # Root directory (restricted)
+                r"/var/lib/[^/]+/",  # System service dirs
+                r"\.gnupg/",  # GPG directory (should be 700)
+            ]
 
-        for pattern in secure_locations:
-            if re.search(pattern, file_path):
-                evidence.append(f"File in typically secure location: {pattern}")
-                confidence += 0.2
+            for pattern in secure_locations:
+                if re.search(pattern, file_path):
+                    evidence.append(f"File in typically secure location: {pattern}")
+                    confidence += 0.2
 
-        # Check if it's a socket or pipe (not regular file)
-        if file_path and os.path.exists(file_path):
+            # Check if it's a socket or pipe (not regular file)
             if stat.S_ISSOCK(file_stat.st_mode):
                 evidence.append("This is a socket, not a regular file")
                 is_false_positive = True
@@ -239,46 +254,64 @@ class EnhancedFalsePositiveDetector:
                 is_false_positive = True
                 confidence = 0.9
 
-        reasoning = (
-            "File has proper restrictive permissions preventing unauthorized access."
-            if is_false_positive else
-            "File permissions allow unauthorized access to sensitive data."
-        )
+            reasoning = (
+                "File has proper restrictive permissions preventing unauthorized access."
+                if is_false_positive else
+                "File permissions allow unauthorized access to sensitive data."
+            )
+
+            return EnhancedFPAnalysis(
+                is_false_positive=is_false_positive,
+                confidence=confidence,
+                category="file_permissions",
+                reasoning=reasoning,
+                evidence=evidence if evidence else ["Could not validate file permissions"]
+            )
+
+        # Fallback: metadata-driven validation
+        logger.debug(f"File not accessible: {file_path}, trying metadata validation")
+        metadata_result = self.metadata_validator.validate_from_metadata(file_path)
+
+        if metadata_result.has_metadata:
+            evidence.extend(metadata_result.permission_indicators)
+            confidence = metadata_result.confidence
+
+            # Determine if false positive based on metadata
+            if confidence >= 0.5:
+                is_false_positive = True
+                reasoning = f"Metadata suggests proper security controls: {metadata_result.reasoning}"
+            else:
+                is_false_positive = False
+                reasoning = f"Insufficient metadata evidence: {metadata_result.reasoning}"
+
+            evidence.append(f"Sources checked: {', '.join(metadata_result.sources)}")
+            evidence.append(f"Metadata confidence: {confidence:.2f} (lower than direct check)")
+        else:
+            # No metadata available
+            evidence.append("File not accessible and no metadata available")
+            confidence = 0.0
+            reasoning = "Cannot validate permissions - file not accessible, no metadata found"
 
         return EnhancedFPAnalysis(
             is_false_positive=is_false_positive,
             confidence=confidence,
-            category="file_permissions",
+            category="file_permissions_metadata",
             reasoning=reasoning,
-            evidence=evidence if evidence else ["Could not validate file permissions"]
+            evidence=evidence
         )
 
-    def analyze_dev_config_flag(self, finding: dict[str, Any]) -> EnhancedFPAnalysis:
+    def _check_dev_path_signals(self, file_path: str) -> list[str]:
         """
-        Distinguish dev-only config flags from production code
+        Check for development-related path signals
 
         Args:
-            finding: Security finding dictionary
+            file_path: Path to the file
 
         Returns:
-            EnhancedFPAnalysis with dev config assessment
+            List of path-based evidence indicators
         """
-        code_snippet = finding.get("evidence", {}).get("snippet", "")
-        file_path = finding.get("path", finding.get("file_path", ""))
-        line_number = finding.get("line", finding.get("line_number", 0))
+        path_signals = []
 
-        evidence = []
-        is_dev_only = False
-        confidence = 0.0
-
-        # Check for dev config patterns
-        dev_indicators = []
-
-        for pattern in self.dev_config_patterns:
-            if re.search(pattern, code_snippet, re.IGNORECASE):
-                dev_indicators.append(f"Dev pattern found: {pattern[:30]}...")
-
-        # Check file path for dev indicators
         dev_path_patterns = [
             "test", "tests", "spec", "mock", "fixture", "example",
             "sample", "demo", "tutorial", "development", "dev",
@@ -287,8 +320,26 @@ class EnhancedFalsePositiveDetector:
 
         for pattern in dev_path_patterns:
             if pattern in file_path.lower():
-                dev_indicators.append(f"Dev path indicator: {pattern}")
-                confidence += 0.2
+                path_signals.append(f"Dev path pattern: {pattern}")
+
+        return path_signals
+
+    def _check_dev_code_signals(self, code_snippet: str) -> list[str]:
+        """
+        Check for development-related code signals
+
+        Args:
+            code_snippet: Code to analyze
+
+        Returns:
+            List of code-based evidence indicators
+        """
+        code_signals = []
+
+        # Check for dev config patterns in code
+        for pattern in self.dev_config_patterns:
+            if re.search(pattern, code_snippet, re.IGNORECASE):
+                code_signals.append(f"Dev code pattern: {pattern[:30]}...")
 
         # Check for environment-based conditionals
         env_conditionals = [
@@ -302,9 +353,7 @@ class EnhancedFalsePositiveDetector:
 
         for pattern in env_conditionals:
             if re.search(pattern, code_snippet, re.IGNORECASE):
-                dev_indicators.append("Code is wrapped in environment conditional")
-                confidence += 0.3
-                is_dev_only = True
+                code_signals.append(f"Environment conditional: {pattern}")
 
         # Check for build/compile time exclusion
         exclusion_patterns = [
@@ -317,36 +366,257 @@ class EnhancedFalsePositiveDetector:
 
         for pattern in exclusion_patterns:
             if re.search(pattern, code_snippet):
-                dev_indicators.append("Code has linter/coverage exclusions")
-                confidence += 0.2
+                code_signals.append("Build/test exclusion directive")
 
-        # Check for dead code indicators
+        # Check for dead/commented code
         if re.search(r"^\s*#|^\s*//|^\s*/\*", code_snippet, re.MULTILINE):
-            # Check if entire snippet is commented
-            lines = code_snippet.split('\n')
-            commented_lines = sum(1 for line in lines if re.match(r'^\s*[#/]', line))
-            if commented_lines > len(lines) * 0.8:
-                dev_indicators.append("Code appears to be mostly commented out")
-                confidence += 0.4
+            lines = [line.strip() for line in code_snippet.split('\n') if line.strip()]  # Skip empty lines
+            if len(lines) > 0:
+                commented_lines = sum(1 for line in lines if re.match(r'^[#/]', line))
+                comment_ratio = commented_lines / len(lines)
+                if comment_ratio > 0.7:  # Lower threshold from 0.8 to 0.7
+                    code_signals.append(f"Heavily commented code ({comment_ratio:.0%} commented)")
+
+        return code_signals
+
+    def _check_production_signals(self, code_snippet: str) -> list[str]:
+        """
+        Check for production code signals that should prevent suppression
+
+        Args:
+            code_snippet: Code to analyze
+
+        Returns:
+            List of production indicators
+        """
+        production_signals = []
+
+        # Database imports and connections
+        db_patterns = [
+            r"import\s+(sqlalchemy|psycopg2|pymongo|redis|mysql|mariadb)",
+            r"from\s+(sqlalchemy|psycopg2|pymongo|redis|mysql|mariadb)",
+            r"create_engine\s*\(",
+            r"\.connect\s*\([^)]*prod",
+            r"Database\s*\(",
+            r"MongoClient\s*\(",
+        ]
+
+        for pattern in db_patterns:
+            if re.search(pattern, code_snippet, re.IGNORECASE):
+                production_signals.append(f"Database access pattern: {pattern[:40]}...")
+                break  # One match is enough
+
+        # API framework patterns
+        api_patterns = [
+            r"from\s+flask\s+import\s+Flask",
+            r"from\s+fastapi\s+import\s+FastAPI",
+            r"import\s+django",
+            r"from\s+django",
+            r"@app\.(route|get|post|put|delete)",
+            r"@api\.(route|get|post)",
+            r"express\(\)",
+            r"Router\(\)",
+        ]
+
+        for pattern in api_patterns:
+            if re.search(pattern, code_snippet, re.IGNORECASE):
+                production_signals.append(f"API framework pattern: {pattern[:40]}...")
+                break
+
+        # Authentication and security (but exclude mock/test contexts)
+        auth_patterns = [
+            r"import\s+jwt",
+            r"from\s+.*\s+import\s+.*jwt",
+            r"OAuth",
+            r"passport",
+            r"\.encode\s*\([^)]*jwt",
+            r"\.decode\s*\([^)]*jwt",
+        ]
+
+        # Only check auth patterns if not in mock/test context
+        has_mock_context = bool(re.search(r"(mock|Mock|unittest|pytest|test_)", code_snippet, re.IGNORECASE))
+
+        for pattern in auth_patterns:
+            if re.search(pattern, code_snippet, re.IGNORECASE):
+                # Don't treat as production if it's mock context
+                if not has_mock_context:
+                    production_signals.append(f"Authentication pattern: {pattern[:40]}...")
+                    break
+
+        # Cloud SDK patterns
+        cloud_patterns = [
+            r"import\s+boto3",
+            r"from\s+boto3",
+            r"from\s+google\.cloud",
+            r"import\s+google\.cloud",
+            r"from\s+azure",
+            r"import\s+azure",
+            r"s3_client",
+            r"gcs_client",
+            r"\.client\s*\(\s*['\"]s3['\"]",
+        ]
+
+        for pattern in cloud_patterns:
+            if re.search(pattern, code_snippet, re.IGNORECASE):
+                production_signals.append(f"Cloud SDK pattern: {pattern[:40]}...")
+                break
+
+        # Production environment indicators
+        prod_env_patterns = [
+            r"prod[_-]db",
+            r"production[_-](db|database|server|host)",
+            r"['\"]prod['\"]",
+            r"environment\s*==?\s*['\"]production['\"]",
+            r"\.prod\.",
+        ]
+
+        for pattern in prod_env_patterns:
+            if re.search(pattern, code_snippet, re.IGNORECASE):
+                production_signals.append(f"Production environment reference: {pattern[:40]}...")
+                break
+
+        return production_signals
+
+    def analyze_dev_config_flag(self, finding: dict[str, Any]) -> EnhancedFPAnalysis:
+        """
+        Distinguish dev-only config flags from production code
+
+        CRITICAL SECURITY FIX: Never suppress based on path alone.
+        Requires minimum evidence from multiple signal types.
+
+        Evidence Policy:
+        - Path signals alone: INSUFFICIENT (prevents false suppression)
+        - Code signals alone: Requires 3+ signals for high confidence
+        - Path + code signals: Requires 1+ code signal minimum
+        - Production signals: BLOCKS all suppression
+
+        Args:
+            finding: Security finding dictionary
+
+        Returns:
+            EnhancedFPAnalysis with dev config assessment
+        """
+        code_snippet = finding.get("evidence", {}).get("snippet", "")
+        file_path = finding.get("path", finding.get("file_path", ""))
+        line_number = finding.get("line", finding.get("line_number", 0))
+
+        # Minimum evidence thresholds
+        MIN_CODE_SIGNALS_ALONE = 2  # Need strong code evidence without path (e.g., DEBUG + __main__)
+        MIN_SIGNALS_WITH_PATH = 1   # Need at least 1 code signal + path
+
+        # Collect signals from different sources
+        path_signals = self._check_dev_path_signals(file_path)
+        code_signals = self._check_dev_code_signals(code_snippet)
+        production_signals = self._check_production_signals(code_snippet)
+
+        # Combine evidence for reporting
+        all_evidence = []
+        is_dev_only = False
+        confidence = 0.0
+
+        # CRITICAL: Production signals block all suppression
+        if production_signals:
+            all_evidence.extend(production_signals)
+            all_evidence.append("PRODUCTION CODE DETECTED - suppression blocked")
+            is_dev_only = False
+            confidence = 0.0
+
+            reasoning = (
+                f"Production code detected ({len(production_signals)} production signals). "
+                "This code uses production services (databases, APIs, cloud SDKs) "
+                "and should not be suppressed regardless of file path."
+            )
+        else:
+            # Apply evidence-based policy
+            path_count = len(path_signals)
+            code_count = len(code_signals)
+
+            # Log signals for debugging
+            if path_signals:
+                all_evidence.append(f"Path signals: {path_count}")
+                all_evidence.extend(path_signals[:3])  # Limit to first 3 for readability
+
+            if code_signals:
+                all_evidence.append(f"Code signals: {code_count}")
+                all_evidence.extend(code_signals[:5])  # Limit to first 5
+
+            # Check for high-confidence single signals (100% commented, example+comments, etc.)
+            is_high_confidence_single = False
+            if code_count == 1:
+                for signal in code_signals:
+                    # 100% commented code is extremely high confidence
+                    if "100%" in signal and "commented" in signal.lower():
+                        is_high_confidence_single = True
+                        all_evidence.append("Single high-confidence signal: 100% commented code")
+                        break
+                    # Environment conditional in comments/docs with example patterns
+                    if "Environment conditional" in signal and any(pat in file_path.lower() for pat in ["example", "docs", "tutorial"]):
+                        is_high_confidence_single = True
+                        all_evidence.append("Single high-confidence signal: Environment conditional in example/docs")
+                        break
+
+            # Special case: heavily commented code (>=90%) with DEBUG flag is high confidence
+            has_heavy_comments = any("commented" in s and ("100%" in s or "90%" in s or "80%" in s) for s in code_signals)
+            has_debug_flag = any("DEBUG" in s or "Environment conditional" in s for s in code_signals)
+
+            # Decision logic with minimum evidence requirements
+            if is_high_confidence_single:
+                # Special case: single high-confidence signal
                 is_dev_only = True
+                confidence = 0.85
+                all_evidence.append("High confidence from single strong signal")
 
-        # Determine if it's dev-only
-        if len(dev_indicators) >= 2:
-            is_dev_only = True
-            confidence = min(confidence + 0.3, 0.95)
+            elif code_count >= MIN_CODE_SIGNALS_ALONE:
+                # High confidence from code alone (e.g., __main__ + DEBUG + mock_ + console.log)
+                is_dev_only = True
+                confidence = min(0.7 + (code_count * 0.05), 0.95)
+                all_evidence.append(f"High confidence: {code_count} code signals (threshold: {MIN_CODE_SIGNALS_ALONE})")
 
-        reasoning = (
-            "This is development-only code that won't run in production."
-            if is_dev_only else
-            "This code appears to be production code that needs proper security."
-        )
+            elif path_count > 0 and code_count >= MIN_SIGNALS_WITH_PATH:
+                # Medium confidence: path + code evidence
+                is_dev_only = True
+                confidence = min(0.6 + (code_count * 0.1) + (path_count * 0.05), 0.90)
+                all_evidence.append(f"Medium confidence: path signals + {code_count} code signal(s)")
+
+            elif path_count > 0 and code_count == 0:
+                # Path only - INSUFFICIENT (prevents vulnerability)
+                is_dev_only = False
+                confidence = 0.0
+                all_evidence.append(
+                    f"INSUFFICIENT EVIDENCE: {path_count} path signal(s) without code confirmation "
+                    f"(need {MIN_SIGNALS_WITH_PATH}+ code signals)"
+                )
+
+            else:
+                # No sufficient evidence
+                is_dev_only = False
+                confidence = 0.0
+                all_evidence.append("Insufficient evidence for dev-only classification")
+
+            # Build reasoning
+            if is_dev_only:
+                reasoning = (
+                    f"Development-only code detected with {confidence:.0%} confidence. "
+                    f"Evidence: {code_count} code signals"
+                )
+                if path_count > 0:
+                    reasoning += f" + {path_count} path signals"
+                reasoning += ". This code likely won't run in production."
+            else:
+                reasoning = (
+                    "Insufficient evidence for dev-only classification. "
+                    f"Found {code_count} code signals and {path_count} path signals. "
+                    f"Minimum required: {MIN_SIGNALS_WITH_PATH} code signal + path, "
+                    f"or {MIN_CODE_SIGNALS_ALONE} code signals alone. "
+                    "Treating as production code to prevent false suppression."
+                )
 
         return EnhancedFPAnalysis(
             is_false_positive=is_dev_only,
             confidence=confidence,
             category="dev_config",
             reasoning=reasoning,
-            evidence=dev_indicators if dev_indicators else ["No dev-only indicators found"]
+            evidence=all_evidence if all_evidence else ["No dev-only indicators found"]
         )
 
     def analyze_locking_mechanism(self, finding: dict[str, Any]) -> EnhancedFPAnalysis:
@@ -457,7 +727,7 @@ class EnhancedFalsePositiveDetector:
 
     def analyze(self, finding: dict[str, Any]) -> Optional[EnhancedFPAnalysis]:
         """
-        Analyze finding with all enhanced detectors
+        Analyze finding with intelligent routing
 
         Args:
             finding: Security finding dictionary
@@ -465,24 +735,45 @@ class EnhancedFalsePositiveDetector:
         Returns:
             Most relevant EnhancedFPAnalysis or None
         """
-        category = finding.get("category", "").lower()
-        message = finding.get("message", "").lower()
-        rule_id = finding.get("rule_id", "").lower()
+        # Get routing decision with confidence scoring
+        routing = self.router.route_with_confidence(finding)
 
-        # Route to appropriate analyzer based on finding type
-        if any(term in f"{category} {message} {rule_id}" for term in ["oauth", "client_id", "authorization"]):
-            return self.analyze_oauth2_public_client(finding)
+        if routing.confidence < 0.3:
+            logger.debug(f"No confident routing found: {routing.reasoning}")
+            return None
 
-        elif any(term in f"{category} {message} {rule_id}" for term in ["plaintext", "permission", "file", "storage"]):
-            return self.analyze_file_permissions(finding)
+        if not routing.analyzer_method:
+            logger.debug(f"No analyzer method available for {routing.finding_type.value}")
+            return None
 
-        elif any(term in f"{category} {message} {rule_id}" for term in ["debug", "dev", "config", "flag", "environment"]):
-            return self.analyze_dev_config_flag(finding)
+        logger.debug(
+            f"Routing to {routing.analyzer_method} "
+            f"(type: {routing.finding_type.value}, confidence: {routing.confidence:.2f})"
+        )
 
-        elif any(term in f"{category} {message} {rule_id}" for term in ["lock", "mutex", "synchron", "race", "thread"]):
-            return self.analyze_locking_mechanism(finding)
+        # Call the selected analyzer
+        analyzer_method = getattr(self, routing.analyzer_method, None)
+        if not analyzer_method:
+            logger.warning(f"Analyzer method {routing.analyzer_method} not found")
+            return None
 
-        return None
+        result = analyzer_method(finding)
+
+        # Adjust result confidence based on routing confidence
+        if result:
+            original_confidence = result.confidence
+            result.confidence *= routing.confidence
+            result.evidence.insert(
+                0,
+                f"Routing confidence: {routing.confidence:.2f} "
+                f"(adjusted from {original_confidence:.2f} to {result.confidence:.2f})"
+            )
+            logger.debug(
+                f"Analysis complete: is_fp={result.is_false_positive}, "
+                f"confidence={result.confidence:.2f}"
+            )
+
+        return result
 
 
 def integrate_with_agent_personas(finding: dict[str, Any], llm_manager) -> dict[str, Any]:

@@ -21,12 +21,21 @@ from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass, field
 from typing import Any, Optional
 
-# Import enhanced FP detector
+# Import verdict taxonomy
+from verdict_taxonomy import VerdictType, VerdictClassifier, VerdictMetadata
+
+# Import enhanced FP detector and suppression policy
 try:
     from enhanced_fp_detector import EnhancedFalsePositiveDetector
     ENHANCED_FP_AVAILABLE = True
 except ImportError:
     ENHANCED_FP_AVAILABLE = False
+
+try:
+    from suppression_policy import SuppressionPolicy
+    SUPPRESSION_POLICY_AVAILABLE = True
+except ImportError:
+    SUPPRESSION_POLICY_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +46,7 @@ class AgentAnalysis:
 
     agent_name: str
     confidence: float  # 0.0-1.0
-    verdict: str  # "confirmed", "false_positive", "needs_review"
+    verdict: str  # Now supports 6 verdicts (kept as string for backward compat)
     reasoning: str
     evidence: list[str] = field(default_factory=list)
     recommendations: list[str] = field(default_factory=list)
@@ -46,9 +55,25 @@ class AgentAnalysis:
     risk_factors: list[str] = field(default_factory=list)
     attack_scenarios: list[str] = field(default_factory=list)  # For ThreatModeler
 
+    # NEW FIELDS
+    verdict_type: Optional[VerdictType] = None  # Enum for type-safe comparison
+    verdict_metadata: Optional[VerdictMetadata] = None
+
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary"""
-        return asdict(self)
+        """Convert to dictionary with verdict metadata"""
+        result = asdict(self)
+        if self.verdict_type:
+            result['verdict_type'] = self.verdict_type.value
+            result['verdict_display_name'] = self.verdict_type.get_display_name()
+            result['verdict_priority'] = self.verdict_type.get_priority()
+        if self.verdict_metadata:
+            result['verdict_metadata'] = {
+                'confidence': self.verdict_metadata.confidence,
+                'reasoning': self.verdict_metadata.reasoning,
+                'review_reason': self.verdict_metadata.review_reason,
+                'recommended_action': self.verdict_metadata.recommended_action
+            }
+        return result
 
 
 class BaseAgentPersona(ABC):
@@ -122,7 +147,7 @@ Your Expertise: {", ".join(self.expertise)}
 
     def _parse_llm_response(self, response: str, agent_name: str) -> AgentAnalysis:
         """
-        Parse LLM response into structured AgentAnalysis
+        Parse LLM response into structured AgentAnalysis with new verdict taxonomy
 
         Args:
             response: Raw LLM response text
@@ -131,16 +156,7 @@ Your Expertise: {", ".join(self.expertise)}
         Returns:
             Structured AgentAnalysis
         """
-        # Extract verdict
-        verdict = "needs_review"  # default
-        if "verdict: confirmed" in response.lower() or "confirmed vulnerable" in response.lower():
-            verdict = "confirmed"
-        elif "verdict: false positive" in response.lower() or "verdict: false_positive" in response.lower():
-            verdict = "false_positive"
-        elif "verdict: needs review" in response.lower() or "needs_review" in response.lower():
-            verdict = "needs_review"
-
-        # Extract confidence score
+        # Extract confidence score first (needed for classification)
         confidence = 0.7  # default
         confidence_match = re.search(r"confidence:\s*(\d+(?:\.\d+)?)", response.lower())
         if confidence_match:
@@ -148,6 +164,29 @@ Your Expertise: {", ".join(self.expertise)}
             # Normalize to 0-1 range if given as percentage
             if confidence > 1.0:
                 confidence = confidence / 100.0
+
+        # Extract old-style verdict for backward compatibility
+        verdict_str = "needs_review"
+        if "verdict: confirmed" in response.lower() or "confirmed vulnerable" in response.lower():
+            verdict_str = "confirmed"
+        elif "verdict: false positive" in response.lower() or "verdict: false_positive" in response.lower():
+            verdict_str = "false_positive"
+        elif "verdict: uncertain" in response.lower():  # NEW
+            verdict_str = "uncertain"
+        elif "verdict: likely true" in response.lower() or "verdict: likely_true" in response.lower():  # NEW
+            verdict_str = "likely_true"
+        elif "verdict: likely false positive" in response.lower() or "verdict: likely_fp" in response.lower():  # NEW
+            verdict_str = "likely_fp"
+        elif "verdict: needs review" in response.lower() or "needs_review" in response.lower():
+            verdict_str = "needs_review"
+
+        # Classify using new taxonomy
+        analysis_complete = "analysis incomplete" not in response.lower()
+        severity = "medium"  # Default, should be extracted from finding if available
+
+        verdict_type = VerdictClassifier.classify_verdict(
+            confidence, analysis_complete, severity
+        )
 
         # Extract reasoning (look for reasoning section)
         reasoning = ""
@@ -166,6 +205,27 @@ Your Expertise: {", ".join(self.expertise)}
             lines = response.split("\n")
             reasoning_lines = [line.strip() for line in lines if len(line.strip()) > 50]
             reasoning = reasoning_lines[0] if reasoning_lines else response[:200]
+
+        # Create verdict metadata
+        review_reason = None
+        if verdict_type in [VerdictType.UNCERTAIN, VerdictType.NEEDS_REVIEW]:
+            # Try to extract why uncertain
+            uncertain_match = re.search(
+                r"uncertain because:?\s*(.+?)(?=\n\n|\nevidence:|\nrecommendations:|$)",
+                response,
+                re.IGNORECASE
+            )
+            if uncertain_match:
+                review_reason = uncertain_match.group(1).strip()
+            elif verdict_type == VerdictType.NEEDS_REVIEW:
+                review_reason = "Analysis incomplete or insufficient information"
+
+        verdict_metadata = VerdictMetadata(
+            confidence=confidence,
+            reasoning=reasoning,
+            review_reason=review_reason,
+            recommended_action=VerdictClassifier.get_recommended_action(verdict_type, severity)
+        )
 
         # Extract evidence (bullet points or numbered lists)
         evidence = []
@@ -208,11 +268,13 @@ Your Expertise: {", ".join(self.expertise)}
         return AgentAnalysis(
             agent_name=agent_name,
             confidence=confidence,
-            verdict=verdict,
+            verdict=verdict_str,  # Backward compatible string
             reasoning=reasoning,
             evidence=evidence,
             recommendations=recommendations,
             risk_factors=risk_factors,
+            verdict_type=verdict_type,  # NEW
+            verdict_metadata=verdict_metadata  # NEW
         )
 
     def _call_llm(self, prompt: str, max_tokens: int = 1000) -> str:
@@ -555,6 +617,8 @@ class FalsePositiveFilter(BaseAgentPersona):
         ]
         # Initialize enhanced detector if available
         self.enhanced_detector = EnhancedFalsePositiveDetector() if ENHANCED_FP_AVAILABLE else None
+        # Initialize suppression policy
+        self.suppression_policy = SuppressionPolicy() if SUPPRESSION_POLICY_AVAILABLE else None
 
     def analyze(self, finding: dict[str, Any]) -> AgentAnalysis:
         """
@@ -574,8 +638,30 @@ class FalsePositiveFilter(BaseAgentPersona):
             if enhanced_result:
                 logger.debug(f"Enhanced FP detector result: {enhanced_result.category}, FP={enhanced_result.is_false_positive}, confidence={enhanced_result.confidence}")
 
-                # If high confidence from enhanced detector, use that result
-                if enhanced_result.confidence > 0.7:
+                # Evaluate suppression policy if available
+                if self.suppression_policy and enhanced_result.is_false_positive:
+                    suppression_decision = self.suppression_policy.evaluate_suppression(
+                        enhanced_result, finding
+                    )
+
+                    if suppression_decision.can_suppress:
+                        logger.info(f"✅ Suppression approved: {suppression_decision.reasoning}")
+                        return AgentAnalysis(
+                            agent_name=self.name,
+                            confidence=enhanced_result.confidence,
+                            verdict="false_positive",
+                            reasoning=enhanced_result.reasoning,
+                            evidence=enhanced_result.evidence + [
+                                f"Policy: {suppression_decision.reasoning}"
+                            ],
+                            recommendations=["No action needed - false positive"],
+                        )
+                    else:
+                        logger.warning(f"⚠️ Suppression denied: {suppression_decision.reasoning}")
+                        # Fall through to LLM analysis
+
+                # Fallback: If no policy available, use old confidence-only check
+                elif enhanced_result.confidence > 0.7:
                     return AgentAnalysis(
                         agent_name=self.name,
                         confidence=enhanced_result.confidence,
@@ -900,7 +986,7 @@ def run_multi_agent_analysis(
 
 def build_consensus(analyses: list[AgentAnalysis]) -> dict[str, Any]:
     """
-    Build consensus from multiple agent analyses
+    Build consensus from multiple agent analyses with support for new verdict taxonomy
 
     Args:
         analyses: List of AgentAnalysis results
@@ -916,24 +1002,50 @@ def build_consensus(analyses: list[AgentAnalysis]) -> dict[str, Any]:
             "agreement_level": "none",
         }
 
-    # Count verdicts
-    verdict_counts = {"confirmed": 0, "false_positive": 0, "needs_review": 0}
+    # Count verdicts (support both old and new formats)
+    verdict_counts = {
+        "confirmed": 0,
+        "likely_true": 0,
+        "uncertain": 0,
+        "needs_review": 0,
+        "likely_fp": 0,
+        "false_positive": 0
+    }
     total_confidence = 0.0
     all_evidence = []
     all_recommendations = []
+    verdict_types = []
 
     for analysis in analyses:
-        verdict_counts[analysis.verdict] += 1
+        # Count by verdict string
+        verdict_key = analysis.verdict
+        if verdict_key in verdict_counts:
+            verdict_counts[verdict_key] += 1
+        else:
+            # Fallback for unknown verdicts
+            verdict_counts["needs_review"] += 1
+
         total_confidence += analysis.confidence
         all_evidence.extend(analysis.evidence)
         all_recommendations.extend(analysis.recommendations)
 
-    # Determine consensus verdict
-    max_count = max(verdict_counts.values())
-    consensus_verdict = [v for v, c in verdict_counts.items() if c == max_count][0]
+        # Track verdict types for priority-based consensus
+        if analysis.verdict_type:
+            verdict_types.append(analysis.verdict_type)
+
+    # Determine consensus verdict using priority-based approach
+    if verdict_types:
+        # Use the highest priority verdict (lowest priority number = highest priority)
+        consensus_verdict_type = min(verdict_types, key=lambda v: v.get_priority())
+        consensus_verdict = consensus_verdict_type.value
+    else:
+        # Fallback to simple majority
+        max_count = max(verdict_counts.values())
+        consensus_verdict = [v for v, c in verdict_counts.items() if c == max_count][0]
 
     # Calculate agreement level
-    agreement_pct = max_count / len(analyses)
+    verdict_with_max = verdict_counts[consensus_verdict]
+    agreement_pct = verdict_with_max / len(analyses)
     if agreement_pct == 1.0:
         agreement_level = "unanimous"
     elif agreement_pct >= 0.67:

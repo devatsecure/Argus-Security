@@ -1,0 +1,84 @@
+name: Argus Security Scan with Phase 2.7
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  security-scan-basic:
+    name: Basic Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Argus Security Basic Scan
+        uses: devatsecure/Argus-Security@main
+        with:
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          review-type: security
+          fail-on-blockers: true
+
+  security-scan-phase-27:
+    name: Security Scan with Phase 2.7 Deep Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Argus Security with Deep Analysis (Conservative)
+        uses: devatsecure/Argus-Security@main
+        with:
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          review-type: security
+          deep-analysis-mode: conservative
+          max-files-deep-analysis: 50
+          deep-analysis-cost-ceiling: 5.0
+          benchmark: true
+          fail-on-blockers: true
+
+  security-scan-phase-27-semantic:
+    name: Security Scan with Semantic Analysis Only
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Argus Security with Semantic Analysis
+        uses: devatsecure/Argus-Security@main
+        with:
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          review-type: security
+          deep-analysis-mode: semantic-only
+          max-files-deep-analysis: 100
+          deep-analysis-cost-ceiling: 3.0
+          deep-analysis-timeout: 180
+          benchmark: true
+
+  security-scan-phase-27-full:
+    name: Security Scan with Full Deep Analysis
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Argus Security with Full Deep Analysis
+        uses: devatsecure/Argus-Security@main
+        with:
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          review-type: security
+          deep-analysis-mode: full
+          max-files-deep-analysis: 200
+          deep-analysis-cost-ceiling: 10.0
+          deep-analysis-timeout: 600
+          benchmark: true
+          fail-on-blockers: false
+          # Full analysis may find more issues, don't fail immediately
