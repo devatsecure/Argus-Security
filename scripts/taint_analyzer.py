@@ -822,7 +822,41 @@ class TaintAnalyzer:
         Returns:
             List of TaintFlow objects
         """
-        return self.analyze_project(os.path.dirname(file_path), exclude_patterns=["**/*"])
+        # Directly analyze the single file instead of using analyze_project
+        if not os.path.exists(file_path):
+            logger.warning(f"File not found: {file_path}")
+            return []
+
+        # Reset state for fresh analysis
+        self.all_sources = []
+        self.all_sinks = []
+        self.call_graph = CallGraph()
+        self.files_analyzed = 0
+
+        # Parse the single file
+        functions, sources, sinks = self._parse_file(file_path)
+
+        if functions or sources or sinks:
+            for func in functions:
+                self.call_graph.add_function(func)
+            self.all_sources.extend(sources)
+            self.all_sinks.extend(sinks)
+
+            try:
+                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                    self.file_contents[file_path] = f.read().split("\n")
+            except Exception:
+                pass
+
+            self.files_analyzed = 1
+
+        # Find taint flows
+        flows = self._find_taint_flows()
+
+        # Filter by confidence
+        filtered_flows = [f for f in flows if f.confidence >= self.confidence_threshold]
+
+        return filtered_flows
 
     def _gather_files(
         self,
@@ -860,10 +894,12 @@ class TaintAnalyzer:
 
     def _build_call_graph(self, files: List[str]) -> None:
         """Build call graph and extract sources/sinks from all files"""
+        # Reset all state for fresh analysis
         self.call_graph = CallGraph()
         self.all_sources = []
         self.all_sinks = []
         self.file_contents = {}
+        self.files_analyzed = 0
 
         for file_path in files:
             # Find appropriate parser

@@ -557,8 +557,8 @@ class AISLEEngine:
                     flow_dict = flow.to_dict() if hasattr(flow, 'to_dict') else flow
                     source_type = flow.source.source_type if hasattr(flow, 'source') else flow_dict.get('source_type', 'unknown')
                     sink_type = flow.sink.sink_type if hasattr(flow, 'sink') else flow_dict.get('sink_type', 'unknown')
-                    sink_file = flow.sink.location.file_path if hasattr(flow, 'sink') else flow_dict.get('sink_file', 'unknown')
-                    sink_line = flow.sink.location.line_number if hasattr(flow, 'sink') else flow_dict.get('sink_line', 0)
+                    sink_file = flow.sink.location.file if hasattr(flow, 'sink') else flow_dict.get('sink_file', 'unknown')
+                    sink_line = flow.sink.location.line if hasattr(flow, 'sink') else flow_dict.get('sink_line', 0)
                     sink_code = flow.sink.location.code_snippet if hasattr(flow, 'sink') else flow_dict.get('sink_code', '')
                     confidence = flow.confidence if hasattr(flow, 'confidence') else flow_dict.get('confidence', 0.7)
 

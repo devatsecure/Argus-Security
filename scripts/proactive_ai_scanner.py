@@ -898,7 +898,6 @@ If no vulnerability is found, set vulnerability_type to "none" and confidence to
         """
         # Check for direct concatenation to SQL
         sink_code = chain.sink.code_snippet.lower()
-        source_code = chain.source.code_snippet.lower()
 
         vuln_type = None
         confidence = 0.5
@@ -906,7 +905,7 @@ If no vulnerability is found, set vulnerability_type to "none" and confidence to
 
         # SQL injection heuristics
         if any(sql in sink_code for sql in ["execute", "query", "select", "insert"]):
-            if not chain.sanitization_present and "%" in sink_code or "+" in sink_code:
+            if not chain.sanitization_present and ("%" in sink_code or "+" in sink_code):
                 vuln_type = VulnerabilityType.SQL_INJECTION
                 confidence = 0.72
                 description = (
@@ -936,12 +935,13 @@ If no vulnerability is found, set vulnerability_type to "none" and confidence to
 
         # SSRF heuristics
         if any(net in sink_code for net in ["requests.", "urllib", "http.request", "fetch"]):
-            vuln_type = VulnerabilityType.SSRF
-            confidence = 0.65
-            description = (
-                "Potential SSRF: URL may be constructed from user input, "
-                "allowing requests to internal services."
-            )
+            if not chain.validation_present:
+                vuln_type = VulnerabilityType.SSRF
+                confidence = 0.65
+                description = (
+                    "Potential SSRF: URL may be constructed from user input, "
+                    "allowing requests to internal services."
+                )
 
         if not vuln_type:
             return None

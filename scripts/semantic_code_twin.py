@@ -507,9 +507,26 @@ class SemanticCodeTwin:
         Returns:
             CodeTwin for the snippet
         """
+        # Map language to file extension for proper parser selection
+        lang_to_ext = {
+            "python": ".py",
+            "javascript": ".js",
+            "typescript": ".ts",
+            "java": ".java",
+            "go": ".go",
+            "ruby": ".rb",
+            "php": ".php",
+            "rust": ".rs"
+        }
+        ext = lang_to_ext.get(language.lower(), ".py")
+        fake_path = f"<snippet>{ext}"
+
+        # Prepend context if provided
+        full_code = f"{context}\n\n{code}" if context else code
+
         return self.analyze_file(
-            file_path="<snippet>",
-            content=code
+            file_path=fake_path,
+            content=full_code
         )
 
     def _detect_language(self, file_path: str) -> str:
