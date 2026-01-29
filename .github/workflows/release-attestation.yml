@@ -98,7 +98,7 @@ jobs:
     
     # Generate attestation using GitHub's native attestation
     - name: Generate Attestation
-      uses: actions/attest-build-provenance@1c608d11d69870c2092266b3f9a6f3abbf17002c  # v1.4.3
+      uses: actions/attest-build-provenance@00014ed6ed5efc5b1ab7f7f34a39eb55d41aa4f8  # v3.1.0
       with:
         subject-path: |
           argus-action-${{ steps.get-tag.outputs.tag }}.tar.gz
