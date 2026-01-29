@@ -53,6 +53,15 @@ try:
 except ImportError:
     SANDBOX_VALIDATION_AVAILABLE = False
     logger.warning("Sandbox validator not available")
+
+# Import deep analysis engine
+try:
+    from argus_deep_analysis import DeepAnalysisConfig, DeepAnalysisEngine, DeepAnalysisMode
+
+    DEEP_ANALYSIS_AVAILABLE = True
+except ImportError:
+    DEEP_ANALYSIS_AVAILABLE = False
+    logger.warning("Deep Analysis Engine not available")
 """
 Heuristic Scanner and Consensus Builder classes
 Extracted from real_multi_agent_review.py for merging into run_ai_audit.py
@@ -3050,6 +3059,48 @@ def parse_args():
     parser.add_argument("--max-files", type=int, help="Maximum files to review")
     parser.add_argument("--cost-limit", type=float, help="Cost limit in USD")
 
+    # Deep Analysis Engine (Phase 2.7) feature flags
+    parser.add_argument(
+        "--enable-deep-analysis",
+        action="store_true",
+        help="Enable Deep Analysis Engine (Phase 2.7) with conservative mode. Shorthand for --deep-analysis-mode=conservative"
+    )
+    parser.add_argument(
+        "--deep-analysis-mode",
+        choices=["off", "semantic-only", "conservative", "full"],
+        default=None,  # None means use env var or default to "off"
+        help="Deep analysis mode: off (skip Phase 2.7), semantic-only (code twin only), "
+             "conservative (semantic + proactive), full (all modules). Default: off"
+    )
+    parser.add_argument(
+        "--max-files-deep-analysis",
+        type=int,
+        default=None,
+        help="Maximum files for deep analysis (default: 50, respects DEEP_ANALYSIS_MAX_FILES env)"
+    )
+    parser.add_argument(
+        "--deep-analysis-timeout",
+        type=int,
+        default=None,
+        help="Timeout for deep analysis in seconds (default: 300 = 5 min, respects DEEP_ANALYSIS_TIMEOUT env)"
+    )
+    parser.add_argument(
+        "--deep-analysis-cost-ceiling",
+        type=float,
+        default=None,
+        help="Cost ceiling for deep analysis in USD (default: 5.0, respects DEEP_ANALYSIS_COST_CEILING env)"
+    )
+    parser.add_argument(
+        "--deep-analysis-dry-run",
+        action="store_true",
+        help="Estimate deep analysis cost/time without running LLM calls"
+    )
+    parser.add_argument(
+        "--benchmark",
+        action="store_true",
+        help="Enable detailed benchmark reporting for Deep Analysis Engine (Phase 2.7)"
+    )
+
     return parser.parse_args()
 
 
@@ -3066,6 +3117,23 @@ def build_config(args=None):
             config["max_files"] = str(args.max_files)
         if hasattr(args, "cost_limit") and args.cost_limit:
             config["cost_limit"] = str(args.cost_limit)
+
+        # Deep Analysis Engine configuration
+        # Handle --enable-deep-analysis shorthand
+        if hasattr(args, "enable_deep_analysis") and args.enable_deep_analysis:
+            config["deep_analysis_mode"] = "conservative"
+        if hasattr(args, "deep_analysis_mode") and args.deep_analysis_mode:
+            config["deep_analysis_mode"] = args.deep_analysis_mode
+        if hasattr(args, "max_files_deep_analysis") and args.max_files_deep_analysis:
+            config["deep_analysis_max_files"] = str(args.max_files_deep_analysis)
+        if hasattr(args, "deep_analysis_timeout") and args.deep_analysis_timeout:
+            config["deep_analysis_timeout"] = str(args.deep_analysis_timeout)
+        if hasattr(args, "deep_analysis_cost_ceiling") and args.deep_analysis_cost_ceiling:
+            config["deep_analysis_cost_ceiling"] = str(args.deep_analysis_cost_ceiling)
+        if hasattr(args, "deep_analysis_dry_run") and args.deep_analysis_dry_run:
+            config["deep_analysis_dry_run"] = "true"
+        if hasattr(args, "benchmark") and args.benchmark:
+            config["benchmark"] = "true"
 
     return config
 
@@ -3145,11 +3213,9 @@ def run_audit(repo_path, config, review_type="audit"):
 
             # Initialize hybrid generator (pytm + optional Anthropic)
             # API key is optional - pytm works without it
-            api_key = (
-                config.get("anthropic_api_key", "")
-                if config.get("enable_threat_modeling", "true").lower() == "true"
-                else None
-            )
+            enable_tm_val = config.get("enable_threat_modeling", "true")
+            enable_tm = enable_tm_val.lower() == "true" if isinstance(enable_tm_val, str) else bool(enable_tm_val)
+            api_key = config.get("anthropic_api_key", "") if enable_tm else None
             generator = HybridThreatModelGenerator(api_key)
 
             # Load existing or generate new
@@ -3193,7 +3259,8 @@ def run_audit(repo_path, config, review_type="audit"):
 
     # FEATURE: Heuristic Pre-Scanning (from real_multi_agent_review.py)
     # Scan files with lightweight pattern matching before expensive LLM calls
-    enable_heuristics = config.get("enable_heuristics", "true").lower() == "true"
+    enable_heuristics_val = config.get("enable_heuristics", "true")
+    enable_heuristics = enable_heuristics_val.lower() == "true" if isinstance(enable_heuristics_val, str) else bool(enable_heuristics_val)
     heuristic_results = {}
 
     if enable_heuristics:
@@ -3623,7 +3690,109 @@ Be specific and actionable. This plan will guide the detailed analysis."""
     except Exception as e:
         logger.error(f"Planning phase failed: {e}")
         plan_summary = "Planning phase failed. Proceeding with general analysis."
-    
+
+    # ============================================================================
+    # PHASE 2.7: DEEP ANALYSIS ENGINE - Advanced semantic and proactive analysis
+    # ============================================================================
+    deep_analysis_findings = []
+    findings = {}  # Initialize findings dict for Phase 2.7 (will be merged with Phase 3 findings later)
+    if DEEP_ANALYSIS_AVAILABLE:
+        try:
+            # Build deep analysis config from environment and config dict
+            deep_mode_str = config.get("deep_analysis_mode", os.getenv("DEEP_ANALYSIS_MODE", "off"))
+            deep_mode = DeepAnalysisMode.from_string(deep_mode_str)
+
+            if deep_mode != DeepAnalysisMode.OFF:
+                print("\n" + "=" * 80)
+                print("🔬 PHASE 2.7: DEEP ANALYSIS ENGINE")
+                print("=" * 80)
+
+                # Configure deep analysis
+                deep_config = DeepAnalysisConfig(
+                    mode=deep_mode,
+                    enabled_phases=deep_mode.get_enabled_phases(),
+                    max_files=int(config.get("deep_analysis_max_files",
+                                            os.getenv("DEEP_ANALYSIS_MAX_FILES", "50"))),
+                    timeout_seconds=int(config.get("deep_analysis_timeout",
+                                                   os.getenv("DEEP_ANALYSIS_TIMEOUT", "300"))),
+                    cost_ceiling=float(config.get("deep_analysis_cost_ceiling",
+                                                 os.getenv("DEEP_ANALYSIS_COST_CEILING", "5.0"))),
+                    dry_run=config.get("deep_analysis_dry_run", "false").lower() == "true",
+                )
+
+                # Check if benchmarking is enabled
+                enable_benchmarking = config.get("benchmark", "false").lower() == "true"
+
+                # Initialize engine
+                deep_engine = DeepAnalysisEngine(
+                    config=deep_config,
+                    ai_client=client,
+                    model=model,
+                    enable_benchmarking=enable_benchmarking
+                )
+
+                # Run analysis
+                print(f"   Mode: {deep_mode.value}")
+                print(f"   Enabled phases: {[p.value for p in deep_config.enabled_phases]}")
+                if enable_benchmarking:
+                    print(f"   📊 Benchmarking: ENABLED")
+
+                # Convert existing findings to pass as context
+                context_findings = []
+                for cat, items in findings.items():
+                    for item in items:
+                        context_findings.append({
+                            "category": cat,
+                            "severity": item.get("severity", "unknown"),
+                            "title": item.get("title", ""),
+                            "file": item.get("file", ""),
+                        })
+
+                deep_results = deep_engine.analyze(repo_path, context_findings)
+
+                # Merge findings into main results
+                for result in deep_results:
+                    deep_analysis_findings.extend(result.findings)
+
+                    # Add to findings dict with normalized field names
+                    if result.findings:
+                        category = f"deep_analysis_{result.phase.value}"
+                        if category not in findings:
+                            findings[category] = []
+
+                        # Normalize deep analysis findings to match expected format
+                        for finding in result.findings:
+                            normalized_finding = {
+                                "severity": finding.get("severity", "medium"),
+                                "category": finding.get("type", category),  # Map 'type' to 'category'
+                                "message": finding.get("title", ""),
+                                "file_path": finding.get("file", finding.get("files", ["unknown"])[0] if isinstance(finding.get("files"), list) else "unknown"),
+                                "line_number": finding.get("line", 1),
+                                "rule_id": f"{category.upper()}-{len(findings[category]) + 1:03d}",
+                                "description": finding.get("description", ""),
+                                "confidence": finding.get("confidence", 0.0),
+                            }
+                            findings[category].append(normalized_finding)
+
+                print(f"✅ Deep Analysis complete: {len(deep_analysis_findings)} findings, "
+                      f"${deep_engine.total_cost:.2f} cost")
+
+                # Export detailed results
+                deep_output = Path(repo_path) / "argus_deep_analysis_results.json"
+                deep_engine.export_results(str(deep_output))
+
+                # Print benchmark report if enabled
+                if enable_benchmarking:
+                    deep_engine.print_benchmark_report()
+            else:
+                print("\n⏭️  Phase 2.7: Deep Analysis skipped (mode=off)")
+
+        except Exception as e:
+            logger.error(f"Deep Analysis Engine failed: {e}")
+            logger.exception(e)
+    else:
+        logger.info("⏭️  Phase 2.7: Deep Analysis Engine not available")
+
     # ============================================================================
     # PHASE 3: IMPLEMENTATION - Detailed analysis based on plan
     # ============================================================================
@@ -3758,8 +3927,19 @@ Focus on issues identified in the analysis plan."""
 
         print(f"✅ Audit complete! Report saved to: {report_file}")
 
-        # Parse findings
-        findings = parse_findings_from_report(report)
+        # Parse findings from Phase 3 report
+        phase3_findings = parse_findings_from_report(report)
+
+        # Merge Phase 2.7 findings (if any) with Phase 3 findings
+        # findings dict was initialized before Phase 2.7 as a dict, need to convert to list
+        all_findings = list(phase3_findings)  # Start with Phase 3 findings
+
+        # Add Phase 2.7 deep analysis findings if they exist (findings was a dict in Phase 2.7)
+        if isinstance(findings, dict):
+            for category, items in findings.items():
+                all_findings.extend(items)
+
+        findings = all_findings  # Now findings is a list as expected by the rest of the code
 
         # Record finding metrics
         for finding in findings:
@@ -3893,47 +4073,14 @@ Focus on issues identified in the analysis plan."""
 
 
 if __name__ == "__main__":
-    repo_path = sys.argv[1] if len(sys.argv) > 1 else "."
-    review_type = sys.argv[2] if len(sys.argv) > 2 else "audit"
+    # Parse command-line arguments
+    args = parse_args()
 
-    # Get configuration from environment
-    config = {
-        "ai_provider": os.environ.get("INPUT_AI_PROVIDER", "auto"),
-        "anthropic_api_key": os.environ.get("ANTHROPIC_API_KEY", ""),
-        "openai_api_key": os.environ.get("OPENAI_API_KEY", ""),
-        "ollama_endpoint": os.environ.get("OLLAMA_ENDPOINT", ""),
-        "model": os.environ.get("INPUT_MODEL", "auto"),
-        "multi_agent_mode": os.environ.get("INPUT_MULTI_AGENT_MODE", "single"),
-        "only_changed": os.environ.get("INPUT_ONLY_CHANGED", "false").lower() == "true",
-        "include_paths": os.environ.get("INPUT_INCLUDE_PATHS", ""),
-        "exclude_paths": os.environ.get("INPUT_EXCLUDE_PATHS", ""),
-        "max_file_size": os.environ.get("INPUT_MAX_FILE_SIZE", "50000"),
-        "max_files": os.environ.get("INPUT_MAX_FILES", "100"),
-        "max_tokens": os.environ.get("INPUT_MAX_TOKENS", "8000"),
-        "cost_limit": os.environ.get("INPUT_COST_LIMIT", "1.0"),
-        "fail_on": os.environ.get("INPUT_FAIL_ON", ""),
-        # NEW: Phase 1 feature flags
-        "enable_threat_modeling": os.environ.get("ENABLE_THREAT_MODELING", "true"),
-        "enable_sandbox_validation": os.environ.get("ENABLE_SANDBOX_VALIDATION", "true"),
-        # NEW: Phase 2 multi-agent enhancements (from real_multi_agent_review.py)
-        "enable_heuristics": os.environ.get("ENABLE_HEURISTICS", "true"),
-        "enable_consensus": os.environ.get("ENABLE_CONSENSUS", "true"),
-        "consensus_threshold": float(os.environ.get("CONSENSUS_THRESHOLD", "0.5")),
-        "category_passes": os.environ.get("CATEGORY_PASSES", "true"),
-        # NEW: Semgrep SAST integration
-        "enable_semgrep": os.environ.get("SEMGREP_ENABLED", "true").lower() == "true",
-        # NEW: Advanced Security Features (v1.0.16+ - now exposed in action.yml)
-        "enable_api_security": os.environ.get("ENABLE_API_SECURITY", "true").lower() == "true",
-        "enable_dast": os.environ.get("ENABLE_DAST", "false").lower() == "true",
-        "dast_target_url": os.environ.get("DAST_TARGET_URL", ""),
-        "enable_supply_chain": os.environ.get("ENABLE_SUPPLY_CHAIN", "true").lower() == "true",
-        "enable_fuzzing": os.environ.get("ENABLE_FUZZING", "false").lower() == "true",
-        "fuzzing_duration": int(os.environ.get("FUZZING_DURATION", "300")),
-        "enable_threat_intel": os.environ.get("ENABLE_THREAT_INTEL", "true").lower() == "true",
-        "enable_remediation": os.environ.get("ENABLE_REMEDIATION", "true").lower() == "true",
-        "enable_runtime_security": os.environ.get("ENABLE_RUNTIME_SECURITY", "false").lower() == "true",
-        "runtime_monitoring_duration": int(os.environ.get("RUNTIME_MONITORING_DURATION", "60")),
-        "enable_regression_testing": os.environ.get("ENABLE_REGRESSION_TESTING", "true").lower() == "true",
-    }
+    # Build config from args (which also loads env vars as defaults)
+    config = build_config(args)
+
+    # Get repo path and review type from args
+    repo_path = args.repo_path
+    review_type = args.review_type
 
     run_audit(repo_path, config, review_type)
