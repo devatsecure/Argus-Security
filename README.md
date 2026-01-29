@@ -105,47 +105,59 @@ python scripts/run_ai_audit.py --project-type backend-api
 
 ## Architecture
 
+### 6-Phase Pipeline + Enhanced Analysis
+
+> **Note:** Phases 2.5-2.7 were added after the original 6-phase design. They use decimal numbering to insert between Phase 2 and Phase 3 without breaking backward compatibility.
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  ARGUS SECURITY PLATFORM                                    │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  PHASE 1: Multi-Scanner Orchestration                       │
+│  PHASE 1: Scanner Orchestration                             │
 │  ├─ TruffleHog (secrets with API verification)             │
 │  ├─ Semgrep (SAST - 2000+ rules)                           │
 │  ├─ Trivy (CVE scanning)                                   │
 │  ├─ Checkov (IaC security)                                 │
 │  └─ Gitleaks (pattern-based secrets)                       │
 │                                                             │
-│  PHASE 2: AI Enrichment                                     │
+│  PHASE 2: AI Enrichment (Base Analysis)                     │
 │  ├─ Claude/OpenAI/Ollama triage                            │
 │  ├─ Noise scoring & false positive prediction              │
 │  └─ Threat intelligence enrichment                         │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │ ENHANCED ANALYSIS MODULES (Phases 2.5-2.7)         │   │
+│  │ Added incrementally without renumbering             │   │
+│  └─────────────────────────────────────────────────────┘   │
 │                                                             │
 │  PHASE 2.5: Remediation Engine                              │
 │  └─ AI-generated fix suggestions                           │
 │                                                             │
 │  PHASE 2.6: Spontaneous Discovery                           │
-│  └─ Find issues beyond scanner rules                       │
+│  └─ Find issues beyond scanner rules (+15-20% findings)    │
 │                                                             │
-│  PHASE 2.7: Deep Analysis (AISLE-inspired)                  │
+│  PHASE 2.7: Deep Analysis (AISLE-inspired) 🆕               │
 │  ├─ Semantic Code Twin (AST-based intent analysis)         │
 │  ├─ Proactive AI Scanner (autonomous reasoning)            │
 │  ├─ Taint Analyzer (inter-procedural data flow)            │
 │  └─ Zero-Day Hypothesizer (novel vulnerability discovery)  │
 │                                                             │
 │  PHASE 3: Multi-Agent Persona Review                        │
-│  ├─ SecretHunter - credentials expert                      │
-│  ├─ ArchitectureReviewer - design flaws                    │
-│  ├─ ExploitAssessor - exploitability analysis              │
-│  ├─ FalsePositiveFilter - noise elimination                │
-│  └─ ThreatModeler - attack chain mapping                   │
+│  ├─ 🕵️ SecretHunter - credentials expert                    │
+│  ├─ 🏗️ ArchitectureReviewer - design flaws                  │
+│  ├─ ⚔️ ExploitAssessor - exploitability analysis            │
+│  ├─ 🎯 FalsePositiveFilter - noise elimination              │
+│  └─ 🔍 ThreatModeler - attack chain mapping                 │
 │                                                             │
 │  PHASE 4: Sandbox Validation (Docker-based)                 │
+│  └─ Isolated exploit verification                          │
 │                                                             │
 │  PHASE 5: Policy Gates (Rego/OPA)                           │
+│  └─ Pass/fail enforcement rules                            │
 │                                                             │
 │  PHASE 6: Reporting (SARIF/JSON/Markdown)                   │
+│  └─ GitHub code scanning integration                       │
 │                                                             │
 │  ═══════════════════════════════════════════════════════   │
 │  ADDITIONAL FEATURES (Standalone Tools)                     │
