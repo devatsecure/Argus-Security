@@ -1,0 +1,128 @@
+{
+  "metadata": {
+    "generated_at": "2026-01-29 11:01:02",
+    "deep_analysis_mode": "full",
+    "test_cases_file": "/Users/waseem.ahmed/Repos/Argus-Security/tests/security_regression/cve_test_cases.json",
+    "dry_run": false
+  },
+  "metrics": {
+    "total_cases": 8,
+    "tested_cases": 5,
+    "skipped_cases": 3,
+    "true_positives": 4,
+    "false_negatives": 1,
+    "false_positives": 0,
+    "errors": 0,
+    "precision": 1.0,
+    "recall": 0.8,
+    "f1_score": 0.889,
+    "detection_rate": 80.0,
+    "total_time_seconds": 23.53
+  },
+  "results": [
+    {
+      "cve_id": "CVE-2024-23334",
+      "project": "aiohttp",
+      "status": "SUCCESS",
+      "true_positive": true,
+      "false_negative": false,
+      "false_positives": 0,
+      "findings_count": 1,
+      "matched_pattern": "multiple patterns",
+      "analysis_time": 0.0,
+      "error_message": null,
+      "notes": ""
+    },
+    {
+      "cve_id": "CVE-2024-22203",
+      "project": "whoogle-search",
+      "status": "SUCCESS",
+      "true_positive": true,
+      "false_negative": false,
+      "false_positives": 0,
+      "findings_count": 1,
+      "matched_pattern": "multiple patterns",
+      "analysis_time": 0.0,
+      "error_message": null,
+      "notes": ""
+    },
+    {
+      "cve_id": "CVE-2024-22205",
+      "project": "whoogle-search",
+      "status": "SUCCESS",
+      "true_positive": true,
+      "false_negative": false,
+      "false_positives": 0,
+      "findings_count": 1,
+      "matched_pattern": "multiple patterns",
+      "analysis_time": 0.01,
+      "error_message": null,
+      "notes": ""
+    },
+    {
+      "cve_id": "CVE-2024-11831",
+      "project": "serialize-javascript",
+      "status": "FAILURE",
+      "true_positive": false,
+      "false_negative": true,
+      "false_positives": 0,
+      "findings_count": 0,
+      "matched_pattern": null,
+      "analysis_time": 0.0,
+      "error_message": null,
+      "notes": ""
+    },
+    {
+      "cve_id": "CVE-2024-27956",
+      "project": "wp-automatic",
+      "status": "SKIPPED",
+      "true_positive": false,
+      "false_negative": false,
+      "false_positives": 0,
+      "findings_count": 0,
+      "matched_pattern": null,
+      "analysis_time": 0.0,
+      "error_message": null,
+      "notes": "Large codebase exceeds 100 file limit OR commercial plugin without public repository"
+    },
+    {
+      "cve_id": "CVE-2023-2825",
+      "project": "gitlab",
+      "status": "SKIPPED",
+      "true_positive": false,
+      "false_negative": false,
+      "false_positives": 0,
+      "findings_count": 0,
+      "matched_pattern": null,
+      "analysis_time": 0.0,
+      "error_message": null,
+      "notes": "Large codebase exceeds 100 file limit OR commercial plugin without public repository"
+    },
+    {
+      "cve_id": "CVE-2024-9287",
+      "project": "cpython",
+      "status": "SKIPPED",
+      "true_positive": false,
+      "false_negative": false,
+      "false_positives": 0,
+      "findings_count": 0,
+      "matched_pattern": null,
+      "analysis_time": 0.0,
+      "error_message": null,
+      "notes": "Large codebase exceeds 100 file limit OR commercial plugin without public repository"
+    },
+    {
+      "cve_id": "CVE-2024-32640",
+      "project": "masa-cms",
+      "status": "SUCCESS",
+      "true_positive": true,
+      "false_negative": false,
+      "false_positives": 0,
+      "findings_count": 1,
+      "matched_pattern": "sql.*injection|processAsyncObject|contenthistid",
+      "analysis_time": 0.01,
+      "error_message": null,
+      "notes": ""
+    }
+  ]
+}

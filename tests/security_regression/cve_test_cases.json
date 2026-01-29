@@ -1,0 +1,232 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "created": "2026-01-29",
+    "description": "Real-world CVE test cases for validating Deep Analysis effectiveness",
+    "total_cases": 8
+  },
+  "test_cases": [
+    {
+      "id": "CVE-2024-23334",
+      "project": "aiohttp",
+      "repo_url": "https://github.com/aio-libs/aiohttp",
+      "vulnerable_commit": "6333c026422c6b0fe57ff63cde4104e2d00f47f4",
+      "fixed_commit": "1c335944d6a8b1298baf179b7c0b3069f10c514b",
+      "vulnerable_version": "3.9.1",
+      "fixed_version": "3.9.2",
+      "vuln_type": "path_traversal",
+      "affected_file": "aiohttp/web_fileresponse.py",
+      "affected_lines": [100, 150],
+      "description": "Directory traversal in static file serving with follow_symlinks=True. No validation to check if file path is within root directory.",
+      "cwe_id": "CWE-22",
+      "severity": "high",
+      "cvss_score": 7.5,
+      "exploitation_difficulty": "low",
+      "expected_finding": {
+        "pattern": "path.*traversal|directory.*traversal|follow_symlinks",
+        "file_should_contain": "web_fileresponse.py",
+        "severity_min": "medium"
+      },
+      "references": [
+        "https://github.com/advisories/GHSA-5h86-8mv2-jq9f",
+        "https://github.com/aio-libs/aiohttp/pull/8079"
+      ]
+    },
+    {
+      "id": "CVE-2024-22203",
+      "project": "whoogle-search",
+      "repo_url": "https://github.com/benbusby/whoogle-search",
+      "vulnerable_commit": "92e8ede24e9277a5440d403f75877209f1269884",
+      "fixed_commit": "abc30d7da3b5c67be7ce84d4699f327442d44606",
+      "vulnerable_version": "0.8.3",
+      "fixed_version": "0.8.4",
+      "vuln_type": "ssrf",
+      "affected_file": "app/routes.py",
+      "affected_lines": [339, 343],
+      "description": "SSRF in element endpoint - does not validate user-controlled src_type and element_url variables before passing to send method.",
+      "cwe_id": "CWE-918",
+      "severity": "high",
+      "cvss_score": 8.6,
+      "exploitation_difficulty": "medium",
+      "expected_finding": {
+        "pattern": "ssrf|server.*side.*request|url.*validation",
+        "file_should_contain": "routes.py",
+        "severity_min": "high"
+      },
+      "references": [
+        "https://securitylab.github.com/advisories/GHSL-2023-186_GHSL-2023-189_benbusby_whoogle-search/"
+      ]
+    },
+    {
+      "id": "CVE-2024-22205",
+      "project": "whoogle-search",
+      "repo_url": "https://github.com/benbusby/whoogle-search",
+      "vulnerable_commit": "92e8ede24e9277a5440d403f75877209f1269884",
+      "fixed_commit": "abc30d7da3b5c67be7ce84d4699f327442d44606",
+      "vulnerable_version": "0.8.3",
+      "fixed_version": "0.8.4",
+      "vuln_type": "xss",
+      "affected_file": "app/routes.py",
+      "affected_lines": [484],
+      "description": "XSS via user-controlled src_type parameter in send_file function. Attacker controls HTTP response content type leading to XSS.",
+      "cwe_id": "CWE-79",
+      "severity": "medium",
+      "cvss_score": 6.1,
+      "exploitation_difficulty": "low",
+      "expected_finding": {
+        "pattern": "xss|cross.*site.*script|content.*type.*injection",
+        "file_should_contain": "routes.py",
+        "severity_min": "medium"
+      },
+      "references": [
+        "https://securitylab.github.com/advisories/GHSL-2023-186_GHSL-2023-189_benbusby_whoogle-search/"
+      ]
+    },
+    {
+      "id": "CVE-2024-11831",
+      "project": "serialize-javascript",
+      "repo_url": "https://github.com/yahoo/serialize-javascript",
+      "vulnerable_commit": "7139f9251b4cad52136513cf3360869e1e645d6c",
+      "fixed_commit": "f27d65d3de42affe2aac14607066c293891cec4e",
+      "vulnerable_version": "6.0.1",
+      "fixed_version": "6.0.2",
+      "vuln_type": "xss",
+      "affected_file": "index.js",
+      "affected_lines": [180, 200],
+      "description": "XSS via unsanitized URL objects. Module does not properly sanitize regex or JavaScript object types like URL, allowing code injection.",
+      "cwe_id": "CWE-79",
+      "severity": "medium",
+      "cvss_score": 5.4,
+      "exploitation_difficulty": "medium",
+      "expected_finding": {
+        "pattern": "xss|unsanitized.*url|regex.*injection",
+        "file_should_contain": "index.js",
+        "severity_min": "medium"
+      },
+      "references": [
+        "https://github.com/advisories/GHSA-76p7-773f-r4q5",
+        "https://github.com/yahoo/serialize-javascript/security/advisories/GHSA-h9rv-jmmf-4pgx"
+      ]
+    },
+    {
+      "id": "CVE-2024-27956",
+      "project": "wp-automatic",
+      "repo_url": "https://github.com/ValvePress/automatic",
+      "vulnerable_commit": "3.92.0",
+      "fixed_commit": "3.92.1",
+      "vulnerable_version": "3.92.0",
+      "fixed_version": "3.92.1",
+      "vuln_type": "sql_injection",
+      "affected_file": "inc/csv.php",
+      "affected_lines": [1, 100],
+      "description": "Unauthenticated SQL injection via unsanitized POST parameters in inc/csv.php. Allows creating admin users and RCE.",
+      "cwe_id": "CWE-89",
+      "severity": "critical",
+      "cvss_score": 9.8,
+      "exploitation_difficulty": "low",
+      "expected_finding": {
+        "pattern": "sql.*injection|unsanitized.*query|prepare.*statement",
+        "file_should_contain": "csv.php",
+        "severity_min": "high"
+      },
+      "references": [
+        "https://github.com/advisories/GHSA-xv4r-44qp-78wm",
+        "https://thehackernews.com/2024/04/hackers-exploiting-wp-automatic-plugin.html"
+      ],
+      "skip": true,
+      "skip_reason": "Commercial WordPress plugin - source code not publicly accessible in a GitHub repository",
+      "notes": "WordPress plugin - may need WordPress context for full analysis. Vulnerable file is inc/csv.php which was removed in patched version 3.92.1."
+    },
+    {
+      "id": "CVE-2023-2825",
+      "project": "gitlab",
+      "repo_url": "https://gitlab.com/gitlab-org/gitlab",
+      "vulnerable_commit": "16.0.0",
+      "fixed_commit": "16.0.1",
+      "vulnerable_version": "16.0.0",
+      "fixed_version": "16.0.1",
+      "vuln_type": "path_traversal",
+      "affected_file": "app/controllers/projects/uploads_controller.rb",
+      "affected_lines": [45, 60],
+      "description": "Unauthenticated path traversal allows reading arbitrary files when attachment exists in public project nested in 5+ groups. No file path sanitization.",
+      "cwe_id": "CWE-22",
+      "severity": "critical",
+      "cvss_score": 10.0,
+      "exploitation_difficulty": "medium",
+      "expected_finding": {
+        "pattern": "path.*traversal|file.*path.*sanitiz|directory.*escap",
+        "file_should_contain": "uploads_controller",
+        "severity_min": "critical"
+      },
+      "references": [
+        "https://about.gitlab.com/releases/2023/05/23/critical-security-release-gitlab-16-0-1-released/",
+        "https://github.com/Tornad0007/CVE-2023-2825-Gitlab"
+      ],
+      "notes": "Requires Ruby/Rails context - large codebase, may exceed file limit"
+    },
+    {
+      "id": "CVE-2024-9287",
+      "project": "cpython",
+      "repo_url": "https://github.com/python/cpython",
+      "vulnerable_commit": "3.11.0",
+      "fixed_commit": "3.11.10",
+      "vulnerable_version": "3.11.0-3.11.9",
+      "fixed_version": "3.11.10",
+      "vuln_type": "command_injection",
+      "affected_file": "Lib/venv/__init__.py",
+      "affected_lines": [300, 350],
+      "description": "Command injection in venv module - path names not properly quoted when creating virtual environments, allowing command injection in activation scripts.",
+      "cwe_id": "CWE-78",
+      "severity": "medium",
+      "cvss_score": 6.5,
+      "exploitation_difficulty": "medium",
+      "expected_finding": {
+        "pattern": "command.*injection|shell.*escape|quote.*path",
+        "file_should_contain": "venv",
+        "severity_min": "medium"
+      },
+      "references": [
+        "https://security.snyk.io/vuln/SNYK-CHAINGUARDLATEST-PYTHON311-8340668"
+      ],
+      "notes": "CPython repo is very large - focus on Lib/venv/ directory only"
+    },
+    {
+      "id": "CVE-2024-32640",
+      "project": "masa-cms",
+      "repo_url": "https://github.com/MasaCMS/MasaCMS",
+      "vulnerable_commit": "11c02e748c5299f4b087fb9ce902e3cde4e13a92",
+      "fixed_commit": "fb10af6238e3e2e9aae8afce933ca6407d092fde",
+      "vulnerable_version": "7.4.5",
+      "fixed_version": "7.4.6",
+      "vuln_type": "sql_injection",
+      "affected_file": "core/mura/client/api/json/v1/jsonApiUtility.cfc",
+      "affected_lines": [1, 50],
+      "description": "SQL injection in processAsyncObject method via contenthistid parameter. Can lead to remote code execution.",
+      "cwe_id": "CWE-89",
+      "severity": "critical",
+      "cvss_score": 9.8,
+      "exploitation_difficulty": "medium",
+      "expected_finding": {
+        "pattern": "sql.*injection|processAsyncObject|contenthistid",
+        "file_should_contain": "jsonApiUtility.cfc",
+        "severity_min": "high"
+      },
+      "references": [
+        "https://github.com/pizza-power/CVE-2024-32640",
+        "https://github.com/MasaCMS/MasaCMS/releases/tag/7.4.6",
+        "https://zeropath.com/blog/cve-2024-32640-masa-mura-cms-sql-injection-summary"
+      ],
+      "notes": "ColdFusion code - may need special handling for .cfc files. Also fixed in v7.3.13 and v7.2.8 for respective branches. Masa CMS is the current fork of Mura CMS."
+    }
+  ],
+  "validation_config": {
+    "clone_timeout_seconds": 300,
+    "analysis_timeout_seconds": 180,
+    "temp_dir_prefix": "argus_cve_validation_",
+    "exclude_large_repos": true,
+    "max_repo_size_mb": 500,
+    "focus_files_only": true,
+    "skip_tests": ["CVE-2023-2825", "CVE-2024-9287", "CVE-2024-27956"],
+    "skip_reason": "Large codebase exceeds 100 file limit OR commercial plugin without public repository"
+  }
+}
