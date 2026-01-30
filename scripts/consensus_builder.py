@@ -13,6 +13,8 @@ import logging
 
 from ast_deduplicator import ASTDeduplicator
 
+__all__ = ["ConsensusBuilder"]
+
 logger = logging.getLogger(__name__)
 
 

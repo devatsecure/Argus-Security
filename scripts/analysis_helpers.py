@@ -12,8 +12,21 @@ import logging
 import re
 import time
 
-# Import ReviewMetrics from its own module (for backwards compatibility, re-export it)
+# Import from dedicated modules (for backwards compatibility, re-export them)
 from review_metrics import ReviewMetrics
+from exceptions import CostLimitExceededError, CostLimitExceeded
+
+__all__ = [
+    "ContextTracker",
+    "FindingSummarizer",
+    "AgentOutputValidator",
+    "TimeoutManager",
+    "CodebaseChunker",
+    "ContextCleanup",
+    "ReviewMetrics",
+    "CostLimitExceededError",
+    "CostLimitExceeded",
+]
 
 logger = logging.getLogger(__name__)
 
@@ -707,13 +720,5 @@ class ContextCleanup:
         return context, reduction
 
 
-# ReviewMetrics is now imported from review_metrics.py and re-exported for backwards compatibility
-
-
-class CostLimitExceededError(Exception):
-    """Raised when cost limit would be exceeded by an operation"""
-    pass
-
-
-# Alias for backwards compatibility
-CostLimitExceeded = CostLimitExceededError
+# CostLimitExceededError and ReviewMetrics are imported from their dedicated modules
+# and re-exported here for backwards compatibility

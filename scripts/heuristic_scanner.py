@@ -13,6 +13,8 @@ import ast
 import logging
 import re
 
+__all__ = ["HeuristicScanner"]
+
 logger = logging.getLogger(__name__)
 
 
