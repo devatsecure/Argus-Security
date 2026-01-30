@@ -427,22 +427,51 @@ def transfer():
                 logger.info("Will use template-based fixes only")
                 self.llm = None
 
-    def suggest_fix(self, finding: Dict) -> RemediationSuggestion:
+    def _get_finding_attr(self, finding, *attrs, default=None):
+        """Get attribute from finding, supporting both dict and dataclass objects.
+        
+        Args:
+            finding: Finding dict or dataclass object
+            *attrs: Attribute names to try in order
+            default: Default value if none found
+            
+        Returns:
+            First found attribute value or default
+        """
+        for attr in attrs:
+            if isinstance(finding, dict):
+                if attr in finding:
+                    return finding[attr]
+            else:
+                # Dataclass/object - use getattr
+                if hasattr(finding, attr):
+                    val = getattr(finding, attr, None)
+                    if val is not None:
+                        return val
+        return default
+
+    def suggest_fix(self, finding) -> RemediationSuggestion:
         """Generate fix suggestion for a finding
 
         Args:
-            finding: Finding dictionary (from scanner output or normalized Finding)
+            finding: Finding dictionary or HybridFinding dataclass
 
         Returns:
             RemediationSuggestion with fix details
         """
         # Extract finding details (support both Finding dataclass and dict)
-        finding_id = finding.get("id", "unknown")
-        vuln_type = finding.get("type") or finding.get("rule_id", "unknown")
-        file_path = finding.get("path", "")
-        line_number = finding.get("line", 0)
-        description = finding.get("description") or finding.get("message", "")
-        code_snippet = finding.get("code_snippet") or finding.get("evidence", {}).get("snippet", "")
+        finding_id = self._get_finding_attr(finding, "id", "finding_id", default="unknown")
+        vuln_type = self._get_finding_attr(finding, "type", "rule_id", "title", default="unknown")
+        file_path = self._get_finding_attr(finding, "path", "file_path", default="")
+        line_number = self._get_finding_attr(finding, "line", "line_number", default=0)
+        description = self._get_finding_attr(finding, "description", "message", default="")
+        code_snippet = self._get_finding_attr(finding, "code_snippet", default="")
+        
+        # Handle nested evidence dict
+        if not code_snippet and isinstance(finding, dict):
+            evidence = finding.get("evidence", {})
+            if isinstance(evidence, dict):
+                code_snippet = evidence.get("snippet", "")
 
         logger.info(f"Generating fix for {vuln_type} in {file_path}:{line_number}")
 
@@ -456,22 +485,28 @@ def transfer():
         # Fallback to template-based fixes
         return self._template_generate_fix(finding)
 
-    def _ai_generate_fix(self, finding: Dict) -> RemediationSuggestion:
+    def _ai_generate_fix(self, finding) -> RemediationSuggestion:
         """Use AI to generate fix suggestion
 
         Args:
-            finding: Finding dictionary
+            finding: Finding dictionary or HybridFinding dataclass
 
         Returns:
             RemediationSuggestion with AI-generated fix
         """
-        vuln_type = finding.get("type") or finding.get("rule_id", "")
-        file_path = finding.get("path", "")
-        line_number = finding.get("line", 0)
-        description = finding.get("description") or finding.get("message", "")
-        code_snippet = finding.get("code_snippet") or finding.get("evidence", {}).get("snippet", "")
-        severity = finding.get("severity", "medium")
+        vuln_type = self._get_finding_attr(finding, "type", "rule_id", "title", default="")
+        file_path = self._get_finding_attr(finding, "path", "file_path", default="")
+        line_number = self._get_finding_attr(finding, "line", "line_number", default=0)
+        description = self._get_finding_attr(finding, "description", "message", default="")
+        code_snippet = self._get_finding_attr(finding, "code_snippet", default="")
+        severity = self._get_finding_attr(finding, "severity", default="medium")
         language = self._detect_language(file_path)
+        
+        # Handle nested evidence dict for code_snippet
+        if not code_snippet and isinstance(finding, dict):
+            evidence = finding.get("evidence", {})
+            if isinstance(evidence, dict):
+                code_snippet = evidence.get("snippet", "")
 
         # Build comprehensive prompt
         prompt = f"""You are a security engineer fixing a vulnerability in production code.

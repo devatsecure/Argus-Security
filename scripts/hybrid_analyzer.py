@@ -1274,25 +1274,28 @@ class HybridSecurityAnalyzer:
                     # Add threat intelligence metadata to finding
                     if threat_context:
                         # Update exploitability based on threat intel
-                        if threat_context.get("in_kev_catalog"):
+                        # ThreatContext is a dataclass, use getattr for attribute access
+                        in_kev = getattr(threat_context, "in_kev_catalog", False)
+                        if in_kev:
                             finding.exploitability = "trivial"  # Actively exploited in wild
                             finding.severity = "critical"  # Escalate severity
 
                         # Add EPSS score to description
-                        epss_score = threat_context.get("epss_score", 0.0)
+                        epss_score = getattr(threat_context, "epss_score", None) or 0.0
                         if epss_score > 0.5:
                             finding.description = (
                                 f"[EPSS: {epss_score:.1%} exploit probability] {finding.description}"
                             )
 
                         # Add exploit availability info
-                        exploit_available = threat_context.get("exploit_available", False)
+                        exploit_available = getattr(threat_context, "exploit_available", False)
                         if exploit_available:
                             finding.description = f"[Public exploit available] {finding.description}"
 
                         # Add references from threat intel
-                        if threat_context.get("references"):
-                            finding.references.extend(threat_context["references"])
+                        references = getattr(threat_context, "references", None)
+                        if references:
+                            finding.references.extend(references)
 
                 enriched.append(finding)
 
@@ -1321,19 +1324,24 @@ class HybridSecurityAnalyzer:
 
                 if suggestion:
                     # Update finding with remediation suggestion
-                    finding.recommendation = suggestion.get("fix_explanation", finding.recommendation)
+                    # RemediationSuggestion is a dataclass, use getattr for access
+                    fix_explanation = getattr(suggestion, "fix_explanation", None)
+                    if fix_explanation:
+                        finding.recommendation = fix_explanation
 
                     # Add code patch if available
-                    if suggestion.get("code_patch"):
+                    code_patch = getattr(suggestion, "code_patch", None)
+                    if code_patch:
                         finding.description = (
                             f"{finding.description}\n\n"
-                            f"**Suggested Fix:**\n```\n{suggestion['code_patch']}\n```"
+                            f"**Suggested Fix:**\n```\n{code_patch}\n```"
                         )
 
                     # Add testing recommendations
-                    if suggestion.get("testing_recommendations"):
+                    testing_recs = getattr(suggestion, "testing_recommendations", None)
+                    if testing_recs:
                         finding.references.append(
-                            f"Testing: {suggestion['testing_recommendations']}"
+                            f"Testing: {testing_recs}"
                         )
 
                 remediated.append(finding)
@@ -2293,6 +2301,24 @@ def main():
     parser.add_argument("--fuzzing-duration", type=int, default=300, help="Fuzzing duration in seconds (default: 300)")
     parser.add_argument("--runtime-monitoring-duration", type=int, default=60, help="Runtime monitoring duration in seconds (default: 60)")
     parser.add_argument("--severity-filter", help="Comma-separated severity levels to report (e.g., critical,high)")
+    parser.add_argument(
+        "--enable-multi-agent",
+        action="store_true",
+        default=True,
+        help="Enable multi-agent persona review (SecretHunter, ExploitAssessor, etc.)",
+    )
+    parser.add_argument(
+        "--enable-spontaneous-discovery",
+        action="store_true",
+        default=True,
+        help="Enable spontaneous discovery (find issues beyond scanner rules)",
+    )
+    parser.add_argument(
+        "--enable-collaborative-reasoning",
+        action="store_true",
+        default=False,
+        help="Enable collaborative reasoning (multi-agent discussion, adds cost)",
+    )
 
     args = parser.parse_args()
 
@@ -2331,6 +2357,9 @@ def main():
     enable_remediation = get_bool_env("ENABLE_REMEDIATION", args.enable_remediation)
     enable_runtime_security = get_bool_env("ENABLE_RUNTIME_SECURITY", args.enable_runtime_security)
     enable_regression_testing = get_bool_env("ENABLE_REGRESSION_TESTING", args.enable_regression_testing)
+    enable_multi_agent = get_bool_env("ENABLE_MULTI_AGENT", args.enable_multi_agent)
+    enable_spontaneous_discovery = get_bool_env("ENABLE_SPONTANEOUS_DISCOVERY", args.enable_spontaneous_discovery)
+    enable_collaborative_reasoning = get_bool_env("ENABLE_COLLABORATIVE_REASONING", args.enable_collaborative_reasoning)
 
     dast_target_url = args.dast_target_url or os.getenv("DAST_TARGET_URL")
     fuzzing_duration = get_int_env("FUZZING_DURATION", args.fuzzing_duration)
@@ -2350,6 +2379,9 @@ def main():
         enable_runtime_security=enable_runtime_security,
         enable_regression_testing=enable_regression_testing,
         enable_ai_enrichment=args.enable_ai_enrichment,
+        enable_multi_agent=enable_multi_agent,
+        enable_spontaneous_discovery=enable_spontaneous_discovery,
+        enable_collaborative_reasoning=enable_collaborative_reasoning,
         enable_iris=args.enable_iris,  # IRIS semantic analysis
         ai_provider=args.ai_provider,
         dast_target_url=dast_target_url,
