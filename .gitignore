@@ -90,3 +90,20 @@ COMPREHENSIVE_IMPROVEMENT_PLAN.md
 .argus/
 .agent-os-cache/
 .agent-os/
+
+# Local scan/benchmark outputs (not part of codebase)
+*_output.txt
+benchmark_results.json
+performance_benchmark_results.json
+argus_deep_analysis_results.json
+disclosure_email_*.txt
+copilot-cli-scan-results/
+
+# Backup files
+*.backup
+*.bak
+
+# Office documents (not code)
+*.docx
+*.xlsx
+*.pptx
