@@ -90,15 +90,19 @@ Rego/OPA policies enforce pass/fail:
 ```
 Argus-Security/
 ├── scripts/
-│   ├── run_ai_audit.py       # Main orchestrator (all 6 phases)
-│   ├── hybrid_analyzer.py    # Multi-scanner coordination
-│   ├── agent_personas.py     # Phase 3: Multi-agent review
-│   ├── sandbox_validator.py  # Phase 4: Docker validation
-│   ├── remediation_engine.py # Auto-fix generation
-│   └── argus                 # CLI entry point
-├── policy/rego/              # Phase 5: OPA policies
-├── tests/                    # Test suite
-└── action.yml                # GitHub Action definition
+│   ├── run_ai_audit.py        # Main orchestrator (all 6 phases)
+│   ├── heuristic_scanner.py   # Pre-LLM code scanning with context awareness
+│   ├── consensus_builder.py   # Multi-agent finding aggregation
+│   ├── analysis_helpers.py    # Context tracking, validation, chunking utilities
+│   ├── review_metrics.py      # Observability metrics (costs, tokens, findings)
+│   ├── hybrid_analyzer.py     # Multi-scanner coordination
+│   ├── agent_personas.py      # Phase 3: Multi-agent review
+│   ├── sandbox_validator.py   # Phase 4: Docker validation
+│   ├── remediation_engine.py  # Auto-fix generation
+│   └── argus                  # CLI entry point
+├── policy/rego/               # Phase 5: OPA policies
+├── tests/                     # Test suite (1,541 tests)
+└── action.yml                 # GitHub Action definition
 ```
 
 ---
