@@ -938,6 +938,68 @@ class HybridSecurityAnalyzer:
             phase_timings["phase5.5_vulnerability_chaining"] = time.time() - phase55_start
             logger.info(f"   ⏱️  Phase 5.5 duration: {phase_timings['phase5.5_vulnerability_chaining']:.1f}s")
 
+        # PHASE 6.5: Responsible Disclosure Report Generation (Optional)
+        disclosure_report = None
+        enable_disclosure = os.environ.get("ENABLE_DISCLOSURE_REPORT", "false").lower() == "true"
+        
+        if enable_disclosure and all_findings:
+            logger.info("")
+            logger.info("─" * 80)
+            logger.info("📋 PHASE 6.5: Responsible Disclosure Report Generation")
+            logger.info("─" * 80)
+            
+            phase65_start = time.time()
+            
+            try:
+                from disclosure_generator import DisclosureGenerator
+                
+                # Get repo URL from environment or config
+                repo_url = os.environ.get("DISCLOSURE_REPO_URL", self.config.get("repo_url", ""))
+                reporter_name = os.environ.get("DISCLOSURE_REPORTER", "Security Researcher")
+                
+                generator = DisclosureGenerator(repo_url=repo_url)
+                
+                # Convert findings to dict format
+                findings_dict = [asdict(f) for f in all_findings]
+                
+                # Generate disclosure reports
+                disclosure_output_dir = None
+                if output_dir:
+                    disclosure_output_dir = str(Path(output_dir) / "disclosure")
+                
+                disclosure_report = generator.generate(
+                    findings=findings_dict,
+                    output_dir=disclosure_output_dir,
+                    reporter_name=reporter_name
+                )
+                
+                logger.info(f"   ✅ Disclosure reports generated")
+                logger.info(f"      • High/Critical findings: {len(disclosure_report.high_findings)}")
+                logger.info(f"      • Dependency CVEs: {len(disclosure_report.dependency_findings)}")
+                logger.info(f"      • Private report: DISCLOSURE_PRIVATE.md")
+                logger.info(f"      • Public-safe report: ISSUE_PUBLIC_SAFE.md")
+                
+                if disclosure_report.has_security_policy:
+                    logger.info(f"   🔒 Repository has SECURITY.md - use private reporting")
+                elif disclosure_report.has_discussions:
+                    logger.info(f"   💬 Repository has Discussions - request security contact there")
+                
+                # Optionally create GitHub discussion
+                create_discussion = os.environ.get("DISCLOSURE_CREATE_DISCUSSION", "false").lower() == "true"
+                if create_discussion and disclosure_report.has_discussions:
+                    discussion_url = generator.create_github_discussion()
+                    if discussion_url:
+                        logger.info(f"   📨 Created security contact discussion: {discussion_url}")
+                
+            except ImportError:
+                logger.warning("   ⚠️  Disclosure generator not available")
+            except Exception as e:
+                logger.error(f"   ❌ Disclosure report generation failed: {e}")
+                logger.info("   💡 Continuing without disclosure reports...")
+            
+            phase_timings["phase6.5_disclosure"] = time.time() - phase65_start
+            logger.info(f"   ⏱️  Phase 6.5 duration: {phase_timings['phase6.5_disclosure']:.1f}s")
+
         # Calculate statistics
         overall_duration = time.time() - overall_start
 
@@ -2319,6 +2381,27 @@ def main():
         default=False,
         help="Enable collaborative reasoning (multi-agent discussion, adds cost)",
     )
+    parser.add_argument(
+        "--enable-disclosure-report",
+        action="store_true",
+        default=False,
+        help="Generate responsible disclosure reports (private + public-safe)",
+    )
+    parser.add_argument(
+        "--disclosure-repo",
+        help="Target repository for disclosure (e.g., owner/repo or GitHub URL)",
+    )
+    parser.add_argument(
+        "--disclosure-reporter",
+        default="Security Researcher",
+        help="Reporter name/organization for disclosure attribution",
+    )
+    parser.add_argument(
+        "--disclosure-create-discussion",
+        action="store_true",
+        default=False,
+        help="Create GitHub Discussion to request security contact",
+    )
 
     args = parser.parse_args()
 
@@ -2360,6 +2443,16 @@ def main():
     enable_multi_agent = get_bool_env("ENABLE_MULTI_AGENT", args.enable_multi_agent)
     enable_spontaneous_discovery = get_bool_env("ENABLE_SPONTANEOUS_DISCOVERY", args.enable_spontaneous_discovery)
     enable_collaborative_reasoning = get_bool_env("ENABLE_COLLABORATIVE_REASONING", args.enable_collaborative_reasoning)
+    
+    # Disclosure options (set via environment for pipeline use)
+    if args.enable_disclosure_report:
+        os.environ["ENABLE_DISCLOSURE_REPORT"] = "true"
+    if args.disclosure_repo:
+        os.environ["DISCLOSURE_REPO_URL"] = args.disclosure_repo
+    if args.disclosure_reporter:
+        os.environ["DISCLOSURE_REPORTER"] = args.disclosure_reporter
+    if args.disclosure_create_discussion:
+        os.environ["DISCLOSURE_CREATE_DISCUSSION"] = "true"
 
     dast_target_url = args.dast_target_url or os.getenv("DAST_TARGET_URL")
     fuzzing_duration = get_int_env("FUZZING_DURATION", args.fuzzing_duration)
