@@ -120,13 +120,13 @@ def get_default_config() -> Dict[str, Any]:
 def _profile_search_paths(profile_name: str) -> List[Path]:
     """Return candidate YAML paths for *profile_name*, in priority order.
 
-    Later entries take precedence (project-local overrides user overrides
-    built-in).
+    First match wins.  Higher-priority (project-local) paths are listed
+    first so they override user and built-in profiles.
     """
     return [
-        PROJECT_ROOT / "profiles" / f"{profile_name}.yml",          # built-in
+        Path(".argus") / "profiles" / f"{profile_name}.yml",          # project-local (highest)
         Path.home() / ".argus" / "profiles" / f"{profile_name}.yml",  # user
-        Path(".argus") / "profiles" / f"{profile_name}.yml",          # project-local
+        PROJECT_ROOT / "profiles" / f"{profile_name}.yml",            # built-in (lowest)
     ]
 
 
@@ -212,6 +212,10 @@ _SECTION_PREFIX_MAP = {
     "features": "enable_",
 }
 
+# Feature keys that map directly to config keys WITHOUT the "enable_" prefix.
+# All other feature keys get "enable_" prepended (e.g., "multi_agent" -> "enable_multi_agent").
+_FEATURES_NO_PREFIX = {"generate_security_tests"}
+
 
 def flatten_profile(nested: dict) -> Dict[str, Any]:
     """Convert a nested profile YAML dict to a flat config dict.
@@ -222,6 +226,7 @@ def flatten_profile(nested: dict) -> Dict[str, Any]:
     - ``nested["ai"]["multi_agent_mode"]`` -> ``multi_agent_mode``
     - ``nested["scanners"][key]``     -> ``enable_{key}``
     - ``nested["features"][key]``     -> ``enable_{key}``
+      (except keys in ``_FEATURES_NO_PREFIX`` which pass through as-is)
     - ``nested["limits"][key]``       -> key (directly)
     - ``nested["files"][key]``        -> key (directly)
     - ``nested["deep_analysis"][key]``-> ``deep_analysis_{key}``
@@ -250,7 +255,10 @@ def flatten_profile(nested: dict) -> Dict[str, Any]:
         if isinstance(block, dict):
             for key, value in block.items():
                 if value is not None:
-                    flat[f"{prefix}{key}"] = value
+                    if section == "features" and key in _FEATURES_NO_PREFIX:
+                        flat[key] = value
+                    else:
+                        flat[f"{prefix}{key}"] = value
 
     # -- limits (direct) --
     limits = nested.get("limits")

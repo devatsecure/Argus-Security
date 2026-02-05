@@ -92,6 +92,14 @@ class TestFlattenProfile:
         assert flat["enable_multi_agent"] is True
         assert flat["enable_consensus"] is False
 
+    def test_features_no_prefix_keys(self):
+        """generate_security_tests should NOT get enable_ prefix."""
+        nested = {"features": {"generate_security_tests": False, "multi_agent": True}}
+        flat = flatten_profile(nested)
+        assert flat["generate_security_tests"] is False
+        assert "enable_generate_security_tests" not in flat
+        assert flat["enable_multi_agent"] is True
+
     def test_limits_section(self):
         nested = {"limits": {"max_files": 100, "cost_limit": 5.0}}
         flat = flatten_profile(nested)
@@ -446,3 +454,5 @@ class TestE2EConfigProfiles:
         assert config["enable_trivy"] is False
         assert config["enable_ai_enrichment"] is False
         assert config["enable_multi_agent"] is False
+        # Regression: generate_security_tests must NOT get enable_ prefix
+        assert config["generate_security_tests"] is False

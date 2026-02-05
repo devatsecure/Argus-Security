@@ -13,10 +13,9 @@ Stages are designed to be independently testable:
 from __future__ import annotations
 
 import logging
-import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from .base_stage import BaseStage
 from .protocol import PipelineContext
@@ -27,6 +26,23 @@ logger = logging.getLogger(__name__)
 _SCRIPT_DIR = Path(__file__).resolve().parent.parent
 if str(_SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPT_DIR))
+
+
+# ============================================================================
+# Shared helpers
+# ============================================================================
+
+
+def _finding_to_dict(finding: Any) -> dict:
+    """Convert a finding (dict, dataclass, or object with to_dict) to a plain dict."""
+    if hasattr(finding, "to_dict"):
+        return finding.to_dict()
+    if hasattr(finding, "__dataclass_fields__"):
+        from dataclasses import asdict
+        return asdict(finding)
+    if isinstance(finding, dict):
+        return finding
+    return {}
 
 
 # ============================================================================
@@ -335,15 +351,7 @@ class PolicyGateStage(BaseStage):
 
     def _execute(self, ctx: PipelineContext) -> Dict[str, Any]:
         # Convert findings to dicts for policy evaluation
-        findings_dicts = []
-        for f in ctx.findings:
-            if hasattr(f, "to_dict"):
-                findings_dicts.append(f.to_dict())
-            elif hasattr(f, "__dataclass_fields__"):
-                from dataclasses import asdict
-                findings_dicts.append(asdict(f))
-            elif isinstance(f, dict):
-                findings_dicts.append(f)
+        findings_dicts = [_finding_to_dict(f) for f in ctx.findings if _finding_to_dict(f)]
 
         # Attempt OPA evaluation, fall back to Python
         ctx.policy_gate_result = self._evaluate_policy(
@@ -357,18 +365,6 @@ class PolicyGateStage(BaseStage):
         self, findings: list, config: dict
     ) -> Dict[str, Any]:
         """Evaluate findings against policy rules."""
-        # Count critical/high findings
-        critical_count = sum(
-            1
-            for f in findings
-            if f.get("severity") in ("critical",)
-        )
-        high_count = sum(
-            1
-            for f in findings
-            if f.get("severity") in ("high",)
-        )
-
         blocks = []
         warnings = []
 
@@ -427,16 +423,8 @@ class ReportingStage(BaseStage):
             "phase_timings": ctx.phase_timings,
             "policy_gate": ctx.policy_gate_result,
             "errors": ctx.errors,
-            "findings": [],
+            "findings": [_finding_to_dict(f) for f in ctx.findings if _finding_to_dict(f)],
         }
-        for f in ctx.findings:
-            if hasattr(f, "to_dict"):
-                json_report["findings"].append(f.to_dict())
-            elif hasattr(f, "__dataclass_fields__"):
-                from dataclasses import asdict
-                json_report["findings"].append(asdict(f))
-            elif isinstance(f, dict):
-                json_report["findings"].append(f)
 
         ctx.reports["json"] = json.dumps(json_report, indent=2, default=str)
         formats_generated.append("json")
