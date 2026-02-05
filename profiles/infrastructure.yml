@@ -1,0 +1,13 @@
+_extends: standard
+name: infrastructure
+description: "Infrastructure-as-Code focused scanning (Terraform, Kubernetes, Docker)"
+
+scanners:
+  semgrep: true
+  trivy: true
+  checkov: true
+  api_security: false
+  supply_chain: true
+  fuzzing: false
+  threat_intel: true
+  runtime_security: true

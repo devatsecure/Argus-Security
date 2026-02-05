@@ -18,6 +18,16 @@ from .scanner_outputs import (
 )
 from .correlation import CorrelationInput, CorrelationOutput, CorrelationStatus
 from .enrichment import EnrichmentInput, EnrichmentOutput, ThreatContext
+from .pipeline import (
+    EvidenceData,
+    BusinessContext,
+    ConsensusResult,
+    AgentVerdictSummary,
+    SandboxResult,
+    PipelineFinding,
+    PipelineMetadata,
+    PipelineResult,
+)
 
 __all__ = [
     # Core finding schema
@@ -33,11 +43,21 @@ __all__ = [
     "CheckovOutput",
     "NucleiOutput",
     "FalcoOutput",
-    # Pipeline schemas
+    # Correlation schemas
     "CorrelationInput",
     "CorrelationOutput",
     "CorrelationStatus",
+    # Enrichment schemas
     "EnrichmentInput",
     "EnrichmentOutput",
     "ThreatContext",
+    # Pipeline schemas (Feature 2: Typed Finding Schemas)
+    "EvidenceData",
+    "BusinessContext",
+    "ConsensusResult",
+    "AgentVerdictSummary",
+    "SandboxResult",
+    "PipelineFinding",
+    "PipelineMetadata",
+    "PipelineResult",
 ]

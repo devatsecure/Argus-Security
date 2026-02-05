@@ -1,0 +1,61 @@
+name: deep
+description: "Full pipeline with all scanners and deep analysis. ~10-20 minutes, ~$10.00"
+
+ai:
+  provider: auto
+  model: auto
+  multi_agent_mode: parallel
+
+scanners:
+  semgrep: true
+  trivy: true
+  checkov: true
+  api_security: true
+  dast: false
+  supply_chain: true
+  fuzzing: true
+  threat_intel: true
+  remediation: true
+  runtime_security: true
+  regression_testing: true
+
+features:
+  multi_agent: true
+  spontaneous_discovery: true
+  collaborative_reasoning: true
+  ai_enrichment: true
+  threat_modeling: true
+  sandbox_validation: true
+  heuristics: true
+  consensus: true
+  iris: true
+  exploit_analysis: true
+  generate_security_tests: true
+
+limits:
+  max_files: 100
+  max_file_size: 100000
+  max_tokens: 16000
+  cost_limit: 10.0
+  consensus_threshold: 0.6
+  exploitability_threshold: low
+  fuzzing_duration: 600
+  runtime_monitoring_duration: 120
+
+files:
+  only_changed: false
+  include_paths: ""
+  exclude_paths: "node_modules/**,*.lock,package-lock.json"
+
+deep_analysis:
+  mode: full
+  max_files: 100
+  timeout: 600
+  cost_ceiling: 10.0
+
+output:
+  review_type: audit
+  project_type: auto
+  fail_on: ""
+
+agent_profile: default

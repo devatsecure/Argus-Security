@@ -1,0 +1,15 @@
+_extends: standard
+name: backend-api
+description: "API-focused scanning for backend services"
+
+scanners:
+  api_security: true
+  supply_chain: true
+  fuzzing: true
+
+features:
+  threat_modeling: true
+  iris: true
+
+limits:
+  fuzzing_duration: 300
