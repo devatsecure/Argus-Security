@@ -1,0 +1,61 @@
+name: standard
+description: "Balanced security scan for most repositories. ~2-5 minutes, ~$1.00"
+
+ai:
+  provider: auto
+  model: auto
+  multi_agent_mode: sequential
+
+scanners:
+  semgrep: true
+  trivy: true
+  checkov: true
+  api_security: true
+  dast: false
+  supply_chain: true
+  fuzzing: false
+  threat_intel: true
+  remediation: true
+  runtime_security: false
+  regression_testing: true
+
+features:
+  multi_agent: true
+  spontaneous_discovery: true
+  collaborative_reasoning: false
+  ai_enrichment: true
+  threat_modeling: true
+  sandbox_validation: true
+  heuristics: true
+  consensus: true
+  iris: true
+  exploit_analysis: true
+  generate_security_tests: true
+
+limits:
+  max_files: 50
+  max_file_size: 50000
+  max_tokens: 8000
+  cost_limit: 1.0
+  consensus_threshold: 0.5
+  exploitability_threshold: moderate
+  fuzzing_duration: 300
+  runtime_monitoring_duration: 60
+
+files:
+  only_changed: false
+  include_paths: ""
+  exclude_paths: ".github/**,node_modules/**,*.lock,package-lock.json"
+
+deep_analysis:
+  mode: "off"
+  max_files: 50
+  timeout: 300
+  cost_ceiling: 5.0
+
+output:
+  review_type: audit
+  project_type: auto
+  fail_on: ""
+
+agent_profile: default

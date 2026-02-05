@@ -1,0 +1,46 @@
+name: quick
+description: "Fast PR checks with minimal AI usage. ~30 seconds, <$0.10"
+
+ai:
+  provider: auto
+  model: auto
+  multi_agent_mode: single
+
+scanners:
+  semgrep: true
+  trivy: false
+  checkov: false
+  api_security: false
+  dast: false
+  supply_chain: false
+  fuzzing: false
+  threat_intel: false
+  remediation: false
+  runtime_security: false
+  regression_testing: false
+
+features:
+  multi_agent: false
+  spontaneous_discovery: false
+  collaborative_reasoning: false
+  ai_enrichment: true
+  threat_modeling: false
+  sandbox_validation: false
+  heuristics: true
+  consensus: false
+  iris: false
+  exploit_analysis: false
+
+limits:
+  max_files: 20
+  max_file_size: 30000
+  max_tokens: 4000
+  cost_limit: 0.15
+
+files:
+  only_changed: true
+
+deep_analysis:
+  mode: "off"
+
+agent_profile: lite

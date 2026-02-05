@@ -1,0 +1,12 @@
+_extends: standard
+name: frontend
+description: "Frontend-optimized scanning for web applications (React, Vue, Angular)"
+
+scanners:
+  semgrep: true
+  trivy: true
+  checkov: false
+  api_security: false
+  supply_chain: true
+  fuzzing: false
+  runtime_security: false
