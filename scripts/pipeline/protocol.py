@@ -104,6 +104,9 @@ class PipelineContext:
     agent_reports: Dict[str, str] = field(default_factory=dict)
     consensus_results: List[Any] = field(default_factory=list)
 
+    # -- Incremental scanning (Feature 4) --
+    changed_files: Optional[List[Any]] = None
+
     # -- Error collection --
     errors: List[str] = field(default_factory=list)
 

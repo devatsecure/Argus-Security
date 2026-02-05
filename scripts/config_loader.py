@@ -80,6 +80,8 @@ def get_default_config() -> Dict[str, Any]:
         "enable_iris": True,
         "enable_exploit_analysis": True,
         "generate_security_tests": True,
+        "enable_fix_verification": True,
+        "enable_agent_weighting": True,
 
         # -- Limits --
         "max_files": 50,
@@ -362,6 +364,8 @@ _ENV_MAPPINGS: List[tuple] = [
     (("ENABLE_CONSENSUS",),                         "enable_consensus",     "bool"),
     (("ENABLE_EXPLOIT_ANALYSIS",),                  "enable_exploit_analysis", "bool"),
     (("GENERATE_SECURITY_TESTS",),                  "generate_security_tests", "bool"),
+    (("ENABLE_FIX_VERIFICATION",),                  "enable_fix_verification", "bool"),
+    (("ENABLE_AGENT_WEIGHTING",),                   "enable_agent_weighting", "bool"),
     (("CONSENSUS_THRESHOLD",),                      "consensus_threshold",  "float"),
     (("EXPLOITABILITY_THRESHOLD",),                 "exploitability_threshold", "str"),
 

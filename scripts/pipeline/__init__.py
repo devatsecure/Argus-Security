@@ -51,3 +51,22 @@ __all__ = [
     # Factory
     "build_default_stages",
 ]
+
+# Feature 4-6 stages (optional imports — don't break if missing)
+try:
+    from diff_scanner import IncrementalScanFilter, DiffFindingFilter
+    __all__.extend(["IncrementalScanFilter", "DiffFindingFilter"])
+except ImportError:
+    pass
+
+try:
+    from fix_verifier import FixVerificationStage
+    __all__.append("FixVerificationStage")
+except ImportError:
+    pass
+
+try:
+    from agent_confidence import AgentConfidenceStage
+    __all__.append("AgentConfidenceStage")
+except ImportError:
+    pass

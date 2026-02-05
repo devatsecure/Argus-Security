@@ -495,8 +495,13 @@ def build_default_stages(config: Dict[str, Any]) -> List[BaseStage]:
 
     Returns all stages; the orchestrator uses ``should_run`` to skip
     stages whose features are disabled.
+
+    Includes Feature 4-6 stages:
+    - IncrementalScanFilter (Phase 0.5) and DiffFindingFilter (Phase 1.5)
+    - FixVerificationStage (Phase 2.7)
+    - AgentConfidenceStage (Phase 3.5)
     """
-    return [
+    stages: List[BaseStage] = [
         ProjectContextStage(),
         ScannerOrchestrationStage(),
         AIEnrichmentStage(),
@@ -507,3 +512,27 @@ def build_default_stages(config: Dict[str, Any]) -> List[BaseStage]:
         PolicyGateStage(),
         ReportingStage(),
     ]
+
+    # Feature 4: Incremental/Diff-Only Scanning
+    try:
+        from diff_scanner import IncrementalScanFilter, DiffFindingFilter
+        stages.append(IncrementalScanFilter())
+        stages.append(DiffFindingFilter())
+    except ImportError:
+        logger.debug("diff_scanner not available; incremental scanning disabled")
+
+    # Feature 5: Fix Verification Loop
+    try:
+        from fix_verifier import FixVerificationStage
+        stages.append(FixVerificationStage())
+    except ImportError:
+        logger.debug("fix_verifier not available; fix verification disabled")
+
+    # Feature 6: Agent Confidence Weighting
+    try:
+        from agent_confidence import AgentConfidenceStage
+        stages.append(AgentConfidenceStage())
+    except ImportError:
+        logger.debug("agent_confidence not available; agent weighting disabled")
+
+    return stages
