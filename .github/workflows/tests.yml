@@ -100,5 +100,6 @@ jobs:
           ruff check scripts/ tests/
 
       - name: Run mypy
+        continue-on-error: true
         run: |
-          mypy scripts/*.py --config-file=pyproject.toml --no-error-summary || true
+          mypy scripts/*.py --config-file=pyproject.toml --no-error-summary
