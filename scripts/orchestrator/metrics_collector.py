@@ -103,6 +103,17 @@ class ReviewMetrics:
 
         self.metrics["cost_usd"] += input_cost + output_cost
 
+    def record(self, key, value=1):
+        """Record an arbitrary metric by key.
+
+        If the key already exists and is numeric, adds value to it.
+        Otherwise sets the key to value.
+        """
+        if key in self.metrics and isinstance(self.metrics[key], (int, float)):
+            self.metrics[key] += value
+        else:
+            self.metrics[key] = value
+
     def record_finding(self, severity, category):
         """Record a security finding
 

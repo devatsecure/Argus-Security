@@ -522,6 +522,53 @@ class LLMManager:
             logger.error(f"LLM API call failed: {type(e).__name__}: {e}")
             raise
 
+    def analyze(self, prompt: str, max_tokens: int = 4096) -> "LLMResponse":
+        """Analyze prompt and return an LLM response object.
+
+        Convenience wrapper around call_llm_api that returns a response object
+        compatible with IRISAnalyzer and other consumers that expect raw-API-style
+        attributes (.content, .usage.input_tokens, .usage.output_tokens).
+        """
+        text, inp, out = self.call_llm_api(prompt, max_tokens=max_tokens)
+        return LLMResponse(text=text, input_tokens=inp, output_tokens=out)
+
+    def generate(self, user_prompt: str, system_prompt: str = "", max_tokens: int = 4096) -> str:
+        """Generate a response given user and optional system prompts.
+
+        Used by CollaborativeReasoning agent personas which call
+        ``self.llm.generate(user_prompt, system_prompt)``.
+
+        Returns:
+            Response text string.
+        """
+        if system_prompt:
+            combined = f"{system_prompt}\n\n{user_prompt}"
+        else:
+            combined = user_prompt
+        text, _inp, _out = self.call_llm_api(combined, max_tokens=max_tokens)
+        return text
+
+
+class _Usage:
+    """Minimal usage object matching Anthropic/OpenAI response.usage."""
+    __slots__ = ("input_tokens", "output_tokens")
+
+    def __init__(self, input_tokens: int, output_tokens: int):
+        self.input_tokens = input_tokens
+        self.output_tokens = output_tokens
+
+
+class LLMResponse:
+    """Lightweight response wrapper compatible with IRISAnalyzer._parse_llm_response."""
+    __slots__ = ("content", "usage")
+
+    def __init__(self, text: str, input_tokens: int = 0, output_tokens: int = 0):
+        self.content = text  # plain string – _parse_llm_response falls through to str()
+        self.usage = _Usage(input_tokens, output_tokens)
+
+    def __str__(self) -> str:
+        return self.content
+
 
 # Module-level convenience functions for backward compatibility
 def detect_ai_provider(config: dict) -> str:

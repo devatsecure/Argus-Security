@@ -438,9 +438,9 @@ You have access to the following threat model for this codebase:
 
     # Run each specialized agent
     for i, agent_name in enumerate(agents, 1):
-        print(f"\n{'\u2500' * 80}")
+        print(f"\n{'─' * 80}")
         print(f"\U0001f50d Agent {i}/7: {agent_name.upper()} REVIEWER")
-        print(f"{'\u2500' * 80}")
+        print(f"{'─' * 80}")
 
         # Start context tracking for this agent phase
         context_tracker.start_phase(f"agent_{i}_{agent_name}")
@@ -651,9 +651,9 @@ Be specific with file paths and line numbers. Focus on actionable, real issues.
 
     # NEW: Sandbox Validation (after security agents, before orchestrator)
     if config.get("enable_sandbox_validation", True) and SANDBOX_VALIDATION_AVAILABLE:
-        print(f"\n{'\u2500' * 80}")
+        print(f"\n{'─' * 80}")
         print("\U0001f52c SANDBOX VALIDATION")
-        print(f"{'\u2500' * 80}")
+        print(f"{'─' * 80}")
         print("   Validating exploits in isolated containers...")
 
         try:
@@ -760,13 +760,14 @@ Be specific with file paths and line numbers. Focus on actionable, real issues.
 
     # NEW: Consensus Building (from real_multi_agent_review.py)
     # Build consensus across agent findings to reduce false positives
-    enable_consensus = config.get("enable_consensus", "true").lower() == "true"
+    _ec = config.get("enable_consensus", True)
+    enable_consensus = str(_ec).lower() == "true" if not isinstance(_ec, bool) else _ec
     consensus_results = {}
 
     if enable_consensus and len(agent_reports) >= 2:
-        print(f"\n{'\u2500' * 80}")
+        print(f"\n{'─' * 80}")
         print("\U0001f91d CONSENSUS BUILDING")
-        print(f"{'\u2500' * 80}")
+        print(f"{'─' * 80}")
         print("   Aggregating findings across agents to reduce false positives...")
 
         # Parse findings from all agents
@@ -804,9 +805,9 @@ Be specific with file paths and line numbers. Focus on actionable, real issues.
             print("   \u2139\ufe0f  Insufficient overlap for consensus building")
 
     # Run orchestrator agent
-    print(f"\n{'\u2500' * 80}")
+    print(f"\n{'─' * 80}")
     print("\U0001f3af Agent 7/7: ORCHESTRATOR")
-    print(f"{'\u2500' * 80}")
+    print(f"{'─' * 80}")
     print("   \U0001f504 Aggregating findings from all agents...")
 
     orchestrator_start = time.time()
@@ -909,6 +910,18 @@ Orchestrator synthesis failed. Below are individual agent reports.
     total_cost = sum(m.get("cost_usd", 0) for m in agent_metrics.values())
     total_duration = sum(m.get("duration_seconds", 0) for m in agent_metrics.values())
 
+    # Build status icons (avoid backslashes in f-strings for Python 3.11 compat)
+    def _status(name):
+        return "✅" if "error" not in agent_metrics.get(name, {}) else "❌"
+
+    sec_status = _status("security")
+    exploit_status = _status("exploit-analyst")
+    testgen_status = _status("security-test-generator")
+    perf_status = _status("performance")
+    test_status = _status("testing")
+    qual_status = _status("quality")
+    orch_status = _status("orchestrator")
+
     multi_agent_summary = f"""
 ---
 
@@ -921,13 +934,13 @@ Orchestrator synthesis failed. Below are individual agent reports.
 ### Agent Performance
 | Agent | Duration | Cost | Status |
 |-------|----------|------|--------|
-| Security | {agent_metrics.get("security", {}).get("duration_seconds", "N/A")}s | ${agent_metrics.get("security", {}).get("cost_usd", 0):.4f} | {"\u2705" if "error" not in agent_metrics.get("security", {}) else "\u274c"} |
-| Exploit Analyst | {agent_metrics.get("exploit-analyst", {}).get("duration_seconds", "N/A")}s | ${agent_metrics.get("exploit-analyst", {}).get("cost_usd", 0):.4f} | {"\u2705" if "error" not in agent_metrics.get("exploit-analyst", {}) else "\u274c"} |
-| Security Test Generator | {agent_metrics.get("security-test-generator", {}).get("duration_seconds", "N/A")}s | ${agent_metrics.get("security-test-generator", {}).get("cost_usd", 0):.4f} | {"\u2705" if "error" not in agent_metrics.get("security-test-generator", {}) else "\u274c"} |
-| Performance | {agent_metrics.get("performance", {}).get("duration_seconds", "N/A")}s | ${agent_metrics.get("performance", {}).get("cost_usd", 0):.4f} | {"\u2705" if "error" not in agent_metrics.get("performance", {}) else "\u274c"} |
-| Testing | {agent_metrics.get("testing", {}).get("duration_seconds", "N/A")}s | ${agent_metrics.get("testing", {}).get("cost_usd", 0):.4f} | {"\u2705" if "error" not in agent_metrics.get("testing", {}) else "\u274c"} |
-| Quality | {agent_metrics.get("quality", {}).get("duration_seconds", "N/A")}s | ${agent_metrics.get("quality", {}).get("cost_usd", 0):.4f} | {"\u2705" if "error" not in agent_metrics.get("quality", {}) else "\u274c"} |
-| Orchestrator | {agent_metrics.get("orchestrator", {}).get("duration_seconds", "N/A")}s | ${agent_metrics.get("orchestrator", {}).get("cost_usd", 0):.4f} | {"\u2705" if "error" not in agent_metrics.get("orchestrator", {}) else "\u274c"} |
+| Security | {agent_metrics.get("security", {}).get("duration_seconds", "N/A")}s | ${agent_metrics.get("security", {}).get("cost_usd", 0):.4f} | {sec_status} |
+| Exploit Analyst | {agent_metrics.get("exploit-analyst", {}).get("duration_seconds", "N/A")}s | ${agent_metrics.get("exploit-analyst", {}).get("cost_usd", 0):.4f} | {exploit_status} |
+| Security Test Generator | {agent_metrics.get("security-test-generator", {}).get("duration_seconds", "N/A")}s | ${agent_metrics.get("security-test-generator", {}).get("cost_usd", 0):.4f} | {testgen_status} |
+| Performance | {agent_metrics.get("performance", {}).get("duration_seconds", "N/A")}s | ${agent_metrics.get("performance", {}).get("cost_usd", 0):.4f} | {perf_status} |
+| Testing | {agent_metrics.get("testing", {}).get("duration_seconds", "N/A")}s | ${agent_metrics.get("testing", {}).get("cost_usd", 0):.4f} | {test_status} |
+| Quality | {agent_metrics.get("quality", {}).get("duration_seconds", "N/A")}s | ${agent_metrics.get("quality", {}).get("cost_usd", 0):.4f} | {qual_status} |
+| Orchestrator | {agent_metrics.get("orchestrator", {}).get("duration_seconds", "N/A")}s | ${agent_metrics.get("orchestrator", {}).get("cost_usd", 0):.4f} | {orch_status} |
 
 ### Exploitability Metrics
 - **Trivial**: {metrics.metrics["exploitability"]["trivial"]} (fix within 24-48 hours)

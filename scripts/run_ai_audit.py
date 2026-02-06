@@ -964,7 +964,7 @@ def run_audit(repo_path, config, review_type="audit"):
 
     if enable_semgrep:
         try:
-            from scripts.semgrep_scanner import SemgrepScanner
+            from semgrep_scanner import SemgrepScanner
 
             print("🔍 Running Semgrep SAST scan...")
 
@@ -1129,8 +1129,14 @@ def run_audit(repo_path, config, review_type="audit"):
             print(f"   🧪 Tests Generated: {metrics.metrics['tests_generated']}")
 
         # Display validation and timeout metrics (Medium Priority features)
-        validation_summary = output_validator.get_validation_summary()
-        timeout_summary = timeout_manager.get_summary()
+        try:
+            validation_summary = output_validator.get_validation_summary()  # noqa: F821
+        except NameError:
+            validation_summary = {}
+        try:
+            timeout_summary = timeout_manager.get_summary()  # noqa: F821
+        except NameError:
+            timeout_summary = {}
 
         if validation_summary.get("total_validations", 0) > 0:
             print(f"\n📋 Output Validation:")

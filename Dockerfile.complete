@@ -46,6 +46,10 @@ RUN wget -q https://github.com/zaproxy/zaproxy/releases/download/v2.14.0/ZAP_2.1
     rm /tmp/zap.tar.gz && \
     ln -s /opt/ZAP_2.14.0/zap.sh /usr/local/bin/zap.sh || true
 
+# Install OPA (for policy gates)
+RUN wget -q https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static -O /usr/local/bin/opa && \
+    chmod +x /usr/local/bin/opa
+
 # Set Python environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -78,13 +82,13 @@ COPY profiles/ ./profiles/
 COPY schemas/ ./schemas/
 COPY config/ ./config/
 
-# Create non-root user for security (matches base Dockerfile)
-RUN groupadd -r agentuser && useradd -r -g agentuser -u 1000 agentuser
+# Create non-root user for security with home directory (needed by semgrep, trivy, etc.)
+RUN groupadd -r agentuser && useradd -r -g agentuser -u 1000 -m agentuser
 
 # Create workspace and output directories with proper permissions
-RUN mkdir -p /workspace /output && \
+RUN mkdir -p /workspace /output /home/agentuser/.semgrep && \
     chmod 755 /workspace /output && \
-    chown -R agentuser:agentuser /app /workspace /output
+    chown -R agentuser:agentuser /app /workspace /output /home/agentuser
 
 # Initialize Trivy database
 RUN trivy image --download-db-only || true

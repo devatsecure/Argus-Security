@@ -262,8 +262,22 @@ class HybridSecurityAnalyzer:
 
         if self.enable_collaborative_reasoning and self.enable_ai_enrichment and self.ai_client:
             try:
-                from collaborative_reasoning import CollaborativeReasoning
-                self.collaborative_reasoning = CollaborativeReasoning(llm_manager=self.ai_client)
+                from collaborative_reasoning import (
+                    CollaborativeReasoning,
+                    SecretHunterAgent,
+                    FalsePositiveFilterAgent,
+                    ExploitAssessorAgent,
+                    ComplianceAgent,
+                    ContextExpertAgent,
+                )
+                agents = [
+                    SecretHunterAgent(self.ai_client),
+                    FalsePositiveFilterAgent(self.ai_client),
+                    ExploitAssessorAgent(self.ai_client),
+                    ComplianceAgent(self.ai_client),
+                    ContextExpertAgent(self.ai_client),
+                ]
+                self.collaborative_reasoning = CollaborativeReasoning(agents)
                 logger.info("✅ Collaborative reasoning initialized")
             except (ImportError, Exception) as e:
                 logger.warning(f"⚠️  Could not load collaborative reasoning: {e}")
