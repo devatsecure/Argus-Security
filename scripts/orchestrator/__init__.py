@@ -27,12 +27,11 @@ Components:
 - metrics_collector.py: ReviewMetrics - Audit metrics tracking and persistence
 """
 
-from .cost_tracker import CostLimitExceededError
+from .cost_tracker import CostCircuitBreaker, CostLimitExceededError
 from .file_selector import FileSelector
 from .llm_manager import (
     LLMManager,
     ConsensusBuilder,
-    CostCircuitBreaker,
     call_llm_api,
     detect_ai_provider,
     get_ai_client,

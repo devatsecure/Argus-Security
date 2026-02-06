@@ -194,8 +194,10 @@ class DockerManager:
                 mem_limit=memory_limit,
                 memswap_limit=memory_limit,  # No swap
                 pids_limit=100,  # Limit number of processes
-                read_only=False,  # Allow writing to /tmp
-                tmpfs={"/tmp": "size=100m,mode=1777"},  # Temporary filesystem
+                read_only=True,  # Read-only root filesystem
+                tmpfs={"/tmp": "noexec,size=100m,mode=1777"},  # Temporary filesystem (noexec)
+                cap_drop=["ALL"],  # Drop all Linux capabilities
+                security_opt=["no-new-privileges:true"],  # Prevent privilege escalation
                 environment=env,
                 labels={
                     "argus-sandbox": "true",

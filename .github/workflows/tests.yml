@@ -38,17 +38,18 @@ jobs:
           if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
           pip install pytest pytest-cov pytest-mock ruff mypy types-requests
 
-      - name: Run linting (pylint)
+      - name: Run ruff linter
         if: matrix.python-version == '3.10'
         run: |
-          pylint scripts/*.py --rcfile=.pylintrc || true
+          ruff check scripts/
 
       - name: Run type checking (mypy)
         if: matrix.python-version == '3.10'
         run: |
-          mypy scripts/*.py --config-file=pyproject.toml || true
+          mypy scripts/*.py --config-file=pyproject.toml
+        continue-on-error: true  # Advisory — tracked but does not block CI
 
-      - name: Run code formatting check (black)
+      - name: Run code formatting check
         if: matrix.python-version == '3.10'
         run: |
           ruff format --check scripts/ tests/
@@ -101,8 +102,9 @@ jobs:
       
       - name: Run ruff linter
         run: |
-          ruff check scripts/ tests/ --exit-zero
+          ruff check scripts/ tests/
 
       - name: Run mypy
         run: |
-          mypy scripts/*.py --config-file=pyproject.toml --no-error-summary || true
+          mypy scripts/*.py --config-file=pyproject.toml --no-error-summary
+        continue-on-error: true  # Advisory — tracked but does not block CI

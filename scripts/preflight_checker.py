@@ -228,12 +228,13 @@ class PreFlightChecker:
     def _run_custom_command(self, command: str) -> Tuple[bool, str]:
         """Run a custom command validator"""
         try:
+            import shlex
+
             # Replace {report} placeholder with actual report path
             cmd = command.replace("{report}", str(self.report_path))
 
             result = subprocess.run(
-                cmd,
-                shell=True,
+                shlex.split(cmd),
                 capture_output=True,
                 text=True,
                 timeout=30
