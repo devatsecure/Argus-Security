@@ -3,6 +3,21 @@
 Agent OS AI-Powered Code Audit Script
 Supports multiple LLM providers: Anthropic, OpenAI, Ollama
 With cost guardrails, SARIF/JSON output, and observability
+
+FACADE PATTERN:
+    This module is the main entry point for the Argus Security audit pipeline.
+    It previously contained all logic in a single god-object (~2,900 lines).
+    Functions have been progressively extracted into sub-modules under
+    ``scripts/orchestrator/``, while this file retains:
+
+        * Core LLM interaction functions (detect_ai_provider, get_ai_client,
+          call_llm_api, etc.)
+        * SARIF generation helpers
+        * The ``run_audit()`` orchestration function
+        * The ``if __name__ == "__main__":`` entry point
+
+    Extracted functions are re-imported here so that existing consumers using
+    ``from run_ai_audit import X`` continue to work without changes.
 """
 
 import ast
@@ -98,123 +113,33 @@ from analysis_helpers import (
 # --- END OF REMOVED INLINE CLASSES ---
 
 
-class CostCircuitBreaker:
-    """Runtime cost enforcement to prevent budget overruns
+# CostCircuitBreaker consolidated into orchestrator/cost_tracker.py
+from orchestrator.cost_tracker import CostCircuitBreaker  # noqa: E402
 
-    This class provides real-time cost tracking and enforcement:
-    - Checks before each LLM call if limit would be exceeded
-    - Maintains 10% safety buffer to prevent overage
-    - Logs warnings at 50%, 75%, 90% thresholds
-    - Raises CostLimitExceededError when limit reached
+# ---------------------------------------------------------------------------
+# Extracted modules — imported here for backward-compatible re-export.
+# Consumers that do ``from run_ai_audit import load_config_from_env`` (etc.)
+# will continue to work.
+# ---------------------------------------------------------------------------
+from orchestrator.config import (  # noqa: E402
+    load_config_from_env,
+    validate_config,
+    estimate_cost,
+    estimate_review_cost,
+    estimate_tokens,
+    read_file_safe,
+    classify_finding_category,
+    should_review_file,
+    parse_args,
+    build_config,
+)
 
-    Example:
-        breaker = CostCircuitBreaker(cost_limit_usd=1.0)
-        breaker.check_before_call(estimated_cost=0.15, provider='anthropic')
-        # ... make LLM call ...
-        breaker.record_actual_cost(0.14)
-    """
-
-    def __init__(self, cost_limit_usd: float, safety_buffer_percent: float = 10.0):
-        """Initialize cost circuit breaker
-
-        Args:
-            cost_limit_usd: Maximum cost allowed in USD
-            safety_buffer_percent: Safety buffer percentage (default: 10%)
-        """
-        self.cost_limit = cost_limit_usd
-        self.safety_buffer = safety_buffer_percent / 100.0
-        self.effective_limit = cost_limit_usd * (1.0 - self.safety_buffer)
-        self.current_cost = 0.0
-        self.warned_thresholds = set()
-
-        logger.info(
-            f"💰 Cost Circuit Breaker initialized: ${cost_limit_usd:.2f} limit "
-            f"(${self.effective_limit:.2f} effective with {safety_buffer_percent}% buffer)"
-        )
-
-    def check_before_call(self, estimated_cost: float, provider: str, operation: str = "LLM call"):
-        """Check if estimated cost would exceed limit
-
-        Args:
-            estimated_cost: Estimated cost of the operation in USD
-            provider: AI provider name (for logging)
-            operation: Description of operation (for logging)
-
-        Raises:
-            CostLimitExceededError: If operation would exceed cost limit
-        """
-        projected_cost = self.current_cost + estimated_cost
-        utilization = (self.current_cost / self.effective_limit) * 100 if self.effective_limit > 0 else 0
-
-        # Check threshold warnings (50%, 75%, 90%)
-        for threshold in [50, 75, 90]:
-            if utilization >= threshold and threshold not in self.warned_thresholds:
-                self.warned_thresholds.add(threshold)
-                logger.warning(
-                    f"⚠️  Cost at {utilization:.1f}% of limit (${self.current_cost:.3f} / ${self.effective_limit:.2f})"
-                )
-
-        # Check if we would exceed the limit
-        if projected_cost > self.effective_limit:
-            remaining = self.effective_limit - self.current_cost
-            message = (
-                f"Cost limit exceeded! "
-                f"Operation would cost ${estimated_cost:.3f}, "
-                f"but only ${remaining:.3f} remaining of ${self.cost_limit:.2f} limit. "
-                f"Current cost: ${self.current_cost:.3f}"
-            )
-            logger.error(f"🚨 {message}")
-            raise CostLimitExceededError(message)
-
-        # Log the check (sanitize provider name - use str() to break taint chain)
-        safe_provider = str(provider).split("/")[-1] if provider else "unknown"
-        logger.debug(
-            f"✓ Cost check passed: ${estimated_cost:.3f} {operation} ({safe_provider}), "
-            f"projected: ${projected_cost:.3f} / ${self.effective_limit:.2f}"
-        )
-
-    def record_actual_cost(self, actual_cost: float):
-        """Record actual cost after operation completes
-
-        Args:
-            actual_cost: Actual cost incurred in USD
-        """
-        self.current_cost += actual_cost
-        logger.debug(f"💵 Cost updated: +${actual_cost:.3f} → ${self.current_cost:.3f}")
-
-    def get_remaining_budget(self) -> float:
-        """Get remaining budget in USD
-
-        Returns:
-            Remaining budget considering safety buffer
-        """
-        return max(0.0, self.effective_limit - self.current_cost)
-
-    def get_utilization_percent(self) -> float:
-        """Get current cost utilization as percentage
-
-        Returns:
-            Utilization percentage (0-100+)
-        """
-        if self.effective_limit == 0:
-            return 0.0
-        return (self.current_cost / self.effective_limit) * 100
-
-    def get_summary(self) -> dict:
-        """Get cost summary for reporting
-
-        Returns:
-            Dictionary with cost details
-        """
-        return {
-            "cost_limit_usd": self.cost_limit,
-            "effective_limit_usd": self.effective_limit,
-            "safety_buffer_percent": self.safety_buffer * 100,
-            "current_cost_usd": self.current_cost,
-            "remaining_budget_usd": self.get_remaining_budget(),
-            "utilization_percent": self.get_utilization_percent(),
-            "limit_exceeded": self.current_cost > self.effective_limit,
-        }
+from orchestrator.agent_runner import (  # noqa: E402
+    parse_findings_from_report,
+    load_agent_prompt,
+    build_enhanced_agent_prompt,
+    run_multi_agent_sequential,
+)
 
 
 # Available agents for multi-agent mode
@@ -590,47 +515,6 @@ def get_codebase_context(repo_path, config):
     return important_files
 
 
-def estimate_cost(files, max_tokens, provider):
-    """Estimate cost before running analysis"""
-    total_chars = sum(len(f["content"]) for f in files)
-    # Rough estimate: 4 chars per token
-    estimated_input_tokens = total_chars // 4
-    estimated_output_tokens = max_tokens
-
-    if provider == "anthropic":
-        input_cost = (estimated_input_tokens / 1_000_000) * 3.0
-        output_cost = (estimated_output_tokens / 1_000_000) * 15.0
-    elif provider == "openai":
-        input_cost = (estimated_input_tokens / 1_000_000) * 10.0
-        output_cost = (estimated_output_tokens / 1_000_000) * 30.0
-    else:  # ollama or other local models
-        input_cost = 0.0
-        output_cost = 0.0
-
-    total_cost = input_cost + output_cost
-
-    return total_cost, estimated_input_tokens, estimated_output_tokens
-
-
-def estimate_review_cost(mode="single", num_files=50):
-    """Estimate cost of review based on mode and file count
-
-    Args:
-        mode: 'single' or 'multi'
-        num_files: Number of files to review
-
-    Returns:
-        Estimated cost in USD
-    """
-    base_cost = COST_ESTIMATES["single_agent"] if mode == "single" else COST_ESTIMATES["multi_agent_sequential"]
-
-    # Adjust for file count
-    file_factor = num_files / 50.0  # 50 files is baseline
-    estimated_cost = base_cost * file_factor
-
-    return round(estimated_cost, 2)
-
-
 def map_exploitability_to_score(exploitability):
     """Map exploitability level to numeric score for SARIF
 
@@ -740,92 +624,6 @@ def generate_sarif(findings, repo_path, metrics=None):
         }
 
     return sarif
-
-
-def parse_findings_from_report(report_text):
-    """Parse findings from markdown report"""
-    import re
-
-    findings = []
-    lines = report_text.split("\n")
-
-    # Track current section for categorization
-    current_section = None
-    current_severity = None
-
-    for i, line in enumerate(lines):
-        # Detect sections
-        if "## Critical Issues" in line or "## Critical" in line:
-            current_severity = "critical"
-            continue
-        elif "## High Priority" in line or "## High" in line:
-            current_severity = "high"
-            continue
-        elif "## Medium Priority" in line or "## Medium" in line:
-            current_severity = "medium"
-            continue
-        elif "## Low Priority" in line or "## Low" in line:
-            current_severity = "low"
-            continue
-
-        # Detect category subsections
-        if "### Security" in line:
-            current_section = "security"
-            continue
-        elif "### Performance" in line:
-            current_section = "performance"
-            continue
-        elif "### Testing" in line or "### Test" in line:
-            current_section = "testing"
-            continue
-        elif "### Code Quality" in line or "### Quality" in line:
-            current_section = "quality"
-            continue
-
-        # Look for numbered findings (e.g., "1. **Issue Name**" or "14. **Issue Name**")
-        numbered_match = re.match(
-            r"^\d+\.\s+\*\*(.+?)\*\*\s*-?\s*`?([^`\n]+\.(?:ts|js|py|java|go|rs|rb|php|cs))?:?(\d+)?", line
-        )
-        if numbered_match:
-            issue_name = numbered_match.group(1)
-            file_path = numbered_match.group(2) if numbered_match.group(2) else "unknown"
-            line_num = int(numbered_match.group(3)) if numbered_match.group(3) else 1
-
-            # Get description from next lines
-            description_lines = []
-            for j in range(i + 1, min(i + 5, len(lines))):
-                if lines[j].strip() and not lines[j].startswith("#") and not re.match(r"^\d+\.", lines[j]):
-                    description_lines.append(lines[j].strip())
-                elif lines[j].startswith("#") or re.match(r"^\d+\.", lines[j]):
-                    break
-
-            description = " ".join(description_lines[:2]) if description_lines else issue_name
-
-            # Determine category and severity
-            category = current_section or "quality"
-            severity = current_severity or "medium"
-
-            # Override category based on keywords
-            lower_text = (issue_name + " " + description).lower()
-            if any(kw in lower_text for kw in ["security", "sql", "xss", "csrf", "auth", "jwt", "secret", "injection"]):
-                category = "security"
-            elif any(kw in lower_text for kw in ["performance", "n+1", "memory", "leak", "slow", "inefficient"]):
-                category = "performance"
-            elif any(kw in lower_text for kw in ["test", "coverage", "testing"]):
-                category = "testing"
-
-            findings.append(
-                {
-                    "severity": severity,
-                    "category": category,
-                    "message": f"{issue_name}: {description[:200]}",
-                    "file_path": file_path,
-                    "line_number": line_num,
-                    "rule_id": f"{category.upper()}-{len([f for f in findings if f['category'] == category]) + 1:03d}",
-                }
-            )
-
-    return findings
 
 
 @retry(
@@ -959,869 +757,6 @@ def calculate_actual_cost(input_tokens: int, output_tokens: int, provider: str) 
     return input_cost + output_cost
 
 
-def load_agent_prompt(agent_name):
-    """Load specialized agent prompt from profiles"""
-    agent_prompts = {
-        "security": "security-agent-prompt.md",
-        "security-reviewer": "security-reviewer.md",
-        "exploit-analyst": "exploit-analyst.md",
-        "security-test-generator": "security-test-generator.md",
-        "performance": "performance-agent-prompt.md",
-        "performance-reviewer": "performance-reviewer.md",
-        "testing": "testing-agent-prompt.md",
-        "test-coverage-reviewer": "test-coverage-reviewer.md",
-        "quality": "quality-agent-prompt.md",
-        "code-quality-reviewer": "code-quality-reviewer.md",
-        "orchestrator": "orchestrator-agent-prompt.md",
-        "review-orchestrator": "review-orchestrator.md",
-    }
-
-    prompt_file = agent_prompts.get(agent_name)
-    if not prompt_file:
-        # Fallback: try to find prompt file by agent name
-        prompt_file = f"{agent_name}.md"
-
-    # Try multiple locations
-    possible_paths = [
-        Path.home() / f".argus/profiles/default/agents/{prompt_file}",
-        Path.home() / f".argus/profiles/default/agents/{agent_name}.md",
-        Path(".argus") / f"profiles/default/agents/{prompt_file}",
-        Path(".argus") / f"profiles/default/agents/{agent_name}.md",
-    ]
-
-    for prompt_path in possible_paths:
-        if prompt_path.exists():
-            with open(prompt_path) as f:
-                return f.read()
-
-    print(f"⚠️  Agent prompt not found for: {agent_name}")
-    return f"You are a {agent_name} code reviewer. Analyze the code for {agent_name}-related issues."
-
-
-def build_enhanced_agent_prompt(
-    agent_prompt_template,
-    codebase_context,
-    agent_name,
-    category="general",
-    heuristic_flags=None,
-    is_production=True,
-    previous_findings=None,
-):
-    """Build enhanced agent prompt with rubrics and self-consistency checks
-
-    Feature: Enhanced Prompts (from real_multi_agent_review.py)
-    This function adds severity rubrics, self-verification checklists, and category focus
-    to agent prompts for more consistent and accurate findings.
-
-    Args:
-        agent_prompt_template: Base prompt template for the agent
-        codebase_context: Code to review
-        agent_name: Name of the agent
-        category: Focus category (security, performance, quality, general)
-        heuristic_flags: List of heuristic flags from pre-scan
-        is_production: Whether this is production code
-        previous_findings: Findings from previous agents (for chaining)
-
-    Returns:
-        Enhanced prompt string with rubrics and checks
-    """
-
-    # Category-specific focus instructions
-    category_focus = {
-        "security": """**YOUR FOCUS: SECURITY ONLY**
-Focus exclusively on: authentication, authorization, input validation, SQL injection, XSS,
-CSRF, cryptography, secrets management, session handling, API security, dependency vulnerabilities.
-Ignore performance and code quality unless it creates a security risk.""",
-        "performance": """**YOUR FOCUS: PERFORMANCE ONLY**
-Focus exclusively on: N+1 queries, inefficient algorithms, memory leaks, blocking I/O,
-database query optimization, caching opportunities, unnecessary computations, resource exhaustion.
-Ignore security and code style unless it impacts performance.""",
-        "quality": """**YOUR FOCUS: CODE QUALITY ONLY**
-Focus exclusively on: code complexity, maintainability, design patterns, SOLID principles,
-error handling, logging, documentation, dead code, code duplication, naming conventions.
-Ignore security and performance unless code quality creates those risks.""",
-        "general": """**YOUR FOCUS: COMPREHENSIVE REVIEW**
-Review all aspects: security, performance, and code quality.""",
-    }
-
-    heuristic_context = ""
-    if heuristic_flags:
-        heuristic_context = f"""
-**⚠️  PRE-SCAN ALERTS**: Heuristic analysis flagged: {", ".join(heuristic_flags)}
-These are lightweight pattern matches. Verify each one carefully before reporting."""
-
-    previous_context = ""
-    if previous_findings:
-        previous_context = f"""
-## Previous Agent Findings
-
-Earlier agents identified the following:
-
-{previous_findings}
-
-Use this as context but focus on your specialized area."""
-
-    # Severity rubric for consistent scoring
-    severity_rubric = """
-**SEVERITY RUBRIC** (Use this to score consistently):
-- **CRITICAL** (0.9-1.0 confidence): Exploitable security flaw, production data loss, system-wide outage
-  Examples: SQL injection, hardcoded secrets, authentication bypass, RCE
-
-- **HIGH** (0.7-0.89 confidence): Major security gap, significant performance degradation, data corruption risk
-  Examples: Missing auth checks, N+1 queries causing timeouts, memory leaks
-
-- **MEDIUM** (0.5-0.69 confidence): Moderate issue with workaround, sub-optimal design
-  Examples: Weak validation, inefficient algorithm, poor error handling
-
-- **LOW** (0.3-0.49 confidence): Minor issue, edge case, defensive improvement
-  Examples: Missing logging, minor optimization opportunity
-
-- **INFO** (0.0-0.29 confidence): Style, optional refactoring, best practice
-  Examples: Variable naming, code organization, documentation
-"""
-
-    # Self-verification checklist
-    verification_checklist = """
-**SELF-VERIFICATION CHECKLIST** (Ask yourself before reporting):
-1. Is this issue ACTUALLY exploitable/harmful in this context?
-2. Would this issue cause real problems in production?
-3. Is my recommendation actionable and specific?
-4. Am I considering the full context (dev vs prod, test vs runtime)?
-5. If I'm unsure, have I lowered my confidence score appropriately?
-"""
-
-    # Build the enhanced prompt
-    enhanced_prompt = f"""{agent_prompt_template}
-
-{category_focus.get(category, category_focus["general"])}
-
-**CODE TYPE**: {"Production code" if is_production else "Development/Test infrastructure"}{heuristic_context}
-
-{previous_context}
-
-## Codebase to Analyze
-
-{codebase_context}
-
-{severity_rubric}
-
-{verification_checklist}
-
-**YOUR TASK**:
-1. Review the code through the lens of {category if category != "general" else agent_name}
-2. For each potential issue, run the self-verification checklist
-3. Use the severity rubric to assign accurate severity and confidence
-4. Report ONLY issues that pass verification
-
-**RESPONSE FORMAT**:
-Use your standard report format, but ensure each finding includes:
-- Clear severity level (CRITICAL/HIGH/MEDIUM/LOW/INFO)
-- Confidence score (0.0-1.0)
-- Specific file path and line number
-- Actionable recommendation
-
-Be thorough but precise. Quality over quantity.
-"""
-
-    return enhanced_prompt
-
-
-def run_multi_agent_sequential(
-    repo_path,
-    config,
-    review_type,
-    client,
-    provider,
-    model,
-    max_tokens,
-    files,
-    metrics,
-    circuit_breaker,
-    threat_model=None,
-):
-    """Run multi-agent sequential review with specialized agents and cost enforcement
-    
-    BEST PRACTICE IMPLEMENTATION:
-    - Uses discrete phases with context tracking (Practice #2)
-    - Passes distilled conclusions between agents (Practice #1)
-    - Monitors execution with circuit breaker (Practice #3)
-
-    Args:
-        threat_model: Optional threat model to provide context to agents
-    """
-
-    print("\n" + "=" * 80)
-    print("🤖 MULTI-AGENT SEQUENTIAL MODE")
-    print("=" * 80)
-    print("Running 7 specialized agents in sequence:")
-    print("  1️⃣  Security Reviewer")
-    print("  2️⃣  Exploit Analyst")
-    print("  3️⃣  Security Test Generator")
-    print("  4️⃣  Performance Reviewer")
-    print("  5️⃣  Testing Reviewer")
-    print("  6️⃣  Code Quality Reviewer")
-    print("  7️⃣  Review Orchestrator")
-    print("=" * 80 + "\n")
-
-    # Initialize context tracker and finding summarizer
-    context_tracker = ContextTracker()
-    summarizer = FindingSummarizer()
-    
-    # Initialize output validator and timeout manager (Medium Priority features)
-    output_validator = AgentOutputValidator()
-    timeout_manager = TimeoutManager(default_timeout=300)  # 5 minutes default
-    
-    # Set custom timeouts for specific agents
-    timeout_manager.set_agent_timeout("security", 600)  # 10 minutes for security
-    timeout_manager.set_agent_timeout("exploit-analyst", 480)  # 8 minutes
-    timeout_manager.set_agent_timeout("orchestrator", 600)  # 10 minutes
-
-    # Build codebase context once
-    codebase_context = "\n\n".join([f"File: {f['path']}\n```\n{f['content']}\n```" for f in files])
-
-    # Build threat model context for agents (if available)
-    threat_model_context = ""
-    if threat_model:
-        threat_model_context = f"""
-## THREAT MODEL CONTEXT
-
-You have access to the following threat model for this codebase:
-
-### Attack Surface
-- **Entry Points**: {", ".join(threat_model.get("attack_surface", {}).get("entry_points", [])[:5])}
-- **External Dependencies**: {", ".join(threat_model.get("attack_surface", {}).get("external_dependencies", [])[:5])}
-- **Authentication Methods**: {", ".join(threat_model.get("attack_surface", {}).get("authentication_methods", []))}
-- **Data Stores**: {", ".join(threat_model.get("attack_surface", {}).get("data_stores", []))}
-
-### Critical Assets
-{chr(10).join([f"- **{asset.get('name')}** (Sensitivity: {asset.get('sensitivity')}): {asset.get('description')}" for asset in threat_model.get("assets", [])[:5]])}
-
-### Trust Boundaries
-{chr(10).join([f"- **{boundary.get('name')}** ({boundary.get('trust_level')}): {boundary.get('description')}" for boundary in threat_model.get("trust_boundaries", [])[:3]])}
-
-### Known Threats
-{chr(10).join([f"- **{threat.get('name')}** ({threat.get('category')}, Likelihood: {threat.get('likelihood')}, Impact: {threat.get('impact')})" for threat in threat_model.get("threats", [])[:5]])}
-
-### Security Objectives
-{chr(10).join([f"- {obj}" for obj in threat_model.get("security_objectives", [])[:5]])}
-
-**Use this threat model to:**
-1. Focus your analysis on the identified attack surfaces
-2. Prioritize vulnerabilities that affect critical assets
-3. Consider trust boundary violations
-4. Look for instances of the known threat categories
-5. Validate that security objectives are being met
-"""
-
-    # Store agent findings
-    agent_reports = {}
-    agent_metrics = {}
-
-    # Define agents in execution order (security workflow first)
-    agents = ["security", "exploit-analyst", "security-test-generator", "performance", "testing", "quality"]
-
-    # Run each specialized agent
-    for i, agent_name in enumerate(agents, 1):
-        print(f"\n{'─' * 80}")
-        print(f"🔍 Agent {i}/7: {agent_name.upper()} REVIEWER")
-        print(f"{'─' * 80}")
-
-        # Start context tracking for this agent phase
-        context_tracker.start_phase(f"agent_{i}_{agent_name}")
-        agent_start = time.time()
-
-        # Load agent-specific prompt
-        agent_prompt_template = load_agent_prompt(agent_name)
-        context_tracker.add_context("agent_prompt_template", agent_prompt_template, {"agent": agent_name})
-
-        # For exploit-analyst and security-test-generator, pass SUMMARIZED security findings
-        if agent_name in ["exploit-analyst", "security-test-generator"]:
-            # Parse and summarize security findings instead of passing full report
-            security_report = agent_reports.get("security", "")
-            security_findings = parse_findings_from_report(security_report)
-            security_summary = summarizer.summarize_findings(security_findings, max_findings=15)
-            
-            # Check for contradictions
-            contradictions = context_tracker.detect_contradictions(agent_prompt_template, threat_model_context)
-            if contradictions:
-                logger.warning(f"⚠️  Potential contradictions detected for {agent_name}:")
-                for warning in contradictions:
-                    logger.warning(f"   - {warning}")
-            
-            context_tracker.add_context("threat_model", threat_model_context, {"size": "summarized"})
-            context_tracker.add_context("security_findings_summary", security_summary, {"original_findings": len(security_findings)})
-            context_tracker.add_context("codebase", codebase_context, {"files": len(files)})
-            
-            agent_prompt = f"""{agent_prompt_template}
-
-{threat_model_context}
-
-## Previous Agent Findings (Summarized)
-
-The Security Reviewer has completed their analysis. Here's a summary:
-
-{security_summary}
-
-## Codebase to Analyze
-
-{codebase_context}
-
-## Your Task
-
-{"Analyze the exploitability of the vulnerabilities identified above." if agent_name == "exploit-analyst" else "Generate security tests for the vulnerabilities identified above."}
-
-Provide detailed analysis in your specialized format.
-"""
-        else:
-            # Track context for non-security agents
-            context_tracker.add_context("threat_model", threat_model_context, {"size": "summarized"})
-            context_tracker.add_context("codebase", codebase_context, {"files": len(files)})
-            
-            # Create agent-specific prompt
-            agent_prompt = f"""{agent_prompt_template}
-
-{threat_model_context}
-
-## Codebase to Analyze
-
-{codebase_context}
-
-## Your Task
-
-Analyze the above codebase from your specialized perspective as a {agent_name} reviewer.
-Focus ONLY on {agent_name}-related issues. Do not analyze areas outside your responsibility.
-
-Provide your findings in this format:
-
-# {agent_name.title()} Review Report
-
-## Summary
-- Total {agent_name} issues found: X
-- Critical: X
-- High: X
-- Medium: X
-- Low: X
-
-## Critical Issues
-
-### [CRITICAL] Issue Title - `file.ext:line`
-**Category**: [Specific subcategory]
-**Impact**: Description of impact
-**Evidence**: Code snippet
-**Recommendation**: Fix with code example
-
-[Repeat for each critical issue]
-
-## High Priority Issues
-
-[Same format as critical]
-
-## Medium Priority Issues
-
-[Same format]
-
-## Low Priority Issues
-
-[Same format]
-
-Be specific with file paths and line numbers. Focus on actionable, real issues.
-"""
-
-        # End context tracking for this phase
-        context_tracker.end_phase()
-
-        try:
-            # Sanitize model name (use str() to break taint chain)
-            safe_model = str(model).split("/")[-1] if model else "unknown"
-            print(f"   🧠 Analyzing with {safe_model}...")
-            report, input_tokens, output_tokens = call_llm_api(
-                client,
-                provider,
-                model,
-                agent_prompt,
-                max_tokens,
-                circuit_breaker=circuit_breaker,
-                operation=f"{agent_name} agent review",
-            )
-
-            agent_duration = time.time() - agent_start
-            
-            # Check timeout (Medium Priority feature)
-            exceeded, elapsed, remaining = timeout_manager.check_timeout(agent_name, agent_start)
-            timeout_manager.record_execution(agent_name, agent_duration, not exceeded)
-            
-            if exceeded:
-                logger.warning(f"⚠️  Agent {agent_name} exceeded timeout ({elapsed:.1f}s > {timeout_manager.get_timeout(agent_name)}s)")
-                print(f"   ⚠️  Warning: Execution time ({elapsed:.1f}s) exceeded timeout limit")
-
-            # Validate output (Medium Priority feature)
-            expected_sections = ["Summary", "Issues", "Critical", "High"]
-            validation = output_validator.validate_output(agent_name, report, expected_sections)
-            
-            if not validation["valid"]:
-                logger.error(f"❌ Agent {agent_name} output validation failed: {validation['errors']}")
-                print(f"   ❌ Output validation failed: {', '.join(validation['errors'])}")
-            
-            if validation["warnings"]:
-                logger.warning(f"⚠️  Agent {agent_name} output warnings: {validation['warnings']}")
-                for warning in validation["warnings"][:3]:  # Show first 3 warnings
-                    print(f"   ⚠️  {warning}")
-
-            # Record metrics for this agent
-            metrics.record_llm_call(input_tokens, output_tokens, provider)
-            metrics.record_agent_execution(agent_name, agent_duration)
-
-            agent_metrics[agent_name] = {
-                "duration_seconds": round(agent_duration, 2),
-                "input_tokens": input_tokens,
-                "output_tokens": output_tokens,
-                "cost_usd": round((input_tokens / 1_000_000) * 3.0 + (output_tokens / 1_000_000) * 15.0, 4)
-                if provider == "anthropic"
-                else 0,
-                "validation": validation,
-                "timeout_exceeded": exceeded
-            }
-
-            # Store report
-            agent_reports[agent_name] = report
-
-            # Parse findings for metrics
-            findings = parse_findings_from_report(report)
-            finding_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
-            for finding in findings:
-                if finding["severity"] in finding_counts:
-                    finding_counts[finding["severity"]] += 1
-                    metrics.record_finding(finding["severity"], agent_name)
-
-                # Extract exploitability if present (from exploit-analyst)
-                if agent_name == "exploit-analyst" and "exploitability" in finding:
-                    metrics.record_exploitability(finding["exploitability"])
-
-            # Extract exploit chains from report text (simple heuristic)
-            if agent_name == "exploit-analyst":
-                exploit_chain_count = report.lower().count("exploit chain")
-                for _ in range(exploit_chain_count):
-                    metrics.record_exploit_chain()
-
-            # Extract test generation count from report
-            if agent_name == "security-test-generator":
-                test_count = report.lower().count("test file:") + report.lower().count("test case:")
-                if test_count > 0:
-                    metrics.record_test_generated(test_count)
-
-            print(
-                f"   ✅ Complete: {finding_counts['critical']} critical, {finding_counts['high']} high, {finding_counts['medium']} medium, {finding_counts['low']} low"
-            )
-            print(f"   ⏱️  Duration: {agent_duration:.1f}s | 💰 Cost: ${agent_metrics[agent_name]['cost_usd']:.4f}")
-
-        except CostLimitExceededError as e:
-            # Cost limit reached - stop immediately
-            print(f"   🚨 Cost limit exceeded: {e}")
-            print(
-                f"   💰 Review stopped at ${circuit_breaker.current_cost:.3f} to stay within ${circuit_breaker.cost_limit:.2f} budget"
-            )
-            print(f"   ✅ {i - 1}/{len(agents)} agents completed before limit reached")
-
-            # Generate partial report with agents completed so far
-            agent_reports[agent_name] = (
-                f"# {agent_name.title()} Review Skipped\n\n**Reason**: Cost limit reached (${circuit_breaker.cost_limit:.2f})\n"
-            )
-            raise  # Re-raise to stop the entire review
-
-        except Exception as e:
-            print(f"   ❌ Error: {e}")
-            agent_reports[agent_name] = f"# {agent_name.title()} Review Failed\n\nError: {str(e)}"
-            agent_metrics[agent_name] = {"error": str(e)}
-
-    # NEW: Sandbox Validation (after security agents, before orchestrator)
-    if config.get("enable_sandbox_validation", True) and SANDBOX_VALIDATION_AVAILABLE:
-        print(f"\n{'─' * 80}")
-        print("🔬 SANDBOX VALIDATION")
-        print(f"{'─' * 80}")
-        print("   Validating exploits in isolated containers...")
-
-        try:
-            # Initialize sandbox validator
-            validator = SandboxValidator()
-
-            # Parse all findings from security agents
-            all_findings = []
-            for agent_name in ["security", "exploit-analyst", "security-test-generator"]:
-                if agent_name in agent_reports:
-                    findings = parse_findings_from_report(agent_reports[agent_name])
-                    all_findings.extend(findings)
-
-            # Filter security findings that have PoC code
-            security_findings_with_poc = []
-            for finding in all_findings:
-                # Check if finding has a PoC script (look for code blocks or script indicators)
-                if finding.get("category") == "security":
-                    # Try to extract PoC code from the finding message or evidence
-                    message = finding.get("message", "")
-                    if "poc" in message.lower() or "exploit" in message.lower() or "```" in message:
-                        security_findings_with_poc.append(finding)
-
-            if security_findings_with_poc:
-                print(f"   Found {len(security_findings_with_poc)} security findings to validate")
-
-                validated_findings = []
-                for i, finding in enumerate(security_findings_with_poc[:10], 1):  # Limit to 10 for performance
-                    print(
-                        f"   [{i}/{min(10, len(security_findings_with_poc))}] Validating: {finding.get('message', '')[:60]}..."
-                    )
-
-                    # Extract PoC code (simplified - real impl would parse markdown code blocks)
-                    poc_code = ""
-                    message = finding.get("message", "")
-                    if "```" in message:
-                        # Extract code block
-                        parts = message.split("```")
-                        if len(parts) >= 3:
-                            poc_code = parts[1]
-                            # Remove language identifier
-                            if "\n" in poc_code:
-                                poc_code = "\n".join(poc_code.split("\n")[1:])
-
-                    if not poc_code:
-                        # Skip if no PoC code found
-                        validated_findings.append(finding)
-                        continue
-
-                    # Determine exploit type from finding
-                    exploit_type = ExploitType.CUSTOM
-                    lower_msg = finding.get("message", "").lower()
-                    if "sql injection" in lower_msg or "sqli" in lower_msg:
-                        exploit_type = ExploitType.SQL_INJECTION
-                    elif "xss" in lower_msg or "cross-site scripting" in lower_msg:
-                        exploit_type = ExploitType.XSS
-                    elif "command injection" in lower_msg:
-                        exploit_type = ExploitType.COMMAND_INJECTION
-                    elif "path traversal" in lower_msg:
-                        exploit_type = ExploitType.PATH_TRAVERSAL
-
-                    # Create exploit config
-                    exploit = ExploitConfig(
-                        name=finding.get("message", "Unknown")[:100],
-                        exploit_type=exploit_type,
-                        language="python",  # Default to Python
-                        code=poc_code,
-                        expected_indicators=["success", "exploited", "vulnerable"],  # Generic indicators
-                        timeout=15,  # 15 second timeout
-                        metadata={"finding_id": finding.get("rule_id", "unknown")},
-                    )
-
-                    # Validate exploit
-                    try:
-                        validation_result = validator.validate_exploit(exploit, create_new_container=True)
-
-                        # Record metrics
-                        metrics.record_sandbox_validation(validation_result.result)
-
-                        # Only keep if exploitable
-                        if validation_result.result == ValidationResult.EXPLOITABLE.value:
-                            finding["sandbox_validated"] = True
-                            finding["validation_confidence"] = "high"
-                            validated_findings.append(finding)
-                            print("      ✅ Confirmed exploitable")
-                        else:
-                            print("      ❌ Not exploitable - eliminated false positive")
-                            metrics.record_false_positive_eliminated()
-
-                    except Exception as e:
-                        logger.warning(f"Sandbox validation failed: {e}")
-                        # Keep finding if validation fails (don't eliminate real issues)
-                        validated_findings.append(finding)
-                        metrics.record_sandbox_validation("error")
-
-                print(
-                    f"   ✅ Sandbox validation complete: {len(validated_findings)}/{len(security_findings_with_poc[:10])} confirmed"
-                )
-                print(f"   🎯 False positives eliminated: {metrics.metrics['sandbox']['false_positives_eliminated']}")
-
-        except Exception as e:
-            logger.warning(f"Sandbox validation failed: {e}")
-            print("   ⚠️  Sandbox validation unavailable, continuing without validation")
-
-    # NEW: Consensus Building (from real_multi_agent_review.py)
-    # Build consensus across agent findings to reduce false positives
-    enable_consensus = config.get("enable_consensus", "true").lower() == "true"
-    consensus_results = {}
-
-    if enable_consensus and len(agent_reports) >= 2:
-        print(f"\n{'─' * 80}")
-        print("🤝 CONSENSUS BUILDING")
-        print(f"{'─' * 80}")
-        print("   Aggregating findings across agents to reduce false positives...")
-
-        # Parse findings from all agents
-        all_findings = []
-        for agent_name, report in agent_reports.items():
-            findings = parse_findings_from_report(report)
-            for finding in findings:
-                finding["source_agent"] = agent_name
-                all_findings.append(finding)
-
-        print(f"   Found {len(all_findings)} total findings across {len(agent_reports)} agents")
-
-        # Build consensus - group findings by agent (fixed: use aggregate_findings method)
-        agent_findings_dict = {}
-        for finding in all_findings:
-            agent_name = finding.get("source_agent", "unknown")
-            if agent_name not in agent_findings_dict:
-                agent_findings_dict[agent_name] = []
-            agent_findings_dict[agent_name].append(finding)
-
-        consensus_builder = ConsensusBuilder(agents)
-        consensus_results = consensus_builder.aggregate_findings(agent_findings_dict)
-
-        if consensus_results:
-            confirmed = len([f for f in consensus_results if f.get("consensus", {}).get("confidence", 0) >= 0.85])
-            likely = len([f for f in consensus_results if 0.70 <= f.get("consensus", {}).get("confidence", 0) < 0.85])
-            uncertain = len([f for f in consensus_results if f.get("consensus", {}).get("confidence", 0) < 0.70])
-
-            print("   ✅ Consensus analysis complete:")
-            print(f"      - {confirmed} high-confidence findings (multiple agents agree)")
-            print(f"      - {likely} medium-confidence findings")
-            print(f"      - {uncertain} low-confidence findings (single agent only)")
-            print(f"   🎯 False positive reduction: {len(all_findings) - len(consensus_results)} findings eliminated")
-        else:
-            print("   ℹ️  Insufficient overlap for consensus building")
-
-    # Run orchestrator agent
-    print(f"\n{'─' * 80}")
-    print("🎯 Agent 7/7: ORCHESTRATOR")
-    print(f"{'─' * 80}")
-    print("   🔄 Aggregating findings from all agents...")
-
-    orchestrator_start = time.time()
-
-    # Load orchestrator prompt
-    orchestrator_prompt_template = load_agent_prompt("orchestrator")
-
-    # Combine all agent reports
-    combined_reports = (
-        "\n\n"
-        + "=" * 80
-        + "\n\n".join([f"# {name.upper()} AGENT FINDINGS\n\n{report}" for name, report in agent_reports.items()])
-    )
-
-    # Create orchestrator prompt
-    orchestrator_prompt = f"""{orchestrator_prompt_template}
-
-## Agent Reports to Synthesize
-
-You have received findings from 6 specialized agents:
-
-{combined_reports}
-
-## Your Task
-
-Synthesize these findings into a comprehensive, actionable audit report.
-
-1. **Deduplicate**: Remove identical issues reported by multiple agents
-2. **Prioritize**: Order by exploitability and business impact
-3. **Aggregate**: Combine related findings
-4. **Decide**: Make clear APPROVED / REQUIRES FIXES / DO NOT MERGE recommendation
-5. **Action Plan**: Create sequenced, logical action items prioritized by exploitability
-
-Pay special attention to:
-- Exploitability analysis from the Exploit Analyst
-- Security tests generated by the Security Test Generator
-- Exploit chains that link multiple vulnerabilities
-
-Generate the complete audit report as specified in your instructions.
-"""
-
-    error_msg = None
-    try:
-        # Sanitize model name (use str() to break taint chain)
-        safe_model = str(model).split("/")[-1] if model else "unknown"
-        print(f"   🧠 Synthesizing with {safe_model}...")
-        final_report, input_tokens, output_tokens = call_llm_api(
-            client,
-            provider,
-            model,
-            orchestrator_prompt,
-            max_tokens,
-            circuit_breaker=circuit_breaker,
-            operation="orchestrator synthesis",
-        )
-
-        orchestrator_duration = time.time() - orchestrator_start
-
-        # Record orchestrator metrics
-        metrics.record_llm_call(input_tokens, output_tokens, provider)
-        metrics.record_agent_execution("orchestrator", orchestrator_duration)
-
-        agent_metrics["orchestrator"] = {
-            "duration_seconds": round(orchestrator_duration, 2),
-            "input_tokens": input_tokens,
-            "output_tokens": output_tokens,
-            "cost_usd": round((input_tokens / 1_000_000) * 3.0 + (output_tokens / 1_000_000) * 15.0, 4)
-            if provider == "anthropic"
-            else 0,
-        }
-
-        print("   ✅ Synthesis complete")
-        print(
-            f"   ⏱️  Duration: {orchestrator_duration:.1f}s | 💰 Cost: ${agent_metrics['orchestrator']['cost_usd']:.4f}"
-        )
-
-    except CostLimitExceededError as e:
-        # Cost limit reached during orchestration
-        error_msg = str(e)
-        print(f"   🚨 Cost limit exceeded during synthesis: {error_msg}")
-        print(f"   📊 Generating report from {len(agent_reports)} completed agents")
-        # Fall through to generate partial report
-
-    except Exception as e:
-        error_msg = str(e)
-        print(f"   ❌ Error: {error_msg}")
-
-    # Fallback: concatenate all reports (used if orchestrator fails OR cost limit reached)
-    if "final_report" not in locals():
-        final_report = f"""# Codebase Audit Report (Multi-Agent Sequential)
-
-## Note
-Orchestrator synthesis failed. Below are individual agent reports.
-
-{combined_reports}
-"""
-        agent_metrics["orchestrator"] = {"error": error_msg if error_msg else "Unknown error"}
-
-    # Add multi-agent metadata to final report
-    total_cost = sum(m.get("cost_usd", 0) for m in agent_metrics.values())
-    total_duration = sum(m.get("duration_seconds", 0) for m in agent_metrics.values())
-
-    multi_agent_summary = f"""
----
-
-## Multi-Agent Review Metrics
-
-**Mode**: Sequential (7 agents)
-**Total Duration**: {total_duration:.1f}s
-**Total Cost**: ${total_cost:.4f}
-
-### Agent Performance
-| Agent | Duration | Cost | Status |
-|-------|----------|------|--------|
-| Security | {agent_metrics.get("security", {}).get("duration_seconds", "N/A")}s | ${agent_metrics.get("security", {}).get("cost_usd", 0):.4f} | {"✅" if "error" not in agent_metrics.get("security", {}) else "❌"} |
-| Exploit Analyst | {agent_metrics.get("exploit-analyst", {}).get("duration_seconds", "N/A")}s | ${agent_metrics.get("exploit-analyst", {}).get("cost_usd", 0):.4f} | {"✅" if "error" not in agent_metrics.get("exploit-analyst", {}) else "❌"} |
-| Security Test Generator | {agent_metrics.get("security-test-generator", {}).get("duration_seconds", "N/A")}s | ${agent_metrics.get("security-test-generator", {}).get("cost_usd", 0):.4f} | {"✅" if "error" not in agent_metrics.get("security-test-generator", {}) else "❌"} |
-| Performance | {agent_metrics.get("performance", {}).get("duration_seconds", "N/A")}s | ${agent_metrics.get("performance", {}).get("cost_usd", 0):.4f} | {"✅" if "error" not in agent_metrics.get("performance", {}) else "❌"} |
-| Testing | {agent_metrics.get("testing", {}).get("duration_seconds", "N/A")}s | ${agent_metrics.get("testing", {}).get("cost_usd", 0):.4f} | {"✅" if "error" not in agent_metrics.get("testing", {}) else "❌"} |
-| Quality | {agent_metrics.get("quality", {}).get("duration_seconds", "N/A")}s | ${agent_metrics.get("quality", {}).get("cost_usd", 0):.4f} | {"✅" if "error" not in agent_metrics.get("quality", {}) else "❌"} |
-| Orchestrator | {agent_metrics.get("orchestrator", {}).get("duration_seconds", "N/A")}s | ${agent_metrics.get("orchestrator", {}).get("cost_usd", 0):.4f} | {"✅" if "error" not in agent_metrics.get("orchestrator", {}) else "❌"} |
-
-### Exploitability Metrics
-- **Trivial**: {metrics.metrics["exploitability"]["trivial"]} (fix within 24-48 hours)
-- **Moderate**: {metrics.metrics["exploitability"]["moderate"]} (fix within 1 week)
-- **Complex**: {metrics.metrics["exploitability"]["complex"]} (fix within 1 month)
-- **Theoretical**: {metrics.metrics["exploitability"]["theoretical"]} (fix in next release)
-
-### Security Testing
-- **Exploit Chains Found**: {metrics.metrics["exploit_chains_found"]}
-- **Security Tests Generated**: {metrics.metrics["tests_generated"]}
-
----
-
-*This report was generated by Agent OS Multi-Agent Sequential Review System*
-"""
-
-    final_report += multi_agent_summary
-
-    # Save individual agent reports
-    report_dir = Path(repo_path) / ".argus/reviews"
-    report_dir.mkdir(parents=True, exist_ok=True)
-
-    agents_dir = report_dir / "agents"
-    agents_dir.mkdir(exist_ok=True)
-
-    for agent_name, report in agent_reports.items():
-        agent_file = agents_dir / f"{agent_name}-report.md"
-        with open(agent_file, "w") as f:
-            f.write(report)
-        print(f"   📄 Saved: {agent_file}")
-
-    # Save agent metrics
-    agent_metrics_file = agents_dir / "metrics.json"
-    with open(agent_metrics_file, "w") as f:
-        json.dump(agent_metrics, f, indent=2)
-
-    print(f"\n{'=' * 80}")
-    print("✅ MULTI-AGENT REVIEW COMPLETE")
-    print(f"{'=' * 80}")
-    print(f"📊 Total Cost: ${total_cost:.4f}")
-    print(f"⏱️  Total Duration: {total_duration:.1f}s")
-    print(
-        "🤖 Agents: 7 (Security, Exploit Analyst, Security Test Generator, Performance, Testing, Quality, Orchestrator)"
-    )
-
-    # Display exploitability summary
-    if any(metrics.metrics["exploitability"].values()):
-        print("\n⚠️  Exploitability Breakdown:")
-        print(f"   Trivial: {metrics.metrics['exploitability']['trivial']}")
-        print(f"   Moderate: {metrics.metrics['exploitability']['moderate']}")
-        print(f"   Complex: {metrics.metrics['exploitability']['complex']}")
-        print(f"   Theoretical: {metrics.metrics['exploitability']['theoretical']}")
-
-    if metrics.metrics["exploit_chains_found"] > 0:
-        print(f"\n⛓️  Exploit Chains: {metrics.metrics['exploit_chains_found']}")
-
-    if metrics.metrics["tests_generated"] > 0:
-        print(f"🧪 Tests Generated: {metrics.metrics['tests_generated']}")
-
-    print(f"{'=' * 80}\n")
-
-    return final_report
-
-
-def load_config_from_env():
-    """Load configuration from environment variables"""
-    return {
-        "ai_provider": os.environ.get("AI_PROVIDER", os.environ.get("INPUT_AI_PROVIDER", "auto")),
-        "anthropic_api_key": os.environ.get("ANTHROPIC_API_KEY", ""),
-        "openai_api_key": os.environ.get("OPENAI_API_KEY", ""),
-        "ollama_endpoint": os.environ.get("OLLAMA_ENDPOINT", ""),
-        "foundation_sec_enabled": os.environ.get("FOUNDATION_SEC_ENABLED", "false").lower() == "true",
-        "foundation_sec_model": os.environ.get("FOUNDATION_SEC_MODEL", "cisco-ai/foundation-sec-8b-instruct"),
-        "foundation_sec_device": os.environ.get("FOUNDATION_SEC_DEVICE", ""),
-        "model": os.environ.get("MODEL", os.environ.get("INPUT_MODEL", "auto")),
-        "multi_agent_mode": os.environ.get("MULTI_AGENT_MODE", os.environ.get("INPUT_MULTI_AGENT_MODE", "single")),
-        "only_changed": os.environ.get("ONLY_CHANGED", os.environ.get("INPUT_ONLY_CHANGED", "false")).lower() == "true",
-        "include_paths": os.environ.get("INCLUDE_PATHS", os.environ.get("INPUT_INCLUDE_PATHS", "")),
-        "exclude_paths": os.environ.get("EXCLUDE_PATHS", os.environ.get("INPUT_EXCLUDE_PATHS", "")),
-        "max_file_size": os.environ.get("MAX_FILE_SIZE", os.environ.get("INPUT_MAX_FILE_SIZE", "50000")),
-        "max_files": os.environ.get("MAX_FILES", os.environ.get("INPUT_MAX_FILES", "100")),
-        "max_tokens": os.environ.get("MAX_TOKENS", os.environ.get("INPUT_MAX_TOKENS", "8000")),
-        "cost_limit": os.environ.get("COST_LIMIT", os.environ.get("INPUT_COST_LIMIT", "1.0")),
-        "fail_on": os.environ.get("FAIL_ON", os.environ.get("INPUT_FAIL_ON", "")),
-        "enable_threat_modeling": os.environ.get("ENABLE_THREAT_MODELING", "true").lower() == "true",
-        "enable_sandbox_validation": os.environ.get("ENABLE_SANDBOX_VALIDATION", "true").lower() == "true",
-        "enable_heuristics": os.environ.get("ENABLE_HEURISTICS", "true").lower() == "true",
-        "enable_consensus": os.environ.get("ENABLE_CONSENSUS", "true").lower() == "true",
-        "consensus_threshold": float(os.environ.get("CONSENSUS_THRESHOLD", "0.5")),
-        "category_passes": os.environ.get("CATEGORY_PASSES", "true").lower() == "true",
-        "enable_semgrep": os.environ.get("SEMGREP_ENABLED", "true").lower() == "true",
-    }
-
-
-def validate_config(config):
-    """Validate configuration"""
-    provider = config.get("ai_provider", "auto")
-
-    if provider == "anthropic":
-        if not config.get("anthropic_api_key"):
-            raise ValueError("Anthropic API key is required")
-    elif provider == "openai":
-        if not config.get("openai_api_key"):
-            raise ValueError("OpenAI API key is required")
-    elif provider not in ["auto", "ollama", "foundation-sec"]:
-        raise ValueError(f"Invalid AI provider: {provider}")
-
-    return True
-
-
 def select_files_for_review(repo_path, config):
     """Select files for review based on configuration"""
     max_files = int(config.get("max_files", "100"))
@@ -1872,220 +807,14 @@ def select_files_for_review(repo_path, config):
     return all_files[:max_files]
 
 
-def should_review_file(filename):
-    """Check if file should be reviewed based on extension"""
-    code_extensions = {
-        ".py",
-        ".js",
-        ".ts",
-        ".jsx",
-        ".tsx",
-        ".java",
-        ".go",
-        ".rs",
-        ".c",
-        ".cpp",
-        ".h",
-        ".hpp",
-        ".cs",
-        ".rb",
-        ".php",
-        ".swift",
-        ".kt",
-        ".scala",
-        ".sh",
-        ".bash",
-        ".yml",
-        ".yaml",
-        ".json",
-        ".tf",
-        ".hcl",
-        ".sql",
-        ".r",
-        ".m",
-        ".mm",
-        ".pl",
-        ".pm",
-        ".lua",
-        ".vim",
-        ".el",
-        ".clj",
-        ".ex",
-        ".exs",
-        ".erl",
-        ".hrl",
-        ".hs",
-        ".ml",
-        ".fs",
-        ".fsx",
-        ".fsi",
-        ".vb",
-        ".pas",
-        ".pp",
-        ".asm",
-        ".s",
-        ".dart",
-        ".nim",
-        ".cr",
-        ".v",
-        ".sv",
-        ".vhd",
-        ".vhdl",
-        ".tcl",
-        ".groovy",
-        ".gradle",
-        ".cmake",
-        ".mk",
-        ".dockerfile",
-        ".vue",
-        ".svelte",
-        ".astro",
-    }
-    return any(filename.lower().endswith(ext) for ext in code_extensions)
-
-
 def generate_sarif_output(findings, repo_path, metrics=None):
     """Generate SARIF output (alias for generate_sarif)"""
     return generate_sarif(findings, repo_path, metrics)
 
 
-def estimate_tokens(text):
-    """Estimate number of tokens in text"""
-    # Rough estimation: ~4 characters per token
-    return len(text) // 4
-
-
-def read_file_safe(file_path, max_size=1_000_000):
-    """Safely read a file with size limits"""
-    try:
-        file_size = os.path.getsize(file_path)
-        if file_size > max_size:
-            raise ValueError(f"File too large: {file_size} bytes (max: {max_size})")
-
-        with open(file_path, encoding="utf-8", errors="ignore") as f:
-            return f.read()
-    except Exception as e:
-        raise OSError(f"Error reading file {file_path}: {e}") from e
-
-
 def map_severity_to_level(severity):
     """Map severity to SARIF level (alias for map_severity_to_sarif)"""
     return map_severity_to_sarif(severity)
-
-
-def classify_finding_category(finding):
-    """Classify finding into a category"""
-    # Handle both dict and string inputs
-    if isinstance(finding, str):
-        text = finding.lower()
-        title = text
-        description = text
-    else:
-        title = finding.get("title", "").lower()
-        description = finding.get("description", "").lower()
-
-    # Security categories
-    if any(term in title or term in description for term in ["injection", "xss", "csrf", "auth", "secret", "crypto"]):
-        return "security"
-    elif any(term in title or term in description for term in ["performance", "memory", "cpu", "slow"]):
-        return "performance"
-    elif any(term in title or term in description for term in ["bug", "error", "exception", "crash"]):
-        return "reliability"
-    elif any(term in title or term in description for term in ["style", "format", "naming", "convention"]):
-        return "style"
-    else:
-        return "general"
-
-
-def parse_args():
-    """Parse command line arguments"""
-    import argparse
-
-    parser = argparse.ArgumentParser(description="AI-powered code audit")
-    parser.add_argument("repo_path", nargs="?", default=".", help="Path to repository")
-    parser.add_argument("review_type", nargs="?", default="audit", help="Type of review")
-    parser.add_argument("--provider", help="AI provider")
-    parser.add_argument("--model", help="Model name")
-    parser.add_argument("--max-files", type=int, help="Maximum files to review")
-    parser.add_argument("--cost-limit", type=float, help="Cost limit in USD")
-
-    # Deep Analysis Engine (Phase 2.7) feature flags
-    parser.add_argument(
-        "--enable-deep-analysis",
-        action="store_true",
-        help="Enable Deep Analysis Engine (Phase 2.7) with conservative mode. Shorthand for --deep-analysis-mode=conservative"
-    )
-    parser.add_argument(
-        "--deep-analysis-mode",
-        choices=["off", "semantic-only", "conservative", "full"],
-        default=None,  # None means use env var or default to "off"
-        help="Deep analysis mode: off (skip Phase 2.7), semantic-only (code twin only), "
-             "conservative (semantic + proactive), full (all modules). Default: off"
-    )
-    parser.add_argument(
-        "--max-files-deep-analysis",
-        type=int,
-        default=None,
-        help="Maximum files for deep analysis (default: 50, respects DEEP_ANALYSIS_MAX_FILES env)"
-    )
-    parser.add_argument(
-        "--deep-analysis-timeout",
-        type=int,
-        default=None,
-        help="Timeout for deep analysis in seconds (default: 300 = 5 min, respects DEEP_ANALYSIS_TIMEOUT env)"
-    )
-    parser.add_argument(
-        "--deep-analysis-cost-ceiling",
-        type=float,
-        default=None,
-        help="Cost ceiling for deep analysis in USD (default: 5.0, respects DEEP_ANALYSIS_COST_CEILING env)"
-    )
-    parser.add_argument(
-        "--deep-analysis-dry-run",
-        action="store_true",
-        help="Estimate deep analysis cost/time without running LLM calls"
-    )
-    parser.add_argument(
-        "--benchmark",
-        action="store_true",
-        help="Enable detailed benchmark reporting for Deep Analysis Engine (Phase 2.7)"
-    )
-
-    return parser.parse_args()
-
-
-def build_config(args=None):
-    """Build configuration from arguments and environment"""
-    config = load_config_from_env()
-
-    if args:
-        if hasattr(args, "provider") and args.provider:
-            config["ai_provider"] = args.provider
-        if hasattr(args, "model") and args.model:
-            config["model"] = args.model
-        if hasattr(args, "max_files") and args.max_files:
-            config["max_files"] = str(args.max_files)
-        if hasattr(args, "cost_limit") and args.cost_limit:
-            config["cost_limit"] = str(args.cost_limit)
-
-        # Deep Analysis Engine configuration
-        # Handle --enable-deep-analysis shorthand
-        if hasattr(args, "enable_deep_analysis") and args.enable_deep_analysis:
-            config["deep_analysis_mode"] = "conservative"
-        if hasattr(args, "deep_analysis_mode") and args.deep_analysis_mode:
-            config["deep_analysis_mode"] = args.deep_analysis_mode
-        if hasattr(args, "max_files_deep_analysis") and args.max_files_deep_analysis:
-            config["deep_analysis_max_files"] = str(args.max_files_deep_analysis)
-        if hasattr(args, "deep_analysis_timeout") and args.deep_analysis_timeout:
-            config["deep_analysis_timeout"] = str(args.deep_analysis_timeout)
-        if hasattr(args, "deep_analysis_cost_ceiling") and args.deep_analysis_cost_ceiling:
-            config["deep_analysis_cost_ceiling"] = str(args.deep_analysis_cost_ceiling)
-        if hasattr(args, "deep_analysis_dry_run") and args.deep_analysis_dry_run:
-            config["deep_analysis_dry_run"] = "true"
-        if hasattr(args, "benchmark") and args.benchmark:
-            config["benchmark"] = "true"
-
-    return config
 
 
 def run_audit(repo_path, config, review_type="audit"):
@@ -2398,11 +1127,11 @@ def run_audit(repo_path, config, review_type="audit"):
 
         if metrics.metrics["tests_generated"] > 0:
             print(f"   🧪 Tests Generated: {metrics.metrics['tests_generated']}")
-        
+
         # Display validation and timeout metrics (Medium Priority features)
         validation_summary = output_validator.get_validation_summary()
         timeout_summary = timeout_manager.get_summary()
-        
+
         if validation_summary.get("total_validations", 0) > 0:
             print(f"\n📋 Output Validation:")
             print(f"   Valid outputs: {validation_summary['valid_outputs']}/{validation_summary['total_validations']}")
@@ -2410,7 +1139,7 @@ def run_audit(repo_path, config, review_type="audit"):
                 print(f"   ⚠️  Warnings: {validation_summary['total_warnings']}")
             if validation_summary.get('invalid_outputs', 0) > 0:
                 print(f"   ❌ Invalid: {validation_summary['invalid_outputs']}")
-        
+
         if timeout_summary.get("total_executions", 0) > 0:
             print(f"\n⏱️  Timeout Management:")
             print(f"   Completed: {timeout_summary['completed']}/{timeout_summary['total_executions']}")
@@ -2466,28 +1195,28 @@ def run_audit(repo_path, config, review_type="audit"):
     print("   Phase 1: Research & File Selection")
     print("   Phase 2: Planning & Focus Area Identification")
     print("   Phase 3: Detailed Implementation Analysis")
-    
+
     # Initialize context tracker and summarizer
     context_tracker = ContextTracker()
     summarizer = FindingSummarizer()
-    
+
     # ============================================================================
     # PHASE 1: RESEARCH - Identify files and areas that need attention
     # ============================================================================
     print("\n" + "=" * 80)
     print("📊 PHASE 1: RESEARCH & FILE SELECTION")
     print("=" * 80)
-    
+
     context_tracker.start_phase("phase1_research")
-    
+
     # Build lightweight file summary (not full content)
     file_summary = []
     for f in files:
         file_summary.append(f"- {f['path']} ({f['lines']} lines)")
     file_list = "\n".join(file_summary)
-    
+
     context_tracker.add_context("file_list", file_list, {"file_count": len(files)})
-    
+
     # Add threat model if available
     threat_summary = ""
     if threat_model:
@@ -2498,7 +1227,7 @@ def run_audit(repo_path, config, review_type="audit"):
 - {len(threat_model.get('assets', []))} critical assets
 """
         context_tracker.add_context("threat_model_summary", threat_summary, {"threats": len(threat_model.get('threats', []))})
-    
+
     research_prompt = f"""You are conducting initial research for a code audit.
 
 **Your Task**: Analyze the file list and identify which files and areas require detailed review.
@@ -2524,9 +1253,9 @@ def run_audit(repo_path, config, review_type="audit"):
 ```
 
 Be concise. This is research, not detailed analysis."""
-    
+
     context_tracker.end_phase()
-    
+
     print("🧠 Analyzing codebase structure...")
     try:
         research_result, research_input, research_output = call_llm_api(
@@ -2540,7 +1269,7 @@ Be concise. This is research, not detailed analysis."""
         )
         metrics.record_llm_call(research_input, research_output, provider)
         print(f"✅ Research complete ({research_input} input tokens, {research_output} output tokens)")
-        
+
         # Parse research results
         try:
             # Extract JSON from response
@@ -2561,10 +1290,10 @@ Be concise. This is research, not detailed analysis."""
                 "focus_areas": ["security", "performance", "testing", "quality"],
                 "rationale": "Using all files (parsing error)"
             }
-        
+
         print(f"   Priority files: {len(research_data.get('high_priority_files', []))}")
         print(f"   Focus areas: {', '.join(research_data.get('focus_areas', []))}")
-        
+
     except Exception as e:
         logger.error(f"Research phase failed: {e}")
         research_data = {
@@ -2572,24 +1301,24 @@ Be concise. This is research, not detailed analysis."""
             "focus_areas": ["security", "performance", "testing", "quality"],
             "rationale": "Research phase failed, using all files"
         }
-    
+
     # ============================================================================
     # PHASE 2: PLANNING - Create focused analysis plan
     # ============================================================================
     print("\n" + "=" * 80)
     print("📋 PHASE 2: PLANNING & FOCUS IDENTIFICATION")
     print("=" * 80)
-    
+
     context_tracker.start_phase("phase2_planning")
-    
+
     # Build context with ONLY priority files
     priority_files = [f for f in files if f['path'] in research_data.get('high_priority_files', [])]
     if not priority_files:
         priority_files = files[:10]  # Fallback
-    
+
     priority_context = "\n\n".join([f"File: {f['path']}\n```\n{f['content'][:500]}...\n```" for f in priority_files])
     context_tracker.add_context("priority_files_preview", priority_context, {"file_count": len(priority_files)})
-    
+
     planning_prompt = f"""You are planning a detailed code audit based on initial research.
 
 **Research Findings**:
@@ -2607,7 +1336,7 @@ Be concise. This is research, not detailed analysis."""
 - [ ] Check for: [specific security issue to look for]
 - [ ] Verify: [specific security control]
 
-## Performance Focus  
+## Performance Focus
 - [ ] Analyze: [specific performance concern]
 
 ## Testing Focus
@@ -2617,9 +1346,9 @@ Be concise. This is research, not detailed analysis."""
 - [ ] Examine: [specific quality issue]
 
 Be specific and actionable. This plan will guide the detailed analysis."""
-    
+
     context_tracker.end_phase()
-    
+
     print("🧠 Creating analysis plan...")
     try:
         plan_result, plan_input, plan_output = call_llm_api(
@@ -2633,10 +1362,10 @@ Be specific and actionable. This plan will guide the detailed analysis."""
         )
         metrics.record_llm_call(plan_input, plan_output, provider)
         print(f"✅ Planning complete ({plan_input} input tokens, {plan_output} output tokens)")
-        
+
         # Summarize the plan
         plan_summary = summarizer.summarize_report(plan_result, max_length=800)
-        
+
     except Exception as e:
         logger.error(f"Planning phase failed: {e}")
         plan_summary = "Planning phase failed. Proceeding with general analysis."
@@ -2749,14 +1478,14 @@ Be specific and actionable. This plan will guide the detailed analysis."""
     print("\n" + "=" * 80)
     print("🔍 PHASE 3: DETAILED IMPLEMENTATION ANALYSIS")
     print("=" * 80)
-    
+
     context_tracker.start_phase("phase3_implementation")
-    
+
     # Build FULL context for priority files only
     codebase_context = "\n\n".join([f"File: {f['path']}\n```\n{f['content']}\n```" for f in priority_files])
     context_tracker.add_context("full_codebase", codebase_context, {"file_count": len(priority_files)})
     context_tracker.add_context("analysis_plan", plan_summary, {"from_phase": 2})
-    
+
     # Load audit instructions
     audit_command_path = (
         Path.home() / ".argus/profiles/default/commands/audit-codebase/multi-agent/audit-codebase.md"
@@ -2778,14 +1507,14 @@ For each issue found, classify it as:
 - [MEDIUM] - Moderate issue, good to fix
 - [LOW] - Minor issue or suggestion
 """
-    
+
     # Check for contradictions
     contradictions = context_tracker.detect_contradictions(audit_instructions, plan_summary)
     if contradictions:
         logger.warning("⚠️  Potential contradictions detected:")
         for warning in contradictions:
             logger.warning(f"   - {warning}")
-    
+
     # Create implementation prompt with plan context
     prompt = f"""You are performing a detailed code audit based on the analysis plan.
 
@@ -2798,7 +1527,7 @@ For each issue found, classify it as:
 **Codebase to Analyze**:
 {codebase_context}
 
-**Your Task**: 
+**Your Task**:
 Execute the analysis plan above. Provide a detailed audit report with:
 
 # Codebase Audit Report
@@ -2844,7 +1573,7 @@ Final recommendation: APPROVED / REQUIRES FIXES / DO NOT MERGE
 
 Be specific with file names and line numbers. Use format: `filename.ext:123` for references.
 Focus on issues identified in the analysis plan."""
-    
+
     context_tracker.end_phase()
 
     # Sanitize provider/model names for logging (use str() to break taint chain)
@@ -2946,7 +1675,7 @@ Focus on issues identified in the analysis plan."""
         safe_provider = str(provider).split("/")[-1] if provider else "unknown"
         safe_model = str(model).split("/")[-1] if model else "unknown"
         print(f"🔧 Provider: {safe_provider} ({safe_model})")
-        
+
         # Display context tracking summary
         print(f"\n📊 Context Management:")
         print(f"   Phases: {context_summary['total_phases']}")

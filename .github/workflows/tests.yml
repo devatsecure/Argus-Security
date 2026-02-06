@@ -38,15 +38,11 @@ jobs:
           if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
           pip install pytest pytest-cov pytest-mock ruff mypy types-requests
 
-      - name: Run linting (pylint)
-        if: matrix.python-version == '3.10'
-        run: |
-          pylint scripts/*.py --rcfile=.pylintrc || true
-
       - name: Run type checking (mypy)
         if: matrix.python-version == '3.10'
+        continue-on-error: true
         run: |
-          mypy scripts/*.py --config-file=pyproject.toml || true
+          mypy scripts/*.py --config-file=pyproject.toml
 
       - name: Run code formatting check (black)
         if: matrix.python-version == '3.10'
@@ -101,7 +97,7 @@ jobs:
       
       - name: Run ruff linter
         run: |
-          ruff check scripts/ tests/ --exit-zero
+          ruff check scripts/ tests/
 
       - name: Run mypy
         run: |

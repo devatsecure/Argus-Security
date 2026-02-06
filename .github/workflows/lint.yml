@@ -84,7 +84,7 @@ jobs:
       - name: Run mypy
         run: |
           echo "🔍 Running mypy type checker..."
-          mypy scripts/ --ignore-missing-imports || true
+          mypy scripts/ --ignore-missing-imports
         continue-on-error: true
       
       - name: Create summary

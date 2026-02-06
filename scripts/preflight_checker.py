@@ -22,6 +22,7 @@ import argparse
 import json
 import logging
 import os
+import shlex
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -231,9 +232,10 @@ class PreFlightChecker:
             # Replace {report} placeholder with actual report path
             cmd = command.replace("{report}", str(self.report_path))
 
+            # Use shlex.split for safe command parsing — never shell=True
+            args = shlex.split(cmd)
             result = subprocess.run(
-                cmd,
-                shell=True,
+                args,
                 capture_output=True,
                 text=True,
                 timeout=30
@@ -245,6 +247,8 @@ class PreFlightChecker:
                 return False, f"Command failed: {result.stderr.strip()}"
         except subprocess.TimeoutExpired:
             return False, "Command timed out (30s)"
+        except ValueError as e:
+            return False, f"Invalid command syntax: {e}"
         except Exception as e:
             return False, f"Error running command: {e}"
 

@@ -93,23 +93,26 @@ warning_ids := [f.id | f := warning_findings[_]]
 # NOISE FILTERING (NEW - Phase 1)
 # ========================================
 
-# Suppress high-noise findings
-suppressed_findings := [f | 
+# Suppress high-noise findings — never suppress critical/high severity
+suppressed_findings := [f |
     f := input.findings[_]
     f.noise_score > 0.7  # High noise threshold
+    not f.severity in ["critical", "high"]
 ]
 
-# Suppress findings with low historical fix rate
+# Suppress findings with low historical fix rate — never suppress critical/high severity
 low_value_findings := [f |
     f := input.findings[_]
     f.historical_fix_rate < 0.2  # <20% fix rate
     f.noise_score > 0.5
+    not f.severity in ["critical", "high"]
 ]
 
-# Don't block auto-fixable findings (they'll be fixed automatically)
+# Don't block auto-fixable findings — but NEVER auto-pass critical/high severity
 auto_fixable_findings := [f |
     f := input.findings[_]
     f.auto_fixable == true
+    not f.severity in ["critical", "high"]
 ]
 
 # ========================================

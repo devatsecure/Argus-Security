@@ -39,7 +39,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}  # Optional: for Gitleaks Pro features
-      continue-on-error: true  # Don't fail workflow on leaks during development
+      # Secrets will fail the workflow — this is intentional
     
     # Note: Gitleaks action automatically uploads SARIF to Code Scanning
     # if security-events: write permission is granted
@@ -64,11 +64,10 @@ jobs:
     - name: Report on Secrets Found
       if: failure()
       run: |
-        echo "⚠️ Secrets may have been detected in repository!" >> $GITHUB_STEP_SUMMARY
+        echo "## ⚠️ Secrets Detected!" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Action Recommended**: Review findings and rotate any compromised secrets" >> $GITHUB_STEP_SUMMARY
-        echo "Note: Not failing the workflow during development"
-        exit 0  # Don't fail the workflow
+        echo "**Action Required**: Review findings in the Security tab and rotate any compromised secrets." >> $GITHUB_STEP_SUMMARY
+        echo "This workflow intentionally fails when secrets are found." >> $GITHUB_STEP_SUMMARY
 
 # Security Notes:
 # 1. All actions pinned by commit SHA
