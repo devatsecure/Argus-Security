@@ -23,6 +23,7 @@ Usage:
 """
 
 import logging
+import threading
 from typing import Dict, Optional
 
 # Configure logging
@@ -63,6 +64,7 @@ class CostCircuitBreaker:
         self.effective_limit = cost_limit_usd * (1.0 - self.safety_buffer)
         self.current_cost = 0.0
         self.warned_thresholds = set()
+        self._lock = threading.Lock()
 
         logger.info(
             f"💰 Cost Circuit Breaker initialized: ${cost_limit_usd:.2f} limit "
@@ -72,6 +74,9 @@ class CostCircuitBreaker:
     def check_before_call(self, estimated_cost: float, provider: str, operation: str = "LLM call"):
         """Check if estimated cost would exceed limit
 
+        Thread-safe: Uses internal lock to prevent race conditions when
+        multiple agents check concurrently.
+
         Args:
             estimated_cost: Estimated cost of the operation in USD
             provider: AI provider name (for logging)
@@ -80,44 +85,49 @@ class CostCircuitBreaker:
         Raises:
             CostLimitExceededError: If operation would exceed cost limit
         """
-        projected_cost = self.current_cost + estimated_cost
-        utilization = (self.current_cost / self.effective_limit) * 100 if self.effective_limit > 0 else 0
+        with self._lock:
+            projected_cost = self.current_cost + estimated_cost
+            utilization = (self.current_cost / self.effective_limit) * 100 if self.effective_limit > 0 else 0
 
-        # Check threshold warnings (50%, 75%, 90%)
-        for threshold in [50, 75, 90]:
-            if utilization >= threshold and threshold not in self.warned_thresholds:
-                self.warned_thresholds.add(threshold)
-                logger.warning(
-                    f"⚠️  Cost at {utilization:.1f}% of limit (${self.current_cost:.3f} / ${self.effective_limit:.2f})"
+            # Check threshold warnings (50%, 75%, 90%)
+            for threshold in [50, 75, 90]:
+                if utilization >= threshold and threshold not in self.warned_thresholds:
+                    self.warned_thresholds.add(threshold)
+                    logger.warning(
+                        f"⚠️  Cost at {utilization:.1f}% of limit (${self.current_cost:.3f} / ${self.effective_limit:.2f})"
+                    )
+
+            # Check if we would exceed the limit
+            if projected_cost > self.effective_limit:
+                remaining = self.effective_limit - self.current_cost
+                message = (
+                    f"Cost limit exceeded! "
+                    f"Operation would cost ${estimated_cost:.3f}, "
+                    f"but only ${remaining:.3f} remaining of ${self.cost_limit:.2f} limit. "
+                    f"Current cost: ${self.current_cost:.3f}"
                 )
+                logger.error(f"🚨 {message}")
+                raise CostLimitExceededError(message)
 
-        # Check if we would exceed the limit
-        if projected_cost > self.effective_limit:
-            remaining = self.effective_limit - self.current_cost
-            message = (
-                f"Cost limit exceeded! "
-                f"Operation would cost ${estimated_cost:.3f}, "
-                f"but only ${remaining:.3f} remaining of ${self.cost_limit:.2f} limit. "
-                f"Current cost: ${self.current_cost:.3f}"
+            # Log the check (sanitize provider name - use str() to break taint chain)
+            safe_provider = str(provider).split("/")[-1] if provider else "unknown"
+            logger.debug(
+                f"✓ Cost check passed: ${estimated_cost:.3f} {operation} ({safe_provider}), "
+                f"projected: ${projected_cost:.3f} / ${self.effective_limit:.2f}"
             )
-            logger.error(f"🚨 {message}")
-            raise CostLimitExceededError(message)
-
-        # Log the check (sanitize provider name - use str() to break taint chain)
-        safe_provider = str(provider).split("/")[-1] if provider else "unknown"
-        logger.debug(
-            f"✓ Cost check passed: ${estimated_cost:.3f} {operation} ({safe_provider}), "
-            f"projected: ${projected_cost:.3f} / ${self.effective_limit:.2f}"
-        )
 
     def record_actual_cost(self, actual_cost: float):
         """Record actual cost after operation completes
 
+        Thread-safe: Uses internal lock to prevent race conditions when
+        multiple agents record costs concurrently.
+
         Args:
             actual_cost: Actual cost incurred in USD
         """
-        self.current_cost += actual_cost
-        logger.debug(f"💵 Cost updated: +${actual_cost:.3f} → ${self.current_cost:.3f}")
+        with self._lock:
+            self.current_cost += actual_cost
+            logger.debug(f"💵 Cost updated: +${actual_cost:.3f} → ${self.current_cost:.3f}")
 
     def get_remaining_budget(self) -> float:
         """Get remaining budget in USD

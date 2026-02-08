@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from agents.nuclei_agent import NucleiAgent, NucleiConfig
 from agents.zap_agent import ZAPAgent, ZAPConfig, ScanProfile
+from dast_auth_config import DASTAuthConfig, load_dast_auth_config
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,9 @@ class OrchestratorConfig:
     # Agent-specific configs
     nuclei_config: Optional[NucleiConfig] = None
     zap_config: Optional[ZAPConfig] = None
+
+    # DAST auth config path (loaded from pipeline config)
+    dast_auth_config_path: str = ""
 
 
 @dataclass
@@ -88,19 +92,44 @@ class DASTOrchestrator:
             config: Orchestrator configuration
         """
         self.config = config or OrchestratorConfig()
-        
+        self.dast_auth: Optional[DASTAuthConfig] = None
+
+        # Load DAST auth config if path is specified
+        if self.config.dast_auth_config_path:
+            try:
+                self.dast_auth = load_dast_auth_config(
+                    self.config.dast_auth_config_path
+                )
+                logger.info(
+                    "Loaded DAST auth config: type=%s, url=%s",
+                    self.dast_auth.login_type,
+                    self.dast_auth.login_url or "(none)",
+                )
+            except (FileNotFoundError, ValueError) as exc:
+                logger.warning("DAST auth config load failed: %s", exc)
+
         # Initialize agents
         self.nuclei_agent = None
         self.zap_agent = None
-        
+
         if self.config.enable_nuclei:
+            nuclei_cfg = self.config.nuclei_config or NucleiConfig()
+            if self.dast_auth:
+                nuclei_cfg.dast_auth_config = self.dast_auth
+                # Merge auth headers into Nuclei headers
+                nuclei_cfg.headers.update(self.dast_auth.headers)
             self.nuclei_agent = NucleiAgent(
-                config=self.config.nuclei_config,
+                config=nuclei_cfg,
                 project_path=self.config.project_path,
             )
-        
+
         if self.config.enable_zap:
-            self.zap_agent = ZAPAgent(config=self.config.zap_config)
+            zap_cfg = self.config.zap_config or ZAPConfig()
+            if self.dast_auth:
+                zap_cfg.dast_auth_config = self.dast_auth
+                # Merge auth headers into ZAP custom headers
+                zap_cfg.custom_headers.update(self.dast_auth.headers)
+            self.zap_agent = ZAPAgent(config=zap_cfg)
     
     def scan(
         self,
@@ -474,8 +503,9 @@ def main():
     parser.add_argument("--project-path", help="Project path for tech stack detection")
     parser.add_argument("--sequential", action="store_true", help="Run agents sequentially (not parallel)")
     parser.add_argument("--max-duration", type=int, default=900, help="Max scan duration (seconds)")
+    parser.add_argument("--dast-auth-config", help="Path to DAST auth config YAML")
     parser.add_argument("--verbose", "-v", action="store_true")
-    
+
     args = parser.parse_args()
     
     # Configure logging
@@ -497,6 +527,7 @@ def main():
         project_path=args.project_path,
         nuclei_config=NucleiConfig() if "nuclei" in enabled_agents else None,
         zap_config=ZAPConfig(profile=ScanProfile(args.profile)) if "zap" in enabled_agents else None,
+        dast_auth_config_path=args.dast_auth_config or "",
     )
     
     # Create orchestrator

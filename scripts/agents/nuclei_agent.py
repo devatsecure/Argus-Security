@@ -7,11 +7,16 @@ Intelligent template selection, caching, and incremental scanning
 import json
 import logging
 import subprocess
+import sys
 import tempfile
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
+
+# Allow importing from parent scripts directory
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from dast_auth_config import DASTAuthConfig
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +36,7 @@ class NucleiConfig:
     max_duration: int = 600  # 10 minutes
     enable_caching: bool = True
     enable_incremental: bool = True
+    dast_auth_config: Optional[DASTAuthConfig] = None  # config-driven auth
 
 
 @dataclass

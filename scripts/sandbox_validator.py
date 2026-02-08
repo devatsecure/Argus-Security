@@ -678,3 +678,237 @@ if __name__ == "__main__":
     export_file = ".argus/sandbox-results/metrics-summary.json"
     validator.export_metrics(export_file)
     print(f"\nMetrics exported to: {export_file}")
+
+
+# ---------------------------------------------------------------------------
+# Proof-by-Exploitation: LLM-powered exploit generation + sandbox validation
+# ---------------------------------------------------------------------------
+
+EXPLOIT_SAFETY_BLOCKLIST = [
+    "rm -rf",
+    "rm -f /",
+    "mkfs",
+    "dd if=",
+    ":(){ :|:& };:",  # fork bomb
+    "wget ",
+    "curl ",
+    "nc ",
+    "netcat ",
+    "ncat ",
+    "/dev/sd",
+    "/dev/null >",
+    "shutdown",
+    "reboot",
+    "import socket",
+    "import subprocess",  # only block raw subprocess in exploits
+    "import os\nos.system",
+    "exec(",
+    "eval(",
+    "__import__",
+]
+
+
+class ExploitGenerator:
+    """Generate exploit PoC code from vulnerability findings using LLM."""
+
+    def __init__(self, llm_call_fn=None):
+        """
+        Args:
+            llm_call_fn: Callable that takes (prompt: str) -> str response.
+                        If None, returns a stub response.
+        """
+        self._llm_call = llm_call_fn
+
+    def generate_exploit(self, finding: dict, source_code: str = "") -> ExploitConfig | None:
+        """Use LLM to generate targeted exploit code for a finding.
+
+        Args:
+            finding: Dict with keys: severity, message, file, line, cwe, description
+            source_code: Source code context around the vulnerability
+
+        Returns:
+            ExploitConfig if generation succeeds, None if safety check fails
+        """
+        # Build prompt from finding + source_code
+        prompt = self._build_exploit_prompt(finding, source_code)
+
+        if self._llm_call is None:
+            logger.warning("No LLM function provided, skipping exploit generation")
+            return None
+
+        response = self._llm_call(prompt)
+
+        # Parse response into ExploitConfig
+        exploit = self._parse_exploit_response(response, finding)
+
+        # Safety check
+        if exploit and not self.validate_exploit_safety(exploit.code):
+            logger.warning(
+                "Generated exploit failed safety check for finding: %s",
+                finding.get("message", ""),
+            )
+            return None
+
+        return exploit
+
+    def validate_exploit_safety(self, code: str) -> bool:
+        """Check generated exploit doesn't contain dangerous operations."""
+        code_lower = code.lower()
+        for pattern in EXPLOIT_SAFETY_BLOCKLIST:
+            if pattern.lower() in code_lower:
+                logger.warning("Blocked dangerous pattern in exploit: %s", pattern)
+                return False
+        return True
+
+    def _build_exploit_prompt(self, finding: dict, source_code: str) -> str:
+        """Build LLM prompt for exploit generation."""
+        severity = finding.get("severity", "unknown")
+        message = finding.get("message", "")
+        file_path = finding.get("file", "unknown")
+        line = finding.get("line", 0)
+        cwe = finding.get("cwe", "")
+        description = finding.get("description", message)
+
+        prompt = f"""Generate a minimal proof-of-concept exploit for this vulnerability.
+The exploit should ONLY demonstrate the vulnerability exists, not cause damage.
+
+Vulnerability:
+- Severity: {severity}
+- Message: {message}
+- File: {file_path}:{line}
+- CWE: {cwe}
+- Description: {description}
+
+Source code context:
+```
+{source_code[:2000] if source_code else "Not available"}
+```
+
+Requirements:
+1. Output ONLY the exploit code, nothing else
+2. The exploit must be self-contained and runnable
+3. Use Python unless the vulnerability requires another language
+4. DO NOT include any destructive operations
+5. The exploit should print "EXPLOITABLE" if successful, "NOT_EXPLOITABLE" if not
+"""
+        return prompt
+
+    def _parse_exploit_response(self, response: str, finding: dict) -> ExploitConfig | None:
+        """Parse LLM response into ExploitConfig."""
+        # Strip markdown code blocks if present
+        code = response.strip()
+        if code.startswith("```"):
+            lines = code.split("\n")
+            # Remove first and last lines (``` markers)
+            lines = [l for l in lines[1:] if not l.strip().startswith("```")]
+            code = "\n".join(lines)
+
+        if not code.strip():
+            return None
+
+        # Determine language from finding or response
+        language = "python"  # default
+        file_path = finding.get("file", "")
+        if file_path.endswith((".js", ".ts")):
+            language = "javascript"
+        elif file_path.endswith((".go",)):
+            language = "go"
+        elif file_path.endswith((".java",)):
+            language = "java"
+
+        finding_message = finding.get("message", "exploit")
+        finding_cwe = finding.get("cwe", "")
+        exploit_name = f"poc-{finding_cwe}-{finding_message[:40]}" if finding_cwe else f"poc-{finding_message[:50]}"
+
+        return ExploitConfig(
+            name=exploit_name,
+            code=code,
+            language=language,
+            exploit_type=ExploitType.CODE_INJECTION,
+            expected_indicators=["EXPLOITABLE"],
+            timeout=30,
+        )
+
+
+class ProofByExploitation:
+    """Orchestrate exploit generation + sandbox validation."""
+
+    def __init__(
+        self,
+        validator: SandboxValidator | None = None,
+        generator: ExploitGenerator | None = None,
+    ):
+        self._validator = validator or SandboxValidator()
+        self._generator = generator or ExploitGenerator()
+
+    def prove_findings(
+        self,
+        findings: list[dict],
+        source_files: dict[str, str] | None = None,
+        max_exploits: int = 10,
+    ) -> list[dict]:
+        """For each finding, generate exploit, run in sandbox, classify result.
+
+        Args:
+            findings: List of finding dicts
+            source_files: Mapping of file_path -> source code
+            max_exploits: Maximum number of exploits to generate
+
+        Returns:
+            Findings enriched with: exploitability, poc_code, sandbox_result
+        """
+        source_files = source_files or {}
+        enriched = []
+
+        # Sort by severity (critical first)
+        severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
+        sorted_findings = sorted(
+            findings,
+            key=lambda f: severity_order.get(f.get("severity", "info"), 4),
+        )
+
+        exploit_count = 0
+        for finding in sorted_findings:
+            enriched_finding = dict(finding)
+
+            if exploit_count >= max_exploits:
+                enriched_finding["exploitability"] = "not_tested"
+                enriched.append(enriched_finding)
+                continue
+
+            # Get source code context
+            file_path = finding.get("file", "")
+            source_code = source_files.get(file_path, "")
+
+            # Generate exploit
+            exploit = self._generator.generate_exploit(finding, source_code)
+
+            if exploit is None:
+                enriched_finding["exploitability"] = "generation_failed"
+                enriched.append(enriched_finding)
+                continue
+
+            exploit_count += 1
+            enriched_finding["poc_code"] = exploit.code
+
+            # Run in sandbox
+            try:
+                result = self._validator.validate_exploit(exploit)
+                enriched_finding["exploitability"] = result.result
+                enriched_finding["sandbox_result"] = {
+                    "status": result.result,
+                    "output": result.stdout,
+                    "duration_ms": result.execution_time_ms,
+                }
+            except Exception as e:
+                logger.warning(
+                    "Sandbox validation failed for finding: %s - %s",
+                    finding.get("message", ""),
+                    e,
+                )
+                enriched_finding["exploitability"] = "sandbox_error"
+                enriched_finding["sandbox_result"] = {"error": str(e)}
+
+            enriched.append(enriched_finding)
+
+        return enriched

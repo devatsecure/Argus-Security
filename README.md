@@ -148,10 +148,12 @@ python scripts/run_ai_audit.py --project-type backend-api
 │  ├─ 🏗️ ArchitectureReviewer - design flaws                  │
 │  ├─ ⚔️ ExploitAssessor - exploitability analysis            │
 │  ├─ 🎯 FalsePositiveFilter - noise elimination              │
-│  └─ 🔍 ThreatModeler - attack chain mapping                 │
+│  ├─ 🔍 ThreatModeler - attack chain mapping                 │
+│  └─ ⚡ Parallel execution for quality agents (NEW)          │
 │                                                             │
 │  PHASE 4: Sandbox Validation (Docker-based)                 │
-│  └─ Isolated exploit verification                          │
+│  ├─ Isolated exploit verification                          │
+│  └─ Proof-by-Exploitation: LLM-generated PoCs (NEW)       │
 │                                                             │
 │  PHASE 5: Policy Gates (Rego/OPA)                           │
 │  └─ Pass/fail enforcement rules                            │
@@ -167,6 +169,7 @@ python scripts/run_ai_audit.py --project-type backend-api
 │  ├─ Nuclei Agent (template-based scanning)                 │
 │  ├─ ZAP Agent (spider + active scan)                       │
 │  ├─ SAST-DAST Correlation (30-40% FP reduction)            │
+│  ├─ Config-driven auth (form/SSO/TOTP) (NEW)              │
 │  └─ Intelligent orchestration & tech stack detection       │
 │                                                             │
 │  🔗 Vulnerability Chaining (Attack Path Discovery)          │
@@ -177,6 +180,48 @@ python scripts/run_ai_audit.py --project-type backend-api
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Advanced Features
+
+### Smart Retry & Error Classification
+
+Replaces blanket retry with classified retry strategies (`scripts/error_classifier.py`). Each LLM API error is classified by type (billing, rate_limit, auth, transient, validation) with different backoff strategies. Non-retryable errors (auth, config) fail immediately instead of wasting retries.
+
+```python
+@smart_retry(max_attempts=3, provider="anthropic")
+def call_api(prompt):
+    ...
+```
+
+### Per-Agent Audit Trail
+
+Tracks per-agent cost, duration, and token usage with rendered prompt archival (`scripts/audit_trail.py`). Produces `session.json` with phase-level metrics and append-only agent logs for full reproducibility.
+
+### Parallel Agent Execution
+
+Quality agents (performance, testing, quality) run concurrently via `ThreadPoolExecutor` while security agents remain sequential. Reduces Phase 3 wall-clock time by ~60%. Toggle with `enable_parallel_agents=True`.
+
+### Phase Gating
+
+Validates phase output structure before pipeline progression (`scripts/phase_gate.py`). Catches empty findings, missing reports, and malformed outputs before they propagate to downstream phases.
+
+### MCP Server Integration
+
+Exposes Argus as MCP tools for Claude Code (`scripts/mcp_server.py`): `save_finding`, `get_scan_status`, `check_policy_gate`, `trigger_remediation`.
+
+### Proof-by-Exploitation
+
+LLM-generated exploit PoCs run in Docker sandbox to prove vulnerabilities, reducing false positives. Safety blocklist prevents dangerous operations in generated code.
+
+### Config-Driven DAST Auth
+
+YAML-based auth config for authenticated DAST scanning with RFC 6238 TOTP support (`scripts/dast_auth_config.py`). Supports form login, SSO, API keys, and custom login flows.
+
+### Temporal Orchestration (Optional)
+
+Durable workflow wrapping via Temporal for crash recovery and distributed execution (`scripts/temporal_orchestrator.py`). Requires `temporalio` package.
 
 ---
 

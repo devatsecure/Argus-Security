@@ -116,6 +116,9 @@ from analysis_helpers import (
 # CostCircuitBreaker consolidated into orchestrator/cost_tracker.py
 from orchestrator.cost_tracker import CostCircuitBreaker  # noqa: E402
 
+# Phase gating for output validation between pipeline phases
+from phase_gate import PhaseGate  # noqa: E402
+
 # ---------------------------------------------------------------------------
 # Extracted modules — imported here for backward-compatible re-export.
 # Consumers that do ``from run_ai_audit import load_config_from_env`` (etc.)
@@ -883,6 +886,16 @@ def run_audit(repo_path, config, review_type="audit"):
     # Initialize cost circuit breaker for runtime enforcement
     circuit_breaker = CostCircuitBreaker(cost_limit_usd=cost_limit)
 
+    # Initialize phase gate for output validation between phases
+    phase_gate = None
+    enable_gating_val = config.get("enable_phase_gating", True)
+    enable_gating = enable_gating_val.lower() == "true" if isinstance(enable_gating_val, str) else bool(enable_gating_val)
+    if enable_gating:
+        strict_val = config.get("phase_gate_strict", False)
+        strict = strict_val.lower() == "true" if isinstance(strict_val, str) else bool(strict_val)
+        phase_gate = PhaseGate(strict=strict)
+        logger.info("Phase gating enabled (strict=%s)", strict)
+
     # Generate or load threat model (always runs if pytm available)
     threat_model = None
     if THREAT_MODELING_AVAILABLE:
@@ -1022,6 +1035,17 @@ def run_audit(repo_path, config, review_type="audit"):
         except Exception as e:
             logger.warning(f"Semgrep scan failed: {e}")
             print(f"   ⚠️  Semgrep scan failed: {e}")
+
+    # -- Phase gate: validate scanner orchestration output --
+    if phase_gate is not None:
+        scanner_output = {
+            "findings": semgrep_results.get("findings", []) if semgrep_results else []
+        }
+        gate_decision = phase_gate.validate("scanner_orchestration", scanner_output)
+        if not gate_decision.should_proceed:
+            logger.error("Phase gate blocked after scanner orchestration: %s", gate_decision.reason)
+            print(f"Phase gate BLOCKED: {gate_decision.reason}")
+            sys.exit(2)
 
     # Estimate cost
     estimated_cost, est_input, est_output = estimate_cost(files, max_tokens, provider)
@@ -1629,6 +1653,15 @@ Focus on issues identified in the analysis plan."""
         # Record finding metrics
         for finding in findings:
             metrics.record_finding(finding["severity"], finding["category"])
+
+        # -- Phase gate: validate enriched findings before reporting --
+        if phase_gate is not None:
+            enrichment_output = {"enriched_findings": findings}
+            gate_decision = phase_gate.validate("ai_enrichment", enrichment_output)
+            if not gate_decision.should_proceed:
+                logger.error("Phase gate blocked before reporting: %s", gate_decision.reason)
+                print(f"Phase gate BLOCKED: {gate_decision.reason}")
+                sys.exit(2)
 
         # Generate SARIF with metrics
         sarif = generate_sarif(findings, repo_path, metrics)

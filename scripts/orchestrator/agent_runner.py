@@ -8,6 +8,7 @@ Functions:
     load_agent_prompt       - Load specialized agent prompt from profiles
     build_enhanced_agent_prompt - Build prompt with rubrics and self-consistency checks
     run_multi_agent_sequential  - Run 7 agents in sequence with consensus and sandbox validation
+    _run_single_agent           - Execute a single agent (callable from sequential or parallel paths)
 
 Constants:
     AVAILABLE_AGENTS        - All supported agent names
@@ -16,20 +17,23 @@ Constants:
     COST_ESTIMATES          - Per-agent cost estimates (Claude Sonnet 4 pricing)
 """
 
+import concurrent.futures
 import json
 import logging
-import os
+import threading
 import time
+import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 from analysis_helpers import (
-    ContextTracker,
-    FindingSummarizer,
     AgentOutputValidator,
-    TimeoutManager,
-    ReviewMetrics,
+    ContextTracker,
     CostLimitExceededError,
+    FindingSummarizer,
+    TimeoutManager,
 )
+from audit_trail import AgentAttempt, AuditSession
 from consensus_builder import ConsensusBuilder
 
 # Conditional sandbox validator import (mirrors run_ai_audit.py)
@@ -367,16 +371,19 @@ def run_multi_agent_sequential(
     """
 
     print("\n" + "=" * 80)
-    print("\U0001f916 MULTI-AGENT SEQUENTIAL MODE")
+    print("\U0001f916 MULTI-AGENT REVIEW MODE")
     print("=" * 80)
-    print("Running 7 specialized agents in sequence:")
-    print("  1\ufe0f\u20e3  Security Reviewer")
-    print("  2\ufe0f\u20e3  Exploit Analyst")
-    print("  3\ufe0f\u20e3  Security Test Generator")
-    print("  4\ufe0f\u20e3  Performance Reviewer")
-    print("  5\ufe0f\u20e3  Testing Reviewer")
-    print("  6\ufe0f\u20e3  Code Quality Reviewer")
-    print("  7\ufe0f\u20e3  Review Orchestrator")
+    print("Running 7 specialized agents:")
+    print("  Sequential (security context chain):")
+    print("    1\ufe0f\u20e3  Security Reviewer")
+    print("    2\ufe0f\u20e3  Exploit Analyst")
+    print("    3\ufe0f\u20e3  Security Test Generator")
+    print("  Parallel-eligible (quality analysis):")
+    print("    4\ufe0f\u20e3  Performance Reviewer")
+    print("    5\ufe0f\u20e3  Testing Reviewer")
+    print("    6\ufe0f\u20e3  Code Quality Reviewer")
+    print("  Final synthesis:")
+    print("    7\ufe0f\u20e3  Review Orchestrator")
     print("=" * 80 + "\n")
 
     # Initialize context tracker and finding summarizer
@@ -391,6 +398,17 @@ def run_multi_agent_sequential(
     timeout_manager.set_agent_timeout("security", 600)  # 10 minutes for security
     timeout_manager.set_agent_timeout("exploit-analyst", 480)  # 8 minutes
     timeout_manager.set_agent_timeout("orchestrator", 600)  # 10 minutes
+
+    # Initialize audit trail for per-agent metrics tracking
+    audit_session = None
+    if config.get("enable_audit_trail", True):
+        session_id = str(uuid.uuid4())[:8]
+        audit_session = AuditSession(
+            session_id=session_id,
+            repo_path=repo_path,
+        )
+        audit_session.initialize()
+        print(f"\U0001f4cb Audit trail: {audit_session.output_dir}")
 
     # Build codebase context once
     codebase_context = "\n\n".join([f"File: {f['path']}\n```\n{f['content']}\n```" for f in files])
@@ -429,21 +447,52 @@ You have access to the following threat model for this codebase:
 5. Validate that security objectives are being met
 """
 
-    # Store agent findings
+    # Store agent findings (thread-safe dict writes via _reports_lock)
     agent_reports = {}
     agent_metrics = {}
+    _reports_lock = threading.Lock()
 
-    # Define agents in execution order (security workflow first)
-    agents = ["security", "exploit-analyst", "security-test-generator", "performance", "testing", "quality"]
+    # Define agent groups
+    security_agents = ["security", "exploit-analyst", "security-test-generator"]
+    quality_agents = ["performance", "testing", "quality"]
+    agents = security_agents + quality_agents
 
-    # Run each specialized agent
-    for i, agent_name in enumerate(agents, 1):
+    # Determine parallel execution mode
+    _enable_parallel = config.get("enable_parallel_agents", True)
+    enable_parallel = str(_enable_parallel).lower() == "true" if not isinstance(_enable_parallel, bool) else _enable_parallel
+    parallel_workers = int(config.get("parallel_agent_workers", 3))
+
+    if enable_parallel:
+        print(f"\U0001f680 Parallel mode: quality agents will run concurrently ({parallel_workers} workers)")
+    else:
+        print("\U0001f6b6 Sequential mode: all agents run one at a time")
+
+    # ------------------------------------------------------------------
+    # _run_single_agent: extracted helper callable from both paths
+    # ------------------------------------------------------------------
+    def _run_single_agent(agent_name, agent_index):
+        """Execute a single agent and record its results.
+
+        This function is designed to be called from both the sequential loop
+        and the ``ThreadPoolExecutor`` for parallel quality agents.  All
+        shared state writes go through ``_reports_lock``.
+
+        Args:
+            agent_name: Name of the agent to run.
+            agent_index: 1-based display index (e.g. 4 for performance).
+
+        Returns:
+            Tuple of (agent_name, report_text) on success.
+
+        Raises:
+            CostLimitExceededError: Re-raised so the caller can abort.
+        """
         print(f"\n{'─' * 80}")
-        print(f"\U0001f50d Agent {i}/7: {agent_name.upper()} REVIEWER")
+        print(f"\U0001f50d Agent {agent_index}/7: {agent_name.upper()} REVIEWER")
         print(f"{'─' * 80}")
 
         # Start context tracking for this agent phase
-        context_tracker.start_phase(f"agent_{i}_{agent_name}")
+        context_tracker.start_phase(f"agent_{agent_index}_{agent_name}")
         agent_start = time.time()
 
         # Load agent-specific prompt
@@ -453,7 +502,8 @@ You have access to the following threat model for this codebase:
         # For exploit-analyst and security-test-generator, pass SUMMARIZED security findings
         if agent_name in ["exploit-analyst", "security-test-generator"]:
             # Parse and summarize security findings instead of passing full report
-            security_report = agent_reports.get("security", "")
+            with _reports_lock:
+                security_report = agent_reports.get("security", "")
             security_findings = parse_findings_from_report(security_report)
             security_summary = summarizer.summarize_findings(security_findings, max_findings=15)
 
@@ -465,7 +515,9 @@ You have access to the following threat model for this codebase:
                     logger.warning(f"   - {warning}")
 
             context_tracker.add_context("threat_model", threat_model_context, {"size": "summarized"})
-            context_tracker.add_context("security_findings_summary", security_summary, {"original_findings": len(security_findings)})
+            context_tracker.add_context(
+                "security_findings_summary", security_summary, {"original_findings": len(security_findings)}
+            )
             context_tracker.add_context("codebase", codebase_context, {"files": len(files)})
 
             agent_prompt = f"""{agent_prompt_template}
@@ -546,6 +598,10 @@ Be specific with file paths and line numbers. Focus on actionable, real issues.
         # End context tracking for this phase
         context_tracker.end_phase()
 
+        # Record agent start in audit trail
+        if audit_session:
+            audit_session.start_agent(agent_name, agent_prompt, attempt=1)
+
         try:
             # Sanitize model name (use str() to break taint chain)
             safe_model = str(model).split("/")[-1] if model else "unknown"
@@ -567,7 +623,9 @@ Be specific with file paths and line numbers. Focus on actionable, real issues.
             timeout_manager.record_execution(agent_name, agent_duration, not exceeded)
 
             if exceeded:
-                logger.warning(f"\u26a0\ufe0f  Agent {agent_name} exceeded timeout ({elapsed:.1f}s > {timeout_manager.get_timeout(agent_name)}s)")
+                logger.warning(
+                    f"\u26a0\ufe0f  Agent {agent_name} exceeded timeout ({elapsed:.1f}s > {timeout_manager.get_timeout(agent_name)}s)"
+                )
                 print(f"   \u26a0\ufe0f  Warning: Execution time ({elapsed:.1f}s) exceeded timeout limit")
 
             # Validate output (Medium Priority feature)
@@ -587,7 +645,7 @@ Be specific with file paths and line numbers. Focus on actionable, real issues.
             metrics.record_llm_call(input_tokens, output_tokens, provider)
             metrics.record_agent_execution(agent_name, agent_duration)
 
-            agent_metrics[agent_name] = {
+            this_agent_metrics = {
                 "duration_seconds": round(agent_duration, 2),
                 "input_tokens": input_tokens,
                 "output_tokens": output_tokens,
@@ -595,11 +653,12 @@ Be specific with file paths and line numbers. Focus on actionable, real issues.
                 if provider == "anthropic"
                 else 0,
                 "validation": validation,
-                "timeout_exceeded": exceeded
+                "timeout_exceeded": exceeded,
             }
 
-            # Store report
-            agent_reports[agent_name] = report
+            with _reports_lock:
+                agent_metrics[agent_name] = this_agent_metrics
+                agent_reports[agent_name] = report
 
             # Parse findings for metrics
             findings = parse_findings_from_report(report)
@@ -628,26 +687,140 @@ Be specific with file paths and line numbers. Focus on actionable, real issues.
             print(
                 f"   \u2705 Complete: {finding_counts['critical']} critical, {finding_counts['high']} high, {finding_counts['medium']} medium, {finding_counts['low']} low"
             )
-            print(f"   \u23f1\ufe0f  Duration: {agent_duration:.1f}s | \U0001f4b0 Cost: ${agent_metrics[agent_name]['cost_usd']:.4f}")
+            print(
+                f"   \u23f1\ufe0f  Duration: {agent_duration:.1f}s | \U0001f4b0 Cost: ${this_agent_metrics['cost_usd']:.4f}"
+            )
+
+            # Record successful completion in audit trail
+            if audit_session:
+                attempt = AgentAttempt(
+                    attempt_number=1,
+                    duration_seconds=round(agent_duration, 2),
+                    cost_usd=this_agent_metrics.get("cost_usd", 0),
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    success=True,
+                    model=str(model),
+                    timestamp=datetime.now(tz=timezone.utc).isoformat(),
+                )
+                audit_session.end_agent(agent_name, attempt)
+
+            return agent_name, report
 
         except CostLimitExceededError as e:
-            # Cost limit reached - stop immediately
+            # Cost limit reached - record and re-raise
             print(f"   \U0001f6a8 Cost limit exceeded: {e}")
             print(
                 f"   \U0001f4b0 Review stopped at ${circuit_breaker.current_cost:.3f} to stay within ${circuit_breaker.cost_limit:.2f} budget"
             )
-            print(f"   \u2705 {i - 1}/{len(agents)} agents completed before limit reached")
 
             # Generate partial report with agents completed so far
-            agent_reports[agent_name] = (
-                f"# {agent_name.title()} Review Skipped\n\n**Reason**: Cost limit reached (${circuit_breaker.cost_limit:.2f})\n"
-            )
+            with _reports_lock:
+                completed_count = len(agent_reports)
+                agent_reports[agent_name] = (
+                    f"# {agent_name.title()} Review Skipped\n\n**Reason**: Cost limit reached (${circuit_breaker.cost_limit:.2f})\n"
+                )
+            print(f"   \u2705 {completed_count}/{len(agents)} agents completed before limit reached")
+
+            # Record cost-limit failure in audit trail
+            if audit_session:
+                attempt = AgentAttempt(
+                    attempt_number=1,
+                    duration_seconds=round(time.time() - agent_start, 2),
+                    cost_usd=0,
+                    input_tokens=0,
+                    output_tokens=0,
+                    success=False,
+                    model=str(model),
+                    timestamp=datetime.now(tz=timezone.utc).isoformat(),
+                    error=str(e),
+                )
+                audit_session.end_agent(agent_name, attempt)
+
             raise  # Re-raise to stop the entire review
 
         except Exception as e:
-            print(f"   \u274c Error: {e}")
-            agent_reports[agent_name] = f"# {agent_name.title()} Review Failed\n\nError: {str(e)}"
-            agent_metrics[agent_name] = {"error": str(e)}
+            # Classify the error for better diagnostics
+            from error_classifier import classify_llm_error
+
+            classified = classify_llm_error(e, provider)
+            if not classified.retryable:
+                print(f"   \u274c Non-retryable error ({classified.error_type}): {e}")
+            else:
+                print(f"   \u26a0\ufe0f  Retryable error ({classified.error_type}): {e}")
+
+            with _reports_lock:
+                agent_reports[agent_name] = (
+                    f"# {agent_name.title()} Review Failed\n\nError ({classified.error_type}): {str(e)}"
+                )
+                agent_metrics[agent_name] = {
+                    "error": str(e),
+                    "error_type": classified.error_type,
+                    "retryable": classified.retryable,
+                }
+
+            # Record failure in audit trail
+            if audit_session:
+                attempt = AgentAttempt(
+                    attempt_number=1,
+                    duration_seconds=round(time.time() - agent_start, 2),
+                    cost_usd=0,
+                    input_tokens=0,
+                    output_tokens=0,
+                    success=False,
+                    model=str(model),
+                    timestamp=datetime.now(tz=timezone.utc).isoformat(),
+                    error=str(e),
+                )
+                audit_session.end_agent(agent_name, attempt)
+
+            return agent_name, None
+
+    # ------------------------------------------------------------------
+    # Phase A: Run security agents SEQUENTIALLY (context dependencies)
+    # ------------------------------------------------------------------
+    for i, agent_name in enumerate(security_agents, 1):
+        _run_single_agent(agent_name, i)
+
+    # ------------------------------------------------------------------
+    # Phase B: Run quality agents (parallel or sequential)
+    # ------------------------------------------------------------------
+    if enable_parallel and len(quality_agents) > 0:
+        print(f"\n{'=' * 60}")
+        print(f"\U0001f680 Running {len(quality_agents)} quality agents in PARALLEL ({parallel_workers} workers)")
+        print(f"{'=' * 60}")
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=parallel_workers) as executor:
+            futures = {
+                executor.submit(
+                    _run_single_agent,
+                    agent_name,
+                    len(security_agents) + idx + 1,
+                ): agent_name
+                for idx, agent_name in enumerate(quality_agents)
+            }
+            for future in concurrent.futures.as_completed(futures):
+                completed_agent = futures[future]
+                try:
+                    future.result()
+                except CostLimitExceededError:
+                    # Cancel remaining futures on cost limit
+                    for f in futures:
+                        f.cancel()
+                    raise
+                except Exception as exc:
+                    # Individual agent failures are already handled inside
+                    # _run_single_agent; this catches truly unexpected errors.
+                    logger.error(f"Unexpected error in parallel agent {completed_agent}: {exc}")
+                    with _reports_lock:
+                        if completed_agent not in agent_reports:
+                            agent_reports[completed_agent] = (
+                                f"# {completed_agent.title()} Review Failed\n\nError: {exc}"
+                            )
+    else:
+        # Sequential fallback
+        for idx, agent_name in enumerate(quality_agents):
+            _run_single_agent(agent_name, len(security_agents) + idx + 1)
 
     # NEW: Sandbox Validation (after security agents, before orchestrator)
     if config.get("enable_sandbox_validation", True) and SANDBOX_VALIDATION_AVAILABLE:
@@ -752,7 +925,9 @@ Be specific with file paths and line numbers. Focus on actionable, real issues.
                 print(
                     f"   \u2705 Sandbox validation complete: {len(validated_findings)}/{len(security_findings_with_poc[:10])} confirmed"
                 )
-                print(f"   \U0001f3af False positives eliminated: {metrics.metrics['sandbox']['false_positives_eliminated']}")
+                print(
+                    f"   \U0001f3af False positives eliminated: {metrics.metrics['sandbox']['false_positives_eliminated']}"
+                )
 
         except Exception as e:
             logger.warning(f"Sandbox validation failed: {e}")
@@ -800,7 +975,9 @@ Be specific with file paths and line numbers. Focus on actionable, real issues.
             print(f"      - {confirmed} high-confidence findings (multiple agents agree)")
             print(f"      - {likely} medium-confidence findings")
             print(f"      - {uncertain} low-confidence findings (single agent only)")
-            print(f"   \U0001f3af False positive reduction: {len(all_findings) - len(consensus_results)} findings eliminated")
+            print(
+                f"   \U0001f3af False positive reduction: {len(all_findings) - len(consensus_results)} findings eliminated"
+            )
         else:
             print("   \u2139\ufe0f  Insufficient overlap for consensus building")
 
@@ -849,6 +1026,10 @@ Pay special attention to:
 Generate the complete audit report as specified in your instructions.
 """
 
+    # Record orchestrator start in audit trail
+    if audit_session:
+        audit_session.start_agent("orchestrator", orchestrator_prompt, attempt=1)
+
     error_msg = None
     try:
         # Sanitize model name (use str() to break taint chain)
@@ -884,16 +1065,60 @@ Generate the complete audit report as specified in your instructions.
             f"   \u23f1\ufe0f  Duration: {orchestrator_duration:.1f}s | \U0001f4b0 Cost: ${agent_metrics['orchestrator']['cost_usd']:.4f}"
         )
 
+        # Record orchestrator success in audit trail
+        if audit_session:
+            attempt = AgentAttempt(
+                attempt_number=1,
+                duration_seconds=round(orchestrator_duration, 2),
+                cost_usd=agent_metrics["orchestrator"].get("cost_usd", 0),
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                success=True,
+                model=str(model),
+                timestamp=datetime.now(tz=timezone.utc).isoformat(),
+            )
+            audit_session.end_agent("orchestrator", attempt)
+
     except CostLimitExceededError as e:
         # Cost limit reached during orchestration
         error_msg = str(e)
         print(f"   \U0001f6a8 Cost limit exceeded during synthesis: {error_msg}")
         print(f"   \U0001f4ca Generating report from {len(agent_reports)} completed agents")
+
+        # Record orchestrator cost-limit failure in audit trail
+        if audit_session:
+            attempt = AgentAttempt(
+                attempt_number=1,
+                duration_seconds=round(time.time() - orchestrator_start, 2),
+                cost_usd=0,
+                input_tokens=0,
+                output_tokens=0,
+                success=False,
+                model=str(model),
+                timestamp=datetime.now(tz=timezone.utc).isoformat(),
+                error=str(e),
+            )
+            audit_session.end_agent("orchestrator", attempt)
         # Fall through to generate partial report
 
     except Exception as e:
         error_msg = str(e)
         print(f"   \u274c Error: {error_msg}")
+
+        # Record orchestrator failure in audit trail
+        if audit_session:
+            attempt = AgentAttempt(
+                attempt_number=1,
+                duration_seconds=round(time.time() - orchestrator_start, 2),
+                cost_usd=0,
+                input_tokens=0,
+                output_tokens=0,
+                success=False,
+                model=str(model),
+                timestamp=datetime.now(tz=timezone.utc).isoformat(),
+                error=str(e),
+            )
+            audit_session.end_agent("orchestrator", attempt)
 
     # Fallback: concatenate all reports (used if orchestrator fails OR cost limit reached)
     if "final_report" not in locals():
@@ -927,7 +1152,7 @@ Orchestrator synthesis failed. Below are individual agent reports.
 
 ## Multi-Agent Review Metrics
 
-**Mode**: Sequential (7 agents)
+**Mode**: {"Hybrid (security sequential + quality parallel)" if enable_parallel else "Sequential"} (7 agents)
 **Total Duration**: {total_duration:.1f}s
 **Total Cost**: ${total_cost:.4f}
 
@@ -1001,6 +1226,21 @@ Orchestrator synthesis failed. Below are individual agent reports.
         print(f"\U0001f9ea Tests Generated: {metrics.metrics['tests_generated']}")
 
     print(f"{'=' * 80}\n")
+
+    # Print audit trail summary
+    if audit_session:
+        summary = audit_session.get_summary()
+        print("\n\U0001f4ca Audit Trail Summary:")
+        print(f"   Session: {summary['session']['id']}")
+        dur = summary["metrics"]["total_duration_seconds"]
+        print(f"   Duration: {dur:.1f}s")
+        cost = summary["metrics"]["total_cost_usd"]
+        print(f"   Total Cost: ${cost:.4f}")
+        for phase, pdata in summary["metrics"]["phases"].items():
+            agent_count = pdata["agent_count"]
+            phase_cost = pdata["cost_usd"]
+            dur_pct = pdata["duration_percentage"]
+            print(f"   Phase {phase}: {agent_count} agents, ${phase_cost:.4f}, {dur_pct}%")
 
     return final_report
 

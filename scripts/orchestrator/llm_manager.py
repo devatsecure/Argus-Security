@@ -25,9 +25,17 @@ from pathlib import Path
 from tenacity import (
     before_sleep_log,
     retry,
+    retry_if_exception,
     retry_if_exception_type,
     stop_after_attempt,
     wait_exponential,
+)
+
+from error_classifier import (
+    classify_llm_error,
+    classified_retry_predicate,
+    classified_wait,
+    is_retryable_error,
 )
 
 # Configure logging
@@ -101,6 +109,9 @@ class LLMManager:
         self.feedback_collector = None
         self.cache_manager = None
 
+        # Apply retry strategy based on config
+        self._apply_retry_strategy()
+
         try:
             # Import modules - allow graceful failure
             import sys
@@ -120,6 +131,47 @@ class LLMManager:
         except Exception as e:
             logger.debug(f"Could not initialize feedback/cache systems: {e}")
             # Continue without these features
+
+    def _apply_retry_strategy(self):
+        """Apply retry wrapper to call_llm_api based on config.
+
+        If ``enable_smart_retry`` is True (default), wraps ``call_llm_api``
+        with the classified smart retry decorator that uses error
+        classification to decide whether and how long to wait.
+
+        If False, uses the legacy tenacity-based retry for backward
+        compatibility.
+        """
+        enable_smart = self.config.get("enable_smart_retry", True)
+        max_attempts = self.config.get("retry_max_attempts", 3)
+
+        if enable_smart:
+            from error_classifier import smart_retry
+
+            self.call_llm_api = smart_retry(
+                max_attempts=max_attempts,
+                provider=self.config.get("ai_provider", ""),
+            )(self.call_llm_api)
+            logger.debug(
+                "Smart retry enabled (max_attempts=%d)", max_attempts,
+            )
+        else:
+            # Legacy tenacity retry for backward compatibility
+            self.call_llm_api = retry(
+                stop=stop_after_attempt(max_attempts),
+                wait=wait_exponential(multiplier=1, min=4, max=10),
+                retry=retry_if_exception_type((
+                    ConnectionError,
+                    TimeoutError,
+                    OSError,
+                    Exception,
+                )),
+                before_sleep=before_sleep_log(logger, logging.WARNING),
+                reraise=True,
+            )(self.call_llm_api)
+            logger.debug(
+                "Legacy tenacity retry enabled (max_attempts=%d)", max_attempts,
+            )
 
     def detect_provider(self) -> str:
         """Auto-detect which AI provider to use based on available keys
@@ -438,18 +490,6 @@ class LLMManager:
             logger.debug(f"Could not log decision: {e}")
             return False
 
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=4, max=10),
-        retry=retry_if_exception_type((
-            ConnectionError,
-            TimeoutError,
-            OSError,  # Network issues
-            Exception,  # Catch-all for API-specific exceptions (will be filtered by before_sleep)
-        )),
-        before_sleep=before_sleep_log(logger, logging.WARNING),
-        reraise=True,
-    )
     def call_llm_api(
         self,
         prompt: str,
@@ -519,7 +559,13 @@ class LLMManager:
             return response_text, input_tokens, output_tokens
 
         except Exception as e:
-            logger.error(f"LLM API call failed: {type(e).__name__}: {e}")
+            classified = classify_llm_error(e, self.provider or "")
+            logger.error(
+                "LLM API call failed: %s (retryable=%s): %s",
+                classified.error_type,
+                classified.retryable,
+                e,
+            )
             raise
 
     def analyze(self, prompt: str, max_tokens: int = 4096) -> "LLMResponse":

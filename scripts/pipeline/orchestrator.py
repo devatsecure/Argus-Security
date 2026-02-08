@@ -23,6 +23,37 @@ from .protocol import PipelineContext, PipelineStage, StageResult
 
 logger = logging.getLogger(__name__)
 
+# Lazy import to avoid circular dependencies.  The phase_gate module is
+# stdlib-only so the import is cheap.
+_PhaseGate = None
+
+
+def _get_phase_gate_class():
+    """Lazily import PhaseGate to avoid import-time side-effects."""
+    global _PhaseGate
+    if _PhaseGate is None:
+        from phase_gate import PhaseGate
+        _PhaseGate = PhaseGate
+    return _PhaseGate
+
+
+# Maps stage names (as registered in PipelineStage.name) to the schema
+# keys defined in PhaseGate.REQUIRED_SCHEMAS.
+_STAGE_TO_GATE_PHASE: Dict[str, str] = {
+    "phase1_scanner_orchestration": "scanner_orchestration",
+    "scanner_orchestration": "scanner_orchestration",
+    "phase2_ai_enrichment": "ai_enrichment",
+    "ai_enrichment": "ai_enrichment",
+    "phase3_multi_agent_review": "multi_agent_review",
+    "multi_agent_review": "multi_agent_review",
+    "phase4_sandbox_validation": "sandbox_validation",
+    "sandbox_validation": "sandbox_validation",
+    "phase5_policy_gates": "policy_gates",
+    "policy_gates": "policy_gates",
+    "phase6_reporting": "reporting",
+    "reporting": "reporting",
+}
+
 
 class PipelineOrchestrator:
     """Compose and execute pipeline stages in dependency order.
@@ -53,6 +84,7 @@ class PipelineOrchestrator:
         self.stages = sorted(stages, key=lambda s: s.phase_number)
         self.config = config
         self._validate_dependencies()
+        self._init_phase_gate()
 
     def _validate_dependencies(self) -> None:
         """Verify that all ``required_stages`` references are satisfiable.
@@ -71,6 +103,56 @@ class PipelineOrchestrator:
                         f"not registered in the pipeline.  Available: "
                         f"{sorted(stage_names)}"
                     )
+
+    def _init_phase_gate(self) -> None:
+        """Initialize the phase gate if enabled in config."""
+        self._phase_gate = None
+        if self.config.get("enable_phase_gating", True):
+            try:
+                phase_gate_cls = _get_phase_gate_class()
+                strict = bool(self.config.get("phase_gate_strict", False))
+                self._phase_gate = phase_gate_cls(strict=strict)
+                logger.info(
+                    "Phase gating enabled (strict=%s)", strict
+                )
+            except Exception as exc:
+                logger.warning(
+                    "Failed to initialize phase gate: %s (continuing without gating)",
+                    exc,
+                )
+
+    @staticmethod
+    def _build_gate_output(
+        stage_name: str, ctx: PipelineContext
+    ) -> Dict[str, Any]:
+        """Build a gate-compatible output dict from the pipeline context.
+
+        Maps the mutable ``PipelineContext`` fields to the dict structure
+        that ``PhaseGate.validate()`` expects.
+        """
+        gate_phase = _STAGE_TO_GATE_PHASE.get(stage_name, stage_name)
+
+        if gate_phase == "scanner_orchestration":
+            return {"findings": ctx.findings}
+        if gate_phase == "ai_enrichment":
+            return {"enriched_findings": ctx.findings}
+        if gate_phase == "multi_agent_review":
+            return {"agent_reports": ctx.agent_reports}
+        if gate_phase == "sandbox_validation":
+            return {"validation_results": ctx.findings}
+        if gate_phase == "policy_gates":
+            return {
+                "gate_result": ctx.policy_gate_result,
+                "pass_fail": (
+                    ctx.policy_gate_result.get("pass_fail")
+                    if isinstance(ctx.policy_gate_result, dict)
+                    else None
+                ),
+            }
+        if gate_phase == "reporting":
+            return {"report_paths": ctx.report_paths}
+        # Fallback for unknown stages
+        return {}
 
     def _build_context(self, target_path: str) -> PipelineContext:
         """Build the initial ``PipelineContext`` from config.
@@ -195,6 +277,29 @@ class PipelineOrchestrator:
                         result.findings_before,
                         result.findings_after,
                     )
+
+                    # -- Phase gate validation --
+                    if self._phase_gate is not None:
+                        gate_phase = _STAGE_TO_GATE_PHASE.get(
+                            stage.name, stage.name
+                        )
+                        gate_output = self._build_gate_output(
+                            stage.name, ctx
+                        )
+                        decision = self._phase_gate.validate(
+                            gate_phase, gate_output
+                        )
+                        if not decision.should_proceed:
+                            ctx.errors.append(
+                                f"Phase gate blocked after "
+                                f"{stage.display_name}: {decision.reason}"
+                            )
+                            logger.error(
+                                "Phase gate BLOCKED pipeline after %s: %s",
+                                stage.display_name,
+                                decision.reason,
+                            )
+                            break
                 else:
                     logger.warning(
                         "Stage %s reported failure: %s",

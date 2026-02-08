@@ -68,6 +68,13 @@ def get_default_config() -> Dict[str, Any]:
         "enable_runtime_security": False,
         "enable_regression_testing": True,
 
+        # -- MCP Server --
+        "enable_mcp_server": False,
+
+        # -- DAST auth --
+        "dast_auth_config_path": "",
+        "dast_enable_totp": True,
+
         # -- Feature toggles --
         "enable_multi_agent": True,
         "enable_spontaneous_discovery": True,
@@ -79,7 +86,18 @@ def get_default_config() -> Dict[str, Any]:
         "enable_consensus": True,
         "enable_iris": True,
         "enable_exploit_analysis": True,
+        "enable_proof_by_exploitation": False,  # opt-in: LLM-powered PoC generation + sandbox validation
+        "max_exploit_attempts": 10,
         "generate_security_tests": True,
+
+        # -- Audit Trail --
+        "enable_audit_trail": True,
+        "audit_save_prompts": True,
+
+        # -- Smart Retry --
+        "enable_smart_retry": True,
+        "retry_max_attempts": 3,
+        "retry_billing_delay": 60,
 
         # -- Limits --
         "max_files": 50,
@@ -107,8 +125,41 @@ def get_default_config() -> Dict[str, Any]:
         "project_type": "auto",
         "fail_on": "",
 
+        # -- Parallel agents --
+        "enable_parallel_agents": True,
+        "parallel_agent_workers": 3,
+
+        # -- Phase gating --
+        "enable_phase_gating": True,
+        "phase_gate_strict": False,  # True = stop on failure, False = warn and continue
+
         # -- Agent profile --
         "agent_profile": "default",
+
+        # -- Temporal orchestration --
+        "enable_temporal": False,
+        "temporal_server": "localhost:7233",
+        "temporal_namespace": "argus",
+        "temporal_retry_mode": "production",
+
+        # -- DAST auth --
+        "dast_auth_config_path": "",      # path to YAML auth config
+        "dast_enable_totp": True,
+
+        # -- Trivy-ported enrichment features --
+        "enable_license_risk_scoring": True,
+        "enable_epss_scoring": True,
+        "epss_cache_ttl_hours": 24,
+        "enable_fix_version_tracking": True,
+        "enable_vex": True,
+        "vex_paths": "",                 # comma-separated paths to VEX docs
+        "vex_auto_discover_dir": ".argus/vex",
+        "enable_vuln_deduplication": True,
+        "deduplication_strategy": "auto",  # auto, strict, standard, relaxed
+        "enable_advanced_suppression": True,
+        "suppression_auto_expire_days": 90,
+        "enable_compliance_mapping": True,
+        "compliance_frameworks": "",     # comma-separated: nist_800_53,pci_dss_4,owasp_top10_2021,soc2,cis_kubernetes,iso_27001
     }
 
 # ---------------------------------------------------------------------------
@@ -282,7 +333,10 @@ def flatten_profile(nested: dict) -> Dict[str, Any]:
                 flat[key] = value
 
     # -- top-level scalars --
-    for scalar_key in ("name", "description", "agent_profile", "secrets_scanners_only"):
+    for scalar_key in (
+        "name", "description", "agent_profile", "secrets_scanners_only",
+        "dast_auth_config_path", "dast_enable_totp",
+    ):
         if nested.get(scalar_key) is not None:
             flat[scalar_key] = nested[scalar_key]
 
@@ -352,6 +406,9 @@ _ENV_MAPPINGS: List[tuple] = [
     (("ENABLE_RUNTIME_SECURITY",),                  "enable_runtime_security", "bool"),
     (("ENABLE_REGRESSION_TESTING",),                "enable_regression_testing", "bool"),
 
+    # MCP Server
+    (("ENABLE_MCP_SERVER",),                        "enable_mcp_server",    "bool"),
+
     # Feature toggles
     (("ENABLE_MULTI_AGENT", "INPUT_ENABLE_MULTI_AGENT"), "enable_multi_agent", "bool"),
     (("ENABLE_SPONTANEOUS_DISCOVERY",),             "enable_spontaneous_discovery", "bool"),
@@ -361,9 +418,28 @@ _ENV_MAPPINGS: List[tuple] = [
     (("ENABLE_HEURISTICS",),                        "enable_heuristics",    "bool"),
     (("ENABLE_CONSENSUS",),                         "enable_consensus",     "bool"),
     (("ENABLE_EXPLOIT_ANALYSIS",),                  "enable_exploit_analysis", "bool"),
+    (("ENABLE_PROOF_BY_EXPLOITATION",),             "enable_proof_by_exploitation", "bool"),
+    (("MAX_EXPLOIT_ATTEMPTS",),                     "max_exploit_attempts", "int"),
     (("GENERATE_SECURITY_TESTS",),                  "generate_security_tests", "bool"),
+    (("ENABLE_SMART_RETRY",),                       "enable_smart_retry",   "bool"),
+    (("RETRY_MAX_ATTEMPTS",),                       "retry_max_attempts",   "int"),
+    (("RETRY_BILLING_DELAY",),                      "retry_billing_delay",  "int"),
     (("CONSENSUS_THRESHOLD",),                      "consensus_threshold",  "float"),
     (("EXPLOITABILITY_THRESHOLD",),                 "exploitability_threshold", "str"),
+
+    # Parallel agents
+    (("ENABLE_PARALLEL_AGENTS",),                   "enable_parallel_agents", "bool"),
+    (("PARALLEL_AGENT_WORKERS",),                   "parallel_agent_workers", "int"),
+
+    # Phase gating
+    (("ENABLE_PHASE_GATING",),                      "enable_phase_gating",  "bool"),
+    (("PHASE_GATE_STRICT",),                        "phase_gate_strict",    "bool"),
+
+    # Temporal orchestration
+    (("ENABLE_TEMPORAL",),                          "enable_temporal",      "bool"),
+    (("TEMPORAL_SERVER",),                          "temporal_server",      "str"),
+    (("TEMPORAL_NAMESPACE",),                       "temporal_namespace",   "str"),
+    (("TEMPORAL_RETRY_MODE",),                      "temporal_retry_mode",  "str"),
 
     # Deep analysis
     (("DEEP_ANALYSIS_MODE",),                       "deep_analysis_mode",   "str"),
@@ -373,6 +449,25 @@ _ENV_MAPPINGS: List[tuple] = [
 
     # Output
     (("FAIL_ON", "INPUT_FAIL_ON"),                  "fail_on",              "str"),
+
+    # DAST auth
+    (("DAST_AUTH_CONFIG_PATH",),                    "dast_auth_config_path", "str"),
+    (("DAST_ENABLE_TOTP",),                         "dast_enable_totp",     "bool"),
+
+    # Trivy-ported enrichment features
+    (("ENABLE_LICENSE_RISK_SCORING",),              "enable_license_risk_scoring", "bool"),
+    (("ENABLE_EPSS_SCORING",),                      "enable_epss_scoring",  "bool"),
+    (("EPSS_CACHE_TTL_HOURS",),                     "epss_cache_ttl_hours", "int"),
+    (("ENABLE_FIX_VERSION_TRACKING",),              "enable_fix_version_tracking", "bool"),
+    (("ENABLE_VEX",),                               "enable_vex",           "bool"),
+    (("VEX_PATHS",),                                "vex_paths",            "str"),
+    (("VEX_AUTO_DISCOVER_DIR",),                    "vex_auto_discover_dir", "str"),
+    (("ENABLE_VULN_DEDUPLICATION",),                "enable_vuln_deduplication", "bool"),
+    (("DEDUPLICATION_STRATEGY",),                   "deduplication_strategy", "str"),
+    (("ENABLE_ADVANCED_SUPPRESSION",),              "enable_advanced_suppression", "bool"),
+    (("SUPPRESSION_AUTO_EXPIRE_DAYS",),             "suppression_auto_expire_days", "int"),
+    (("ENABLE_COMPLIANCE_MAPPING",),                "enable_compliance_mapping", "bool"),
+    (("COMPLIANCE_FRAMEWORKS",),                    "compliance_frameworks", "str"),
 ]
 
 
@@ -449,6 +544,7 @@ _CLI_ATTR_MAP: Dict[str, str] = {
     "enable_remediation": "enable_remediation",
     "enable_runtime_security": "enable_runtime_security",
     "enable_regression_testing": "enable_regression_testing",
+    "enable_mcp_server": "enable_mcp_server",
     "enable_multi_agent": "enable_multi_agent",
     "enable_spontaneous_discovery": "enable_spontaneous_discovery",
     "enable_collaborative_reasoning": "enable_collaborative_reasoning",
@@ -459,12 +555,40 @@ _CLI_ATTR_MAP: Dict[str, str] = {
     "enable_consensus": "enable_consensus",
     "enable_iris": "enable_iris",
     "enable_exploit_analysis": "enable_exploit_analysis",
+    "enable_proof_by_exploitation": "enable_proof_by_exploitation",
+    "max_exploit_attempts": "max_exploit_attempts",
     "generate_security_tests": "generate_security_tests",
+    "enable_smart_retry": "enable_smart_retry",
+    "retry_max_attempts": "retry_max_attempts",
+    "retry_billing_delay": "retry_billing_delay",
     "consensus_threshold": "consensus_threshold",
     "exploitability_threshold": "exploitability_threshold",
     "fuzzing_duration": "fuzzing_duration",
     "runtime_monitoring_duration": "runtime_monitoring_duration",
     "agent_profile": "agent_profile",
+    "enable_parallel_agents": "enable_parallel_agents",
+    "parallel_agent_workers": "parallel_agent_workers",
+    "enable_phase_gating": "enable_phase_gating",
+    "phase_gate_strict": "phase_gate_strict",
+    "enable_temporal": "enable_temporal",
+    "temporal_server": "temporal_server",
+    "temporal_namespace": "temporal_namespace",
+    "temporal_retry_mode": "temporal_retry_mode",
+    "dast_auth_config_path": "dast_auth_config_path",
+    "dast_enable_totp": "dast_enable_totp",
+    "enable_license_risk_scoring": "enable_license_risk_scoring",
+    "enable_epss_scoring": "enable_epss_scoring",
+    "epss_cache_ttl_hours": "epss_cache_ttl_hours",
+    "enable_fix_version_tracking": "enable_fix_version_tracking",
+    "enable_vex": "enable_vex",
+    "vex_paths": "vex_paths",
+    "vex_auto_discover_dir": "vex_auto_discover_dir",
+    "enable_vuln_deduplication": "enable_vuln_deduplication",
+    "deduplication_strategy": "deduplication_strategy",
+    "enable_advanced_suppression": "enable_advanced_suppression",
+    "suppression_auto_expire_days": "suppression_auto_expire_days",
+    "enable_compliance_mapping": "enable_compliance_mapping",
+    "compliance_frameworks": "compliance_frameworks",
 }
 
 
