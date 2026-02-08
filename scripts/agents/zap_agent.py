@@ -7,12 +7,17 @@ Spider, active scan, API testing, and authentication support
 import json
 import logging
 import subprocess
+import sys
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 from enum import Enum
+
+# Allow importing from parent scripts directory
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from dast_auth_config import DASTAuthConfig
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +59,7 @@ class ZAPConfig:
     target_exclusions: list[str] = field(default_factory=list)
     alert_threshold: str = "medium"  # low, medium, high
     max_alerts_per_url: int = 10
+    dast_auth_config: Optional[DASTAuthConfig] = None  # config-driven auth
 
 
 @dataclass

@@ -1,0 +1,22 @@
+# DAST Authenticated Scanning Profile
+# Extends standard profile with DAST authentication support.
+#
+# Usage:
+#   python scripts/run_ai_audit.py --profile dast-authenticated --project-type backend-api
+#
+# Requires a companion auth config at .argus/dast-auth.yml (or the path
+# specified in dast_auth_config_path).
+
+_extends: standard
+name: dast-authenticated
+description: "Authenticated DAST scanning with TOTP support"
+
+scanners:
+  dast: true
+
+features:
+  threat_modeling: true
+
+# DAST auth settings (flat keys merged into config)
+dast_auth_config_path: ".argus/dast-auth.yml"
+dast_enable_totp: true
