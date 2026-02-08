@@ -26,6 +26,7 @@ from scripts.schemas.scanner_outputs import (
     TruffleHogOutput,
     GitleaksOutput,
     FalcoOutput,
+    FalcoEventsOutput,
 )
 from scripts.schemas.correlation import (
     CorrelationInput,
@@ -87,7 +88,7 @@ class TestUnifiedFinding:
 
     def test_invalid_cwe_format(self):
         """Test that invalid CWE format is rejected"""
-        with pytest.raises(ValueError, match="Invalid CWE format"):
+        with pytest.raises(ValueError, match="string_pattern_mismatch"):
             UnifiedFinding(
                 id="test123",
                 origin="semgrep",
@@ -113,7 +114,7 @@ class TestUnifiedFinding:
 
     def test_invalid_cve_format(self):
         """Test that invalid CVE format is rejected"""
-        with pytest.raises(ValueError, match="Invalid CVE format"):
+        with pytest.raises(ValueError, match="string_pattern_mismatch"):
             UnifiedFinding(
                 id="test123",
                 origin="trivy",
@@ -205,7 +206,7 @@ class TestUnifiedFinding:
 
     def test_empty_id_rejected(self):
         """Test that empty ID is rejected"""
-        with pytest.raises(ValueError, match="Field cannot be empty"):
+        with pytest.raises(ValueError, match="string_too_short"):
             UnifiedFinding(
                 id="",
                 origin="semgrep",
@@ -311,7 +312,7 @@ class TestScannerOutputSchemas:
                 "Match": "secret",
             }
         ]
-        with pytest.raises(ValueError, match="file path cannot be empty"):
+        with pytest.raises(ValueError, match="Invalid file path"):
             GitleaksOutput(root=gitleaks)
 
     def test_gitleaks_dot_file_rejected(self):
@@ -328,16 +329,14 @@ class TestScannerOutputSchemas:
 
     def test_falco_valid_event(self):
         """Test valid Falco event structure"""
-        falco = [
-            {
-                "time": "2024-01-01T00:00:00Z",
-                "rule": "Terminal shell in container",
-                "priority": "Warning",
-                "output": "Shell spawned in container",
-            }
-        ]
-        output = FalcoOutput(root=falco)
-        assert len(output.root) == 1
+        falco_event = {
+            "time": "2024-01-01T00:00:00Z",
+            "rule": "Terminal shell in container",
+            "priority": "Warning",
+            "output": "Shell spawned in container",
+        }
+        output = FalcoOutput(**falco_event)
+        assert output.rule == "Terminal shell in container"
 
     def test_falco_empty_rule_rejected(self):
         """Test that Falco rejects empty rule name"""
@@ -378,7 +377,7 @@ class TestCorrelationSchemas:
 
     def test_correlation_empty_path_rejected(self):
         """Test that correlation rejects empty paths"""
-        with pytest.raises(ValueError, match="Path cannot be empty"):
+        with pytest.raises(ValueError, match="string_too_short"):
             CorrelationInput(
                 sast_findings=[
                     {
@@ -403,7 +402,7 @@ class TestCorrelationSchemas:
 
     def test_correlation_empty_reasoning_rejected(self):
         """Test that empty reasoning is rejected"""
-        with pytest.raises(ValueError, match="Reasoning cannot be empty"):
+        with pytest.raises(ValueError, match="string_too_short"):
             CorrelationResult(
                 sast_finding_id="sast1",
                 status=CorrelationStatus.CONFIRMED,
@@ -429,7 +428,7 @@ class TestEnrichmentSchemas:
 
     def test_threat_context_invalid_cve(self):
         """Test that invalid CVE format is rejected"""
-        with pytest.raises(ValueError, match="Invalid CVE format"):
+        with pytest.raises(ValueError, match="string_pattern_mismatch"):
             ThreatContext(
                 cve_id="CVE2021-1234",  # Missing dash
             )

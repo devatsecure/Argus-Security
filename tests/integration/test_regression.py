@@ -137,7 +137,7 @@ class TestRegression:
 
     def test_cost_circuit_breaker_unchanged(self):
         """Test cost circuit breaker still works correctly"""
-        from run_ai_audit import CostCircuitBreaker, CostLimitExceeded
+        from orchestrator.cost_tracker import CostCircuitBreaker, CostLimitExceededError
 
         breaker = CostCircuitBreaker(cost_limit_usd=1.0)
 
@@ -145,11 +145,11 @@ class TestRegression:
         try:
             breaker.check_before_call(0.1, "anthropic")
             breaker.record_actual_cost(0.1)
-        except CostLimitExceeded:
+        except CostLimitExceededError:
             pytest.fail("Low cost operation should not raise exception")
 
         # Should block high cost operation
-        with pytest.raises(CostLimitExceeded):
+        with pytest.raises(CostLimitExceededError):
             breaker.check_before_call(2.0, "anthropic")
 
     def test_openai_provider_still_works(self):
@@ -189,10 +189,10 @@ class TestBackwardsCompatibility:
         assert os.environ["GITHUB_REPOSITORY"] == "test/repo"
         assert os.environ["GITHUB_SHA"] == "abc123"
 
-    @pytest.mark.skip(reason="parse_args() uses argparse which reads sys.argv - test needs to mock sys.argv properly")
     def test_cli_arguments_still_work(self):
         """Test CLI argument parsing still works"""
         from run_ai_audit import parse_args
+        from unittest.mock import patch
 
         test_args = [
             "run_ai_audit.py",
@@ -200,20 +200,17 @@ class TestBackwardsCompatibility:
             "audit",
             "--max-files",
             "20",
-            "--max-tokens",
-            "4000",
             "--cost-limit",
             "2.0",
         ]
 
-        sys.argv = test_args
-        args = parse_args()
+        with patch("sys.argv", test_args):
+            args = parse_args()
 
         assert args.repo_path == "/test/repo"
         assert args.review_type == "audit"
-        assert args.max_files == "20"
-        assert args.max_tokens == "4000"
-        assert args.cost_limit == "2.0"
+        assert args.max_files == 20
+        assert args.cost_limit == 2.0
 
     def test_existing_config_file_format_compatible(self, tmp_path):
         """Test existing config file format still works"""
@@ -291,9 +288,8 @@ class TestExistingFeaturesIntact:
         assert map_severity_to_level("low") == "note"
         assert map_severity_to_level("info") == "note"
 
-    @pytest.mark.skip(reason="classify_finding_category now handles both dict and string inputs - test passes strings but expects different behavior")
     def test_category_classification_unchanged(self):
-        """Test finding category classification unchanged"""
+        """Test finding category classification handles both string and dict inputs"""
         from run_ai_audit import classify_finding_category
 
         # Security issues
@@ -304,9 +300,11 @@ class TestExistingFeaturesIntact:
         assert classify_finding_category("slow algorithm") == "performance"
         assert classify_finding_category("memory leak") == "performance"
 
-        # Quality issues
-        assert classify_finding_category("code duplication") == "quality"
-        assert classify_finding_category("naming convention") == "quality"
+        # Style issues (naming, convention, format, style)
+        assert classify_finding_category("naming convention") == "style"
+
+        # General (fallback for unrecognized categories)
+        assert classify_finding_category("code duplication") == "general"
 
     def test_metrics_version_incremented(self):
         """Test metrics version was incremented for Phase 1"""

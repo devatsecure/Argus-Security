@@ -92,12 +92,12 @@ class SecurityAssertions:
         duplicates = []
 
         for finding in findings:
-            # Create identifier from key fields
+            # Create identifier from key fields (handle multiple naming conventions)
             identifier = (
-                finding.get("file_path", ""),
-                finding.get("line_number", 0),
-                finding.get("title", ""),
-                finding.get("cwe_id", ""),
+                finding.get("file_path", finding.get("file", "")),
+                finding.get("line_number", finding.get("start_line", 0)),
+                finding.get("title", finding.get("rule_id", "")),
+                finding.get("cwe_id", finding.get("cwe", "")),
             )
 
             if identifier in seen:

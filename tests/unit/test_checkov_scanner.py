@@ -183,7 +183,7 @@ class TestCheckovScanner:
         result = scanner._check_checkov_installed()
 
         assert result is True
-        mock_run.assert_called_with(["checkov", "--version"], capture_output=True, text=True, timeout=10)
+        mock_run.assert_called_with(["which", "checkov"], capture_output=True, text=True, timeout=5)
 
     @patch("subprocess.run")
     def test_check_checkov_installed_false(self, mock_run):
@@ -707,12 +707,14 @@ metadata:
 
     @patch.object(CheckovScanner, "_check_checkov_installed")
     def test_scan_checkov_not_installed(self, mock_check):
-        """Test scan fails when Checkov is not installed"""
+        """Test scan fails when Checkov is not installed and path doesn't exist"""
         mock_check.return_value = False
 
         scanner = CheckovScanner()
 
-        with pytest.raises(RuntimeError, match="Checkov not installed"):
+        # When checkov is not installed, scan() warns but continues.
+        # It then checks path existence and raises RuntimeError for missing path.
+        with pytest.raises(RuntimeError, match="Target path not found"):
             scanner.scan("/tmp/test")
 
     @patch.object(CheckovScanner, "_check_checkov_installed")

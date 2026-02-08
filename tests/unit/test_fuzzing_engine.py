@@ -85,21 +85,23 @@ class MockLLMManager:
     def call_llm(self, prompt: str, **kwargs) -> str:
         """Mock LLM call"""
         self.call_count += 1
-        if "SQL injection" in prompt:
+        # Check XSS first since the prompt template always includes "SQL injection"
+        # in the Focus line, but context-specific keywords should take priority
+        if "XSS vulnerable" in prompt:
+            return json.dumps(
+                [
+                    "<script>alert(1)</script>",
+                    "<img src=x onerror=alert(1)>",
+                    "javascript:alert(1)",
+                ]
+            )
+        elif "SQL injection vulnerable" in prompt:
             return json.dumps(
                 [
                     "' OR '1'='1",
                     "1; DROP TABLE users--",
                     "admin'--",
                     "' UNION SELECT NULL, NULL--",
-                ]
-            )
-        elif "XSS" in prompt:
-            return json.dumps(
-                [
-                    "<script>alert(1)</script>",
-                    "<img src=x onerror=alert(1)>",
-                    "javascript:alert(1)",
                 ]
             )
         else:
@@ -613,7 +615,8 @@ class TestPathTraversalPayloads:
         engine = FuzzingEngine()
         payloads = engine.INJECTION_PAYLOADS["path_traversal"]
 
-        assert any("\\\\" in p for p in payloads)
+        # Check that at least one payload contains a backslash (Windows-style separator)
+        assert any("\\" in p for p in payloads)
 
     def test_path_traversal_url_encoded(self):
         """Test URL-encoded path traversal"""

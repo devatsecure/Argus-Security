@@ -363,7 +363,7 @@ class TestCostOptimization:
 
     def test_cost_circuit_breaker_prevents_overspend(self):
         """Test circuit breaker prevents exceeding budget"""
-        from run_ai_audit import CostCircuitBreaker, CostLimitExceeded
+        from orchestrator.cost_tracker import CostCircuitBreaker, CostLimitExceededError
 
         breaker = CostCircuitBreaker(cost_limit_usd=1.0)
 
@@ -372,9 +372,9 @@ class TestCostOptimization:
         breaker.record_actual_cost(0.3)
         breaker.record_actual_cost(0.3)
 
-        # Should now be near limit (0.9 out of 1.0)
+        # Should now be near limit (0.9 out of 1.0, effective limit is 0.9 with 10% buffer)
         # Next large operation should fail
-        with pytest.raises(CostLimitExceeded):
+        with pytest.raises(CostLimitExceededError):
             breaker.check_before_call(0.5, "anthropic")
 
     @pytest.mark.skip(reason="CostCircuitBreaker warning threshold tracking is not implemented - feature works but warnings are printed, not tracked")

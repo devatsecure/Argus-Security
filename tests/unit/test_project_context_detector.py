@@ -18,6 +18,17 @@ from scripts.project_context_detector import (
     detect_project_context,
 )
 
+# Import the tomllib reference from the source module to check availability.
+# The source already handles the tomllib/tomli fallback; we just need to know
+# if TOML parsing is available at all (tomllib is None when neither is installed).
+from scripts.project_context_detector import tomllib as _tomllib
+
+# Skip marker for tests that require TOML parsing (tomllib or tomli)
+needs_toml = pytest.mark.skipif(
+    _tomllib is None,
+    reason="Neither tomllib (Python 3.11+) nor tomli is available",
+)
+
 
 class TestProjectContext:
     """Test ProjectContext dataclass properties and methods."""
@@ -296,9 +307,9 @@ class TestNodeJSDetection:
 class TestPythonDetection:
     """Test Python project detection."""
 
+    @needs_toml
     def test_python_cli_tool_with_console_scripts_pyproject(self):
         """Test detection of Python CLI tool with console_scripts in pyproject.toml."""
-        pytest.importorskip("tomllib", reason="tomllib not available")
 
         with tempfile.TemporaryDirectory() as tmpdir:
             pyproject_content = """
@@ -325,9 +336,9 @@ click = "^8.0.0"
             assert "terminal" in context.output_destinations
             assert context.confidence >= 0.9
 
+    @needs_toml
     def test_python_cli_tool_with_entry_points_pyproject(self):
         """Test detection of Python CLI tool with entry-points in pyproject.toml."""
-        pytest.importorskip("tomllib", reason="tomllib not available")
 
         with tempfile.TemporaryDirectory() as tmpdir:
             pyproject_content = """
@@ -476,9 +487,9 @@ pydantic==2.0.0
             assert context.type == "library"
             assert context.output_destinations == []
 
+    @needs_toml
     def test_python_pyproject_with_poetry_deps(self):
         """Test parsing Poetry dependencies from pyproject.toml."""
-        pytest.importorskip("tomllib", reason="tomllib not available")
 
         with tempfile.TemporaryDirectory() as tmpdir:
             pyproject_content = """
@@ -690,9 +701,9 @@ go 1.21
 class TestRustDetection:
     """Test Rust project detection."""
 
+    @needs_toml
     def test_rust_web_app_actix(self):
         """Test detection of Rust web app with Actix framework."""
-        pytest.importorskip("tomllib", reason="tomllib not available")
 
         with tempfile.TemporaryDirectory() as tmpdir:
             cargo_content = """[package]
@@ -717,9 +728,9 @@ tokio = { version = "1", features = ["full"] }
             assert "browser" in context.output_destinations or "http-response" in context.output_destinations
             assert context.confidence >= 0.9
 
+    @needs_toml
     def test_rust_library(self):
         """Test detection of Rust library (no web framework markers)."""
-        pytest.importorskip("tomllib", reason="tomllib not available")
 
         with tempfile.TemporaryDirectory() as tmpdir:
             cargo_content = """[package]
