@@ -361,10 +361,10 @@ class EPSSScorer:
                 len(cve_ids),
             )
 
-        except urllib.error.URLError as e:
-            logger.warning("EPSS API network error: %s", e)
         except urllib.error.HTTPError as e:
             logger.warning("EPSS API HTTP error %d: %s", e.code, e.reason)
+        except urllib.error.URLError as e:
+            logger.warning("EPSS API network error: %s", e)
         except json.JSONDecodeError as e:
             logger.warning("EPSS API returned invalid JSON: %s", e)
         except (OSError, ValueError, TypeError) as e:

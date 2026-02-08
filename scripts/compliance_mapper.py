@@ -474,7 +474,12 @@ class ComplianceMapper:
             )
 
         all_mappings = self.map_findings(findings)
+        return self._build_report(framework, all_mappings)
 
+    def _build_report(
+        self, framework: str, all_mappings: list[ComplianceMapping]
+    ) -> ComplianceReport:
+        """Build a report for *framework* from pre-computed mappings."""
         # Filter mappings for the requested framework.
         framework_mappings = [
             m for m in all_mappings if m.framework == framework
@@ -507,16 +512,19 @@ class ComplianceMapper:
     ) -> list[ComplianceReport]:
         """Generate compliance reports for every configured framework.
 
+        Computes mappings once and reuses across all frameworks.
+
         Args:
             findings: list of finding dictionaries.
 
         Returns:
             A list of :class:`ComplianceReport` instances, one per framework.
         """
-        reports = []
-        for framework in self.frameworks:
-            report = self.generate_report(findings, framework)
-            reports.append(report)
+        all_mappings = self.map_findings(findings)
+        reports = [
+            self._build_report(framework, all_mappings)
+            for framework in self.frameworks
+        ]
         logger.info("Generated %d compliance reports", len(reports))
         return reports
 

@@ -142,10 +142,6 @@ def get_default_config() -> Dict[str, Any]:
         "temporal_namespace": "argus",
         "temporal_retry_mode": "production",
 
-        # -- DAST auth --
-        "dast_auth_config_path": "",      # path to YAML auth config
-        "dast_enable_totp": True,
-
         # -- Vulnerability enrichment & compliance --
         "enable_license_risk_scoring": True,
         "enable_epss_scoring": True,

@@ -217,26 +217,9 @@ def classify_llm_error(
     if status_code is not None:
         context["status_code"] = status_code
 
-    # Also check for common exception types directly
-    if isinstance(error, (ConnectionError, OSError)):
-        return ClassifiedError(
-            error_type=ERROR_TYPE_TRANSIENT,
-            retryable=True,
-            original=error,
-            context=context,
-            provider=provider,
-        )
-
-    if isinstance(error, TimeoutError):
-        return ClassifiedError(
-            error_type=ERROR_TYPE_TRANSIENT,
-            retryable=True,
-            original=error,
-            context=context,
-            provider=provider,
-        )
-
-    # Pattern matching against known error types
+    # Pattern matching against known error types (checked first so that
+    # specific patterns like "permission denied" or "no such file" are
+    # classified correctly before the broad isinstance fallback).
     for error_type, patterns, retryable in _PATTERN_REGISTRY:
         for pattern in patterns:
             if pattern in combined:
@@ -247,6 +230,16 @@ def classify_llm_error(
                     context=context,
                     provider=provider,
                 )
+
+    # Fallback: network-level connection errors are transient
+    if isinstance(error, ConnectionError):
+        return ClassifiedError(
+            error_type=ERROR_TYPE_TRANSIENT,
+            retryable=True,
+            original=error,
+            context=context,
+            provider=provider,
+        )
 
     # Fail-safe: unknown errors are classified as permanent (not retryable)
     return ClassifiedError(

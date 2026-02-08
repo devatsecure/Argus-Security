@@ -105,7 +105,7 @@ class DASTOrchestrator:
                     self.dast_auth.login_type,
                     self.dast_auth.login_url or "(none)",
                 )
-            except (FileNotFoundError, ValueError) as exc:
+            except Exception as exc:
                 logger.warning("DAST auth config load failed: %s", exc)
 
         # Initialize agents
