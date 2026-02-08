@@ -52,7 +52,7 @@ ERROR_TYPE_TRANSIENT = "transient"
 ERROR_TYPE_PERMANENT = "permanent"
 
 # ---------------------------------------------------------------------------
-# Pattern registries (ported from Shannon's error-handling.ts)
+# Pattern registries for error classification
 # ---------------------------------------------------------------------------
 
 BILLING_PATTERNS: list[str] = [

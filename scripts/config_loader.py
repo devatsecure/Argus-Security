@@ -146,7 +146,7 @@ def get_default_config() -> Dict[str, Any]:
         "dast_auth_config_path": "",      # path to YAML auth config
         "dast_enable_totp": True,
 
-        # -- Trivy-ported enrichment features --
+        # -- Vulnerability enrichment & compliance --
         "enable_license_risk_scoring": True,
         "enable_epss_scoring": True,
         "epss_cache_ttl_hours": 24,
@@ -454,7 +454,7 @@ _ENV_MAPPINGS: List[tuple] = [
     (("DAST_AUTH_CONFIG_PATH",),                    "dast_auth_config_path", "str"),
     (("DAST_ENABLE_TOTP",),                         "dast_enable_totp",     "bool"),
 
-    # Trivy-ported enrichment features
+    # Vulnerability enrichment & compliance
     (("ENABLE_LICENSE_RISK_SCORING",),              "enable_license_risk_scoring", "bool"),
     (("ENABLE_EPSS_SCORING",),                      "enable_epss_scoring",  "bool"),
     (("EPSS_CACHE_TTL_HOURS",),                     "epss_cache_ttl_hours", "int"),

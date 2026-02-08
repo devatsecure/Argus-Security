@@ -130,49 +130,42 @@ Optional durable workflow wrapping (`scripts/temporal_orchestrator.py`):
 - Non-retryable error classification
 - Toggle: `enable_temporal=False` (opt-in, requires `temporalio`)
 
-### License Risk Scoring (Trivy-ported)
-Classifies SBOM component licenses into 5 severity tiers (`scripts/license_risk_scorer.py`):
+### License Risk ScoringClassifies SBOM component licenses into 5 severity tiers (`scripts/license_risk_scorer.py`):
 - Forbidden (AGPL, SSPL) -> Critical, Restricted (GPL) -> High, Reciprocal (MPL, EPL) -> Medium
 - 32 SPDX identifiers in static DB, case-insensitive
 - Policy violation generation (block forbidden, warn restricted)
 - Toggle: `enable_license_risk_scoring=True`
 
-### EPSS Scoring (Trivy-ported)
-Fetches EPSS exploit probability scores from FIRST.org API (`scripts/epss_scorer.py`):
+### EPSS ScoringFetches EPSS exploit probability scores from FIRST.org API (`scripts/epss_scorer.py`):
 - Batch CVE lookups (groups of 100), 24h file cache
 - Risk categories: critical (>0.5), high (>0.2), medium (>0.05), low (<=0.05)
 - Graceful degradation on API failure
 - Toggle: `enable_epss_scoring=True`
 
-### Fix Version Tracking (Trivy-ported)
-Extracts fix versions from Trivy output with upgrade path info (`scripts/fix_version_tracker.py`):
+### Fix Version TrackingExtracts fix versions from Trivy output with upgrade path info (`scripts/fix_version_tracker.py`):
 - Detects PATCH/MINOR/MAJOR upgrades, flags breaking changes
 - Prioritizes fixes by effort (patch first, major last)
 - Toggle: `enable_fix_version_tracking=True`
 
-### VEX Support (Trivy-ported)
-Parses VEX documents to filter findings as not_affected (`scripts/vex_processor.py`):
+### VEX SupportParses VEX documents to filter findings as not_affected (`scripts/vex_processor.py`):
 - Supports OpenVEX, CycloneDX VEX, CSAF formats
 - Auto-discovers VEX docs in `.argus/vex/`
 - Matches findings via CVE ID + PURL
 - Toggle: `enable_vex=True`
 
-### Vulnerability Deduplication (Trivy-ported)
-Multi-level dedup across scanners (`scripts/vuln_deduplicator.py`):
+### Vulnerability DeduplicationMulti-level dedup across scanners (`scripts/vuln_deduplicator.py`):
 - Multi-key strategy: {VulnID, PkgName, Version, Path}
 - Cross-scanner merge (Semgrep + Trivy same CVE -> single finding)
 - Strategies: auto, strict, standard, relaxed
 - Toggle: `enable_vuln_deduplication=True`
 
-### Advanced Suppression (Trivy-ported)
-Enhanced finding suppression with `.argus-ignore.yml` (`scripts/advanced_suppression.py`):
+### Advanced SuppressionEnhanced finding suppression with `.argus-ignore.yml` (`scripts/advanced_suppression.py`):
 - Match types: CVE, rule_id, PURL (wildcards), path pattern (glob), CWE, severity
 - Time-based expiration with audit warnings
 - VEX integration + EPSS auto-suppress (score < 0.01)
 - Toggle: `enable_advanced_suppression=True`
 
-### Compliance Mapping (Trivy-ported)
-Maps findings to compliance framework controls (`scripts/compliance_mapper.py`):
+### Compliance MappingMaps findings to compliance framework controls (`scripts/compliance_mapper.py`):
 - NIST 800-53, PCI DSS 4.0, OWASP Top 10 2021, SOC 2, CIS K8s, ISO 27001
 - CWE-based primary mapping + category fallback
 - Coverage percentage calculation, markdown report generation
