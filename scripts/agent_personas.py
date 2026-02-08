@@ -725,6 +725,14 @@ Common False Positive Patterns:
 - Config files with proper Unix permissions (600/644)
 - Debug flags wrapped in NODE_ENV checks
 - Proper mutex/lock usage preventing race conditions
+- SQL code using parameterized queries (? placeholders, $1 params, :named params,
+  execute(query, [params])) — NOT sql injection even if scanner flags concatenation
+- Command execution using shell:false / shell=False with hardcoded arguments and
+  no user-controllable input — NOT command injection
+- Regex operations preceded by input validation/length limits (MAX_COUNT checks,
+  .length < N, .slice()) — ReDoS risk already mitigated
+- Localhost-only dev tools with missing auth — by design, not a vulnerability
+- Resource exhaustion findings in local-only tools with no network exposure
 
 Provide your analysis in this format:
 

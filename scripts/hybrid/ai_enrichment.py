@@ -119,6 +119,20 @@ def enrich_with_ai(
                 if analysis.get("references"):
                     finding.references.extend(analysis["references"])
 
+                # Handle AI-detected false positives from safe pattern analysis
+                if analysis.get("is_false_positive"):
+                    finding.suppressed = True
+                    fp_reason = analysis.get("false_positive_reason", "AI detected safe coding pattern")
+                    finding.suppression_reason = fp_reason
+                    safe_patterns = analysis.get("safe_patterns_detected", [])
+                    if safe_patterns:
+                        finding.description += (
+                            f"\n\n**Safe Patterns Detected:** {', '.join(safe_patterns)}"
+                        )
+                    logger.info(
+                        f"   🟢 FP detected by AI for {finding.finding_id}: {fp_reason}"
+                    )
+
                 finding.llm_enriched = True
                 enriched_count += 1
                 logger.debug(
@@ -440,24 +454,47 @@ def build_enrichment_prompt(
 Analyze this security finding and provide:
 
 1. **CWE Mapping**: Map to the most specific CWE ID (e.g., CWE-89 for SQL Injection)
-2. **Exploitability**: Assess how easy it is to exploit (trivial/moderate/complex/theoretical)
-3. **Severity Assessment**: Confirm or adjust severity (critical/high/medium/low) based on:
+2. **Safe Pattern Check**: BEFORE confirming a finding, check if the code already uses
+   safe patterns that mitigate the vulnerability:
+   - SQL Injection: Does the code use parameterized queries (? placeholders, $1 params,
+     :named params, .execute(sql, [params]))? If yes, mark as false_positive.
+   - Command Injection: Does the code use shell:false / shell=False, spawn() with
+     hardcoded args, or execFile()? If yes, mark as false_positive.
+   - ReDoS: Is there input length/count validation BEFORE the regex operation
+     (e.g., MAX_COUNT limits, .length checks, .slice())? If yes, downgrade severity.
+   - Path Traversal: Does the code validate/normalize paths before use
+     (e.g., path.resolve, realpath, basename checks)? If yes, adjust severity.
+   - Missing Auth: Is this a localhost-only dev tool where auth is by-design absent?
+     If yes, mark as by_design.
+   - Resource Exhaustion: Is this a local dev tool with no network exposure?
+     If yes, downgrade to low.
+3. **Exploitability**: Assess how easy it is to exploit (trivial/moderate/complex/theoretical)
+4. **Severity Assessment**: Confirm or adjust severity (critical/high/medium/low) based on:
    - Real-world exploitability in THIS PROJECT CONTEXT
+   - Whether safe coding patterns already mitigate the issue
    - Potential impact
    - Attack complexity
    - Required privileges
    - Whether the vulnerability actually applies to this project type
-4. **Remediation**: Provide specific, actionable fix recommendation
-5. **References**: Include relevant CWE/OWASP/security reference URLs
+   - Deployment model (localhost dev tool vs production service)
+5. **Remediation**: Provide specific, actionable fix recommendation
+6. **References**: Include relevant CWE/OWASP/security reference URLs
+
+**IMPORTANT**: A finding where the code already uses the recommended safe pattern
+(e.g., parameterized queries for SQLi, shell:false for command injection) is a
+FALSE POSITIVE. Set is_false_positive=true and severity_assessment to "low" or omit.
 
 **Response Format (JSON only, no markdown):**
 {
   "cwe_id": "CWE-XXX",
   "cwe_name": "Brief CWE name",
+  "is_false_positive": false,
+  "false_positive_reason": "null or reason why this is a false positive",
+  "safe_patterns_detected": ["list of safe patterns found in code, if any"],
   "exploitability": "trivial|moderate|complex|theoretical",
-  "exploitability_reason": "Brief explanation considering project context",
+  "exploitability_reason": "Brief explanation considering project context and safe patterns",
   "severity_assessment": "critical|high|medium|low",
-  "severity_reason": "Why this severity (considering project context)",
+  "severity_reason": "Why this severity (considering project context and existing mitigations)",
   "recommendation": "Specific fix (code snippet if applicable)",
   "references": ["https://cwe.mitre.org/...", "https://owasp.org/..."]
 }

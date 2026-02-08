@@ -725,6 +725,165 @@ class EnhancedFalsePositiveDetector:
             evidence=evidence
         )
 
+    def analyze_safe_coding_pattern(self, finding: dict[str, Any]) -> EnhancedFPAnalysis:
+        """
+        Detect safe coding patterns that mitigate the flagged vulnerability.
+
+        Covers:
+        - SQL Injection: parameterized queries (?, $1, :param, execute(sql, params))
+        - Command Injection: shell:false, spawn with hardcoded args, execFile
+        - ReDoS: input validation/length limits before regex operations
+        - Missing Auth: localhost-only dev tools where auth is by-design absent
+
+        Args:
+            finding: Security finding dictionary
+
+        Returns:
+            EnhancedFPAnalysis with safe pattern assessment
+        """
+        code_snippet = finding.get("evidence", {}).get("snippet", "")
+        file_path = finding.get("path", finding.get("file_path", ""))
+        message = finding.get("message", "").lower()
+        rule_id = finding.get("rule_id", "").lower()
+        category = finding.get("category", "").lower()
+
+        evidence = []
+        is_false_positive = False
+        confidence = 0.0
+
+        # --- SQL Injection safe patterns ---
+        if any(kw in message + rule_id + category for kw in [
+            "sql", "injection", "sqli", "query", "cwe-89"
+        ]):
+            parameterized_patterns = [
+                (r'\?\s*[,\)]', "? placeholder parameters"),
+                (r'\$\d+', "PostgreSQL $N positional parameters"),
+                (r':\w+', "Named :param parameters"),
+                (r'@\w+', "@param SQL Server parameters"),
+                (r'params\s*[\[.]', "params[] array usage"),
+                (r'\.prepare\s*\(', "Prepared statement API"),
+                (r'\.execute\s*\([^)]*,\s*[\[\(]', "execute(query, [params]) pattern"),
+                (r'\.query\s*\([^)]*,\s*[\[\(]', "query(sql, [params]) pattern"),
+                (r'bind_param|bindParam|bindValue', "Parameter binding API"),
+                (r'placeholders?', "Explicit placeholder usage"),
+            ]
+
+            for pattern, description in parameterized_patterns:
+                if re.search(pattern, code_snippet, re.IGNORECASE):
+                    evidence.append(f"SQL safe pattern: {description}")
+                    confidence += 0.25
+
+            if confidence >= 0.25:
+                is_false_positive = True
+                confidence = min(confidence, 0.95)
+
+        # --- Command Injection safe patterns ---
+        elif any(kw in message + rule_id + category for kw in [
+            "command", "injection", "cmd", "exec", "spawn", "subprocess",
+            "os.system", "cwe-78", "process"
+        ]):
+            safe_exec_patterns = [
+                (r'shell\s*:\s*false', "shell: false (no shell invocation)"),
+                (r'shell\s*=\s*False', "shell=False (no shell invocation)"),
+                (r'execFile\s*\(', "execFile() (no shell)"),
+                (r'exec\.Command\s*\(', "Go exec.Command (no shell)"),
+                (r'ProcessBuilder', "Java ProcessBuilder (no shell)"),
+                (r'spawn\s*\(\s*process\.execPath', "spawn with own Node binary"),
+            ]
+
+            for pattern, description in safe_exec_patterns:
+                if re.search(pattern, code_snippet, re.IGNORECASE):
+                    evidence.append(f"Exec safe pattern: {description}")
+                    confidence += 0.3
+
+            # Check if arguments are hardcoded (not user-controllable)
+            if re.search(r'spawn\s*\([^)]+,\s*\[', code_snippet):
+                # Array-form args detected
+                if not re.search(r'(req\.|request\.|user_?input|argv|args\[)', code_snippet, re.I):
+                    evidence.append("Arguments appear hardcoded (not user-controllable)")
+                    confidence += 0.2
+
+            if confidence >= 0.3:
+                is_false_positive = True
+                confidence = min(confidence, 0.95)
+
+        # --- ReDoS with pre-existing mitigation ---
+        elif any(kw in message + rule_id + category for kw in [
+            "redos", "regex", "denial", "catastrophic", "backtracking", "cwe-1333"
+        ]):
+            validation_patterns = [
+                (r'MAX_\w+\s*=\s*\d+', "MAX constant limiting input size"),
+                (r'\.length\s*[<>]=?\s*\d+', "Length check before processing"),
+                (r'len\s*\(\s*\w+\s*\)\s*[<>]=?', "Python len() check"),
+                (r'\.slice\s*\(', "Input slicing to bound size"),
+                (r'\.substring\s*\(', "Input substring to bound size"),
+                (r'validate\w*\s*\(', "Validation function call"),
+                (r'if\s*\(\s*\w+\.length\s*>', "Conditional length check"),
+                (r'count\w*\s*\(', "Count function for input limiting"),
+            ]
+
+            for pattern, description in validation_patterns:
+                if re.search(pattern, code_snippet, re.IGNORECASE):
+                    evidence.append(f"ReDoS mitigation: {description}")
+                    confidence += 0.2
+
+            if confidence >= 0.2:
+                is_false_positive = True
+                confidence = min(confidence, 0.85)
+
+        # --- Missing Auth on localhost-only tools ---
+        elif any(kw in message + rule_id + category for kw in [
+            "auth", "missing auth", "no auth", "unauthenticated",
+            "access control", "cwe-306", "cwe-862"
+        ]):
+            localhost_patterns = [
+                (r'localhost', "Binds to localhost"),
+                (r'127\.0\.0\.1', "Binds to 127.0.0.1"),
+                (r'listen\s*\(\s*\d+\s*,\s*["\'](?:localhost|127\.0\.0\.1)["\']',
+                 "Server explicitly binds to localhost only"),
+            ]
+
+            for pattern, description in localhost_patterns:
+                if re.search(pattern, code_snippet, re.IGNORECASE):
+                    evidence.append(f"Localhost context: {description}")
+                    confidence += 0.25
+
+            # Check if file path suggests dev tool
+            dev_tool_path_patterns = ["daemon", "cli", "desktop", "local", "dev"]
+            for pattern in dev_tool_path_patterns:
+                if pattern in file_path.lower():
+                    evidence.append(f"Dev tool path indicator: {pattern}")
+                    confidence += 0.1
+
+            if confidence >= 0.35:
+                is_false_positive = True
+                confidence = min(confidence, 0.80)
+
+        if not evidence:
+            return EnhancedFPAnalysis(
+                is_false_positive=False,
+                confidence=0.0,
+                category="safe_coding_pattern",
+                reasoning="No safe coding patterns detected for this finding type",
+                evidence=["No matching safe patterns found"]
+            )
+
+        reasoning = (
+            f"Safe coding pattern detected: code already uses mitigations that "
+            f"address the flagged vulnerability ({len(evidence)} indicators found)."
+            if is_false_positive else
+            f"Some safe patterns found but insufficient to confirm full mitigation "
+            f"({len(evidence)} indicators)."
+        )
+
+        return EnhancedFPAnalysis(
+            is_false_positive=is_false_positive,
+            confidence=confidence,
+            category="safe_coding_pattern",
+            reasoning=reasoning,
+            evidence=evidence
+        )
+
     def analyze(self, finding: dict[str, Any]) -> Optional[EnhancedFPAnalysis]:
         """
         Analyze finding with intelligent routing
@@ -735,11 +894,24 @@ class EnhancedFalsePositiveDetector:
         Returns:
             Most relevant EnhancedFPAnalysis or None
         """
+        # First, check for safe coding patterns (parameterized queries, shell:false, etc.)
+        # This catches common FPs that the router may not specifically handle
+        safe_pattern_result = self.analyze_safe_coding_pattern(finding)
+        if safe_pattern_result and safe_pattern_result.is_false_positive and safe_pattern_result.confidence >= 0.5:
+            logger.info(
+                f"Safe coding pattern detected (confidence={safe_pattern_result.confidence:.2f}): "
+                f"{safe_pattern_result.reasoning}"
+            )
+            return safe_pattern_result
+
         # Get routing decision with confidence scoring
         routing = self.router.route_with_confidence(finding)
 
         if routing.confidence < 0.3:
             logger.debug(f"No confident routing found: {routing.reasoning}")
+            # Fall back to safe pattern result if it had any evidence
+            if safe_pattern_result and safe_pattern_result.confidence > 0:
+                return safe_pattern_result
             return None
 
         if not routing.analyzer_method:
