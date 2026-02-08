@@ -108,6 +108,41 @@ class Finding:
         """Create Finding from dictionary"""
         return cls(**data)
 
+    def validate(self) -> bool:
+        """
+        Validate finding data integrity.
+
+        Returns:
+            True if valid
+
+        Raises:
+            ValueError: If finding has invalid data
+        """
+        if not self.path or self.path.strip() in ("", "."):
+            raise ValueError("path cannot be empty")
+        if not self.origin:
+            raise ValueError("origin cannot be empty")
+        if not self.id:
+            raise ValueError("id cannot be empty")
+        return True
+
+    def to_pydantic(self):
+        """
+        Convert Finding to a pydantic-like object with attribute access.
+
+        Returns:
+            Object with finding attributes, or None if conversion fails
+        """
+        try:
+            from types import SimpleNamespace
+
+            data = self.to_dict()
+            # Convert path to a Path-like object that supports str()
+            ns = SimpleNamespace(**data)
+            return ns
+        except Exception:
+            return None
+
     def calculate_risk_score(self) -> float:
         """
         Calculate risk score using PRD formula:
@@ -143,8 +178,9 @@ class Finding:
 class Normalizer(ABC):
     """Base class for tool-specific normalizers"""
 
-    def __init__(self):
+    def __init__(self, validate_output: bool = False):
         self.origin = self.__class__.__name__.replace("Normalizer", "").lower()
+        self.validate_output = validate_output
 
     @abstractmethod
     def normalize(self, raw_output: dict) -> list[Finding]:
@@ -158,6 +194,31 @@ class Normalizer(ABC):
             List of Finding objects
         """
         pass
+
+    def normalize_and_validate(self, raw_output: dict, validate_input: bool = True) -> list[Finding]:
+        """
+        Normalize and optionally validate findings.
+
+        Args:
+            raw_output: Raw JSON/dict from security tool
+            validate_input: Whether to validate input data
+
+        Returns:
+            List of validated Finding objects
+        """
+        findings = self.normalize(raw_output)
+
+        if self.validate_output:
+            validated = []
+            for finding in findings:
+                try:
+                    finding.validate()
+                    validated.append(finding)
+                except ValueError:
+                    continue
+            return validated
+
+        return findings
 
     def _get_git_context(self) -> dict:
         """Get current git context (repo, commit, branch)"""

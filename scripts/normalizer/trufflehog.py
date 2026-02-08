@@ -30,7 +30,17 @@ class TruffleHogNormalizer(Normalizer):
 
             # Extract source location
             source_metadata = result.get("source_metadata", {})
+
+            # Validate source_metadata is a dict
+            if not isinstance(source_metadata, dict):
+                continue
+
             data = source_metadata.get("data", {})
+
+            # Validate data is a dict
+            if not isinstance(data, dict):
+                continue
+
             git_data = data.get("Git", {})
 
             # Build finding

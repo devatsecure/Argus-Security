@@ -119,6 +119,64 @@ from orchestrator.cost_tracker import CostCircuitBreaker  # noqa: E402
 # Phase gating for output validation between pipeline phases
 from phase_gate import PhaseGate  # noqa: E402
 
+# Vulnerability enrichment & compliance modules (v2.0 features)
+try:
+    from license_risk_scorer import LicenseRiskScorer
+
+    LICENSE_SCORING_AVAILABLE = True
+except ImportError:
+    LICENSE_SCORING_AVAILABLE = False
+
+try:
+    from epss_scorer import EPSSScorer
+
+    EPSS_SCORING_AVAILABLE = True
+except ImportError:
+    EPSS_SCORING_AVAILABLE = False
+
+try:
+    from fix_version_tracker import FixVersionTracker
+
+    FIX_VERSION_AVAILABLE = True
+except ImportError:
+    FIX_VERSION_AVAILABLE = False
+
+try:
+    from vex_processor import VEXProcessor
+
+    VEX_AVAILABLE = True
+except ImportError:
+    VEX_AVAILABLE = False
+
+try:
+    from vuln_deduplicator import VulnDeduplicator
+
+    DEDUP_AVAILABLE = True
+except ImportError:
+    DEDUP_AVAILABLE = False
+
+try:
+    from advanced_suppression import AdvancedSuppressionManager
+
+    SUPPRESSION_AVAILABLE = True
+except ImportError:
+    SUPPRESSION_AVAILABLE = False
+
+try:
+    from compliance_mapper import ComplianceMapper
+
+    COMPLIANCE_AVAILABLE = True
+except ImportError:
+    COMPLIANCE_AVAILABLE = False
+
+# Scanner registry for dynamic discovery and plugins
+try:
+    from scanner_registry import ScannerRegistry  # noqa: E402
+
+    SCANNER_REGISTRY_AVAILABLE = True
+except ImportError:
+    SCANNER_REGISTRY_AVAILABLE = False
+
 # ---------------------------------------------------------------------------
 # Extracted modules — imported here for backward-compatible re-export.
 # Consumers that do ``from run_ai_audit import load_config_from_env`` (etc.)
@@ -820,6 +878,249 @@ def map_severity_to_level(severity):
     return map_severity_to_sarif(severity)
 
 
+def _parse_bool(value):
+    """Parse a config value as boolean."""
+    if isinstance(value, str):
+        return value.lower() == "true"
+    return bool(value)
+
+
+def _run_enrichment_pipeline(findings, config, repo_path, metrics=None):
+    """Run the v2.0 vulnerability enrichment pipeline on findings.
+
+    Pipeline order:
+      1. EPSS scoring (enrich CVE findings with exploit probability)
+      2. Fix version tracking (add upgrade path info)
+      3. VEX filtering (suppress not_affected findings)
+      4. Vulnerability deduplication (cross-scanner merge)
+      5. Advanced suppression (rule-based filtering)
+      6. Compliance mapping (map to frameworks)
+
+    License risk scoring runs separately on SBOM data, not on findings.
+
+    Returns (enriched_findings, enrichment_metadata) where metadata contains
+    summaries from each enrichment step for inclusion in reports.
+    """
+    if not findings:
+        return findings, {}
+
+    metadata = {}
+    remaining = list(findings)
+
+    # -- Step 1: EPSS Scoring --
+    if (
+        EPSS_SCORING_AVAILABLE
+        and _parse_bool(config.get("enable_epss_scoring", True))
+    ):
+        try:
+            ttl = int(config.get("epss_cache_ttl_hours", 24))
+            scorer = EPSSScorer(
+                cache_dir=str(Path(repo_path) / ".argus-cache"),
+                ttl_hours=ttl,
+            )
+            remaining = scorer.enrich_findings(remaining)
+            cve_ids = [f.get("cve_id") or f.get("cve", "") for f in remaining if f.get("cve_id") or f.get("cve")]
+            if cve_ids:
+                scores = scorer.fetch_scores(cve_ids)
+                metadata["epss"] = scorer.get_summary(scores)
+                logger.info("EPSS scoring enriched %d findings", len(cve_ids))
+            print(f"   EPSS: enriched {len(cve_ids) if cve_ids else 0} CVE findings")
+        except Exception as e:
+            logger.warning("EPSS scoring failed (non-fatal): %s", e)
+            print(f"   EPSS: skipped ({e})")
+
+    # -- Step 2: Fix Version Tracking --
+    if (
+        FIX_VERSION_AVAILABLE
+        and _parse_bool(config.get("enable_fix_version_tracking", True))
+    ):
+        try:
+            tracker = FixVersionTracker()
+            fix_infos = []
+            for finding in remaining:
+                info = tracker.extract_fix_info(finding)
+                if info:
+                    fix_infos.append(info)
+            if fix_infos:
+                remaining = tracker.enrich_findings(remaining, fix_infos)
+                metadata["fix_versions"] = tracker.get_summary(fix_infos)
+            logger.info("Fix version tracking: %d fixes found", len(fix_infos))
+            print(f"   Fix versions: {len(fix_infos)} upgrade paths identified")
+        except Exception as e:
+            logger.warning("Fix version tracking failed (non-fatal): %s", e)
+            print(f"   Fix versions: skipped ({e})")
+
+    # -- Step 3: VEX Filtering --
+    suppressed_by_vex = []
+    if (
+        VEX_AVAILABLE
+        and _parse_bool(config.get("enable_vex", True))
+    ):
+        try:
+            vex_paths_str = config.get("vex_paths", "")
+            vex_paths = [p.strip() for p in vex_paths_str.split(",") if p.strip()] if vex_paths_str else None
+            auto_dir = config.get("vex_auto_discover_dir", ".argus/vex")
+            processor = VEXProcessor(vex_paths=vex_paths, auto_discover_dir=auto_dir)
+            statements = processor.load_statements()
+            if statements:
+                remaining, suppressed_by_vex = processor.filter_findings(remaining, statements)
+                metadata["vex"] = VEXProcessor.get_summary(statements)
+                logger.info("VEX: %d suppressed, %d remaining", len(suppressed_by_vex), len(remaining))
+            print(f"   VEX: {len(suppressed_by_vex)} suppressed, {len(statements) if statements else 0} statements loaded")
+        except Exception as e:
+            logger.warning("VEX processing failed (non-fatal): %s", e)
+            print(f"   VEX: skipped ({e})")
+
+    # -- Step 4: Vulnerability Deduplication --
+    if (
+        DEDUP_AVAILABLE
+        and _parse_bool(config.get("enable_vuln_deduplication", True))
+    ):
+        try:
+            strategy = config.get("deduplication_strategy", "auto")
+            deduplicator = VulnDeduplicator(strategy=strategy)
+            before_count = len(remaining)
+            result = deduplicator.deduplicate(remaining)
+            remaining = result.kept_findings
+            metadata["deduplication"] = VulnDeduplicator.get_summary(result)
+            removed = before_count - len(remaining)
+            logger.info("Deduplication: %d removed, %d remaining", removed, len(remaining))
+            print(f"   Dedup: {removed} duplicates removed ({before_count} -> {len(remaining)})")
+        except Exception as e:
+            logger.warning("Deduplication failed (non-fatal): %s", e)
+            print(f"   Dedup: skipped ({e})")
+
+    # -- Step 5: Advanced Suppression --
+    suppressed_by_rules = []
+    if (
+        SUPPRESSION_AVAILABLE
+        and _parse_bool(config.get("enable_advanced_suppression", True))
+    ):
+        try:
+            expire_days = int(config.get("suppression_auto_expire_days", 90))
+            manager = AdvancedSuppressionManager(
+                config_path=str(Path(repo_path) / ".argus-ignore.yml"),
+                auto_expire_days=expire_days,
+            )
+            rules = manager.load_rules()
+
+            # Add VEX-based suppression rules if VEX data available
+            if suppressed_by_vex:
+                vex_rules = manager.add_vex_rules(
+                    [{"cve_id": f.get("cve_id") or f.get("cve", ""), "reason": f.get("vex_justification", "VEX: not affected")}
+                     for f in suppressed_by_vex if f.get("cve_id") or f.get("cve")]
+                )
+                rules.extend(vex_rules)
+
+            # Add EPSS auto-suppress for very low probability findings
+            epss_rules = manager.add_epss_auto_suppress(remaining, threshold=0.01)
+            rules.extend(epss_rules)
+
+            if rules:
+                remaining, suppressed_by_rules = manager.filter_findings(remaining, rules)
+
+            # Warn about expired rules
+            expired = manager.get_expired_rules(rules)
+            if expired:
+                logger.warning("%d suppression rules have expired", len(expired))
+                print(f"   Suppression: {len(expired)} expired rules (review recommended)")
+
+            metadata["suppression"] = {
+                "rules_loaded": len(rules),
+                "suppressed": len(suppressed_by_rules),
+                "expired_rules": len(expired),
+            }
+            logger.info("Suppression: %d suppressed by rules", len(suppressed_by_rules))
+            print(f"   Suppression: {len(suppressed_by_rules)} findings suppressed by {len(rules)} rules")
+        except Exception as e:
+            logger.warning("Advanced suppression failed (non-fatal): %s", e)
+            print(f"   Suppression: skipped ({e})")
+
+    # -- Step 6: Compliance Mapping --
+    if (
+        COMPLIANCE_AVAILABLE
+        and _parse_bool(config.get("enable_compliance_mapping", True))
+    ):
+        try:
+            frameworks_str = config.get("compliance_frameworks", "")
+            frameworks = [f.strip() for f in frameworks_str.split(",") if f.strip()] if frameworks_str else None
+            mapper = ComplianceMapper(frameworks=frameworks)
+            reports = mapper.generate_all_reports(remaining)
+            if reports:
+                metadata["compliance"] = mapper.get_summary(reports)
+                # Save compliance report markdown
+                compliance_dir = Path(repo_path) / ".argus/reviews"
+                compliance_dir.mkdir(parents=True, exist_ok=True)
+                compliance_md = mapper.render_all_markdown(reports)
+                compliance_file = compliance_dir / "compliance-report.md"
+                with open(compliance_file, "w") as f:
+                    f.write(compliance_md)
+                logger.info("Compliance mapping: %d reports generated", len(reports))
+                print(f"   Compliance: {len(reports)} framework reports -> {compliance_file}")
+        except Exception as e:
+            logger.warning("Compliance mapping failed (non-fatal): %s", e)
+            print(f"   Compliance: skipped ({e})")
+
+    return remaining, metadata
+
+
+def _run_license_scoring(config, repo_path):
+    """Run license risk scoring on SBOM components if available.
+
+    Returns (license_risks, policy_violations) or ([], []).
+    """
+    if not (
+        LICENSE_SCORING_AVAILABLE
+        and _parse_bool(config.get("enable_license_risk_scoring", True))
+    ):
+        return [], []
+
+    try:
+        # Look for CycloneDX SBOM output from Trivy or other scanners
+        sbom_paths = [
+            Path(repo_path) / ".argus/sbom.json",
+            Path(repo_path) / ".argus/reviews/sbom.json",
+            Path(repo_path) / "sbom.json",
+        ]
+        sbom_data = None
+        for sbom_path in sbom_paths:
+            if sbom_path.exists():
+                import json as _json
+
+                with open(sbom_path) as f:
+                    sbom_data = _json.load(f)
+                break
+
+        if not sbom_data:
+            logger.info("No SBOM found for license risk scoring")
+            print("   License scoring: no SBOM found (skipped)")
+            return [], []
+
+        components = sbom_data.get("components", [])
+        if not components:
+            return [], []
+
+        scorer = LicenseRiskScorer()
+        risks = scorer.score_components(components)
+        violations = LicenseRiskScorer.generate_policy_violations(risks)
+        summary = LicenseRiskScorer.get_summary(risks)
+
+        logger.info(
+            "License scoring: %d components, %d risks, %d violations",
+            len(components), len(risks), len(violations),
+        )
+        print(f"   License scoring: {len(risks)} risks from {len(components)} components")
+        if violations:
+            print(f"   License violations: {len(violations)} policy violations")
+
+        return risks, violations
+
+    except Exception as e:
+        logger.warning("License risk scoring failed (non-fatal): %s", e)
+        print(f"   License scoring: skipped ({e})")
+        return [], []
+
+
 def run_audit(repo_path, config, review_type="audit"):
     """Run AI-powered code audit with multi-LLM support"""
 
@@ -1091,6 +1392,17 @@ def run_audit(repo_path, config, review_type="audit"):
         # Parse findings from final orchestrated report
         findings = parse_findings_from_report(report)
 
+        # -- v2.0 Enrichment Pipeline --
+        print("\n🔬 Running enrichment pipeline...")
+        _run_license_scoring(config, repo_path)
+        findings, enrichment_meta = _run_enrichment_pipeline(
+            findings, config, repo_path, metrics
+        )
+        if enrichment_meta:
+            json_output_meta = {"enrichment": enrichment_meta}
+        else:
+            json_output_meta = {}
+
         # Generate SARIF with metrics
         sarif = generate_sarif(findings, repo_path, metrics)
         sarif_file = report_dir / "results.sarif"
@@ -1109,6 +1421,7 @@ def run_audit(repo_path, config, review_type="audit"):
             "model": model,
             "summary": metrics.metrics,
             "findings": findings,
+            **json_output_meta,
         }
 
         json_file = report_dir / "results.json"
@@ -1650,6 +1963,13 @@ Focus on issues identified in the analysis plan."""
 
         findings = all_findings  # Now findings is a list as expected by the rest of the code
 
+        # -- v2.0 Enrichment Pipeline --
+        print("\n🔬 Running enrichment pipeline...")
+        _run_license_scoring(config, repo_path)
+        findings, enrichment_meta = _run_enrichment_pipeline(
+            findings, config, repo_path, metrics
+        )
+
         # Record finding metrics
         for finding in findings:
             metrics.record_finding(finding["severity"], finding["category"])
@@ -1672,7 +1992,7 @@ Focus on issues identified in the analysis plan."""
 
         # Generate structured JSON
         json_output = {
-            "version": "1.0.16",
+            "version": "2.0.0",
             "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "repository": os.environ.get("GITHUB_REPOSITORY", "unknown"),
             "commit": os.environ.get("GITHUB_SHA", "unknown"),
@@ -1681,6 +2001,8 @@ Focus on issues identified in the analysis plan."""
             "summary": metrics.metrics,
             "findings": findings,
         }
+        if enrichment_meta:
+            json_output["enrichment"] = enrichment_meta
 
         json_file = report_dir / "results.json"
         with open(json_file, "w") as f:

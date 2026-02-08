@@ -23,6 +23,11 @@ class GitleaksNormalizer(Normalizer):
         results = raw_output if isinstance(raw_output, list) else [raw_output]
 
         for result in results:
+            # Validate file path - skip empty or dot-only paths
+            file_path = result.get("File", "")
+            if not file_path or file_path.strip() in ("", "."):
+                continue
+
             # Gitleaks doesn't verify secrets via API by default
             # Mark as unverified unless we add verification later
 

@@ -89,11 +89,10 @@ class ScannerRegistry:
 
             # Import built-in scanners
             builtin_scanners = {
-                "trufflehog": ("scanners.trufflehog_scanner", "TruffleHogScanner"),
+                "trufflehog": ("trufflehog_scanner", "TruffleHogScanner"),
                 "semgrep": ("semgrep_scanner", "SemgrepScanner"),
                 "trivy": ("trivy_scanner", "TrivyScanner"),
-                "checkov": ("scanners.checkov_scanner", "CheckovScanner"),
-                "gitleaks": ("gitleaks_scanner", "GitleaksScanner"),
+                "checkov": ("checkov_scanner", "CheckovScanner"),
                 "api-security": ("api_security_scanner", "APISecurityScanner"),
                 "dast": ("dast_scanner", "DASTScanner"),
                 "supply-chain": ("supply_chain_analyzer", "SupplyChainAnalyzer"),
@@ -101,7 +100,7 @@ class ScannerRegistry:
                 "threat-intel": ("threat_intel_enricher", "ThreatIntelEnricher"),
                 "remediation": ("remediation_engine", "RemediationEngine"),
                 "runtime-security": ("runtime_security_monitor", "RuntimeSecurityMonitor"),
-                "regression-testing": ("regression_tester", "SecurityRegressionTester"),
+                "regression-testing": ("regression_tester", "RegressionTester"),
             }
 
             for scanner_name, (module_name, class_name) in builtin_scanners.items():
@@ -109,12 +108,19 @@ class ScannerRegistry:
                     module = importlib.import_module(module_name)
                     scanner_class = getattr(module, class_name)
 
-                    # Verify it has required interface
-                    if hasattr(scanner_class, 'scan'):
+                    # Accept scanners with scan(), analyze(), or any scan-like method
+                    scan_methods = ("scan", "scan_file", "scan_filesystem", "scan_container_image",
+                                    "analyze", "analyze_project", "analyze_package_behavior",
+                                    "fuzz_function", "fuzz_api", "enrich_findings", "enrich_cve",
+                                    "suggest_fix", "generate_batch_fixes",
+                                    "monitor_realtime", "analyze_log_file",
+                                    "generate_regression_test", "run_all_tests",
+                                    "check_typosquatting", "check_openssf_scorecard")
+                    if any(hasattr(scanner_class, m) for m in scan_methods):
                         self._scanners[scanner_name] = scanner_class
                         logger.debug(f"Loaded built-in scanner: {scanner_name}")
                     else:
-                        logger.warning(f"Scanner {scanner_name} missing scan() method")
+                        logger.warning(f"Scanner {scanner_name} missing scan-like method")
 
                 except (ImportError, AttributeError) as e:
                     logger.debug(f"Could not load built-in scanner {scanner_name}: {e}")

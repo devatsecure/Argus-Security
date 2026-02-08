@@ -95,6 +95,44 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 from hybrid.models import HybridFinding, HybridScanResult  # noqa: E402
 
+# Scanner registry for plugin discovery and metadata
+try:
+    from scanner_registry import ScannerRegistry
+    _REGISTRY_OK = True
+except ImportError:
+    _REGISTRY_OK = False
+
+# Vulnerability enrichment modules (v2.0)
+try:
+    from epss_scorer import EPSSScorer
+    _EPSS_OK = True
+except ImportError:
+    _EPSS_OK = False
+
+try:
+    from fix_version_tracker import FixVersionTracker
+    _FIX_OK = True
+except ImportError:
+    _FIX_OK = False
+
+try:
+    from vex_processor import VEXProcessor
+    _VEX_OK = True
+except ImportError:
+    _VEX_OK = False
+
+try:
+    from vuln_deduplicator import VulnDeduplicator
+    _DEDUP_OK = True
+except ImportError:
+    _DEDUP_OK = False
+
+try:
+    from compliance_mapper import ComplianceMapper
+    _COMPLIANCE_OK = True
+except ImportError:
+    _COMPLIANCE_OK = False
+
 
 class HybridSecurityAnalyzer:
     """
@@ -411,6 +449,19 @@ class HybridSecurityAnalyzer:
             except (ImportError, RuntimeError) as e:
                 logger.warning(f"⚠️  Sandbox validator not available: {e}")
                 self.enable_sandbox = False
+
+        # Initialize scanner registry for plugin discovery and metadata
+        self.scanner_registry = None
+        if _REGISTRY_OK:
+            try:
+                plugin_dir = self.config.get("plugin_dir")
+                self.scanner_registry = ScannerRegistry(
+                    plugin_dir=Path(plugin_dir) if plugin_dir else None
+                )
+                builtin = self.scanner_registry.list_scanners()
+                logger.info("Scanner registry: %d scanners discovered", len(builtin))
+            except Exception as e:
+                logger.warning("Scanner registry init failed (non-fatal): %s", e)
 
         # Validation: At least one scanner or AI enrichment must be enabled
         if (not self.enable_semgrep and not self.enable_trivy and not self.enable_checkov
@@ -977,6 +1028,9 @@ class HybridSecurityAnalyzer:
             phase_timings["phase6.5_disclosure"] = time.time() - phase65_start
             logger.info(f"   ⏱️  Phase 6.5 duration: {phase_timings['phase6.5_disclosure']:.1f}s")
 
+        # -- v2.0: Vulnerability Enrichment Pipeline --
+        all_findings = self._enrich_findings(all_findings, target_path)
+
         # Calculate statistics
         overall_duration = time.time() - overall_start
 
@@ -1014,6 +1068,91 @@ class HybridSecurityAnalyzer:
         self._print_summary(result)
 
         return result
+
+    # ------------------------------------------------------------------
+    # Vulnerability enrichment pipeline (v2.0)
+    # ------------------------------------------------------------------
+
+    def _enrich_findings(
+        self, findings: list[HybridFinding], target_path: str
+    ) -> list[HybridFinding]:
+        """Enrich findings with EPSS scores, fix versions, VEX, dedup."""
+        if not findings:
+            return findings
+
+        enable_epss = os.environ.get("ENABLE_EPSS_SCORING", "true").lower() == "true"
+        enable_fix = os.environ.get("ENABLE_FIX_VERSION_TRACKING", "true").lower() == "true"
+        enable_vex = os.environ.get("ENABLE_VEX", "true").lower() == "true"
+        enable_dedup = os.environ.get("ENABLE_VULN_DEDUPLICATION", "true").lower() == "true"
+
+        # Convert dataclasses to dicts for enrichment, then write fields back
+        finding_dicts = [asdict(f) for f in findings]
+
+        # EPSS scoring
+        if _EPSS_OK and enable_epss:
+            try:
+                scorer = EPSSScorer(
+                    cache_dir=str(Path(target_path) / ".argus-cache"),
+                )
+                finding_dicts = scorer.enrich_findings(finding_dicts)
+                logger.info("EPSS: enriched findings with exploit probability scores")
+            except Exception as e:
+                logger.warning("EPSS scoring failed (non-fatal): %s", e)
+
+        # Fix version tracking
+        if _FIX_OK and enable_fix:
+            try:
+                tracker = FixVersionTracker()
+                fix_infos = [
+                    info
+                    for f in finding_dicts
+                    if (info := tracker.extract_fix_info(f)) is not None
+                ]
+                if fix_infos:
+                    finding_dicts = tracker.enrich_findings(finding_dicts, fix_infos)
+                    logger.info("Fix versions: %d upgrade paths found", len(fix_infos))
+            except Exception as e:
+                logger.warning("Fix version tracking failed (non-fatal): %s", e)
+
+        # VEX filtering
+        if _VEX_OK and enable_vex:
+            try:
+                processor = VEXProcessor(
+                    auto_discover_dir=str(Path(target_path) / ".argus/vex"),
+                )
+                statements = processor.load_statements()
+                if statements:
+                    finding_dicts, suppressed = processor.filter_findings(
+                        finding_dicts, statements
+                    )
+                    logger.info("VEX: %d suppressed, %d remaining", len(suppressed), len(finding_dicts))
+            except Exception as e:
+                logger.warning("VEX processing failed (non-fatal): %s", e)
+
+        # Deduplication
+        if _DEDUP_OK and enable_dedup:
+            try:
+                strategy = os.environ.get("DEDUPLICATION_STRATEGY", "auto")
+                deduplicator = VulnDeduplicator(strategy=strategy)
+                result = deduplicator.deduplicate(finding_dicts)
+                finding_dicts = result.kept_findings
+                logger.info("Dedup: %d findings after deduplication", len(finding_dicts))
+            except Exception as e:
+                logger.warning("Deduplication failed (non-fatal): %s", e)
+
+        # Reconstruct HybridFinding objects from enriched dicts
+        enriched = []
+        known_fields = {f.name for f in HybridFinding.__dataclass_fields__.values()}
+        for fd in finding_dicts:
+            # Only pass fields that HybridFinding knows about
+            filtered = {k: v for k, v in fd.items() if k in known_fields}
+            try:
+                enriched.append(HybridFinding(**filtered))
+            except TypeError:
+                # If reconstruction fails, keep original finding
+                logger.warning("Failed to reconstruct finding: %s", fd.get("finding_id", "unknown"))
+
+        return enriched if enriched else findings
 
     # ------------------------------------------------------------------
     # Methods kept inline (tightly coupled to instance state)

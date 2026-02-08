@@ -39,6 +39,10 @@ class SemgrepNormalizer(Normalizer):
                 path = artifact_location.get("uri", "unknown")
                 line = region.get("startLine", 0)
 
+                # Validate file path - skip empty or dot-only paths
+                if not path or path.strip() in ("", "."):
+                    continue
+
                 # Extract rule info
                 rule_id = result.get("ruleId", "unknown")
                 message = result.get("message", {}).get("text", "No description")

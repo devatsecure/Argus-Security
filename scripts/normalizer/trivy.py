@@ -26,7 +26,14 @@ class TrivyNormalizer(Normalizer):
             target = result.get("Target", "unknown")
             vulnerabilities = result.get("Vulnerabilities", [])
 
+            # Validate vulnerabilities is a list
+            if not isinstance(vulnerabilities, list):
+                continue
+
             for vuln in vulnerabilities:
+                # Skip non-dict vulnerability entries
+                if not isinstance(vuln, dict):
+                    continue
                 finding = Finding(
                     id=self._generate_id(
                         {
