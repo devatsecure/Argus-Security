@@ -12,12 +12,12 @@ jobs:
     name: Basic Security Scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
         with:
           fetch-depth: 0
 
       - name: Argus Security Basic Scan
-        uses: devatsecure/Argus-Security@main
+        uses: devatsecure/Argus-Security@main  # TODO: Pin to SHA when a release tag is available
         with:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           review-type: security
@@ -27,12 +27,12 @@ jobs:
     name: Security Scan with Phase 2.7 Deep Analysis
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
         with:
           fetch-depth: 0
 
       - name: Argus Security with Deep Analysis (Conservative)
-        uses: devatsecure/Argus-Security@main
+        uses: devatsecure/Argus-Security@main  # TODO: Pin to SHA when a release tag is available
         with:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           review-type: security
@@ -46,12 +46,12 @@ jobs:
     name: Security Scan with Semantic Analysis Only
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
         with:
           fetch-depth: 0
 
       - name: Argus Security with Semantic Analysis
-        uses: devatsecure/Argus-Security@main
+        uses: devatsecure/Argus-Security@main  # TODO: Pin to SHA when a release tag is available
         with:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           review-type: security
@@ -66,12 +66,12 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
         with:
           fetch-depth: 0
 
       - name: Argus Security with Full Deep Analysis
-        uses: devatsecure/Argus-Security@main
+        uses: devatsecure/Argus-Security@main  # TODO: Pin to SHA when a release tag is available
         with:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           review-type: security

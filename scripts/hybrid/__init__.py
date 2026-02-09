@@ -17,6 +17,14 @@ from hybrid.scanner_runners import (
     run_threat_intel,
     run_trivy,
 )
+from hybrid.phases import (
+    run_phase1_scanning,
+    run_phase2_enrichment,
+    run_phase3_review,
+    run_phase4_sandbox,
+    run_phase5_policy,
+    run_phase6_reporting,
+)
 
 __all__ = [
     "HybridFinding",
@@ -35,4 +43,10 @@ __all__ = [
     "run_supply_chain",
     "run_threat_intel",
     "run_trivy",
+    "run_phase1_scanning",
+    "run_phase2_enrichment",
+    "run_phase3_review",
+    "run_phase4_sandbox",
+    "run_phase5_policy",
+    "run_phase6_reporting",
 ]

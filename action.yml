@@ -134,6 +134,16 @@ inputs:
     required: false
     default: 'true'
 
+  enable-iris:
+    description: 'Enable IRIS semantic analysis for research-proven 2x improvement in vulnerability detection (arXiv 2405.17238)'
+    required: false
+    default: 'true'
+
+  severity-filter:
+    description: 'Comma-separated severity levels to include in reports (e.g., critical,high,medium). Empty means all severities.'
+    required: false
+    default: ''
+
   # Exploit Analysis Configuration (Aardvark Mode)
   enable-exploit-analysis:
     description: '✅ PRODUCTION: Enable exploit chain analysis and exploitability assessment (Aardvark mode) - Working in sequential mode'
@@ -431,6 +441,8 @@ runs:
         ENABLE_RUNTIME_SECURITY: ${{ inputs.enable-runtime-security }}
         RUNTIME_MONITORING_DURATION: ${{ inputs.runtime-monitoring-duration }}
         ENABLE_REGRESSION_TESTING: ${{ inputs.enable-regression-testing }}
+        ENABLE_IRIS: ${{ inputs.enable-iris }}
+        SEVERITY_FILTER: ${{ inputs.severity-filter }}
         # Exploit Analysis Configuration (Aardvark Mode)
         ENABLE_EXPLOIT_ANALYSIS: ${{ inputs.enable-exploit-analysis }}
         GENERATE_SECURITY_TESTS: ${{ inputs.generate-security-tests }}

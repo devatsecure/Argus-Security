@@ -116,6 +116,79 @@ auto_fixable_findings := [f |
 ]
 
 # ========================================
+# HARDENING: DENY AUTO-FIX FOR CRITICAL/HIGH
+# ========================================
+
+# Explicit deny: Critical/High severity MUST NEVER be bypassed by auto_fixable
+# This is defense-in-depth — even if auto_fixable_findings filter is relaxed,
+# these rules ensure critical/high findings always block.
+deny_auto_fix_critical_high contains msg if {
+    f := input.findings[_]
+    f.auto_fixable == true
+    f.severity in ["critical", "high"]
+    msg := sprintf("DENIED: %s severity finding '%s' (id: %s) cannot be auto-fixed — manual remediation required", [f.severity, f.rule_name, f.id])
+}
+
+# Collect IDs of critical/high findings that attempted auto-fix bypass
+attempted_auto_fix_bypass_ids := [f.id |
+    f := input.findings[_]
+    f.auto_fixable == true
+    f.severity in ["critical", "high"]
+]
+
+# ========================================
+# HARDENING: NOISE SCORE TRUST CAPS
+# ========================================
+
+# Cap noise_score influence: critical/high findings with noise_score > 0.9
+# MUST still be reported and MUST NOT be suppressed
+noise_score_override_findings := [f |
+    f := input.findings[_]
+    f.severity in ["critical", "high"]
+    f.noise_score > 0.9
+]
+
+# Flag suspicious noise_score values that suggest manipulation
+# A noise_score of exactly 1.0 on critical findings is highly suspicious
+# A noise_score of exactly 0.0 on critical findings is also suspicious (may indicate tampering)
+suspicious_noise_score contains msg if {
+    f := input.findings[_]
+    f.severity in ["critical", "high"]
+    f.noise_score == 1.0
+    msg := sprintf("SUSPICIOUS: Finding '%s' (id: %s, severity: %s) has noise_score=1.0 — possible manipulation to suppress critical finding", [f.rule_name, f.id, f.severity])
+}
+
+suspicious_noise_score contains msg if {
+    f := input.findings[_]
+    f.severity in ["critical", "high"]
+    f.noise_score == 0.0
+    msg := sprintf("SUSPICIOUS: Finding '%s' (id: %s, severity: %s) has noise_score=0.0 — possible manipulation to inflate severity", [f.rule_name, f.id, f.severity])
+}
+
+# Effective noise_score: cap at 0.9 for critical/high severity findings
+# This ensures noise_score alone can never fully suppress important findings
+effective_noise_score(f) := 0.9 if {
+    f.severity in ["critical", "high"]
+    f.noise_score > 0.9
+}
+
+effective_noise_score(f) := f.noise_score if {
+    f.severity in ["critical", "high"]
+    f.noise_score <= 0.9
+}
+
+effective_noise_score(f) := f.noise_score if {
+    not f.severity in ["critical", "high"]
+}
+
+# Hardened suppressed findings: use effective_noise_score and enforce floor
+hardened_suppressed_findings := [f |
+    f := input.findings[_]
+    effective_noise_score(f) > 0.7
+    not f.severity in ["critical", "high"]
+]
+
+# ========================================
 # VELOCITY METRICS (NEW - Phase 1)
 # ========================================
 
@@ -123,18 +196,21 @@ velocity_metrics := {
     "total_findings": count(input.findings),
     "blocked_findings": count(block_ids),
     "warning_findings": count(warning_ids),
-    "suppressed_noise": count(suppressed_findings),
+    "suppressed_noise": count(hardened_suppressed_findings),
     "auto_fixable": count(auto_fixable_findings),
     "noise_reduction_rate": noise_reduction_rate,
     "estimated_pr_delay_minutes": estimated_delay,
-    "delivery_impact": delivery_impact
+    "delivery_impact": delivery_impact,
+    "denied_auto_fix_critical_high": count(deny_auto_fix_critical_high),
+    "noise_score_overrides": count(noise_score_override_findings),
+    "suspicious_noise_scores": count(suspicious_noise_score)
 }
 
-# Calculate noise reduction rate
+# Calculate noise reduction rate (using hardened suppression)
 noise_reduction_rate := rate if {
     total := count(input.findings)
     total > 0
-    suppressed := count(suppressed_findings)
+    suppressed := count(hardened_suppressed_findings)
     rate := (suppressed / total) * 100
 } else := 0
 
@@ -239,15 +315,17 @@ decision := result if {
     }
 }
 
-# Pass if all blockers are auto-fixable
+# Pass if all blockers are auto-fixable AND none are critical/high
+# HARDENED: Explicitly check that no critical/high findings attempted auto-fix bypass
 decision := result if {
     count(block_ids) > 0
-    non_fixable_blocks := [id | 
+    count(attempted_auto_fix_bypass_ids) == 0  # No critical/high attempted auto-fix
+    non_fixable_blocks := [id |
         id := block_ids[_]
         not id in [f.id | f := auto_fixable_findings[_]]
     ]
-    count(non_fixable_blocks) == 0  # All blockers are auto-fixable
-    
+    count(non_fixable_blocks) == 0  # All blockers are auto-fixable (and none are critical/high)
+
     result := {
         "decision": "pass",
         "reasons": [sprintf("✅ %d finding(s) will be auto-fixed - no manual action needed", [count(auto_fixable_findings)])],
@@ -255,6 +333,29 @@ decision := result if {
         "warnings": warning_ids,
         "velocity_metrics": velocity_metrics,
         "auto_fixable_count": count(auto_fixable_findings)
+    }
+}
+
+# HARDENED: Block if critical/high findings attempted auto-fix bypass
+decision := result if {
+    count(block_ids) > 0
+    count(attempted_auto_fix_bypass_ids) > 0  # Critical/high attempted auto-fix bypass
+
+    bypass_reasons := [msg | msg := deny_auto_fix_critical_high[_]]
+    reasons_list := array.concat(
+        critical_reasons,
+        array.concat(
+            bypass_reasons,
+            [sprintf("See full report for %d warnings", [count(warning_ids)])]
+        )
+    )
+    result := {
+        "decision": "fail",
+        "reasons": reasons_list,
+        "blocks": block_ids,
+        "warnings": warning_ids,
+        "velocity_metrics": velocity_metrics,
+        "denied_auto_fix_bypass": attempted_auto_fix_bypass_ids
     }
 }
 

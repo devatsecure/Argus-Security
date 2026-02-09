@@ -19,13 +19,13 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
         with:
           fetch-depth: 0
 
       - name: Generate Security Tests
         id: review
-        uses: devatsecure/Argus-Security@v2.2.0
+        uses: devatsecure/Argus-Security@v2.2.0  # TODO: Pin to SHA once v2.2.0 tag exists
         with:
           # AI Provider Configuration
           ai-provider: anthropic
@@ -92,7 +92,7 @@ Co-Authored-By: Argus <noreply@secured.com>"
 
       - name: Comment on PR with Test Summary
         if: github.event.pull_request && steps.review.outputs.tests-generated > 0
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b  # v7
         with:
           script: |
             const testsGenerated = '${{ steps.review.outputs.tests-generated }}';
@@ -125,7 +125,7 @@ Co-Authored-By: Argus <noreply@secured.com>"
 
       - name: Upload Generated Tests Artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
           name: generated-security-tests-${{ github.run_id }}
           path: tests/security/

@@ -402,6 +402,59 @@ The CWE is CWE-"""
 
         logger.info(f"💾 Results saved to: {output_path}")
 
+    def generate_sbom(
+        self,
+        target_path: str,
+        output_dir: str = ".",
+        formats: Optional[list[str]] = None,
+    ) -> dict:
+        """Generate SBOM for the scanned target.
+
+        Uses the SBOMGenerator to produce CycloneDX and/or SPDX SBOMs
+        via Trivy's native SBOM generation capabilities.
+
+        Args:
+            target_path: Path to scan (directory or container image).
+            output_dir: Where to write SBOM files.
+            formats: List of formats to generate. Valid values are
+                "cyclonedx" and "spdx". Default: both.
+
+        Returns:
+            dict with generation results per format. Each format entry
+            contains keys: success, sbom_path, component_count, format.
+            On error returns a dict with success=False and an error key.
+        """
+        from scripts.sbom_generator import SBOMGenerator
+
+        valid_formats = {"cyclonedx", "spdx"}
+        if formats is None:
+            formats = sorted(valid_formats)
+        else:
+            unknown = set(formats) - valid_formats
+            if unknown:
+                return {
+                    "success": False,
+                    "error": (
+                        f"Unknown SBOM format(s): {unknown}. "
+                        f"Valid formats: {valid_formats}"
+                    ),
+                }
+
+        try:
+            generator = SBOMGenerator(output_dir=output_dir)
+        except Exception as e:
+            return {"success": False, "error": f"Failed to initialize SBOMGenerator: {e}"}
+
+        results: dict = {}
+
+        if "cyclonedx" in formats:
+            results["cyclonedx"] = generator.generate_cyclonedx(target_path)
+
+        if "spdx" in formats:
+            results["spdx"] = generator.generate_spdx(target_path)
+
+        return results
+
     def _print_summary(self, scan_result: TrivyScanResult) -> None:
         """Print scan summary to console"""
         print("\n" + "=" * 80)

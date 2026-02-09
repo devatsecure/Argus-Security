@@ -70,7 +70,7 @@ jobs:
           argus audit-codebase --output audit-reports/
           
       - name: Create Pull Request with Audit Findings
-        uses: peter-evans/create-pull-request@v5
+        uses: peter-evans/create-pull-request@4e1beaa7521e8b457b572c090b25bd3db56bf1c5  # v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           path: target-repo

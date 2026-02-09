@@ -1,219 +1,549 @@
 #!/usr/bin/env python3
-"""
-SBOM Generator using Syft
-Generates CycloneDX SBOM for codebases
+"""SBOM (Software Bill of Materials) generator using Trivy.
+
+Generates CycloneDX and SPDX format SBOMs for software composition analysis.
+Supports filesystem scanning for dependencies and container image scanning.
 """
 
-import hashlib
 import json
+import logging
+import os
 import subprocess
-from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+# Supported SBOM formats
+CYCLONEDX_FORMAT = "cyclonedx"
+SPDX_FORMAT = "spdx-json"
+
+# Supported scan types
+SCAN_TYPE_FS = "fs"
+SCAN_TYPE_IMAGE = "image"
+
+# Default output filenames
+CYCLONEDX_FILENAME = "sbom-cyclonedx.json"
+SPDX_FILENAME = "sbom-spdx.json"
+
+
+class SBOMGenerationError(Exception):
+    """Raised when SBOM generation fails."""
 
 
 class SBOMGenerator:
-    """Generate Software Bill of Materials using Syft"""
+    """Generate CycloneDX and SPDX SBOMs using Trivy.
 
-    def __init__(self):
-        self.format = "cyclonedx-json"
+    Supports filesystem and container image scanning. Produces JSON-format
+    SBOMs suitable for policy gate evaluation, supply chain analysis, and
+    compliance reporting.
+    """
 
-    def generate(self, path: str, output_file: Optional[str] = None) -> dict:
-        """
-        Generate SBOM for codebase
+    def __init__(self, trivy_path: str = "trivy", output_dir: str = "."):
+        """Initialize SBOM generator.
 
         Args:
-            path: Directory or image to scan
-            output_file: Optional output file path
+            trivy_path: Path to trivy binary.
+            output_dir: Directory for SBOM output files.
+        """
+        self.trivy_path = trivy_path
+        self.output_dir = output_dir
+
+    def _build_command(
+        self,
+        target_path: str,
+        sbom_format: str,
+        output_path: str,
+        scan_type: str,
+    ) -> list[str]:
+        """Build the Trivy command for SBOM generation.
+
+        Args:
+            target_path: Path to scan (directory or container image name).
+            sbom_format: Trivy format string ("cyclonedx" or "spdx-json").
+            output_path: Path where SBOM file will be written.
+            scan_type: "fs" for filesystem, "image" for container image.
 
         Returns:
-            Dict: CycloneDX SBOM JSON
+            List of command arguments suitable for subprocess.run().
+
+        Raises:
+            ValueError: If scan_type is not recognized.
         """
-        cmd = ["syft", "packages", path, "-o", self.format, "--quiet"]
+        if scan_type not in (SCAN_TYPE_FS, SCAN_TYPE_IMAGE):
+            raise ValueError(
+                f"Invalid scan_type: {scan_type!r}. "
+                f"Must be '{SCAN_TYPE_FS}' or '{SCAN_TYPE_IMAGE}'."
+            )
 
-        print(f"🔍 Generating SBOM for {path}...")
-
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=300)  # 5 minute timeout
-
-            sbom = json.loads(result.stdout)
-
-            # Validate SBOM
-            if not self.validate(sbom):
-                raise ValueError("Generated SBOM is invalid")
-
-            # Add metadata
-            sbom = self._enrich_sbom(sbom, path)
-
-            # Write to file if specified
-            if output_file:
-                # Create parent directory if needed
-                Path(output_file).parent.mkdir(parents=True, exist_ok=True)
-                with open(output_file, "w") as f:
-                    json.dump(sbom, f, indent=2)
-                print(f"✅ SBOM written to {output_file}")
-
-            # Print stats
-            self._print_stats(sbom)
-
-            return sbom
-
-        except subprocess.CalledProcessError as e:
-            print(f"❌ Syft failed: {e.stderr}")
-            raise
-        except subprocess.TimeoutExpired:
-            print("❌ Syft timed out after 5 minutes")
-            raise
-        except json.JSONDecodeError as e:
-            print(f"❌ Invalid JSON output: {e}")
-            raise
-
-    def validate(self, sbom: dict) -> bool:
-        """Validate SBOM completeness"""
-        required_fields = ["bomFormat", "specVersion", "components"]
-
-        for field in required_fields:
-            if field not in sbom:
-                print(f"❌ Missing required field: {field}")
-                return False
-
-        if sbom.get("bomFormat") != "CycloneDX":
-            print(f"❌ Invalid bomFormat: {sbom.get('bomFormat')}")
-            return False
-
-        return True
-
-    def _enrich_sbom(self, sbom: dict, path: str) -> dict:
-        """Add Argus metadata to SBOM"""
-
-        # Add metadata section if not present
-        if "metadata" not in sbom:
-            sbom["metadata"] = {}
-
-        # Add generation timestamp
-        sbom["metadata"]["timestamp"] = datetime.now().astimezone().isoformat()
-
-        # Add tool info
-        sbom["metadata"]["tools"] = [
-            {"vendor": "Argus", "name": "Argus Security Control Plane", "version": "1.0.0"},
-            {"vendor": "Anchore", "name": "Syft", "version": self._get_syft_version()},
+        return [
+            self.trivy_path,
+            scan_type,
+            "--format",
+            sbom_format,
+            "--output",
+            output_path,
+            "--quiet",
+            target_path,
         ]
 
-        # Add component info
-        if "component" not in sbom["metadata"]:
-            sbom["metadata"]["component"] = {
-                "type": "application",
-                "name": Path(path).name,
-                "bom-ref": hashlib.sha256(path.encode()).hexdigest()[:16],
+    def _run_trivy(
+        self, cmd: list[str], timeout: int = 300
+    ) -> subprocess.CompletedProcess:
+        """Execute a Trivy command safely.
+
+        Args:
+            cmd: Command argument list.
+            timeout: Maximum seconds to wait.
+
+        Returns:
+            The CompletedProcess result.
+
+        Raises:
+            SBOMGenerationError: If Trivy is not installed, times out, or
+                returns a non-zero exit code.
+        """
+        env = os.environ.copy()
+        env["TRIVY_NO_PROGRESS"] = "true"
+
+        try:
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=timeout, env=env
+            )
+        except FileNotFoundError:
+            raise SBOMGenerationError(
+                f"Trivy binary not found at '{self.trivy_path}'. "
+                "Install Trivy: https://aquasecurity.github.io/trivy/"
+            )
+        except subprocess.TimeoutExpired:
+            raise SBOMGenerationError(
+                f"Trivy SBOM generation timed out after {timeout} seconds."
+            )
+        except subprocess.SubprocessError as e:
+            raise SBOMGenerationError(f"Trivy subprocess error: {e}")
+
+        if result.returncode != 0:
+            stderr = result.stderr.strip() if result.stderr else "unknown error"
+            raise SBOMGenerationError(
+                f"Trivy exited with code {result.returncode}: {stderr}"
+            )
+
+        return result
+
+    def _parse_sbom_file(self, sbom_path: str) -> dict[str, Any]:
+        """Read and parse a generated SBOM JSON file.
+
+        Args:
+            sbom_path: Path to the SBOM file.
+
+        Returns:
+            Parsed JSON dict.
+
+        Raises:
+            SBOMGenerationError: If the file cannot be read or parsed.
+        """
+        try:
+            with open(sbom_path, "r") as f:
+                return json.load(f)
+        except FileNotFoundError:
+            raise SBOMGenerationError(
+                f"SBOM file not found at '{sbom_path}'. "
+                "Trivy may not have produced output."
+            )
+        except json.JSONDecodeError as e:
+            raise SBOMGenerationError(
+                f"Failed to parse SBOM JSON at '{sbom_path}': {e}"
+            )
+        except OSError as e:
+            raise SBOMGenerationError(
+                f"Could not read SBOM file '{sbom_path}': {e}"
+            )
+
+    def _count_components(
+        self, sbom_data: dict[str, Any], sbom_format: str
+    ) -> int:
+        """Count components in a parsed SBOM.
+
+        Args:
+            sbom_data: Parsed SBOM JSON.
+            sbom_format: "cyclonedx" or "spdx-json".
+
+        Returns:
+            Number of components found.
+        """
+        if sbom_format == CYCLONEDX_FORMAT:
+            return len(sbom_data.get("components", []))
+        elif sbom_format == SPDX_FORMAT:
+            return len(sbom_data.get("packages", []))
+        return 0
+
+    def generate_cyclonedx(
+        self, target_path: str, scan_type: str = SCAN_TYPE_FS
+    ) -> dict[str, Any]:
+        """Generate CycloneDX 1.5 SBOM.
+
+        Args:
+            target_path: Path to scan (directory or container image).
+            scan_type: "fs" for filesystem, "image" for container image.
+
+        Returns:
+            dict with keys: success, sbom_path, component_count, format.
+            On failure: success=False with an error key.
+        """
+        output_path = str(Path(self.output_dir) / CYCLONEDX_FILENAME)
+
+        try:
+            Path(self.output_dir).mkdir(parents=True, exist_ok=True)
+
+            cmd = self._build_command(
+                target_path, CYCLONEDX_FORMAT, output_path, scan_type
+            )
+            logger.info(
+                "Generating CycloneDX SBOM for %s (scan_type=%s)",
+                target_path,
+                scan_type,
+            )
+
+            self._run_trivy(cmd)
+
+            sbom_data = self._parse_sbom_file(output_path)
+            component_count = self._count_components(
+                sbom_data, CYCLONEDX_FORMAT
+            )
+
+            logger.info(
+                "CycloneDX SBOM generated: %s (%d components)",
+                output_path,
+                component_count,
+            )
+
+            return {
+                "success": True,
+                "sbom_path": output_path,
+                "component_count": component_count,
+                "format": "CycloneDX 1.5",
             }
 
-        return sbom
+        except SBOMGenerationError as e:
+            logger.error("CycloneDX generation failed: %s", e)
+            return {
+                "success": False,
+                "sbom_path": None,
+                "component_count": 0,
+                "format": "CycloneDX 1.5",
+                "error": str(e),
+            }
+        except ValueError as e:
+            logger.error("Invalid parameters: %s", e)
+            return {
+                "success": False,
+                "sbom_path": None,
+                "component_count": 0,
+                "format": "CycloneDX 1.5",
+                "error": str(e),
+            }
 
-    def _get_syft_version(self) -> str:
-        """Get Syft version"""
+    def generate_spdx(
+        self, target_path: str, scan_type: str = SCAN_TYPE_FS
+    ) -> dict[str, Any]:
+        """Generate SPDX 2.3 SBOM.
+
+        Args:
+            target_path: Path to scan (directory or container image).
+            scan_type: "fs" for filesystem, "image" for container image.
+
+        Returns:
+            dict with keys: success, sbom_path, component_count, format.
+            On failure: success=False with an error key.
+        """
+        output_path = str(Path(self.output_dir) / SPDX_FILENAME)
+
         try:
-            result = subprocess.run(["syft", "version"], capture_output=True, text=True, timeout=5)
-            # Parse version from output (format: "syft 1.37.0")
-            for line in result.stdout.split("\n"):
-                if "syft" in line.lower():
-                    parts = line.split()
-                    if len(parts) >= 2:
-                        return parts[1]
-            return "unknown"
-        except Exception:
-            return "unknown"
+            Path(self.output_dir).mkdir(parents=True, exist_ok=True)
 
-    def _print_stats(self, sbom: dict):
-        """Print SBOM statistics"""
-        components = sbom.get("components", [])
+            cmd = self._build_command(
+                target_path, SPDX_FORMAT, output_path, scan_type
+            )
+            logger.info(
+                "Generating SPDX SBOM for %s (scan_type=%s)",
+                target_path,
+                scan_type,
+            )
 
-        # Count by type
-        by_type = {}
+            self._run_trivy(cmd)
+
+            sbom_data = self._parse_sbom_file(output_path)
+            component_count = self._count_components(sbom_data, SPDX_FORMAT)
+
+            logger.info(
+                "SPDX SBOM generated: %s (%d components)",
+                output_path,
+                component_count,
+            )
+
+            return {
+                "success": True,
+                "sbom_path": output_path,
+                "component_count": component_count,
+                "format": "SPDX 2.3",
+            }
+
+        except SBOMGenerationError as e:
+            logger.error("SPDX generation failed: %s", e)
+            return {
+                "success": False,
+                "sbom_path": None,
+                "component_count": 0,
+                "format": "SPDX 2.3",
+                "error": str(e),
+            }
+        except ValueError as e:
+            logger.error("Invalid parameters: %s", e)
+            return {
+                "success": False,
+                "sbom_path": None,
+                "component_count": 0,
+                "format": "SPDX 2.3",
+                "error": str(e),
+            }
+
+    def generate_all(
+        self, target_path: str, scan_type: str = SCAN_TYPE_FS
+    ) -> dict[str, Any]:
+        """Generate both CycloneDX and SPDX SBOMs.
+
+        Args:
+            target_path: Path to scan (directory or container image).
+            scan_type: "fs" for filesystem, "image" for container image.
+
+        Returns:
+            dict with keys: cyclonedx, spdx (each containing individual results).
+        """
+        cyclonedx_result = self.generate_cyclonedx(target_path, scan_type)
+        spdx_result = self.generate_spdx(target_path, scan_type)
+
+        return {
+            "cyclonedx": cyclonedx_result,
+            "spdx": spdx_result,
+        }
+
+    def get_component_summary(self, sbom_path: str) -> dict[str, Any]:
+        """Parse an SBOM file and return a summary.
+
+        Supports both CycloneDX and SPDX formats. Detects format by
+        inspecting the JSON structure.
+
+        Args:
+            sbom_path: Path to a CycloneDX or SPDX JSON SBOM file.
+
+        Returns:
+            dict with keys: total_components, by_type, by_ecosystem, licenses.
+            On failure: returns a dict with total_components=0 and an error key.
+        """
+        try:
+            sbom_data = self._parse_sbom_file(sbom_path)
+        except SBOMGenerationError as e:
+            return {
+                "total_components": 0,
+                "by_type": {},
+                "by_ecosystem": {},
+                "licenses": [],
+                "error": str(e),
+            }
+
+        # Detect format and extract components
+        if "components" in sbom_data:
+            return self._summarize_cyclonedx(sbom_data)
+        elif "packages" in sbom_data:
+            return self._summarize_spdx(sbom_data)
+        else:
+            return {
+                "total_components": 0,
+                "by_type": {},
+                "by_ecosystem": {},
+                "licenses": [],
+                "error": (
+                    "Unrecognized SBOM format: "
+                    "no 'components' or 'packages' key found."
+                ),
+            }
+
+    def _summarize_cyclonedx(
+        self, sbom_data: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Summarize a CycloneDX SBOM.
+
+        Args:
+            sbom_data: Parsed CycloneDX JSON.
+
+        Returns:
+            Summary dict.
+        """
+        components = sbom_data.get("components", [])
+        by_type: dict[str, int] = {}
+        by_ecosystem: dict[str, int] = {}
+        licenses: list[str] = []
+
         for comp in components:
+            # Count by type (library, framework, application, etc.)
             comp_type = comp.get("type", "unknown")
             by_type[comp_type] = by_type.get(comp_type, 0) + 1
 
-        print("\n📦 SBOM Statistics:")
-        print(f"   Total Components: {len(components)}")
-        for comp_type, count in sorted(by_type.items()):
-            print(f"   - {comp_type}: {count}")
+            # Count by ecosystem via purl
+            purl = comp.get("purl", "")
+            ecosystem = self._extract_ecosystem_from_purl(purl)
+            if ecosystem:
+                by_ecosystem[ecosystem] = (
+                    by_ecosystem.get(ecosystem, 0) + 1
+                )
 
-        # Count licenses
-        licenses = set()
-        for comp in components:
-            if "licenses" in comp:
-                for lic in comp["licenses"]:
-                    if "license" in lic:
-                        if "id" in lic["license"]:
-                            licenses.add(lic["license"]["id"])
-                        elif "name" in lic["license"]:
-                            licenses.add(lic["license"]["name"])
+            # Collect licenses
+            for lic in comp.get("licenses", []):
+                license_obj = lic.get("license", {})
+                license_id = license_obj.get("id") or license_obj.get("name")
+                if license_id and license_id not in licenses:
+                    licenses.append(license_id)
 
-        if licenses:
-            print(f"   Unique Licenses: {len(licenses)}")
+        return {
+            "total_components": len(components),
+            "by_type": by_type,
+            "by_ecosystem": by_ecosystem,
+            "licenses": sorted(licenses),
+        }
 
-    def generate_for_release(self, repo_path: str, version: str, output_dir: str = "sboms") -> str:
-        """
-        Generate SBOM for a release
+    def _summarize_spdx(
+        self, sbom_data: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Summarize an SPDX SBOM.
 
         Args:
-            repo_path: Path to repository
-            version: Release version (e.g., 'v1.0.0')
-            output_dir: Directory to store SBOMs
+            sbom_data: Parsed SPDX JSON.
 
         Returns:
-            str: Path to generated SBOM file
+            Summary dict.
         """
-        # Create output directory
-        output_path = Path(output_dir)
-        output_path.mkdir(parents=True, exist_ok=True)
+        packages = sbom_data.get("packages", [])
+        by_type: dict[str, int] = {}
+        by_ecosystem: dict[str, int] = {}
+        licenses: list[str] = []
 
-        # Generate filename
-        repo_name = Path(repo_path).name
-        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        filename = f"sbom-{repo_name}-{version}-{timestamp}.json"
-        output_file = output_path / filename
+        for pkg in packages:
+            # SPDX uses 'primaryPackagePurpose' instead of 'type'
+            pkg_type = pkg.get(
+                "primaryPackagePurpose", "LIBRARY"
+            ).lower()
+            by_type[pkg_type] = by_type.get(pkg_type, 0) + 1
 
-        # Generate SBOM
-        self.generate(repo_path, str(output_file))
+            # Extract ecosystem from externalRefs purl
+            for ref in pkg.get("externalRefs", []):
+                if ref.get("referenceType") == "purl":
+                    ecosystem = self._extract_ecosystem_from_purl(
+                        ref.get("referenceLocator", "")
+                    )
+                    if ecosystem:
+                        by_ecosystem[ecosystem] = (
+                            by_ecosystem.get(ecosystem, 0) + 1
+                        )
+                    break
 
-        return str(output_file)
+            # Collect licenses
+            license_concluded = pkg.get("licenseConcluded", "")
+            if license_concluded and license_concluded not in (
+                "NOASSERTION",
+                "NONE",
+            ):
+                if license_concluded not in licenses:
+                    licenses.append(license_concluded)
+
+        return {
+            "total_components": len(packages),
+            "by_type": by_type,
+            "by_ecosystem": by_ecosystem,
+            "licenses": sorted(licenses),
+        }
+
+    @staticmethod
+    def _extract_ecosystem_from_purl(purl: str) -> Optional[str]:
+        """Extract the ecosystem/type from a package URL (purl).
+
+        A purl looks like: pkg:pypi/requests@2.28.0
+        This extracts 'pypi'.
+
+        Args:
+            purl: Package URL string.
+
+        Returns:
+            Ecosystem name or None.
+        """
+        if not purl or not purl.startswith("pkg:"):
+            return None
+        try:
+            # Format: pkg:<type>/<namespace>/<name>@<version>
+            type_and_rest = purl[4:]  # Remove 'pkg:'
+            ecosystem = type_and_rest.split("/")[0]
+            return ecosystem if ecosystem else None
+        except (IndexError, ValueError):
+            return None
 
 
 def main():
-    """CLI entry point"""
+    """CLI entry point for Trivy-based SBOM generation."""
     import argparse
 
-    parser = argparse.ArgumentParser(description="Generate Software Bill of Materials (SBOM)")
-    parser.add_argument("path", help="Directory or image to scan")
-    parser.add_argument("-o", "--output", help="Output file path (default: print to stdout)")
-    parser.add_argument("--version", help="Release version (for release SBOMs)")
-    parser.add_argument("--validate-only", action="store_true", help="Only validate existing SBOM file")
+    parser = argparse.ArgumentParser(
+        description="Generate Software Bill of Materials (SBOM) using Trivy"
+    )
+    parser.add_argument(
+        "target", help="Target to scan (directory path or container image)"
+    )
+    parser.add_argument(
+        "--scan-type",
+        choices=["fs", "image"],
+        default="fs",
+        help="Type of scan: 'fs' for filesystem, 'image' for container",
+    )
+    parser.add_argument(
+        "--format",
+        choices=["cyclonedx", "spdx", "all"],
+        default="all",
+        help="SBOM format to generate (default: all)",
+    )
+    parser.add_argument(
+        "-o",
+        "--output-dir",
+        default=".",
+        help="Output directory for SBOM files (default: current directory)",
+    )
+    parser.add_argument(
+        "--trivy-path",
+        default="trivy",
+        help="Path to trivy binary (default: trivy)",
+    )
 
     args = parser.parse_args()
 
-    generator = SBOMGenerator()
+    generator = SBOMGenerator(
+        trivy_path=args.trivy_path, output_dir=args.output_dir
+    )
 
-    if args.validate_only:
-        # Validate existing SBOM
-        with open(args.path) as f:
-            sbom = json.load(f)
-
-        if generator.validate(sbom):
-            print("✅ SBOM is valid")
-            exit(0)
-        else:
-            print("❌ SBOM is invalid")
-            exit(1)
+    if args.format == "cyclonedx":
+        result = generator.generate_cyclonedx(
+            args.target, scan_type=args.scan_type
+        )
+        print(json.dumps(result, indent=2))
+    elif args.format == "spdx":
+        result = generator.generate_spdx(
+            args.target, scan_type=args.scan_type
+        )
+        print(json.dumps(result, indent=2))
     else:
-        # Generate new SBOM
-        if args.version:
-            output_file = generator.generate_for_release(args.path, args.version, output_dir="sboms")
-            print(f"\n✅ Release SBOM generated: {output_file}")
-        else:
-            sbom = generator.generate(args.path, args.output)
-            if not args.output:
-                print(json.dumps(sbom, indent=2))
+        result = generator.generate_all(
+            args.target, scan_type=args.scan_type
+        )
+        print(json.dumps(result, indent=2))
 
 
 if __name__ == "__main__":
