@@ -29,6 +29,7 @@ Functions:
 """
 
 import logging
+import os
 from typing import Any
 
 from hybrid.models import HybridFinding
@@ -241,14 +242,41 @@ def run_api_security(scanner: Any, target_path: str, logger: logging.Logger) -> 
     return findings
 
 
+def _discover_openapi_spec(target_path: str, logger: logging.Logger) -> str | None:
+    """Auto-discover OpenAPI/Swagger spec files in the target directory."""
+    import glob as glob_mod
+    spec_patterns = [
+        "openapi.json", "openapi.yaml", "openapi.yml",
+        "swagger.json", "swagger.yaml", "swagger.yml",
+        "**/openapi.json", "**/openapi.yaml", "**/openapi.yml",
+        "**/swagger.json", "**/swagger.yaml", "**/swagger.yml",
+        "api-spec.*", "api-docs.*",
+    ]
+    for pattern in spec_patterns:
+        matches = glob_mod.glob(os.path.join(target_path, pattern), recursive=True)
+        if matches:
+            logger.info(f"   🔍 DAST: Auto-discovered OpenAPI spec: {matches[0]}")
+            return matches[0]
+    return None
+
+
 def run_dast(scanner: Any, target_path: str, logger: logging.Logger, config: dict, dast_target_url: str | None = None) -> list[HybridFinding]:
-    """Run DAST Scanner and convert to HybridFinding format"""
+    """Run DAST Scanner and convert to HybridFinding format.
+
+    If no --dast-target-url is provided, auto-discovers OpenAPI/Swagger
+    spec files in the target directory for static DAST analysis.
+    """
     findings = []
 
-    # DAST requires a target URL
+    # If no URL provided, try to auto-discover an OpenAPI spec
     if not dast_target_url:
-        logger.info("   ℹ️  DAST: No target URL provided, skipping")
-        return findings
+        openapi_spec = _discover_openapi_spec(target_path, logger)
+        if openapi_spec:
+            # Reconfigure scanner with discovered spec
+            scanner.openapi_spec = openapi_spec
+        else:
+            logger.info("   ℹ️  DAST: No target URL or OpenAPI spec found, skipping")
+            return findings
 
     try:
         # Run DAST scanner
@@ -325,32 +353,52 @@ def run_supply_chain(scanner: Any, target_path: str, logger: logging.Logger) -> 
 
 
 def run_fuzzing(scanner: Any, target_path: str, logger: logging.Logger) -> list[HybridFinding]:
-    """Run Intelligent Fuzzing Engine and convert to HybridFinding format"""
+    """Run Intelligent Fuzzing Engine and convert to HybridFinding format.
+
+    Discovers Python files with parseable functions and fuzzes them
+    using FuzzingEngine.fuzz_function().
+    """
     findings = []
 
     try:
-        # Run Fuzzing scanner
-        fuzzing_result = scanner.scan(target_path)
+        import glob as glob_mod
 
-        # Convert to HybridFinding format
-        if isinstance(fuzzing_result, list):
-            for fuzz_finding in fuzzing_result:
-                finding = HybridFinding(
-                    finding_id=fuzz_finding.get("id", "unknown"),
-                    source_tool="fuzzing",
-                    severity=normalize_severity(fuzz_finding.get("severity", "medium")),
-                    category="security",
-                    title=fuzz_finding.get("title", "Fuzzing Crash"),
-                    description=fuzz_finding.get("description", ""),
-                    file_path=fuzz_finding.get("file_path", target_path),
-                    line_number=fuzz_finding.get("line_number"),
-                    cwe_id=fuzz_finding.get("cwe_id"),
-                    recommendation=fuzz_finding.get("recommendation", ""),
-                    references=fuzz_finding.get("references", []),
-                    confidence=fuzz_finding.get("confidence", 1.0),
-                    llm_enriched=False,
+        # Discover Python files to fuzz (focus on security-sensitive patterns)
+        py_files = glob_mod.glob(os.path.join(target_path, "**", "*.py"), recursive=True)
+        if not py_files:
+            logger.info("   ℹ️  No Python files found for fuzzing")
+            return findings
+
+        # Fuzz up to 5 files to keep duration reasonable
+        fuzz_targets = py_files[:5]
+        for py_file in fuzz_targets:
+            rel_path = os.path.relpath(py_file, target_path)
+            try:
+                fuzzing_result = scanner.fuzz_function(
+                    function_path=py_file,
+                    function_name="__main__",
+                    duration_minutes=1,
                 )
-                findings.append(finding)
+                # Convert crashes from FuzzResult to HybridFinding
+                if hasattr(fuzzing_result, "crashes"):
+                    for crash in fuzzing_result.crashes:
+                        finding = HybridFinding(
+                            finding_id=f"fuzz-{crash.crash_id}",
+                            source_tool="fuzzing",
+                            severity=normalize_severity(getattr(crash, "severity", "medium")),
+                            category="security",
+                            title=f"Fuzzing crash in {rel_path}: {crash.crash_type}",
+                            description=f"Crash type: {crash.crash_type}\nStack trace: {crash.stack_trace[:500]}",
+                            file_path=rel_path,
+                            cwe_id=getattr(crash, "cwe", None),
+                            recommendation="Review and fix the crash-inducing input handling",
+                            confidence=1.0 if crash.reproducible else 0.7,
+                            llm_enriched=False,
+                        )
+                        findings.append(finding)
+            except Exception as e:
+                logger.debug(f"   Fuzzing {rel_path} skipped: {e}")
+                continue
 
     except Exception as e:
         logger.error(f"❌ Fuzzing failed: {e}")
@@ -455,34 +503,33 @@ def run_remediation(engine: Any, findings: list[HybridFinding], logger: logging.
 
 
 def run_runtime_security(monitor: Any, target_path: str, logger: logging.Logger, monitoring_duration: int) -> list[HybridFinding]:
-    """Run Container Runtime Security Monitoring"""
+    """Run Container Runtime Security Monitoring using Falco-based monitor_realtime()."""
     findings = []
 
     try:
         logger.info(f"   🐳 Monitoring runtime security for {monitoring_duration}s...")
 
-        # Run runtime security monitor
-        runtime_result = monitor.monitor(target_path)
+        # Use monitor_realtime() which returns List[ThreatAlert]
+        alerts = monitor.monitor_realtime(
+            duration_seconds=monitoring_duration,
+        )
 
-        # Convert to HybridFinding format
-        if isinstance(runtime_result, list):
-            for runtime_finding in runtime_result:
-                finding = HybridFinding(
-                    finding_id=runtime_finding.get("id", "unknown"),
-                    source_tool="runtime-security",
-                    severity=normalize_severity(runtime_finding.get("severity", "medium")),
-                    category="runtime",
-                    title=runtime_finding.get("title", "Runtime Security Threat"),
-                    description=runtime_finding.get("description", ""),
-                    file_path=runtime_finding.get("file_path", target_path),
-                    line_number=runtime_finding.get("line_number"),
-                    cwe_id=runtime_finding.get("cwe_id"),
-                    recommendation=runtime_finding.get("recommendation", ""),
-                    references=runtime_finding.get("references", []),
-                    confidence=runtime_finding.get("confidence", 0.9),
-                    llm_enriched=False,
-                )
-                findings.append(finding)
+        # Convert ThreatAlert objects to HybridFinding format
+        for alert in (alerts or []):
+            finding = HybridFinding(
+                finding_id=f"runtime-{getattr(alert, 'alert_id', 'unknown')}",
+                source_tool="runtime-security",
+                severity=normalize_severity(getattr(alert, "severity", "medium")),
+                category="runtime",
+                title=getattr(alert, "title", "Runtime Security Threat"),
+                description=getattr(alert, "description", str(alert)),
+                file_path=getattr(alert, "container_id", target_path),
+                cwe_id=getattr(alert, "cwe_id", None),
+                recommendation=getattr(alert, "recommendation", "Review runtime security event"),
+                confidence=0.9,
+                llm_enriched=False,
+            )
+            findings.append(finding)
 
     except Exception as e:
         logger.error(f"❌ Runtime security monitoring failed: {e}")

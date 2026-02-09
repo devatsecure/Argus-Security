@@ -50,11 +50,13 @@ RUN wget -q https://github.com/zaproxy/zaproxy/releases/download/v2.14.0/ZAP_2.1
 RUN wget -q https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static -O /usr/local/bin/opa && \
     chmod +x /usr/local/bin/opa
 
-# Set Python environment variables
+# Set Python environment variables + use /var/tmp for large temp files (Trivy DB, Checkov)
+# /tmp in containers is often a small overlay; /var/tmp persists and has more space
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
-    PYTHONPATH=/app
+    PYTHONPATH=/app \
+    TMPDIR=/var/tmp
 
 WORKDIR /app
 
@@ -82,16 +84,20 @@ COPY profiles/ ./profiles/
 COPY schemas/ ./schemas/
 COPY config/ ./config/
 
-# Create non-root user for security with home directory (needed by semgrep, trivy, etc.)
-RUN groupadd -r agentuser && useradd -r -g agentuser -u 1000 -m agentuser
+# Create non-root user with docker group access for sandbox validation
+# GID 999 matches the host docker group on most Linux distros
+RUN groupadd -r -g 999 docker || true && \
+    groupadd -r agentuser && \
+    useradd -r -g agentuser -G docker -u 1000 -m agentuser
 
-# Create workspace and output directories with proper permissions
-RUN mkdir -p /workspace /output /home/agentuser/.semgrep && \
+# Create workspace, output, and temp directories with proper permissions
+RUN mkdir -p /workspace /output /var/tmp /home/agentuser/.semgrep && \
     chmod 755 /workspace /output && \
+    chmod 1777 /var/tmp && \
     chown -R agentuser:agentuser /app /workspace /output /home/agentuser
 
-# Initialize Trivy database
-RUN trivy image --download-db-only || true
+# Initialize Trivy database (use /var/tmp to avoid /tmp space issues)
+RUN TMPDIR=/var/tmp trivy image --download-db-only || true
 
 WORKDIR /workspace
 
