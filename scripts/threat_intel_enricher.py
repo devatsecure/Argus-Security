@@ -108,18 +108,25 @@ class ThreatIntelEnricher:
             cache_dir: Directory for caching API responses
             use_progress: Whether to show progress bars (requires rich)
         """
-        # Try default cache location, fallback to /cache for Docker read-only workspaces
-        default_cache = cache_dir or Path(".argus-cache/threat-intel")
-        try:
-            default_cache.mkdir(parents=True, exist_ok=True)
-            # Test if writable
-            test_file = default_cache / ".write_test"
-            test_file.touch()
-            test_file.unlink()
-            self.cache_dir = default_cache
-        except (PermissionError, OSError):
-            # Fallback to /cache for Docker read-only mounts
-            self.cache_dir = Path("/cache/threat-intel")
+        # Try default cache location, then fallback locations for Docker
+        candidates = [cache_dir] if cache_dir else [
+            Path(".argus-cache/threat-intel"),
+            Path("/tmp/argus-cache/threat-intel"),
+            Path("/cache/threat-intel"),
+        ]
+        self.cache_dir = None
+        for candidate in candidates:
+            try:
+                candidate.mkdir(parents=True, exist_ok=True)
+                test_file = candidate / ".write_test"
+                test_file.touch()
+                test_file.unlink()
+                self.cache_dir = candidate
+                break
+            except (PermissionError, OSError, FileNotFoundError):
+                continue
+        if self.cache_dir is None:
+            self.cache_dir = Path("/tmp/argus-cache/threat-intel")
             self.cache_dir.mkdir(parents=True, exist_ok=True)
             logger.warning(f"Using fallback cache directory: {self.cache_dir}")
 

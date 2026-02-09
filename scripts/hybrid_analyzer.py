@@ -404,7 +404,7 @@ class HybridSecurityAnalyzer:
             try:
                 from fuzzing_engine import FuzzingEngine
 
-                self.fuzzing_scanner = FuzzingEngine(ai_provider=self.ai_provider)
+                self.fuzzing_scanner = FuzzingEngine(llm_manager=self.ai_client)
                 logger.info("✅ Fuzzing Engine initialized")
             except (ImportError, RuntimeError) as e:
                 logger.warning(f"⚠️  Fuzzing Engine not available: {e}")
@@ -434,9 +434,7 @@ class HybridSecurityAnalyzer:
             try:
                 from runtime_security_monitor import RuntimeSecurityMonitor
 
-                self.runtime_security_monitor = RuntimeSecurityMonitor(
-                    duration_seconds=self.runtime_monitoring_duration
-                )
+                self.runtime_security_monitor = RuntimeSecurityMonitor()
                 logger.info("✅ Runtime Security Monitor initialized")
             except (ImportError, RuntimeError) as e:
                 logger.warning(f"⚠️  Runtime Security Monitor not available: {e}")
