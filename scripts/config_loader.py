@@ -464,6 +464,10 @@ _ENV_MAPPINGS: List[tuple] = [
     (("SUPPRESSION_AUTO_EXPIRE_DAYS",),             "suppression_auto_expire_days", "int"),
     (("ENABLE_COMPLIANCE_MAPPING",),                "enable_compliance_mapping", "bool"),
     (("COMPLIANCE_FRAMEWORKS",),                    "compliance_frameworks", "str"),
+
+    # Post-Phase-3 quality filter — removes low-quality findings before reporting
+    (("ENABLE_QUALITY_FILTER",),                    "enable_quality_filter", "bool"),
+    (("QUALITY_FILTER_MIN_CONFIDENCE",),            "quality_filter_min_confidence", "float"),
 ]
 
 

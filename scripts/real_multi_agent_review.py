@@ -145,10 +145,10 @@ class RealMultiAgentReview:
     def _find_working_sonnet_model(self) -> Optional[str]:
         """Find a working Claude Sonnet model with fallback"""
         models_to_try = [
-            "claude-sonnet-4-5-20250929",  # Latest Claude Sonnet 4.5
+            "claude-sonnet-4-5-20250929",  # Claude Sonnet 4.5
+            "claude-haiku-4-5-20251001",  # Claude Haiku 4.5 (fast)
             "claude-3-5-sonnet-20241022",  # Claude 3.5 Sonnet
-            "claude-3-5-sonnet-20240620",  # Stable
-            "claude-3-sonnet-20240229",  # Claude 3
+            "claude-3-5-haiku-20241022",  # Claude 3.5 Haiku
         ]
 
         for model in models_to_try:

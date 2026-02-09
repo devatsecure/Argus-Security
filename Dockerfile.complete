@@ -84,8 +84,15 @@ COPY profiles/ ./profiles/
 COPY schemas/ ./schemas/
 COPY config/ ./config/
 
-# Create non-root user with docker group access for sandbox validation
-# GID 999 matches the host docker group on most Linux distros
+# Install Docker CLI for Phase 4 sandbox validation (Docker-in-Docker via socket mount).
+# Only the CLI is needed — the Docker daemon runs on the host.
+RUN curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-27.4.1.tgz \
+    | tar -xz --strip-components=1 -C /usr/local/bin docker/docker
+
+# Create non-root user with docker group access for sandbox validation.
+# The GID 999 is a placeholder — at runtime the actual host Docker socket GID
+# must be passed via `docker run --group-add <HOST_DOCKER_GID>` so the
+# container user can access /var/run/docker.sock.  See deploy-docker skill.
 RUN groupadd -r -g 999 docker || true && \
     groupadd -r agentuser && \
     useradd -r -g agentuser -G docker -u 1000 -m agentuser
@@ -104,8 +111,8 @@ WORKDIR /workspace
 # Switch to non-root user for security
 USER agentuser
 
-# Set entrypoint to run_ai_audit.py for complete 6-phase scanning with Phase 2.7 support
-ENTRYPOINT ["python", "/app/scripts/run_ai_audit.py"]
+# Set entrypoint to hybrid_analyzer.py for complete 6-phase pipeline with all phases
+ENTRYPOINT ["python", "/app/scripts/hybrid_analyzer.py"]
 
 # Default: show help
 CMD ["--help"]

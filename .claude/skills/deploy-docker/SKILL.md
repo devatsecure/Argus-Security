@@ -61,7 +61,14 @@ Expected arguments: `<target-repo-path> [--rebuild] [--ai-provider anthropic|ope
 
 ## Run Step
 
-Determine the AI provider (default: `anthropic`). Then run:
+Determine the AI provider (default: `anthropic`).
+
+First, detect the host Docker socket GID so Phase 4 sandbox validation can use Docker-in-Docker:
+```
+DOCKER_GID=$(stat -f '%g' /var/run/docker.sock 2>/dev/null || stat -c '%g' /var/run/docker.sock 2>/dev/null || echo "")
+```
+
+Then run (include `--group-add` only when `DOCKER_GID` is non-empty):
 
 ```
 docker run --rm \
@@ -69,6 +76,7 @@ docker run --rm \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v /tmp/argus-output:/output \
   -e ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
+  ${DOCKER_GID:+--group-add "$DOCKER_GID"} \
   --entrypoint python \
   argus-complete \
   /app/scripts/hybrid_analyzer.py /workspace \
@@ -76,6 +84,8 @@ docker run --rm \
   --enable-ai-enrichment \
   --ai-provider anthropic
 ```
+
+The `--group-add` flag grants the container user access to the host Docker socket, enabling Phase 4 sandbox validation (Docker-in-Docker). Without it, Phase 4 is skipped with a "Permission denied" warning.
 
 Adjustments based on arguments:
 - If `--ai-provider openai`: replace `-e ANTHROPIC_API_KEY=...` with `-e OPENAI_API_KEY="$OPENAI_API_KEY"` and set `--ai-provider openai`.

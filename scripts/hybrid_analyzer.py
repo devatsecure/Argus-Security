@@ -545,7 +545,7 @@ class HybridSecurityAnalyzer:
         total_cost = 0.0
 
         # -- PHASE 1: Static Analysis (Fast, Deterministic) --
-        all_findings, p1_duration = run_phase1_scanning(
+        all_findings, p1_duration, scanner_health = run_phase1_scanning(
             target_path=target_path,
             analyzer=self,
         )
@@ -567,6 +567,23 @@ class HybridSecurityAnalyzer:
         )
         if p3_duration is not None:
             phase_timings["phase3_multi_agent_personas"] = p3_duration
+
+        # -- Quality filter: remove low-quality findings before downstream phases --
+        # Findings that lack evidence AND have very low multi-agent confidence
+        # are noise (e.g. Checkov rules with no description, no line number,
+        # and <30% agent confidence).  IRIS-verified findings are always kept.
+        enable_qf = os.environ.get("ENABLE_QUALITY_FILTER", "true").lower() == "true"
+        qf_threshold = float(os.environ.get("QUALITY_FILTER_MIN_CONFIDENCE", "0.30"))
+        if enable_qf and all_findings:
+            before = len(all_findings)
+            all_findings = [
+                f for f in all_findings
+                if not self._is_low_quality_finding(f, qf_threshold)
+            ]
+            filtered = before - len(all_findings)
+            if filtered:
+                logger.info("   Quality filter: removed %d low-quality finding(s) "
+                            "(confidence < %.0f%% with missing evidence)", filtered, qf_threshold * 100)
 
         # -- PHASE 4: Sandbox Validation --
         all_findings, p4_duration = run_phase4_sandbox(
@@ -598,6 +615,9 @@ class HybridSecurityAnalyzer:
             policy_gate_result=policy_gate_result,
             vulnerability_chains=vulnerability_chains,
         )
+
+        # Attach scanner health so reports can distinguish "0 findings" vs "scanner failed"
+        result.__dict__["scanner_health"] = scanner_health
 
         return result
 
@@ -685,6 +705,30 @@ class HybridSecurityAnalyzer:
                 logger.warning("Failed to reconstruct finding: %s", fd.get("finding_id", "unknown"))
 
         return enriched if enriched else findings
+
+    # ------------------------------------------------------------------
+    # Quality filter helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _is_low_quality_finding(finding: HybridFinding, min_confidence: float) -> bool:
+        """Return True if a finding is low-quality noise that should be filtered.
+
+        A finding is considered low-quality when ALL of these hold:
+        - Multi-agent confidence is below *min_confidence*
+        - Description is missing or empty
+        - Not verified by IRIS (which does its own deep analysis)
+        - Has no CVE (CVE findings have external evidence even without description)
+        """
+        if finding.iris_verified:
+            return False
+        if finding.cve_id:
+            return False
+        has_description = bool(finding.description and finding.description.strip()
+                               and finding.description.strip().lower() not in ("none", "unknown", "n/a"))
+        if has_description:
+            return False
+        return finding.confidence < min_confidence
 
     # ------------------------------------------------------------------
     # Delegations to phase modules (kept for backward compat with callers

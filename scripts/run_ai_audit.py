@@ -335,12 +335,11 @@ def get_working_model_with_fallback(client, provider, initial_model):
     # Model fallback chain for Anthropic (most universally available first)
     model_fallback_chain = [
         initial_model,  # Try user's requested model first
-        "claude-3-haiku-20240307",  # Most lightweight and universally available
-        "claude-3-sonnet-20240229",  # Balanced
-        "claude-sonnet-4-5-20250929",  # Latest Claude Sonnet 4.5
+        "claude-sonnet-4-5-20250929",  # Claude Sonnet 4.5
+        "claude-haiku-4-5-20251001",  # Claude Haiku 4.5 (fast)
         "claude-3-5-sonnet-20241022",  # Claude 3.5 Sonnet
-        "claude-3-5-sonnet-20240620",  # Stable
-        "claude-3-opus-20240229",  # Most powerful
+        "claude-3-5-haiku-20241022",  # Claude 3.5 Haiku
+        "claude-3-haiku-20240307",  # Claude 3 Haiku (legacy fallback)
     ]
 
     # Remove duplicates while preserving order

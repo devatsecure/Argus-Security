@@ -7,7 +7,7 @@
 Argus Security runs a **6-phase security pipeline** combining traditional scanners with Claude AI-powered triage:
 
 ```
-Phase 1: Scanner Orchestration    → TruffleHog, Gitleaks, Semgrep, Trivy, Checkov
+Phase 1: Scanner Orchestration    → Semgrep, Trivy, Checkov, TruffleHog (verified + pattern-based secrets)
 Phase 2: AI Enrichment            → Claude/OpenAI analysis, noise scoring, CWE mapping
 Phase 3: Multi-Agent Review       → 5 specialized AI personas analyze findings
 Phase 4: Sandbox Validation       → Docker-based exploit verification
@@ -15,7 +15,7 @@ Phase 5: Policy Gates             → Rego/OPA pass/fail enforcement
 Phase 6: Reporting                → SARIF, JSON, Markdown outputs
 ```
 
-**Results:** 60-70% false positive reduction, +15-20% more findings via spontaneous discovery.
+**Results:** 60-70% false positive reduction, +15-20% more findings via heuristic-based spontaneous discovery (regex pattern matching, not AI-powered).
 
 ## Quick Start
 

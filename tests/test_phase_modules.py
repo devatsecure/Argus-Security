@@ -211,11 +211,12 @@ class TestPhase1Scanning:
         from hybrid.phases.phase1_scanning import run_phase1_scanning
 
         analyzer = _make_mock_analyzer()
-        findings, duration = run_phase1_scanning(
+        findings, duration, health = run_phase1_scanning(
             target_path=str(tmp_path), analyzer=analyzer
         )
         assert findings == []
         assert duration >= 0.0
+        assert isinstance(health, dict)
 
     def test_semgrep_findings_collected(self, tmp_path):
         from hybrid.phases.phase1_scanning import run_phase1_scanning
@@ -228,7 +229,7 @@ class TestPhase1Scanning:
         # _run_semgrep returns findings
         analyzer._run_semgrep.return_value = [_make_finding(finding_id="sg-1")]
 
-        findings, duration = run_phase1_scanning(
+        findings, duration, _health = run_phase1_scanning(
             target_path=str(tmp_path), analyzer=analyzer
         )
         assert len(findings) == 1
@@ -248,11 +249,12 @@ class TestPhase1Scanning:
         analyzer._run_semgrep.side_effect = RuntimeError("Semgrep crashed")
         analyzer._run_trivy.return_value = [_make_finding(finding_id="trivy-1")]
 
-        findings, _ = run_phase1_scanning(
+        findings, _, health = run_phase1_scanning(
             target_path=str(tmp_path), analyzer=analyzer
         )
         assert len(findings) == 1
         assert findings[0].finding_id == "trivy-1"
+        assert health["Semgrep"] == "failed"
 
     def test_trufflehog_integration(self, tmp_path):
         from hybrid.phases.phase1_scanning import run_phase1_scanning
@@ -268,7 +270,7 @@ class TestPhase1Scanning:
             trufflehog_scanner=mock_th,
         )
 
-        findings, _ = run_phase1_scanning(
+        findings, _, _health = run_phase1_scanning(
             target_path=str(tmp_path), analyzer=analyzer
         )
         assert len(findings) == 1

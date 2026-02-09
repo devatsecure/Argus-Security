@@ -6,17 +6,17 @@ globs: ["scripts/run_ai_audit.py", "scripts/hybrid_analyzer.py", "scripts/agent_
 # 6-Phase Pipeline Details
 
 ## Phase 1: Scanner Orchestration (30-60 sec)
-Runs 5 scanners in parallel:
+Runs 4 scanners in parallel:
 - **Semgrep** - SAST with 2000+ rules
 - **Trivy** - CVE/dependency scanning
 - **Checkov** - IaC security (Terraform, K8s)
-- **TruffleHog** - Verified secret detection
-- **Gitleaks** - Pattern-based secrets
+- **TruffleHog** - Verified and pattern-based secret detection
 
 ## Phase 2: AI Enrichment (2-5 min)
 - Claude/OpenAI/Ollama triage
 - Noise scoring & false positive prediction
 - CWE mapping & risk scoring
+- Spontaneous discovery: heuristic-based pattern matching via `HeuristicScanner` (regex, not AI-powered); runs before LLM enrichment to find issues beyond scanner rules
 
 ## Phase 3: Multi-Agent Review
 5 specialized AI personas run with parallel execution for quality agents:

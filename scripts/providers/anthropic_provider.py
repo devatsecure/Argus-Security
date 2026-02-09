@@ -121,6 +121,63 @@ class AnthropicProvider:
                 else:
                     raise ValueError(f"No valid JSON found in response: {response_text[:200]}")
 
+    def analyze(self, prompt: str, max_tokens: int = 4096) -> "_AnthropicResponse":
+        """Analyze prompt and return a response object with .content and .usage.
+
+        Thin wrapper around generate() that returns a response object compatible
+        with IRISAnalyzer._parse_llm_response (expects .content as a string and
+        optionally .usage.input_tokens / .usage.output_tokens).
+        """
+        try:
+            messages = [{"role": "user", "content": prompt}]
+            response = self.client.messages.create(
+                model=self.model,
+                max_tokens=max_tokens,
+                temperature=self.temperature,
+                system="You are a security analysis expert.",
+                messages=messages,
+            )
+            text = response.content[0].text if response.content else ""
+            input_tokens = getattr(response.usage, "input_tokens", 0)
+            output_tokens = getattr(response.usage, "output_tokens", 0)
+            return _AnthropicResponse(
+                text=text, input_tokens=input_tokens, output_tokens=output_tokens
+            )
+        except Exception as e:
+            logger.error(f"Anthropic API error in analyze(): {e}")
+            raise
+
+    def call_llm_api(
+        self,
+        prompt: str,
+        max_tokens: int = 4096,
+        circuit_breaker: Any = None,
+        operation: str = "LLM call",
+        few_shot_prefix: str = "",
+    ) -> tuple:
+        """Call LLM API and return (response_text, input_tokens, output_tokens).
+
+        Thin wrapper around the Anthropic messages API that matches the
+        LLMManager.call_llm_api interface used by ai_enrichment.py.
+        """
+        full_prompt = f"{few_shot_prefix}\n\n{prompt}" if few_shot_prefix else prompt
+        try:
+            messages = [{"role": "user", "content": full_prompt}]
+            response = self.client.messages.create(
+                model=self.model,
+                max_tokens=max_tokens,
+                temperature=self.temperature,
+                system="You are a security analysis expert.",
+                messages=messages,
+            )
+            text = response.content[0].text if response.content else ""
+            input_tokens = getattr(response.usage, "input_tokens", 0)
+            output_tokens = getattr(response.usage, "output_tokens", 0)
+            return text, input_tokens, output_tokens
+        except Exception as e:
+            logger.error(f"Anthropic API error in call_llm_api(): {e}")
+            raise
+
     def batch_analyze(self, prompts: list[str], system_prompt: Optional[str] = None) -> list[str]:
         """
         Analyze multiple prompts (sequential for now, could be parallelized)
@@ -137,3 +194,32 @@ class AnthropicProvider:
             response = self.generate(prompt, system_prompt)
             responses.append(response)
         return responses
+
+
+class _AnthropicUsage:
+    """Minimal usage object matching Anthropic response.usage interface."""
+
+    __slots__ = ("input_tokens", "output_tokens")
+
+    def __init__(self, input_tokens: int, output_tokens: int):
+        self.input_tokens = input_tokens
+        self.output_tokens = output_tokens
+
+
+class _AnthropicResponse:
+    """Lightweight response wrapper compatible with IRISAnalyzer._parse_llm_response.
+
+    Attributes:
+        content: Response text as a plain string (_parse_llm_response will
+                 detect that it is not a list and use it directly).
+        usage:   Object with input_tokens and output_tokens attributes.
+    """
+
+    __slots__ = ("content", "usage")
+
+    def __init__(self, text: str, input_tokens: int = 0, output_tokens: int = 0):
+        self.content = text
+        self.usage = _AnthropicUsage(input_tokens, output_tokens)
+
+    def __str__(self) -> str:
+        return self.content

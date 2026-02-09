@@ -67,7 +67,9 @@ def run_phase5_policy(
         logger.info("   Skipping Phase 5: No findings to evaluate")
 
     # --- Phase 5.5: Vulnerability Chaining Analysis ---
-    enable_chaining = os.environ.get("ENABLE_VULNERABILITY_CHAINING", "false").lower() == "true"
+    # Enabled by default for comprehensive attack chain analysis across findings.
+    # Set ENABLE_VULNERABILITY_CHAINING=false to disable.
+    enable_chaining = os.environ.get("ENABLE_VULNERABILITY_CHAINING", "true").lower() == "true"
 
     if enable_chaining and all_findings:
         logger.info("-" * 80)

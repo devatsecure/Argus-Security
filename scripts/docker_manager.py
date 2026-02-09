@@ -74,6 +74,19 @@ class DockerManager:
                         logger.info(f"✅ Connected to Docker via {socket_path}")
                         connected = True
                         break
+                    except PermissionError:
+                        # Socket exists but current user lacks permission.
+                        # When running inside a container (DinD), the host
+                        # socket GID must be passed via --group-add at
+                        # `docker run` time.
+                        logger.error(
+                            f"Permission denied on {socket_path}. "
+                            "If running inside a container, add "
+                            "'--group-add $(stat -f '%%g' /var/run/docker.sock)' "
+                            "(macOS) or '--group-add $(stat -c '%%g' /var/run/docker.sock)' "
+                            "(Linux) to the docker run command."
+                        )
+                        continue
                     except Exception as sock_err:
                         logger.debug(f"Failed to connect to {socket_path}: {sock_err}")
                         continue
