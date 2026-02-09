@@ -148,19 +148,20 @@ class HybridSecurityAnalyzer:
         enable_trivy: bool = True,
         enable_checkov: bool = True,
         enable_api_security: bool = True,
-        enable_dast: bool = False,
+        enable_dast: bool = True,
         enable_supply_chain: bool = True,
-        enable_fuzzing: bool = False,
+        enable_fuzzing: bool = True,
         enable_threat_intel: bool = True,
         enable_remediation: bool = True,
-        enable_runtime_security: bool = False,
+        enable_runtime_security: bool = True,
         enable_regression_testing: bool = True,
         enable_ai_enrichment: bool = True,
         enable_argus: bool = False,  # Use existing argus if needed
         enable_sandbox: bool = True,  # Validate exploits in Docker sandbox
         enable_multi_agent: bool = True,  # Use specialized agent personas
         enable_spontaneous_discovery: bool = True,  # Discover issues beyond scanner rules
-        enable_collaborative_reasoning: bool = False,  # Multi-agent discussion (opt-in, more expensive)
+        enable_collaborative_reasoning: bool = True,  # Multi-agent discussion
+        enable_trufflehog: bool = True,  # TruffleHog verified secret detection
         enable_iris: bool = True,  # IRIS-style semantic analysis (arXiv 2405.17238)
         ai_provider: Optional[str] = None,
         dast_target_url: Optional[str] = None,
@@ -213,6 +214,7 @@ class HybridSecurityAnalyzer:
         self.enable_multi_agent = enable_multi_agent
         self.enable_spontaneous_discovery = enable_spontaneous_discovery
         self.enable_collaborative_reasoning = enable_collaborative_reasoning
+        self.enable_trufflehog = enable_trufflehog
         self.enable_iris = enable_iris
         self.ai_provider = ai_provider
         self.dast_target_url = dast_target_url
@@ -232,6 +234,7 @@ class HybridSecurityAnalyzer:
         self.remediation_engine = None
         self.runtime_security_monitor = None
         self.regression_tester = None
+        self.trufflehog_scanner = None
         self.sandbox_validator = None
         self.ai_client = None
 
@@ -331,6 +334,16 @@ class HybridSecurityAnalyzer:
             except (ImportError, RuntimeError) as e:
                 logger.warning(f"⚠️  Semgrep scanner not available: {e}")
                 self.enable_semgrep = False
+
+        if self.enable_trufflehog:
+            try:
+                from trufflehog_scanner import TruffleHogScanner
+
+                self.trufflehog_scanner = TruffleHogScanner()
+                logger.info("✅ TruffleHog scanner initialized")
+            except (ImportError, RuntimeError) as e:
+                logger.warning(f"⚠️  TruffleHog scanner not available: {e}")
+                self.enable_trufflehog = False
 
         if self.enable_trivy:
             try:
@@ -537,6 +550,30 @@ class HybridSecurityAnalyzer:
                 logger.info(f"   ✅ Semgrep: {len(semgrep_findings)} findings")
             except Exception as e:
                 logger.error(f"   ❌ Semgrep scan failed: {e}")
+                logger.info("   💡 Continuing with other scanners...")
+
+        # Run TruffleHog
+        if self.enable_trufflehog and self.trufflehog_scanner:
+            try:
+                logger.info("   🔍 Running TruffleHog secret scanner...")
+                th_result = self.trufflehog_scanner.scan(str(target_path), scan_type="filesystem")
+                th_findings_raw = th_result.get("findings", [])
+                trufflehog_findings = []
+                for f in th_findings_raw:
+                    trufflehog_findings.append(HybridFinding(
+                        finding_id=f"trufflehog-{f.get('detector_type', 'unknown')}-{len(trufflehog_findings)}",
+                        source_tool="trufflehog",
+                        severity="critical" if f.get("verified") else "high",
+                        category="secrets",
+                        title=f"Secret detected: {f.get('detector_type', 'Unknown')}",
+                        description=f"TruffleHog detected a {'verified' if f.get('verified') else 'potential'} {f.get('detector_name', 'secret')} in {f.get('file_path', 'unknown')}",
+                        file_path=f.get("file_path", ""),
+                        line_number=f.get("line"),
+                    ))
+                all_findings.extend(trufflehog_findings)
+                logger.info(f"   ✅ TruffleHog: {len(trufflehog_findings)} secrets detected")
+            except Exception as e:
+                logger.error(f"   ❌ TruffleHog scan failed: {e}")
                 logger.info("   💡 Continuing with other scanners...")
 
         # Run Trivy

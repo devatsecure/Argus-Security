@@ -62,18 +62,19 @@ def main():
     parser.add_argument("--enable-semgrep", action="store_true", default=True, help="Enable Semgrep SAST")
     parser.add_argument("--enable-trivy", action="store_true", default=True, help="Enable Trivy CVE scanning")
     parser.add_argument("--enable-checkov", action="store_true", default=True, help="Enable Checkov IaC scanning")
+    parser.add_argument("--enable-trufflehog", action="store_true", default=True, help="Enable TruffleHog secret scanning")
     parser.add_argument("--enable-api-security", action="store_true", default=True, help="Enable API Security scanning")
-    parser.add_argument("--enable-dast", action="store_true", default=False, help="Enable DAST scanning")
+    parser.add_argument("--enable-dast", action="store_true", default=True, help="Enable DAST scanning")
     parser.add_argument("--enable-supply-chain", action="store_true", default=True, help="Enable Supply Chain Attack Detection")
-    parser.add_argument("--enable-fuzzing", action="store_true", default=False, help="Enable Intelligent Fuzzing Engine")
+    parser.add_argument("--enable-fuzzing", action="store_true", default=True, help="Enable Intelligent Fuzzing Engine")
     parser.add_argument("--enable-threat-intel", action="store_true", default=True, help="Enable Threat Intelligence Enrichment")
     parser.add_argument("--enable-remediation", action="store_true", default=True, help="Enable Automated Remediation Engine")
-    parser.add_argument("--enable-runtime-security", action="store_true", default=False, help="Enable Container Runtime Security Monitoring")
+    parser.add_argument("--enable-runtime-security", action="store_true", default=True, help="Enable Container Runtime Security Monitoring")
     parser.add_argument("--enable-regression-testing", action="store_true", default=True, help="Enable Security Regression Testing")
     parser.add_argument(
         "--enable-ai-enrichment",
         action="store_true",
-        default=False,
+        default=True,
         help="Enable AI enrichment with Claude/OpenAI",
     )
     parser.add_argument(
@@ -102,8 +103,8 @@ def main():
     parser.add_argument(
         "--enable-collaborative-reasoning",
         action="store_true",
-        default=False,
-        help="Enable collaborative reasoning (multi-agent discussion, adds cost)",
+        default=True,
+        help="Enable collaborative reasoning (multi-agent discussion)",
     )
     parser.add_argument(
         "--enable-disclosure-report",
@@ -139,6 +140,7 @@ def main():
 
     # Read feature flags from environment variables (GitHub Action inputs)
     # These override defaults but are overridden by explicit CLI args
+    enable_trufflehog = get_bool_env("ENABLE_TRUFFLEHOG", args.enable_trufflehog)
     enable_api_security = get_bool_env("ENABLE_API_SECURITY", args.enable_api_security)
     enable_dast = get_bool_env("ENABLE_DAST", args.enable_dast)
     enable_supply_chain = get_bool_env("ENABLE_SUPPLY_CHAIN", args.enable_supply_chain)
@@ -168,6 +170,7 @@ def main():
     # Initialize analyzer
     analyzer = HybridSecurityAnalyzer(
         enable_semgrep=args.enable_semgrep,
+        enable_trufflehog=enable_trufflehog,
         enable_trivy=args.enable_trivy,
         enable_checkov=args.enable_checkov,
         enable_api_security=enable_api_security,
