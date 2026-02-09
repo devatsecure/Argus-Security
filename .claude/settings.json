@@ -1,0 +1,57 @@
+{
+  "enabledPlugins": {
+    "claude-code-setup@claude-plugins-official": true,
+    "code-review@claude-plugins-official": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(ruff *)",
+      "Bash(pytest *)",
+      "Bash(python scripts/run_ai_audit.py *)",
+      "Bash(docker *)",
+      "Bash(mypy *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "ruff check --fix \"$CLAUDE_FILE_PATH\" 2>/dev/null; ruff format \"$CLAUDE_FILE_PATH\" 2>/dev/null; exit 0"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"$CLAUDE_FILE_PATH\" | grep -q '\\.py$' && mypy --ignore-missing-imports \"$CLAUDE_FILE_PATH\" 2>/dev/null; exit 0"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"$CLAUDE_FILE_PATH\" | grep -q 'policy/rego/' && echo 'BLOCK: Policy files are security-critical. Confirm before editing.' && exit 2 || exit 0"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"$CLAUDE_FILE_PATH\" | grep -qE '\\.(env|pem|key)$|credentials|secrets' && echo 'BLOCK: This file may contain secrets. Confirm before editing.' && exit 2 || exit 0"
+          }
+        ]
+      }
+    ]
+  }
+}
