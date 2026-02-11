@@ -63,15 +63,6 @@ except ImportError:
 # Import AST deduplicator for enhanced consensus grouping
 from ast_deduplicator import ASTDeduplicator
 
-# Import sandbox validator
-try:
-    from sandbox_validator import ExploitConfig, ExploitType, SandboxValidator, ValidationResult
-
-    SANDBOX_VALIDATION_AVAILABLE = True
-except ImportError:
-    SANDBOX_VALIDATION_AVAILABLE = False
-    logger.warning("Sandbox validator not available")
-
 # Import deep analysis engine
 try:
     from argus_deep_analysis import DeepAnalysisConfig, DeepAnalysisEngine, DeepAnalysisMode
@@ -168,14 +159,6 @@ try:
     COMPLIANCE_AVAILABLE = True
 except ImportError:
     COMPLIANCE_AVAILABLE = False
-
-# Scanner registry for dynamic discovery and plugins
-try:
-    from scanner_registry import ScannerRegistry  # noqa: E402
-
-    SCANNER_REGISTRY_AVAILABLE = True
-except ImportError:
-    SCANNER_REGISTRY_AVAILABLE = False
 
 # ---------------------------------------------------------------------------
 # Extracted modules — imported here for backward-compatible re-export.

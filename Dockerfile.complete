@@ -24,9 +24,6 @@ RUN wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --
 # Install TruffleHog
 RUN curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh -s -- -b /usr/local/bin
 
-# Install Gitleaks
-RUN wget -qO - https://github.com/gitleaks/gitleaks/releases/download/v8.18.1/gitleaks_8.18.1_linux_x64.tar.gz | tar -xzC /usr/local/bin
-
 # Install unzip (required for Nuclei)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     unzip \
@@ -113,6 +110,9 @@ USER agentuser
 
 # Set entrypoint to hybrid_analyzer.py for complete 6-phase pipeline with all phases
 ENTRYPOINT ["python", "/app/scripts/hybrid_analyzer.py"]
+
+HEALTHCHECK --interval=60s --timeout=10s --start-period=5s --retries=3 \
+    CMD python -c "import sys; sys.path.insert(0,'/app/scripts'); import hybrid_analyzer; print('ok')" || exit 1
 
 # Default: show help
 CMD ["--help"]

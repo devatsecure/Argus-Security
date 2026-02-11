@@ -18,8 +18,8 @@ import sys
 import time
 from pathlib import Path
 
-# Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent))
+# Add scripts directory to path
+sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
 from argus_deep_analysis import (
     DeepAnalysisConfig,

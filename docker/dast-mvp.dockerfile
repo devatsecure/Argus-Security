@@ -18,8 +18,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Nuclei
-RUN go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
-ENV PATH="/root/go/bin:${PATH}"
+RUN go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest && \
+    cp /root/go/bin/nuclei /usr/local/bin/nuclei
 
 # Verify Nuclei installation
 RUN nuclei -version
@@ -49,6 +49,12 @@ RUN mkdir -p /output
 # Set environment variables
 ENV PYTHONPATH="/app"
 ENV PYTHONUNBUFFERED=1
+
+# Create non-root user for security
+RUN groupadd -r dastuser && useradd -r -g dastuser -u 1000 -m dastuser && \
+    chown -R dastuser:dastuser /app /output
+
+USER dastuser
 
 # Default command
 ENTRYPOINT ["python", "/app/scripts/dast_orchestrator.py"]

@@ -73,7 +73,6 @@ def get_default_config() -> Dict[str, Any]:
 
         # -- DAST auth --
         "dast_auth_config_path": "",
-        "dast_enable_totp": True,
 
         # -- Feature toggles --
         "enable_multi_agent": True,
@@ -85,10 +84,8 @@ def get_default_config() -> Dict[str, Any]:
         "enable_heuristics": True,
         "enable_consensus": True,
         "enable_iris": True,
-        "enable_exploit_analysis": True,
         "enable_proof_by_exploitation": False,  # opt-in: LLM-powered PoC generation + sandbox validation
         "max_exploit_attempts": 10,
-        "generate_security_tests": True,
 
         # -- Audit Trail --
         "enable_audit_trail": True,
@@ -156,6 +153,10 @@ def get_default_config() -> Dict[str, Any]:
         "suppression_auto_expire_days": 90,
         "enable_compliance_mapping": True,
         "compliance_frameworks": "",     # comma-separated: nist_800_53,pci_dss_4,owasp_top10_2021,soc2,cis_kubernetes,iso_27001
+
+        # -- Post-Phase-3 quality filter --
+        "enable_quality_filter": True,
+        "quality_filter_min_confidence": 0.30,
     }
 
 # ---------------------------------------------------------------------------
@@ -331,7 +332,7 @@ def flatten_profile(nested: dict) -> Dict[str, Any]:
     # -- top-level scalars --
     for scalar_key in (
         "name", "description", "agent_profile", "secrets_scanners_only",
-        "dast_auth_config_path", "dast_enable_totp",
+        "dast_auth_config_path",
     ):
         if nested.get(scalar_key) is not None:
             flat[scalar_key] = nested[scalar_key]
@@ -383,6 +384,8 @@ _ENV_MAPPINGS: List[tuple] = [
     (("MAX_FILE_SIZE", "INPUT_MAX_FILE_SIZE"),       "max_file_size",        "int"),
     (("MAX_TOKENS", "INPUT_MAX_TOKENS"),            "max_tokens",           "int"),
     (("COST_LIMIT", "INPUT_COST_LIMIT"),            "cost_limit",           "float"),
+    (("FUZZING_DURATION",),                         "fuzzing_duration",     "int"),
+    (("RUNTIME_MONITORING_DURATION",),              "runtime_monitoring_duration", "int"),
 
     # Files
     (("ONLY_CHANGED", "INPUT_ONLY_CHANGED"),        "only_changed",         "bool"),
@@ -409,14 +412,16 @@ _ENV_MAPPINGS: List[tuple] = [
     (("ENABLE_MULTI_AGENT", "INPUT_ENABLE_MULTI_AGENT"), "enable_multi_agent", "bool"),
     (("ENABLE_SPONTANEOUS_DISCOVERY",),             "enable_spontaneous_discovery", "bool"),
     (("ENABLE_COLLABORATIVE_REASONING",),           "enable_collaborative_reasoning", "bool"),
+    (("ENABLE_AI_ENRICHMENT",),                     "enable_ai_enrichment", "bool"),
+    (("ENABLE_IRIS",),                              "enable_iris",          "bool"),
     (("ENABLE_THREAT_MODELING",),                   "enable_threat_modeling", "bool"),
     (("ENABLE_SANDBOX_VALIDATION",),                "enable_sandbox_validation", "bool"),
     (("ENABLE_HEURISTICS",),                        "enable_heuristics",    "bool"),
     (("ENABLE_CONSENSUS",),                         "enable_consensus",     "bool"),
-    (("ENABLE_EXPLOIT_ANALYSIS",),                  "enable_exploit_analysis", "bool"),
     (("ENABLE_PROOF_BY_EXPLOITATION",),             "enable_proof_by_exploitation", "bool"),
     (("MAX_EXPLOIT_ATTEMPTS",),                     "max_exploit_attempts", "int"),
-    (("GENERATE_SECURITY_TESTS",),                  "generate_security_tests", "bool"),
+    (("ENABLE_AUDIT_TRAIL",),                        "enable_audit_trail",   "bool"),
+    (("AUDIT_SAVE_PROMPTS",),                        "audit_save_prompts",   "bool"),
     (("ENABLE_SMART_RETRY",),                       "enable_smart_retry",   "bool"),
     (("RETRY_MAX_ATTEMPTS",),                       "retry_max_attempts",   "int"),
     (("RETRY_BILLING_DELAY",),                      "retry_billing_delay",  "int"),
@@ -448,7 +453,6 @@ _ENV_MAPPINGS: List[tuple] = [
 
     # DAST auth
     (("DAST_AUTH_CONFIG_PATH",),                    "dast_auth_config_path", "str"),
-    (("DAST_ENABLE_TOTP",),                         "dast_enable_totp",     "bool"),
 
     # Vulnerability enrichment & compliance
     (("ENABLE_LICENSE_RISK_SCORING",),              "enable_license_risk_scoring", "bool"),
@@ -554,10 +558,8 @@ _CLI_ATTR_MAP: Dict[str, str] = {
     "enable_heuristics": "enable_heuristics",
     "enable_consensus": "enable_consensus",
     "enable_iris": "enable_iris",
-    "enable_exploit_analysis": "enable_exploit_analysis",
     "enable_proof_by_exploitation": "enable_proof_by_exploitation",
     "max_exploit_attempts": "max_exploit_attempts",
-    "generate_security_tests": "generate_security_tests",
     "enable_smart_retry": "enable_smart_retry",
     "retry_max_attempts": "retry_max_attempts",
     "retry_billing_delay": "retry_billing_delay",
@@ -575,7 +577,6 @@ _CLI_ATTR_MAP: Dict[str, str] = {
     "temporal_namespace": "temporal_namespace",
     "temporal_retry_mode": "temporal_retry_mode",
     "dast_auth_config_path": "dast_auth_config_path",
-    "dast_enable_totp": "dast_enable_totp",
     "enable_license_risk_scoring": "enable_license_risk_scoring",
     "enable_epss_scoring": "enable_epss_scoring",
     "epss_cache_ttl_hours": "epss_cache_ttl_hours",

@@ -13,8 +13,8 @@ import sys
 import json
 from pathlib import Path
 
-# Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent))
+# Add scripts directory to path
+sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
 from run_ai_audit import (
     ContextTracker,
@@ -206,7 +206,7 @@ def test_phase_separation():
     print("=" * 80)
     
     # Read the source file and check for phase markers
-    source_file = Path(__file__).parent / "run_ai_audit.py"
+    source_file = Path(__file__).parent.parent / "scripts" / "run_ai_audit.py"
     with open(source_file, 'r') as f:
         content = f.read()
     

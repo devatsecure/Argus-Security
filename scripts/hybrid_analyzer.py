@@ -137,6 +137,36 @@ try:
 except ImportError:
     _COMPLIANCE_OK = False
 
+try:
+    from advanced_suppression import AdvancedSuppressionManager
+    _SUPPRESSION_OK = True
+except ImportError:
+    _SUPPRESSION_OK = False
+
+try:
+    from license_risk_scorer import LicenseRiskScorer
+    _LICENSE_OK = True
+except ImportError:
+    _LICENSE_OK = False
+
+try:
+    from heuristic_scanner import HeuristicScanner
+    _HEURISTIC_OK = True
+except ImportError:
+    _HEURISTIC_OK = False
+
+try:
+    from phase_gate import PhaseGate
+    _PHASE_GATE_OK = True
+except ImportError:
+    _PHASE_GATE_OK = False
+
+try:
+    from argus_deep_analysis import DeepAnalysisEngine, DeepAnalysisConfig, DeepAnalysisMode
+    _DEEP_ANALYSIS_OK = True
+except ImportError:
+    _DEEP_ANALYSIS_OK = False
+
 
 class HybridSecurityAnalyzer:
     """
@@ -550,6 +580,7 @@ class HybridSecurityAnalyzer:
             analyzer=self,
         )
         phase_timings["phase1_static_analysis"] = p1_duration
+        self._validate_phase("phase1", {"findings": [asdict(f) for f in all_findings], "scanner_health": scanner_health})
 
         # -- PHASE 2: AI Enrichment (+ IRIS, Remediation, Spontaneous) --
         all_findings, p2_timings = run_phase2_enrichment(
@@ -558,6 +589,33 @@ class HybridSecurityAnalyzer:
             analyzer=self,
         )
         phase_timings.update(p2_timings)
+
+        # -- Heuristic pre-scan (Phase 2.6a) --
+        if _HEURISTIC_OK and self.config.get("enable_heuristics", True):
+            try:
+                heuristic_start = time.time()
+                scanner = HeuristicScanner()
+                heuristic_findings = scanner.scan_codebase(target_path)
+                if heuristic_findings:
+                    # Convert to HybridFinding format
+                    for hf in heuristic_findings:
+                        if isinstance(hf, dict):
+                            all_findings.append(HybridFinding(
+                                finding_id=hf.get("finding_id", f"heuristic-{len(all_findings)}"),
+                                source_tool="heuristic",
+                                severity=hf.get("severity", "medium"),
+                                category=hf.get("category", "security"),
+                                title=hf.get("title", "Heuristic finding"),
+                                description=hf.get("description", ""),
+                                file_path=hf.get("file_path", ""),
+                                line_number=hf.get("line_number", 0),
+                            ))
+                    logger.info("Heuristic scanner: %d findings from pattern matching", len(heuristic_findings))
+                logger.info("   Heuristic scan duration: %.1fs", time.time() - heuristic_start)
+            except Exception as e:
+                logger.warning("Heuristic scanning failed (non-fatal): %s", e)
+
+        self._validate_phase("phase2", {"findings": [asdict(f) for f in all_findings]})
 
         # -- PHASE 3: Multi-Agent Persona Review --
         all_findings, p3_duration = run_phase3_review(
@@ -572,8 +630,8 @@ class HybridSecurityAnalyzer:
         # Findings that lack evidence AND have very low multi-agent confidence
         # are noise (e.g. Checkov rules with no description, no line number,
         # and <30% agent confidence).  IRIS-verified findings are always kept.
-        enable_qf = os.environ.get("ENABLE_QUALITY_FILTER", "true").lower() == "true"
-        qf_threshold = float(os.environ.get("QUALITY_FILTER_MIN_CONFIDENCE", "0.30"))
+        enable_qf = self.config.get("enable_quality_filter", True)
+        qf_threshold = float(self.config.get("quality_filter_min_confidence", 0.30))
         if enable_qf and all_findings:
             before = len(all_findings)
             all_findings = [
@@ -584,6 +642,35 @@ class HybridSecurityAnalyzer:
             if filtered:
                 logger.info("   Quality filter: removed %d low-quality finding(s) "
                             "(confidence < %.0f%% with missing evidence)", filtered, qf_threshold * 100)
+
+        self._validate_phase("phase3", {"findings": [asdict(f) for f in all_findings]})
+
+        # -- PHASE 2.7: Deep Analysis (AISLE) --
+        deep_mode = self.config.get("deep_analysis_mode", "off")
+        if _DEEP_ANALYSIS_OK and deep_mode != "off" and all_findings:
+            try:
+                deep_start = time.time()
+                mode_map = {"semantic-only": DeepAnalysisMode.SEMANTIC_ONLY, "conservative": DeepAnalysisMode.CONSERVATIVE, "full": DeepAnalysisMode.FULL}
+                da_config = DeepAnalysisConfig(
+                    mode=mode_map.get(deep_mode, DeepAnalysisMode.CONSERVATIVE),
+                    max_files=self.config.get("deep_analysis_max_files", 50),
+                    timeout_seconds=self.config.get("deep_analysis_timeout", 300),
+                    cost_ceiling=self.config.get("deep_analysis_cost_ceiling", 5.0),
+                )
+                engine = DeepAnalysisEngine(config=da_config)
+                finding_dicts = [asdict(f) for f in all_findings]
+                deep_results = engine.analyze(finding_dicts, target_path=target_path)
+                if deep_results:
+                    # Merge deep analysis results back into findings
+                    for f in all_findings:
+                        fid = f.finding_id
+                        if fid in deep_results:
+                            f.description = (f.description or "") + "\n\n**Deep Analysis:** " + deep_results[fid].get("analysis", "")
+                deep_duration = time.time() - deep_start
+                phase_timings["phase2_7_deep_analysis"] = deep_duration
+                logger.info("   Phase 2.7 Deep Analysis: %.1fs", deep_duration)
+            except Exception as e:
+                logger.warning("Deep Analysis failed (non-fatal): %s", e)
 
         # -- PHASE 4: Sandbox Validation --
         all_findings, p4_duration = run_phase4_sandbox(
@@ -632,10 +719,10 @@ class HybridSecurityAnalyzer:
         if not findings:
             return findings
 
-        enable_epss = os.environ.get("ENABLE_EPSS_SCORING", "true").lower() == "true"
-        enable_fix = os.environ.get("ENABLE_FIX_VERSION_TRACKING", "true").lower() == "true"
-        enable_vex = os.environ.get("ENABLE_VEX", "true").lower() == "true"
-        enable_dedup = os.environ.get("ENABLE_VULN_DEDUPLICATION", "true").lower() == "true"
+        enable_epss = self.config.get("enable_epss_scoring", True)
+        enable_fix = self.config.get("enable_fix_version_tracking", True)
+        enable_vex = self.config.get("enable_vex", True)
+        enable_dedup = self.config.get("enable_vuln_deduplication", True)
 
         # Convert dataclasses to dicts for enrichment, then write fields back
         finding_dicts = [asdict(f) for f in findings]
@@ -650,6 +737,15 @@ class HybridSecurityAnalyzer:
                 logger.info("EPSS: enriched findings with exploit probability scores")
             except Exception as e:
                 logger.warning("EPSS scoring failed (non-fatal): %s", e)
+
+        # License risk scoring
+        if _LICENSE_OK and self.config.get("enable_license_risk_scoring", True):
+            try:
+                license_scorer = LicenseRiskScorer()
+                finding_dicts = license_scorer.score_findings(finding_dicts, target_path=target_path)
+                logger.info("License risk: findings scored for license compliance")
+            except Exception as e:
+                logger.warning("License risk scoring failed (non-fatal): %s", e)
 
         # Fix version tracking
         if _FIX_OK and enable_fix:
@@ -684,13 +780,39 @@ class HybridSecurityAnalyzer:
         # Deduplication
         if _DEDUP_OK and enable_dedup:
             try:
-                strategy = os.environ.get("DEDUPLICATION_STRATEGY", "auto")
+                strategy = self.config.get("deduplication_strategy", "auto")
                 deduplicator = VulnDeduplicator(strategy=strategy)
                 result = deduplicator.deduplicate(finding_dicts)
                 finding_dicts = result.kept_findings
                 logger.info("Dedup: %d findings after deduplication", len(finding_dicts))
             except Exception as e:
                 logger.warning("Deduplication failed (non-fatal): %s", e)
+
+        # Compliance mapping
+        if _COMPLIANCE_OK and self.config.get("enable_compliance_mapping", True):
+            try:
+                mapper = ComplianceMapper()
+                frameworks_str = self.config.get("compliance_frameworks", "")
+                frameworks = [f.strip() for f in frameworks_str.split(",") if f.strip()] if frameworks_str else None
+                finding_dicts = mapper.map_findings(finding_dicts, frameworks=frameworks)
+                logger.info("Compliance mapping: findings mapped to frameworks")
+            except Exception as e:
+                logger.warning("Compliance mapping failed (non-fatal): %s", e)
+
+        # Advanced suppression (.argus-ignore.yml)
+        if _SUPPRESSION_OK and self.config.get("enable_advanced_suppression", True):
+            try:
+                suppressor = AdvancedSuppressionManager(
+                    config_dir=str(Path(target_path)),
+                    auto_expire_days=self.config.get("suppression_auto_expire_days", 90),
+                )
+                before_count = len(finding_dicts)
+                finding_dicts = suppressor.filter_findings(finding_dicts)
+                suppressed = before_count - len(finding_dicts)
+                if suppressed:
+                    logger.info("Suppression: %d findings suppressed via .argus-ignore.yml", suppressed)
+            except Exception as e:
+                logger.warning("Advanced suppression failed (non-fatal): %s", e)
 
         # Reconstruct HybridFinding objects from enriched dicts
         enriched = []
@@ -729,6 +851,20 @@ class HybridSecurityAnalyzer:
         if has_description:
             return False
         return finding.confidence < min_confidence
+
+    # ------------------------------------------------------------------
+    # Phase gating helper
+    # ------------------------------------------------------------------
+
+    def _validate_phase(self, phase_name: str, phase_output: dict) -> None:
+        """Validate phase output using PhaseGate if enabled."""
+        if not _PHASE_GATE_OK or not self.config.get("enable_phase_gating", True):
+            return
+        try:
+            gate = PhaseGate(strict=self.config.get("phase_gate_strict", False))
+            gate.validate(phase_name, phase_output)
+        except Exception as e:
+            logger.warning("Phase gate validation failed for %s (non-fatal): %s", phase_name, e)
 
     # ------------------------------------------------------------------
     # Delegations to phase modules (kept for backward compat with callers
