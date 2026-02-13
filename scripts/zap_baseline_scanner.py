@@ -532,9 +532,8 @@ class ZAPBaselineScanner:
     # ------------------------------------------------------------------
 
     def _generate_finding_id(self, prefix: str, file_path: str, line: int) -> str:
-        """Generate a deterministic finding ID."""
-        self._finding_counter += 1
-        hash_input = f"{prefix}:{file_path}:{line}:{self._finding_counter}"
+        """Generate a deterministic finding ID from content, not discovery order."""
+        hash_input = f"{prefix}:{file_path}:{line}"
         short_hash = hashlib.sha256(hash_input.encode()).hexdigest()[:8]
         return f"ZAP-{prefix}-{short_hash}"
 

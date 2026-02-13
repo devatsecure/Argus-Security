@@ -566,7 +566,8 @@ class NucleiTemplateScanner:
                 raw_cwe = classification.get("cwe-id", None)
                 cwe_id = (raw_cwe[0] if raw_cwe else None) if isinstance(raw_cwe, list) else raw_cwe
 
-                finding_id = _make_finding_id(template_id, matched_at, hash(stripped) & 0xFFFFFFFF)
+                content_hash = int(hashlib.md5(stripped.encode()).hexdigest()[:8], 16)
+                finding_id = _make_finding_id(template_id, matched_at, content_hash)
 
                 finding: dict = {
                     "finding_id": f"nuclei-live-{finding_id}",

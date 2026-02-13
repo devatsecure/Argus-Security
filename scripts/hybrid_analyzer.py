@@ -575,13 +575,16 @@ class HybridSecurityAnalyzer:
             and not self.enable_runtime_security
             and not self.enable_regression_testing
             and not self.enable_ai_enrichment
+            and not self.enable_nuclei_templates
+            and not self.enable_zap_baseline
         ):
             raise ValueError(
                 "❌ ERROR: At least one tool must be enabled!\n"
                 "   Enable: --enable-semgrep, --enable-trivy, --enable-checkov, "
                 "--enable-api-security, --enable-dast, --enable-supply-chain, "
                 "--enable-fuzzing, --enable-threat-intel, --enable-remediation, "
-                "--enable-runtime-security, --enable-regression-testing, or --enable-ai-enrichment"
+                "--enable-runtime-security, --enable-regression-testing, "
+                "--enable-nuclei-templates, --enable-zap-baseline, or --enable-ai-enrichment"
             )
 
     def analyze(
@@ -1089,6 +1092,8 @@ class HybridSecurityAnalyzer:
                 "enable_runtime_security": self.enable_runtime_security,
                 "enable_regression_testing": self.enable_regression_testing,
                 "enable_ai_enrichment": self.enable_ai_enrichment,
+                "enable_nuclei_templates": self.enable_nuclei_templates,
+                "enable_zap_baseline": self.enable_zap_baseline,
                 "ai_client": self.ai_client,
                 "enable_argus": self.enable_argus,
                 "enable_sandbox": self.enable_sandbox,

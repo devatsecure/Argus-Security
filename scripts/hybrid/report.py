@@ -62,6 +62,10 @@ def get_enabled_tools(flags: dict[str, Any]) -> list[str]:
         ai_client = flags.get("ai_client")
         provider = getattr(ai_client, "provider", "AI")
         tools.append(f"AI-Enrichment ({provider})")
+    if flags.get("enable_nuclei_templates"):
+        tools.append("Nuclei-Templates")
+    if flags.get("enable_zap_baseline"):
+        tools.append("ZAP-Baseline")
     if flags.get("enable_argus"):
         tools.append("Argus")
     if flags.get("enable_sandbox"):
@@ -103,11 +107,15 @@ def save_results(result: HybridScanResult, output_dir: str, target_path: str) ->
 
         # Print validation summary
         if not validation_report.overall_passed:
-            logger.warning(f"⚠️  QUALITY CHECK FAILED: {validation_report.failed_findings}/{validation_report.total_findings} findings below quality threshold")
+            logger.warning(
+                f"⚠️  QUALITY CHECK FAILED: {validation_report.failed_findings}/{validation_report.total_findings} findings below quality threshold"
+            )
             logger.warning(f"⚠️  See {validation_output} for details")
             logger.warning("⚠️  DO NOT submit this report to external repositories without fixing quality issues!")
         else:
-            logger.info(f"✅ Quality validation PASSED: All {validation_report.passed_findings} findings meet quality standards")
+            logger.info(
+                f"✅ Quality validation PASSED: All {validation_report.passed_findings} findings meet quality standards"
+            )
     except ImportError:
         logger.warning("⚠️  report_quality_validator not available - skipping quality check")
     except Exception as e:
