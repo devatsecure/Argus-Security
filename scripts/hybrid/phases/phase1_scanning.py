@@ -7,7 +7,7 @@ their findings into a unified list of ``HybridFinding`` objects.
 Scanners covered:
     Semgrep, TruffleHog, Trivy, Checkov, API-Security, DAST,
     Supply-Chain, Fuzzing, Threat-Intel, Runtime-Security,
-    Regression-Testing.
+    Regression-Testing, Nuclei-Templates, ZAP-Baseline.
 
 The function is independent of the ``HybridSecurityAnalyzer`` class so that
 it can be tested and invoked in isolation.
@@ -18,6 +18,7 @@ import time
 from typing import Any
 
 from hybrid.models import HybridFinding
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -56,16 +57,50 @@ def run_phase1_scanning(
     # scanners that are skipped get marked "disabled" without extra logic.
     _scanner_flags: list[tuple[str, bool, bool]] = [
         ("Semgrep", getattr(analyzer, "enable_semgrep", False), getattr(analyzer, "semgrep_scanner", None) is not None),
-        ("TruffleHog", getattr(analyzer, "enable_trufflehog", False), getattr(analyzer, "trufflehog_scanner", None) is not None),
+        (
+            "TruffleHog",
+            getattr(analyzer, "enable_trufflehog", False),
+            getattr(analyzer, "trufflehog_scanner", None) is not None,
+        ),
         ("Trivy", getattr(analyzer, "enable_trivy", False), getattr(analyzer, "trivy_scanner", None) is not None),
         ("Checkov", getattr(analyzer, "enable_checkov", False), getattr(analyzer, "checkov_scanner", None) is not None),
-        ("API-Security", getattr(analyzer, "enable_api_security", False), getattr(analyzer, "api_security_scanner", None) is not None),
+        (
+            "API-Security",
+            getattr(analyzer, "enable_api_security", False),
+            getattr(analyzer, "api_security_scanner", None) is not None,
+        ),
         ("DAST", getattr(analyzer, "enable_dast", False), getattr(analyzer, "dast_scanner", None) is not None),
-        ("Supply-Chain", getattr(analyzer, "enable_supply_chain", False), getattr(analyzer, "supply_chain_scanner", None) is not None),
+        (
+            "Supply-Chain",
+            getattr(analyzer, "enable_supply_chain", False),
+            getattr(analyzer, "supply_chain_scanner", None) is not None,
+        ),
         ("Fuzzing", getattr(analyzer, "enable_fuzzing", False), getattr(analyzer, "fuzzing_scanner", None) is not None),
-        ("Threat-Intel", getattr(analyzer, "enable_threat_intel", False), getattr(analyzer, "threat_intel_enricher", None) is not None),
-        ("Runtime-Security", getattr(analyzer, "enable_runtime_security", False), getattr(analyzer, "runtime_security_monitor", None) is not None),
-        ("Regression-Testing", getattr(analyzer, "enable_regression_testing", False), getattr(analyzer, "regression_tester", None) is not None),
+        (
+            "Threat-Intel",
+            getattr(analyzer, "enable_threat_intel", False),
+            getattr(analyzer, "threat_intel_enricher", None) is not None,
+        ),
+        (
+            "Runtime-Security",
+            getattr(analyzer, "enable_runtime_security", False),
+            getattr(analyzer, "runtime_security_monitor", None) is not None,
+        ),
+        (
+            "Regression-Testing",
+            getattr(analyzer, "enable_regression_testing", False),
+            getattr(analyzer, "regression_tester", None) is not None,
+        ),
+        (
+            "Nuclei-Templates",
+            getattr(analyzer, "enable_nuclei_templates", False),
+            getattr(analyzer, "nuclei_template_scanner", None) is not None,
+        ),
+        (
+            "ZAP-Baseline",
+            getattr(analyzer, "enable_zap_baseline", False),
+            getattr(analyzer, "zap_baseline_scanner", None) is not None,
+        ),
     ]
 
     scanner_health: dict[str, str] = {}
@@ -94,19 +129,21 @@ def run_phase1_scanning(
             th_findings_raw = th_result.get("findings", [])
             trufflehog_findings: list[HybridFinding] = []
             for f in th_findings_raw:
-                trufflehog_findings.append(HybridFinding(
-                    finding_id=f"trufflehog-{f.get('detector_type', 'unknown')}-{len(trufflehog_findings)}",
-                    source_tool="trufflehog",
-                    severity="critical" if f.get("verified") else "high",
-                    category="secrets",
-                    title=f"Secret detected: {f.get('detector_type', 'Unknown')}",
-                    description=(
-                        f"TruffleHog detected a {'verified' if f.get('verified') else 'potential'} "
-                        f"{f.get('detector_name', 'secret')} in {f.get('file_path', 'unknown')}"
-                    ),
-                    file_path=f.get("file_path", ""),
-                    line_number=f.get("line"),
-                ))
+                trufflehog_findings.append(
+                    HybridFinding(
+                        finding_id=f"trufflehog-{f.get('detector_type', 'unknown')}-{len(trufflehog_findings)}",
+                        source_tool="trufflehog",
+                        severity="critical" if f.get("verified") else "high",
+                        category="secrets",
+                        title=f"Secret detected: {f.get('detector_type', 'Unknown')}",
+                        description=(
+                            f"TruffleHog detected a {'verified' if f.get('verified') else 'potential'} "
+                            f"{f.get('detector_name', 'secret')} in {f.get('file_path', 'unknown')}"
+                        ),
+                        file_path=f.get("file_path", ""),
+                        line_number=f.get("line"),
+                    )
+                )
             all_findings.extend(trufflehog_findings)
             logger.info("   TruffleHog: %d secrets detected", len(trufflehog_findings))
             scanner_health["TruffleHog"] = f"ran({len(trufflehog_findings)})" if trufflehog_findings else "clean"
@@ -229,11 +266,69 @@ def run_phase1_scanning(
             regression_findings = analyzer._run_regression_testing(target_path, all_findings)
             all_findings.extend(regression_findings)
             logger.info("   Regression Testing: %d regressions detected", len(regression_findings))
-            scanner_health["Regression-Testing"] = f"ran({len(regression_findings)})" if regression_findings else "clean"
+            scanner_health["Regression-Testing"] = (
+                f"ran({len(regression_findings)})" if regression_findings else "clean"
+            )
         except Exception as e:
             logger.error("   Regression testing failed: %s", e)
             logger.info("   Continuing with other scanners...")
             scanner_health["Regression-Testing"] = "failed"
+
+    # --- Nuclei Template Scanner (source-aware DAST) ---
+    if getattr(analyzer, "enable_nuclei_templates", False) and getattr(analyzer, "nuclei_template_scanner", None):
+        try:
+            logger.info("   Running Nuclei template scanner (source-aware DAST)...")
+            nuclei_findings_raw = analyzer.nuclei_template_scanner.scan_source(str(target_path))
+            nuclei_findings: list[HybridFinding] = []
+            for f in nuclei_findings_raw:
+                nuclei_findings.append(
+                    HybridFinding(
+                        finding_id=f.get("finding_id", f"nuclei-tmpl-{len(nuclei_findings)}"),
+                        source_tool=f.get("source_tool", "nuclei-template"),
+                        severity=f.get("severity", "medium"),
+                        category=f.get("category", "dast"),
+                        title=f.get("title", "Nuclei template finding"),
+                        description=f.get("description", ""),
+                        file_path=f.get("file_path", ""),
+                        line_number=f.get("line_number", 0),
+                        cwe_id=f.get("cwe_id"),
+                    )
+                )
+            all_findings.extend(nuclei_findings)
+            logger.info("   Nuclei templates: %d source-aware DAST findings", len(nuclei_findings))
+            scanner_health["Nuclei-Templates"] = f"ran({len(nuclei_findings)})" if nuclei_findings else "clean"
+        except Exception as e:
+            logger.error("   Nuclei template scan failed: %s", e)
+            logger.info("   Continuing with other scanners...")
+            scanner_health["Nuclei-Templates"] = "failed"
+
+    # --- ZAP Baseline Scanner (passive security checks) ---
+    if getattr(analyzer, "enable_zap_baseline", False) and getattr(analyzer, "zap_baseline_scanner", None):
+        try:
+            logger.info("   Running ZAP baseline scanner (passive checks)...")
+            zap_findings_raw = analyzer.zap_baseline_scanner.scan_source(str(target_path))
+            zap_findings: list[HybridFinding] = []
+            for f in zap_findings_raw:
+                zap_findings.append(
+                    HybridFinding(
+                        finding_id=f.get("finding_id", f"zap-bl-{len(zap_findings)}"),
+                        source_tool=f.get("source_tool", "zap-baseline"),
+                        severity=f.get("severity", "low"),
+                        category=f.get("category", "configuration"),
+                        title=f.get("title", "ZAP baseline finding"),
+                        description=f.get("description", ""),
+                        file_path=f.get("file_path", ""),
+                        line_number=f.get("line_number", 0),
+                        cwe_id=f.get("cwe_id"),
+                    )
+                )
+            all_findings.extend(zap_findings)
+            logger.info("   ZAP baseline: %d passive findings", len(zap_findings))
+            scanner_health["ZAP-Baseline"] = f"ran({len(zap_findings)})" if zap_findings else "clean"
+        except Exception as e:
+            logger.error("   ZAP baseline scan failed: %s", e)
+            logger.info("   Continuing with other scanners...")
+            scanner_health["ZAP-Baseline"] = "failed"
 
     duration = time.time() - phase1_start
     logger.info("   Phase 1 duration: %.1fs", duration)
