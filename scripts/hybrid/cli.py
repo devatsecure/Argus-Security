@@ -132,7 +132,7 @@ def main():
         default=None,
         help="Enable IRIS semantic analysis (research-proven 2x improvement, arXiv 2405.17238)",
     )
-    parser.add_argument("--ai-provider", help="AI provider (anthropic, openai, ollama)")
+    parser.add_argument("--ai-provider", help="AI provider (anthropic, openai, ollama, claude-cli)")
     parser.add_argument("--dast-target-url", help="Target URL for DAST scanning (required if --enable-dast)")
     parser.add_argument("--fuzzing-duration", type=int, default=300, help="Fuzzing duration in seconds (default: 300)")
     parser.add_argument(

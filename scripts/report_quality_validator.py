@@ -225,7 +225,11 @@ class ReportQualityValidator:
             ))
 
         # Check 2: Line number validation
+        # Dependency scanners (trivy, supply-chain) report CVEs against lock files
+        # which don't have meaningful line numbers — exempt them from this check.
         line_number = finding.get("line_number", finding.get("line", None))
+        source_tool = finding.get("source_tool", "").lower()
+        is_dependency_finding = source_tool in ("trivy", "supply-chain") or finding.get("cve_id")
 
         if line_number is not None and isinstance(line_number, int) and line_number > 0:
             report.add_check(QualityCheck(
@@ -234,6 +238,14 @@ class ReportQualityValidator:
                 points_awarded=self.POINTS_LINE_NUMBER,
                 max_points=self.POINTS_LINE_NUMBER,
                 message="Line number is present and valid"
+            ))
+        elif is_dependency_finding:
+            report.add_check(QualityCheck(
+                name="line_number",
+                passed=True,
+                points_awarded=self.POINTS_LINE_NUMBER,
+                max_points=self.POINTS_LINE_NUMBER,
+                message="Line number exempt (dependency/CVE finding)"
             ))
         else:
             report.add_check(QualityCheck(

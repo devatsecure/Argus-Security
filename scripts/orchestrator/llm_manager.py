@@ -19,6 +19,7 @@ Features:
 
 import logging
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -75,6 +76,7 @@ class LLMManager:
         "anthropic": "claude-sonnet-4-5-20250929",
         "openai": "gpt-4-turbo-preview",
         "ollama": "llama3.2:3b",
+        "claude-cli": "opus",
     }
 
     # Model fallback chain for Anthropic
@@ -91,6 +93,7 @@ class LLMManager:
         "anthropic": {"input": 3.0, "output": 15.0},  # Claude Sonnet 4.5: $3/1M input, $15/1M output
         "openai": {"input": 10.0, "output": 30.0},  # GPT-4: $10/1M input, $30/1M output
         "ollama": {"input": 0.0, "output": 0.0},  # Local inference: free
+        "claude-cli": {"input": 0.0, "output": 0.0},  # Claude Code subscription: included
     }
 
     def __init__(self, config: dict = None):
@@ -192,9 +195,11 @@ class LLMManager:
             return "openai"
         elif self.config.get("ollama_endpoint"):
             return "ollama"
+        elif self.config.get("claude_cli") or shutil.which("claude"):
+            return "claude-cli"
         else:
             logger.warning("No AI provider configured")
-            logger.info("Set one of: ANTHROPIC_API_KEY, OPENAI_API_KEY, or OLLAMA_ENDPOINT")
+            logger.info("Set one of: ANTHROPIC_API_KEY, OPENAI_API_KEY, OLLAMA_ENDPOINT, or use --ai-provider claude-cli")
             return None
 
     def initialize(self, provider: str = None) -> bool:
@@ -282,6 +287,15 @@ class LLMManager:
             except ImportError:
                 logger.error("openai package not installed. Run: pip install openai")
                 raise
+
+        elif provider == "claude-cli":
+            import shutil
+
+            claude_bin = shutil.which("claude")
+            if not claude_bin:
+                raise ValueError("Claude CLI (claude) not found in PATH. Install from https://claude.ai/download")
+            logger.info("Using Claude CLI (subscription-based, no per-token cost)")
+            return claude_bin, "claude-cli"
 
         else:
             # Sanitize provider name before logging
@@ -546,6 +560,43 @@ class LLMManager:
                 response_text = response.choices[0].message.content
                 input_tokens = response.usage.prompt_tokens
                 output_tokens = response.usage.completion_tokens
+
+            elif self.provider == "claude-cli":
+                import json
+                import subprocess
+
+                env = {**__import__("os").environ}
+                env.pop("CLAUDECODE", None)  # Allow nesting
+
+                result = subprocess.run(
+                    [
+                        self.client,  # path to claude binary
+                        "--print",
+                        "--model", self.model,
+                        "--output-format", "json",
+                        "--no-session-persistence",
+                        "--dangerously-skip-permissions",
+                        "--max-turns", "1",
+                    ],
+                    input=full_prompt,
+                    capture_output=True,
+                    text=True,
+                    timeout=300,
+                    env=env,
+                )
+
+                if result.returncode != 0:
+                    raise LLMException(f"Claude CLI failed (exit {result.returncode}): {result.stderr[:500]}")
+
+                try:
+                    output = json.loads(result.stdout)
+                    response_text = output.get("result", result.stdout)
+                    input_tokens = output.get("usage", {}).get("input_tokens", len(full_prompt) // 4)
+                    output_tokens = output.get("usage", {}).get("output_tokens", len(response_text) // 4)
+                except json.JSONDecodeError:
+                    response_text = result.stdout.strip()
+                    input_tokens = len(full_prompt) // 4
+                    output_tokens = len(response_text) // 4
 
             else:
                 raise ValueError(f"Unknown provider: {self.provider}")

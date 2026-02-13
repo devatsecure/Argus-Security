@@ -12,6 +12,7 @@ Features:
 
 import json
 import logging
+import shutil
 import subprocess
 from dataclasses import asdict, dataclass
 from datetime import datetime
@@ -62,14 +63,28 @@ class SemgrepScanner:
             ["*/test/*", "*/tests/*", "*/.git/*", "*/node_modules/*", "*/.venv/*", "*/venv/*", "*/build/*", "*/dist/*"],
         )
 
-        # Check if semgrep is installed
-        if not self._check_semgrep_installed():
+        # Resolve semgrep binary path (shutil.which + common fallbacks)
+        self._semgrep_bin = self._resolve_semgrep_path()
+        if not self._semgrep_bin:
             logger.warning("Semgrep not installed. Install with: pip install semgrep")
+
+    def _resolve_semgrep_path(self) -> Optional[str]:
+        """Resolve the full path to the semgrep binary."""
+        bin_path = shutil.which("semgrep")
+        if bin_path:
+            return bin_path
+        # Fallback: common install locations not always on PATH in subprocesses
+        for candidate in ["/opt/homebrew/bin/semgrep", "/usr/local/bin/semgrep", "/usr/bin/semgrep"]:
+            if Path(candidate).is_file():
+                return candidate
+        return None
 
     def _check_semgrep_installed(self) -> bool:
         """Check if semgrep is available"""
+        if not self._semgrep_bin:
+            return False
         try:
-            result = subprocess.run(["semgrep", "--version"], capture_output=True, text=True, timeout=5)
+            result = subprocess.run([self._semgrep_bin, "--version"], capture_output=True, text=True, timeout=5)
             return result.returncode == 0
         except (subprocess.SubprocessError, FileNotFoundError):
             return False
@@ -98,7 +113,7 @@ class SemgrepScanner:
 
         # Build semgrep command
         cmd = [
-            "semgrep",
+            self._semgrep_bin,
             "--config",
             self.semgrep_rules if self.semgrep_rules != "auto" else "p/security-audit",
             "--json",
