@@ -77,6 +77,7 @@ if str(SCRIPT_DIR) not in sys.path:
 # Import project context detector for context-aware AI triage
 try:
     from project_context_detector import detect_project_context, ProjectContext
+
     PROJECT_CONTEXT_AVAILABLE = True
 except ImportError:
     PROJECT_CONTEXT_AVAILABLE = False
@@ -85,6 +86,7 @@ except ImportError:
 # Import IRIS analyzer for semantic vulnerability analysis
 try:
     from iris_analyzer import IRISAnalyzer, IRISFinding, load_code_context
+
     IRIS_AVAILABLE = True
 except ImportError:
     IRIS_AVAILABLE = False
@@ -102,6 +104,7 @@ from hybrid.models import HybridFinding, HybridScanResult  # noqa: E402
 # Scanner registry for plugin discovery and metadata
 try:
     from scanner_registry import ScannerRegistry
+
     _REGISTRY_OK = True
 except ImportError:
     _REGISTRY_OK = False
@@ -109,60 +112,84 @@ except ImportError:
 # Vulnerability enrichment modules (v2.0)
 try:
     from epss_scorer import EPSSScorer
+
     _EPSS_OK = True
 except ImportError:
     _EPSS_OK = False
 
 try:
     from fix_version_tracker import FixVersionTracker
+
     _FIX_OK = True
 except ImportError:
     _FIX_OK = False
 
 try:
     from vex_processor import VEXProcessor
+
     _VEX_OK = True
 except ImportError:
     _VEX_OK = False
 
 try:
     from vuln_deduplicator import VulnDeduplicator
+
     _DEDUP_OK = True
 except ImportError:
     _DEDUP_OK = False
 
 try:
     from compliance_mapper import ComplianceMapper
+
     _COMPLIANCE_OK = True
 except ImportError:
     _COMPLIANCE_OK = False
 
 try:
     from advanced_suppression import AdvancedSuppressionManager
+
     _SUPPRESSION_OK = True
 except ImportError:
     _SUPPRESSION_OK = False
 
 try:
     from license_risk_scorer import LicenseRiskScorer
+
     _LICENSE_OK = True
 except ImportError:
     _LICENSE_OK = False
 
 try:
     from heuristic_scanner import HeuristicScanner
+
     _HEURISTIC_OK = True
 except ImportError:
     _HEURISTIC_OK = False
 
 try:
+    from nuclei_template_scanner import NucleiTemplateScanner
+
+    _NUCLEI_TEMPLATE_OK = True
+except ImportError:
+    _NUCLEI_TEMPLATE_OK = False
+
+try:
+    from zap_baseline_scanner import ZAPBaselineScanner
+
+    _ZAP_BASELINE_OK = True
+except ImportError:
+    _ZAP_BASELINE_OK = False
+
+try:
     from phase_gate import PhaseGate
+
     _PHASE_GATE_OK = True
 except ImportError:
     _PHASE_GATE_OK = False
 
 try:
     from argus_deep_analysis import DeepAnalysisEngine, DeepAnalysisConfig, DeepAnalysisMode
+
     _DEEP_ANALYSIS_OK = True
 except ImportError:
     _DEEP_ANALYSIS_OK = False
@@ -197,6 +224,8 @@ class HybridSecurityAnalyzer:
         enable_collaborative_reasoning: bool = True,  # Multi-agent discussion
         enable_trufflehog: bool = True,  # TruffleHog verified secret detection
         enable_iris: bool = True,  # IRIS-style semantic analysis (arXiv 2405.17238)
+        enable_nuclei_templates: bool = True,  # Nuclei source-aware DAST analysis
+        enable_zap_baseline: bool = True,  # ZAP passive security checks
         ai_provider: Optional[str] = None,
         dast_target_url: Optional[str] = None,
         fuzzing_duration: int = 300,  # 5 minutes default
@@ -250,6 +279,8 @@ class HybridSecurityAnalyzer:
         self.enable_collaborative_reasoning = enable_collaborative_reasoning
         self.enable_trufflehog = enable_trufflehog
         self.enable_iris = enable_iris
+        self.enable_nuclei_templates = enable_nuclei_templates
+        self.enable_zap_baseline = enable_zap_baseline
         self.ai_provider = ai_provider
         self.dast_target_url = dast_target_url
         self.fuzzing_duration = fuzzing_duration
@@ -269,6 +300,8 @@ class HybridSecurityAnalyzer:
         self.runtime_security_monitor = None
         self.regression_tester = None
         self.trufflehog_scanner = None
+        self.nuclei_template_scanner = None
+        self.zap_baseline_scanner = None
         self.sandbox_validator = None
         self.ai_client = None
 
@@ -304,6 +337,7 @@ class HybridSecurityAnalyzer:
             try:
                 # Import agent persona functions (no class needed, just functions)
                 import agent_personas
+
                 self.agent_personas = agent_personas  # Module reference for calling functions
                 logger.info("✅ Multi-agent personas initialized (5 specialized agents)")
             except (ImportError, Exception) as e:
@@ -314,6 +348,7 @@ class HybridSecurityAnalyzer:
         if self.enable_spontaneous_discovery and self.enable_ai_enrichment and self.ai_client:
             try:
                 from spontaneous_discovery import SpontaneousDiscovery
+
                 self.spontaneous_discovery = SpontaneousDiscovery(llm_manager=self.ai_client)
                 logger.info("✅ Spontaneous discovery initialized")
             except (ImportError, Exception) as e:
@@ -345,6 +380,7 @@ class HybridSecurityAnalyzer:
                     ComplianceAgent,
                     ContextExpertAgent,
                 )
+
                 agents = [
                     SecretHunterAgent(self.ai_client),
                     FalsePositiveFilterAgent(self.ai_client),
@@ -379,13 +415,33 @@ class HybridSecurityAnalyzer:
                 logger.warning(f"⚠️  TruffleHog scanner not available: {e}")
                 self.enable_trufflehog = False
 
+        if self.enable_nuclei_templates and _NUCLEI_TEMPLATE_OK:
+            try:
+                self.nuclei_template_scanner = NucleiTemplateScanner()
+                logger.info("✅ Nuclei template scanner initialized (source-aware DAST)")
+            except Exception as e:
+                logger.warning(f"⚠️  Nuclei template scanner not available: {e}")
+                self.enable_nuclei_templates = False
+        elif self.enable_nuclei_templates and not _NUCLEI_TEMPLATE_OK:
+            logger.warning("⚠️  Nuclei template scanner module not available")
+            self.enable_nuclei_templates = False
+
+        if self.enable_zap_baseline and _ZAP_BASELINE_OK:
+            try:
+                self.zap_baseline_scanner = ZAPBaselineScanner()
+                logger.info("✅ ZAP baseline scanner initialized (passive checks)")
+            except Exception as e:
+                logger.warning(f"⚠️  ZAP baseline scanner not available: {e}")
+                self.enable_zap_baseline = False
+        elif self.enable_zap_baseline and not _ZAP_BASELINE_OK:
+            logger.warning("⚠️  ZAP baseline scanner module not available")
+            self.enable_zap_baseline = False
+
         if self.enable_trivy:
             try:
                 from trivy_scanner import TrivyScanner
 
-                self.trivy_scanner = TrivyScanner(
-                    foundation_sec_enabled=False, foundation_sec_model=None
-                )
+                self.trivy_scanner = TrivyScanner(foundation_sec_enabled=False, foundation_sec_model=None)
                 logger.info("✅ Trivy scanner initialized")
             except (ImportError, RuntimeError) as e:
                 logger.warning(f"⚠️  Trivy scanner not available: {e}")
@@ -416,8 +472,7 @@ class HybridSecurityAnalyzer:
                 from dast_scanner import DASTScanner
 
                 self.dast_scanner = DASTScanner(
-                    target_url=self.dast_target_url,
-                    openapi_spec=self.config.get("openapi_spec")
+                    target_url=self.dast_target_url, openapi_spec=self.config.get("openapi_spec")
                 )
                 logger.info("✅ DAST scanner initialized")
             except (ImportError, RuntimeError) as e:
@@ -500,20 +555,27 @@ class HybridSecurityAnalyzer:
         if _REGISTRY_OK:
             try:
                 plugin_dir = self.config.get("plugin_dir")
-                self.scanner_registry = ScannerRegistry(
-                    plugin_dir=Path(plugin_dir) if plugin_dir else None
-                )
+                self.scanner_registry = ScannerRegistry(plugin_dir=Path(plugin_dir) if plugin_dir else None)
                 builtin = self.scanner_registry.list_scanners()
                 logger.info("Scanner registry: %d scanners discovered", len(builtin))
             except Exception as e:
                 logger.warning("Scanner registry init failed (non-fatal): %s", e)
 
         # Validation: At least one scanner or AI enrichment must be enabled
-        if (not self.enable_semgrep and not self.enable_trivy and not self.enable_checkov
-            and not self.enable_api_security and not self.enable_dast and not self.enable_supply_chain
-            and not self.enable_fuzzing and not self.enable_threat_intel and not self.enable_remediation
-            and not self.enable_runtime_security and not self.enable_regression_testing
-            and not self.enable_ai_enrichment):
+        if (
+            not self.enable_semgrep
+            and not self.enable_trivy
+            and not self.enable_checkov
+            and not self.enable_api_security
+            and not self.enable_dast
+            and not self.enable_supply_chain
+            and not self.enable_fuzzing
+            and not self.enable_threat_intel
+            and not self.enable_remediation
+            and not self.enable_runtime_security
+            and not self.enable_regression_testing
+            and not self.enable_ai_enrichment
+        ):
             raise ValueError(
                 "❌ ERROR: At least one tool must be enabled!\n"
                 "   Enable: --enable-semgrep, --enable-trivy, --enable-checkov, "
@@ -580,7 +642,9 @@ class HybridSecurityAnalyzer:
             analyzer=self,
         )
         phase_timings["phase1_static_analysis"] = p1_duration
-        self._validate_phase("phase1", {"findings": [asdict(f) for f in all_findings], "scanner_health": scanner_health})
+        self._validate_phase(
+            "phase1", {"findings": [asdict(f) for f in all_findings], "scanner_health": scanner_health}
+        )
 
         # -- PHASE 2: AI Enrichment (+ IRIS, Remediation, Spontaneous) --
         all_findings, p2_timings = run_phase2_enrichment(
@@ -600,16 +664,18 @@ class HybridSecurityAnalyzer:
                     # Convert to HybridFinding format
                     for hf in heuristic_findings:
                         if isinstance(hf, dict):
-                            all_findings.append(HybridFinding(
-                                finding_id=hf.get("finding_id", f"heuristic-{len(all_findings)}"),
-                                source_tool="heuristic",
-                                severity=hf.get("severity", "medium"),
-                                category=hf.get("category", "security"),
-                                title=hf.get("title", "Heuristic finding"),
-                                description=hf.get("description", ""),
-                                file_path=hf.get("file_path", ""),
-                                line_number=hf.get("line_number", 0),
-                            ))
+                            all_findings.append(
+                                HybridFinding(
+                                    finding_id=hf.get("finding_id", f"heuristic-{len(all_findings)}"),
+                                    source_tool="heuristic",
+                                    severity=hf.get("severity", "medium"),
+                                    category=hf.get("category", "security"),
+                                    title=hf.get("title", "Heuristic finding"),
+                                    description=hf.get("description", ""),
+                                    file_path=hf.get("file_path", ""),
+                                    line_number=hf.get("line_number", 0),
+                                )
+                            )
                     logger.info("Heuristic scanner: %d findings from pattern matching", len(heuristic_findings))
                 logger.info("   Heuristic scan duration: %.1fs", time.time() - heuristic_start)
             except Exception as e:
@@ -634,14 +700,14 @@ class HybridSecurityAnalyzer:
         qf_threshold = float(self.config.get("quality_filter_min_confidence", 0.30))
         if enable_qf and all_findings:
             before = len(all_findings)
-            all_findings = [
-                f for f in all_findings
-                if not self._is_low_quality_finding(f, qf_threshold)
-            ]
+            all_findings = [f for f in all_findings if not self._is_low_quality_finding(f, qf_threshold)]
             filtered = before - len(all_findings)
             if filtered:
-                logger.info("   Quality filter: removed %d low-quality finding(s) "
-                            "(confidence < %.0f%% with missing evidence)", filtered, qf_threshold * 100)
+                logger.info(
+                    "   Quality filter: removed %d low-quality finding(s) (confidence < %.0f%% with missing evidence)",
+                    filtered,
+                    qf_threshold * 100,
+                )
 
         self._validate_phase("phase3", {"findings": [asdict(f) for f in all_findings]})
 
@@ -650,7 +716,11 @@ class HybridSecurityAnalyzer:
         if _DEEP_ANALYSIS_OK and deep_mode != "off" and all_findings:
             try:
                 deep_start = time.time()
-                mode_map = {"semantic-only": DeepAnalysisMode.SEMANTIC_ONLY, "conservative": DeepAnalysisMode.CONSERVATIVE, "full": DeepAnalysisMode.FULL}
+                mode_map = {
+                    "semantic-only": DeepAnalysisMode.SEMANTIC_ONLY,
+                    "conservative": DeepAnalysisMode.CONSERVATIVE,
+                    "full": DeepAnalysisMode.FULL,
+                }
                 da_config = DeepAnalysisConfig(
                     mode=mode_map.get(deep_mode, DeepAnalysisMode.CONSERVATIVE),
                     max_files=self.config.get("deep_analysis_max_files", 50),
@@ -665,7 +735,11 @@ class HybridSecurityAnalyzer:
                     for f in all_findings:
                         fid = f.finding_id
                         if fid in deep_results:
-                            f.description = (f.description or "") + "\n\n**Deep Analysis:** " + deep_results[fid].get("analysis", "")
+                            f.description = (
+                                (f.description or "")
+                                + "\n\n**Deep Analysis:** "
+                                + deep_results[fid].get("analysis", "")
+                            )
                 deep_duration = time.time() - deep_start
                 phase_timings["phase2_7_deep_analysis"] = deep_duration
                 logger.info("   Phase 2.7 Deep Analysis: %.1fs", deep_duration)
@@ -712,9 +786,7 @@ class HybridSecurityAnalyzer:
     # Vulnerability enrichment pipeline (v2.0)
     # ------------------------------------------------------------------
 
-    def _enrich_findings(
-        self, findings: list[HybridFinding], target_path: str
-    ) -> list[HybridFinding]:
+    def _enrich_findings(self, findings: list[HybridFinding], target_path: str) -> list[HybridFinding]:
         """Enrich findings with EPSS scores, fix versions, VEX, dedup."""
         if not findings:
             return findings
@@ -751,11 +823,7 @@ class HybridSecurityAnalyzer:
         if _FIX_OK and enable_fix:
             try:
                 tracker = FixVersionTracker()
-                fix_infos = [
-                    info
-                    for f in finding_dicts
-                    if (info := tracker.extract_fix_info(f)) is not None
-                ]
+                fix_infos = [info for f in finding_dicts if (info := tracker.extract_fix_info(f)) is not None]
                 if fix_infos:
                     finding_dicts = tracker.enrich_findings(finding_dicts, fix_infos)
                     logger.info("Fix versions: %d upgrade paths found", len(fix_infos))
@@ -770,9 +838,7 @@ class HybridSecurityAnalyzer:
                 )
                 statements = processor.load_statements()
                 if statements:
-                    finding_dicts, suppressed = processor.filter_findings(
-                        finding_dicts, statements
-                    )
+                    finding_dicts, suppressed = processor.filter_findings(finding_dicts, statements)
                     logger.info("VEX: %d suppressed, %d remaining", len(suppressed), len(finding_dicts))
             except Exception as e:
                 logger.warning("VEX processing failed (non-fatal): %s", e)
@@ -846,8 +912,11 @@ class HybridSecurityAnalyzer:
             return False
         if finding.cve_id:
             return False
-        has_description = bool(finding.description and finding.description.strip()
-                               and finding.description.strip().lower() not in ("none", "unknown", "n/a"))
+        has_description = bool(
+            finding.description
+            and finding.description.strip()
+            and finding.description.strip().lower() not in ("none", "unknown", "n/a")
+        )
         if has_description:
             return False
         return finding.confidence < min_confidence
@@ -874,6 +943,7 @@ class HybridSecurityAnalyzer:
     def _run_argus_review(self, findings: list[HybridFinding], target_path: str) -> list[HybridFinding]:
         """Delegate to phase3_review module."""
         from hybrid.phases.phase3_review import _run_argus_review
+
         return _run_argus_review(
             findings=findings,
             target_path=target_path,
@@ -886,6 +956,7 @@ class HybridSecurityAnalyzer:
     def _run_sandbox_validation(self, findings: list[HybridFinding], target_path: str) -> list[HybridFinding]:
         """Delegate to phase4_sandbox module."""
         from hybrid.phases.phase4_sandbox import _run_sandbox_validation
+
         return _run_sandbox_validation(
             findings=findings,
             target_path=target_path,
@@ -898,46 +969,59 @@ class HybridSecurityAnalyzer:
 
     def _run_semgrep(self, target_path: str) -> list[HybridFinding]:
         from hybrid.scanner_runners import run_semgrep
+
         return run_semgrep(self.semgrep_scanner, target_path, logger)
 
     def _run_trivy(self, target_path: str) -> list[HybridFinding]:
         from hybrid.scanner_runners import run_trivy
+
         return run_trivy(self.trivy_scanner, target_path, logger)
 
     def _run_checkov(self, target_path: str) -> list[HybridFinding]:
         from hybrid.scanner_runners import run_checkov
+
         return run_checkov(self.checkov_scanner, target_path, logger)
 
     def _run_api_security(self, target_path: str) -> list[HybridFinding]:
         from hybrid.scanner_runners import run_api_security
+
         return run_api_security(self.api_security_scanner, target_path, logger)
 
     def _run_dast(self, target_path: str) -> list[HybridFinding]:
         from hybrid.scanner_runners import run_dast
+
         return run_dast(self.dast_scanner, target_path, logger, self.config, self.dast_target_url)
 
     def _run_supply_chain(self, target_path: str) -> list[HybridFinding]:
         from hybrid.scanner_runners import run_supply_chain
+
         return run_supply_chain(self.supply_chain_scanner, target_path, logger)
 
     def _run_fuzzing(self, target_path: str) -> list[HybridFinding]:
         from hybrid.scanner_runners import run_fuzzing
+
         return run_fuzzing(self.fuzzing_scanner, target_path, logger)
 
     def _run_threat_intel(self, findings: list[HybridFinding]) -> list[HybridFinding]:
         from hybrid.scanner_runners import run_threat_intel
+
         return run_threat_intel(self.threat_intel_enricher, findings, logger)
 
     def _run_remediation(self, findings: list[HybridFinding]) -> list[HybridFinding]:
         from hybrid.scanner_runners import run_remediation
+
         return run_remediation(self.remediation_engine, findings, logger)
 
     def _run_runtime_security(self, target_path: str) -> list[HybridFinding]:
         from hybrid.scanner_runners import run_runtime_security
-        return run_runtime_security(self.runtime_security_monitor, target_path, logger, self.runtime_monitoring_duration)
+
+        return run_runtime_security(
+            self.runtime_security_monitor, target_path, logger, self.runtime_monitoring_duration
+        )
 
     def _run_regression_testing(self, target_path: str, current_findings: list[HybridFinding]) -> list[HybridFinding]:
         from hybrid.scanner_runners import run_regression_testing
+
         return run_regression_testing(self.regression_tester, target_path, current_findings, logger)
 
     # ------------------------------------------------------------------
@@ -946,22 +1030,27 @@ class HybridSecurityAnalyzer:
 
     def _enrich_with_ai(self, findings: list[HybridFinding]) -> list[HybridFinding]:
         from hybrid.ai_enrichment import enrich_with_ai
+
         return enrich_with_ai(self.ai_client, findings, self.project_context, logger)
 
     def _enrich_with_iris(self, findings: list[HybridFinding], target_path: str) -> list[HybridFinding]:
         from hybrid.ai_enrichment import enrich_with_iris
+
         return enrich_with_iris(self.iris_analyzer, findings, target_path, self.project_context, logger)
 
     def _analyze_xss_output_destination(self, finding: HybridFinding) -> Optional[str]:
         from hybrid.ai_enrichment import analyze_xss_output_destination
+
         return analyze_xss_output_destination(finding, "", logger)
 
     def _build_enrichment_prompt(self, finding: HybridFinding) -> str:
         from hybrid.ai_enrichment import build_enrichment_prompt
+
         return build_enrichment_prompt(finding, self.project_context, finding.file_path, logger)
 
     def _parse_ai_response(self, response: str) -> Optional[dict[str, Any]]:
         from hybrid.ai_enrichment import parse_ai_response
+
         return parse_ai_response(response, logger)
 
     # ------------------------------------------------------------------
@@ -970,60 +1059,72 @@ class HybridSecurityAnalyzer:
 
     def _normalize_severity(self, severity: str) -> str:
         from hybrid.scanner_runners import normalize_severity
+
         return normalize_severity(severity)
 
     def _count_by_severity(self, findings: list[HybridFinding]) -> dict[str, int]:
         from hybrid.scanner_runners import count_by_severity
+
         return count_by_severity(findings)
 
     def _count_by_source(self, findings: list[HybridFinding]) -> dict[str, int]:
         from hybrid.scanner_runners import count_by_source
+
         return count_by_source(findings)
 
     def _get_enabled_tools(self) -> list[str]:
         from hybrid.report import get_enabled_tools
-        return get_enabled_tools({
-            "enable_semgrep": self.enable_semgrep,
-            "enable_trivy": self.enable_trivy,
-            "enable_checkov": self.enable_checkov,
-            "enable_api_security": self.enable_api_security,
-            "enable_dast": self.enable_dast,
-            "enable_supply_chain": self.enable_supply_chain,
-            "enable_fuzzing": self.enable_fuzzing,
-            "enable_threat_intel": self.enable_threat_intel,
-            "enable_remediation": self.enable_remediation,
-            "enable_runtime_security": self.enable_runtime_security,
-            "enable_regression_testing": self.enable_regression_testing,
-            "enable_ai_enrichment": self.enable_ai_enrichment,
-            "ai_client": self.ai_client,
-            "enable_argus": self.enable_argus,
-            "enable_sandbox": self.enable_sandbox,
-        })
+
+        return get_enabled_tools(
+            {
+                "enable_semgrep": self.enable_semgrep,
+                "enable_trivy": self.enable_trivy,
+                "enable_checkov": self.enable_checkov,
+                "enable_api_security": self.enable_api_security,
+                "enable_dast": self.enable_dast,
+                "enable_supply_chain": self.enable_supply_chain,
+                "enable_fuzzing": self.enable_fuzzing,
+                "enable_threat_intel": self.enable_threat_intel,
+                "enable_remediation": self.enable_remediation,
+                "enable_runtime_security": self.enable_runtime_security,
+                "enable_regression_testing": self.enable_regression_testing,
+                "enable_ai_enrichment": self.enable_ai_enrichment,
+                "ai_client": self.ai_client,
+                "enable_argus": self.enable_argus,
+                "enable_sandbox": self.enable_sandbox,
+            }
+        )
 
     def _save_results(self, result: HybridScanResult, output_dir: str) -> None:
         from hybrid.report import save_results
+
         save_results(result, output_dir, result.target_path)
 
     def _convert_to_sarif(self, result: HybridScanResult) -> dict:
         from hybrid.report import convert_to_sarif
+
         return convert_to_sarif(result, result.target_path)
 
     def _severity_to_sarif_level(self, severity: str) -> str:
         from hybrid.report import severity_to_sarif_level
+
         return severity_to_sarif_level(severity)
 
     def _generate_markdown_report(self, result: HybridScanResult) -> str:
         from hybrid.report import generate_markdown_report
+
         return generate_markdown_report(result)
 
     def _print_summary(self, result: HybridScanResult) -> None:
         from hybrid.report import print_summary
+
         print_summary(result)
 
 
 def main():
     """CLI entry point for hybrid analyzer — delegates to hybrid.cli.main()"""
     from hybrid.cli import main as cli_main
+
     cli_main()
 
 
