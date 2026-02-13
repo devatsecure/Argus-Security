@@ -236,8 +236,8 @@ class CheckovScanner:
             # Parse results
             findings = self.parse_output(checkov_output)
 
-            # Calculate statistics
-            summary = checkov_output.get("summary", {})
+            # Calculate statistics — checkov_output may be a list (multi-framework) or dict
+            summary = checkov_output.get("summary", {}) if isinstance(checkov_output, dict) else {}
             scan_duration = (datetime.now() - start_time).total_seconds()
 
             scan_result = CheckovScanResult(
@@ -337,8 +337,12 @@ class CheckovScanner:
 
         for check in failed_checks:
             try:
+                if not isinstance(check, dict):
+                    continue
                 # Extract severity (default to MEDIUM if not present)
                 check_result = check.get("check_result", {})
+                if not isinstance(check_result, dict):
+                    check_result = {}
                 severity = check_result.get("severity", "MEDIUM")
 
                 # Normalize severity to standard levels

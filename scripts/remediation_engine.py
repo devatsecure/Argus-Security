@@ -575,7 +575,7 @@ Generate ONLY the JSON response, no markdown code blocks or additional text.
         )
 
         return RemediationSuggestion(
-            finding_id=finding.get("id", "unknown"),
+            finding_id=self._get_finding_attr(finding, "id", "finding_id", default="unknown"),
             vulnerability_type=vuln_type,
             file_path=file_path,
             line_number=line_number,
@@ -598,10 +598,12 @@ Generate ONLY the JSON response, no markdown code blocks or additional text.
         Returns:
             RemediationSuggestion with template-based fix
         """
-        vuln_type = finding.get("type") or finding.get("rule_id", "")
-        file_path = finding.get("path", "")
-        line_number = finding.get("line", 0)
-        code_snippet = finding.get("code_snippet") or finding.get("evidence", {}).get("snippet", "")
+        vuln_type = self._get_finding_attr(finding, "type", "rule_id", "title", default="")
+        file_path = self._get_finding_attr(finding, "path", "file_path", default="")
+        line_number = self._get_finding_attr(finding, "line", "line_number", default=0)
+        code_snippet = self._get_finding_attr(finding, "code_snippet", default="")
+        if not code_snippet and isinstance(finding, dict):
+            code_snippet = finding.get("evidence", {}).get("snippet", "")
         language = self._detect_language(file_path)
 
         # Normalize vulnerability type (convert hyphens to underscores, lowercase)
@@ -708,7 +710,7 @@ Generate ONLY the JSON response, no markdown code blocks or additional text.
             metadata["context_aware"] = True
 
         return RemediationSuggestion(
-            finding_id=finding.get("id", "unknown"),
+            finding_id=self._get_finding_attr(finding, "id", "finding_id", default="unknown"),
             vulnerability_type=vuln_type,
             file_path=file_path,
             line_number=line_number,

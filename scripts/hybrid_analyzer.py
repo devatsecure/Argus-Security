@@ -662,24 +662,37 @@ class HybridSecurityAnalyzer:
             try:
                 heuristic_start = time.time()
                 scanner = HeuristicScanner()
-                heuristic_findings = scanner.scan_codebase(target_path)
+                # scan_codebase expects list of {"path": ..., "content": ...} dicts
+                _heuristic_files = []
+                _target = Path(target_path)
+                _HEURISTIC_EXTS = {".py", ".js", ".ts", ".tsx", ".jsx", ".java", ".go", ".rb", ".yml", ".yaml", ".json", ".tf"}
+                for fp in _target.rglob("*"):
+                    if fp.is_file() and fp.suffix in _HEURISTIC_EXTS and ".git" not in fp.parts and "node_modules" not in fp.parts:
+                        try:
+                            _heuristic_files.append({"path": str(fp), "content": fp.read_text(errors="ignore")})
+                        except Exception:
+                            pass
+                        if len(_heuristic_files) >= 500:
+                            break
+                heuristic_findings = scanner.scan_codebase(_heuristic_files) if _heuristic_files else {}
                 if heuristic_findings:
-                    # Convert to HybridFinding format
-                    for hf in heuristic_findings:
-                        if isinstance(hf, dict):
+                    # scan_codebase returns {path: [flag_strings, ...]}
+                    _hcount = 0
+                    for fpath, flags in heuristic_findings.items():
+                        for flag in flags:
+                            _hcount += 1
                             all_findings.append(
                                 HybridFinding(
-                                    finding_id=hf.get("finding_id", f"heuristic-{len(all_findings)}"),
+                                    finding_id=f"heuristic-{_hcount}",
                                     source_tool="heuristic",
-                                    severity=hf.get("severity", "medium"),
-                                    category=hf.get("category", "security"),
-                                    title=hf.get("title", "Heuristic finding"),
-                                    description=hf.get("description", ""),
-                                    file_path=hf.get("file_path", ""),
-                                    line_number=hf.get("line_number", 0),
+                                    severity="medium",
+                                    category="security",
+                                    title=str(flag),
+                                    description=str(flag),
+                                    file_path=fpath,
                                 )
                             )
-                    logger.info("Heuristic scanner: %d findings from pattern matching", len(heuristic_findings))
+                    logger.info("Heuristic scanner: %d findings from pattern matching", _hcount)
                 logger.info("   Heuristic scan duration: %.1fs", time.time() - heuristic_start)
             except Exception as e:
                 logger.warning("Heuristic scanning failed (non-fatal): %s", e)
@@ -813,12 +826,23 @@ class HybridSecurityAnalyzer:
             except Exception as e:
                 logger.warning("EPSS scoring failed (non-fatal): %s", e)
 
-        # License risk scoring
+        # License risk scoring (operates on SBOM components, not findings)
         if _LICENSE_OK and self.config.get("enable_license_risk_scoring", True):
             try:
                 license_scorer = LicenseRiskScorer()
-                finding_dicts = license_scorer.score_findings(finding_dicts, target_path=target_path)
-                logger.info("License risk: findings scored for license compliance")
+                # Extract package components from findings that have package info
+                components = []
+                for fd in finding_dicts:
+                    pkg = fd.get("cve_id") and fd.get("title", "")
+                    if pkg and " in " in pkg:
+                        pkg_name = pkg.split(" in ")[-1].strip()
+                        components.append({"name": pkg_name, "version": fd.get("installed_version", "unknown")})
+                if components:
+                    risks = license_scorer.score_components(components)
+                    if risks:
+                        logger.info("License risk: %d components scored", len(risks))
+                else:
+                    logger.info("License risk: no SBOM components to score")
             except Exception as e:
                 logger.warning("License risk scoring failed (non-fatal): %s", e)
 
@@ -860,26 +884,37 @@ class HybridSecurityAnalyzer:
         # Compliance mapping
         if _COMPLIANCE_OK and self.config.get("enable_compliance_mapping", True):
             try:
-                mapper = ComplianceMapper()
                 frameworks_str = self.config.get("compliance_frameworks", "")
                 frameworks = [f.strip() for f in frameworks_str.split(",") if f.strip()] if frameworks_str else None
-                finding_dicts = mapper.map_findings(finding_dicts, frameworks=frameworks)
-                logger.info("Compliance mapping: findings mapped to frameworks")
+                mapper = ComplianceMapper(frameworks=frameworks)
+                mappings = mapper.map_findings(finding_dicts)
+                # Attach compliance data back to findings
+                if mappings:
+                    _mapping_by_cwe = {}
+                    for m in mappings:
+                        cwe = getattr(m, "cwe_id", None) or getattr(m, "finding_id", None)
+                        if cwe:
+                            _mapping_by_cwe.setdefault(cwe, []).append(
+                                {"framework": getattr(m, "framework", ""), "control": getattr(m, "control_id", "")}
+                            )
+                    logger.info("Compliance mapping: %d findings mapped to %d controls", len(finding_dicts), len(mappings))
             except Exception as e:
                 logger.warning("Compliance mapping failed (non-fatal): %s", e)
 
         # Advanced suppression (.argus-ignore.yml)
         if _SUPPRESSION_OK and self.config.get("enable_advanced_suppression", True):
             try:
+                ignore_path = Path(target_path) / ".argus-ignore.yml"
                 suppressor = AdvancedSuppressionManager(
-                    config_dir=str(Path(target_path)),
+                    config_path=str(ignore_path),
                     auto_expire_days=self.config.get("suppression_auto_expire_days", 90),
                 )
+                suppressor.load_rules()
                 before_count = len(finding_dicts)
-                finding_dicts = suppressor.filter_findings(finding_dicts)
-                suppressed = before_count - len(finding_dicts)
-                if suppressed:
-                    logger.info("Suppression: %d findings suppressed via .argus-ignore.yml", suppressed)
+                remaining, suppressed_list = suppressor.filter_findings(finding_dicts)
+                finding_dicts = remaining
+                if suppressed_list:
+                    logger.info("Suppression: %d findings suppressed via .argus-ignore.yml", len(suppressed_list))
             except Exception as e:
                 logger.warning("Advanced suppression failed (non-fatal): %s", e)
 
