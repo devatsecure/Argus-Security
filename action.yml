@@ -371,9 +371,11 @@ runs:
 
     - name: Install Argus to Project
       shell: bash
+      env:
+        INPUT_PROJECT_PATH: ${{ inputs.project-path }}
       run: |
         echo "Setting up Argus in project directory..."
-        cd "${{ inputs.project-path }}"
+        cd "$INPUT_PROJECT_PATH"
         
         # Create project-level Argus directory
         mkdir -p .argus/{config,reports}
@@ -386,11 +388,14 @@ runs:
     - name: Detect Project Type
       id: detect-type
       shell: bash
+      env:
+        INPUT_PROJECT_PATH: ${{ inputs.project-path }}
+        INPUT_PROJECT_TYPE: ${{ inputs.project-type }}
       run: |
         echo "Detecting project type..."
-        cd "${{ inputs.project-path }}"
-        
-        if [ "${{ inputs.project-type }}" = "auto" ]; then
+        cd "$INPUT_PROJECT_PATH"
+
+        if [ "$INPUT_PROJECT_TYPE" = "auto" ]; then
           # Fallback to backend-api if detection script doesn't exist
           if [ -f "$HOME/.argus/scripts/detect-project-type.sh" ]; then
             PROJECT_TYPE=$($HOME/.argus/scripts/detect-project-type.sh .)
@@ -400,7 +405,7 @@ runs:
             echo "Detection script not found, defaulting to: $PROJECT_TYPE"
           fi
         else
-          PROJECT_TYPE="${{ inputs.project-type }}"
+          PROJECT_TYPE="$INPUT_PROJECT_TYPE"
           echo "Using manual project type: $PROJECT_TYPE"
         fi
         
@@ -456,9 +461,11 @@ runs:
         DEEP_ANALYSIS_COST_CEILING: ${{ inputs.deep-analysis-cost-ceiling }}
         DEEP_ANALYSIS_TIMEOUT: ${{ inputs.deep-analysis-timeout }}
         BENCHMARK: ${{ inputs.benchmark }}
+        ARGUS_REVIEW_TYPE: ${{ inputs.review-type }}
+        INPUT_PROJECT_PATH: ${{ inputs.project-path }}
       run: |
         echo "🤖 Running AI-Powered Code Review..."
-        cd "${{ inputs.project-path }}"
+        cd "$INPUT_PROJECT_PATH"
         
         # Create reviews directory
         mkdir -p .argus/reviews
@@ -468,7 +475,7 @@ runs:
         pip install -q anthropic openai tenacity
 
         # Install Semgrep if enabled
-        if [ "${{ inputs.semgrep-enabled }}" = "true" ]; then
+        if [ "$SEMGREP_ENABLED" = "true" ]; then
           echo "📦 Installing Semgrep SAST scanner..."
           pip install -q semgrep
         fi
@@ -476,31 +483,28 @@ runs:
         # Run AI-powered audit with guardrails
         echo "🧠 Analyzing codebase with AI..."
         echo "⚙️  Configuration:"
-        echo "   - Only changed: ${{ inputs.only-changed }}"
-        echo "   - Max files: ${{ inputs.max-files }}"
-        echo "   - Cost limit: \$${{ inputs.cost-limit }}"
+        echo "   - Only changed: $INPUT_ONLY_CHANGED"
+        echo "   - Max files: $INPUT_MAX_FILES"
+        echo "   - Cost limit: \$$INPUT_COST_LIMIT"
         
-        # Build command with Phase 2.7 parameters
-        CMD="python3 $HOME/.argus/scripts/run_ai_audit.py \"$(pwd)\" \"${{ inputs.review-type }}\""
+        # Build args array safely — no eval, no string concat
+        AUDIT_ARGS=("$(pwd)" "$ARGUS_REVIEW_TYPE")
 
-        # Add Phase 2.7 Deep Analysis parameters if enabled
-        if [ "${{ inputs.deep-analysis-mode }}" != "off" ]; then
-          CMD="$CMD --deep-analysis-mode ${{ inputs.deep-analysis-mode }}"
-          CMD="$CMD --max-files-deep-analysis ${{ inputs.max-files-deep-analysis }}"
-          CMD="$CMD --deep-analysis-cost-ceiling ${{ inputs.deep-analysis-cost-ceiling }}"
-          CMD="$CMD --deep-analysis-timeout ${{ inputs.deep-analysis-timeout }}"
+        if [ "$DEEP_ANALYSIS_MODE" != "off" ]; then
+          AUDIT_ARGS+=(--deep-analysis-mode "$DEEP_ANALYSIS_MODE")
+          AUDIT_ARGS+=(--max-files-deep-analysis "$MAX_FILES_DEEP_ANALYSIS")
+          AUDIT_ARGS+=(--deep-analysis-cost-ceiling "$DEEP_ANALYSIS_COST_CEILING")
+          AUDIT_ARGS+=(--deep-analysis-timeout "$DEEP_ANALYSIS_TIMEOUT")
         fi
 
-        # Add benchmark flag if enabled
-        if [ "${{ inputs.benchmark }}" = "true" ]; then
-          CMD="$CMD --benchmark"
+        if [ "$BENCHMARK" = "true" ]; then
+          AUDIT_ARGS+=(--benchmark)
         fi
 
-        # Execute the command
-        eval $CMD
+        python3 "$HOME/.argus/scripts/run_ai_audit.py" "${AUDIT_ARGS[@]}"
         
         # Check if analysis succeeded
-        REPORT_FILE=".argus/reviews/${{ inputs.review-type }}-report.md"
+        REPORT_FILE=".argus/reviews/${ARGUS_REVIEW_TYPE}-report.md"
         SARIF_FILE=".argus/reviews/results.sarif"
         JSON_FILE=".argus/reviews/results.json"
         METRICS_FILE=".argus/reviews/metrics.json"
@@ -584,25 +588,29 @@ runs:
       uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea  # v7.0.1
       env:
         GITHUB_TOKEN: ${{ github.token }}
+        BLOCKER_COUNT: ${{ steps.code-review.outputs.blockers }}
+        SUGGESTION_COUNT: ${{ steps.code-review.outputs.suggestions }}
+        REVIEW_TYPE: ${{ inputs.review-type }}
+        PROJECT_PATH: ${{ inputs.project-path }}
       with:
         script: |
           const fs = require('fs');
           const path = require('path');
-          
+
           // Read the audit report
-          const reportPath = '${{ inputs.project-path }}/.argus/reviews/${{ inputs.review-type }}-report.md';
+          const reportPath = `${process.env.PROJECT_PATH || '.'}/.argus/reviews/${process.env.REVIEW_TYPE || 'audit'}-report.md`;
           let reportContent = '';
-          
+
           if (fs.existsSync(reportPath)) {
             reportContent = fs.readFileSync(reportPath, 'utf8');
           } else {
             console.log('No report found at:', reportPath);
             return;
           }
-          
+
           // Extract key findings for PR title and description
-          const blockerCount = ${{ steps.code-review.outputs.blockers }};
-          const suggestionCount = ${{ steps.code-review.outputs.suggestions }};
+          const blockerCount = parseInt(process.env.BLOCKER_COUNT || '0', 10);
+          const suggestionCount = parseInt(process.env.SUGGESTION_COUNT || '0', 10);
           
           // Generate branch name with timestamp
           const timestamp = new Date().toISOString().split('T')[0].replace(/-/g, '');
@@ -798,7 +806,7 @@ runs:
             `**Repository:** ${context.repo.owner}/${context.repo.repo}`,
             `**Branch:** ${currentBranch}`,
             `**Commit:** ${newCommit.sha}`,
-            `**Review Type:** ${{ inputs.review-type }}`,
+            `**Review Type:** ${process.env.REVIEW_TYPE}`,
             '',
             '### 📈 Summary',
             `- **Merge Blockers:** ${blockerCount} (Must fix before merge)`,

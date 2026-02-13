@@ -6,7 +6,6 @@ AI enrichment capabilities.
 """
 
 import argparse
-import logging
 import os
 import sys
 
@@ -59,51 +58,106 @@ def main():
         default=".argus/hybrid-results",
         help="Output directory for results (default: .argus/hybrid-results)",
     )
-    parser.add_argument("--enable-semgrep", action="store_true", default=True, help="Enable Semgrep SAST")
-    parser.add_argument("--enable-trivy", action="store_true", default=True, help="Enable Trivy CVE scanning")
-    parser.add_argument("--enable-checkov", action="store_true", default=True, help="Enable Checkov IaC scanning")
-    parser.add_argument("--enable-trufflehog", action="store_true", default=True, help="Enable TruffleHog secret scanning")
-    parser.add_argument("--enable-api-security", action="store_true", default=True, help="Enable API Security scanning")
-    parser.add_argument("--enable-dast", action="store_true", default=True, help="Enable DAST scanning")
-    parser.add_argument("--enable-supply-chain", action="store_true", default=True, help="Enable Supply Chain Attack Detection")
-    parser.add_argument("--enable-fuzzing", action="store_true", default=True, help="Enable Intelligent Fuzzing Engine")
-    parser.add_argument("--enable-threat-intel", action="store_true", default=True, help="Enable Threat Intelligence Enrichment")
-    parser.add_argument("--enable-remediation", action="store_true", default=True, help="Enable Automated Remediation Engine")
-    parser.add_argument("--enable-runtime-security", action="store_true", default=True, help="Enable Container Runtime Security Monitoring")
-    parser.add_argument("--enable-regression-testing", action="store_true", default=True, help="Enable Security Regression Testing")
+    # Scanner toggles — BooleanOptionalAction creates --enable-X / --no-enable-X
+    # default=None means "not specified on CLI" — env var / config default fills in
+    parser.add_argument(
+        "--enable-semgrep", action=argparse.BooleanOptionalAction, default=None, help="Enable Semgrep SAST"
+    )
+    parser.add_argument(
+        "--enable-trivy", action=argparse.BooleanOptionalAction, default=None, help="Enable Trivy CVE scanning"
+    )
+    parser.add_argument(
+        "--enable-checkov", action=argparse.BooleanOptionalAction, default=None, help="Enable Checkov IaC scanning"
+    )
+    parser.add_argument(
+        "--enable-trufflehog",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Enable TruffleHog secret scanning",
+    )
+    parser.add_argument(
+        "--enable-api-security",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Enable API Security scanning",
+    )
+    parser.add_argument(
+        "--enable-dast", action=argparse.BooleanOptionalAction, default=None, help="Enable DAST scanning"
+    )
+    parser.add_argument(
+        "--enable-supply-chain",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Enable Supply Chain Attack Detection",
+    )
+    parser.add_argument(
+        "--enable-fuzzing",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Enable Intelligent Fuzzing Engine",
+    )
+    parser.add_argument(
+        "--enable-threat-intel",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Enable Threat Intelligence Enrichment",
+    )
+    parser.add_argument(
+        "--enable-remediation",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Enable Automated Remediation Engine",
+    )
+    parser.add_argument(
+        "--enable-runtime-security",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Enable Container Runtime Security Monitoring",
+    )
+    parser.add_argument(
+        "--enable-regression-testing",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Enable Security Regression Testing",
+    )
     parser.add_argument(
         "--enable-ai-enrichment",
-        action="store_true",
-        default=True,
+        action=argparse.BooleanOptionalAction,
+        default=None,
         help="Enable AI enrichment with Claude/OpenAI",
     )
     parser.add_argument(
         "--enable-iris",
-        action="store_true",
-        default=True,
+        action=argparse.BooleanOptionalAction,
+        default=None,
         help="Enable IRIS semantic analysis (research-proven 2x improvement, arXiv 2405.17238)",
     )
     parser.add_argument("--ai-provider", help="AI provider (anthropic, openai, ollama)")
     parser.add_argument("--dast-target-url", help="Target URL for DAST scanning (required if --enable-dast)")
     parser.add_argument("--fuzzing-duration", type=int, default=300, help="Fuzzing duration in seconds (default: 300)")
-    parser.add_argument("--runtime-monitoring-duration", type=int, default=60, help="Runtime monitoring duration in seconds (default: 60)")
+    parser.add_argument(
+        "--runtime-monitoring-duration",
+        type=int,
+        default=60,
+        help="Runtime monitoring duration in seconds (default: 60)",
+    )
     parser.add_argument("--severity-filter", help="Comma-separated severity levels to report (e.g., critical,high)")
     parser.add_argument(
         "--enable-multi-agent",
-        action="store_true",
-        default=True,
+        action=argparse.BooleanOptionalAction,
+        default=None,
         help="Enable multi-agent persona review (SecretHunter, ExploitAssessor, etc.)",
     )
     parser.add_argument(
         "--enable-spontaneous-discovery",
-        action="store_true",
-        default=True,
+        action=argparse.BooleanOptionalAction,
+        default=None,
         help="Enable spontaneous discovery (find issues beyond scanner rules)",
     )
     parser.add_argument(
         "--enable-collaborative-reasoning",
-        action="store_true",
-        default=True,
+        action=argparse.BooleanOptionalAction,
+        default=None,
         help="Enable collaborative reasoning (multi-agent discussion)",
     )
     parser.add_argument(
@@ -138,20 +192,42 @@ def main():
         "ollama_endpoint": os.getenv("OLLAMA_ENDPOINT"),
     }
 
-    # Read feature flags from environment variables (GitHub Action inputs)
-    # These override defaults but are overridden by explicit CLI args
-    enable_trufflehog = get_bool_env("ENABLE_TRUFFLEHOG", args.enable_trufflehog)
-    enable_api_security = get_bool_env("ENABLE_API_SECURITY", args.enable_api_security)
-    enable_dast = get_bool_env("ENABLE_DAST", args.enable_dast)
-    enable_supply_chain = get_bool_env("ENABLE_SUPPLY_CHAIN", args.enable_supply_chain)
-    enable_fuzzing = get_bool_env("ENABLE_FUZZING", args.enable_fuzzing)
-    enable_threat_intel = get_bool_env("ENABLE_THREAT_INTEL", args.enable_threat_intel)
-    enable_remediation = get_bool_env("ENABLE_REMEDIATION", args.enable_remediation)
-    enable_runtime_security = get_bool_env("ENABLE_RUNTIME_SECURITY", args.enable_runtime_security)
-    enable_regression_testing = get_bool_env("ENABLE_REGRESSION_TESTING", args.enable_regression_testing)
-    enable_multi_agent = get_bool_env("ENABLE_MULTI_AGENT", args.enable_multi_agent)
-    enable_spontaneous_discovery = get_bool_env("ENABLE_SPONTANEOUS_DISCOVERY", args.enable_spontaneous_discovery)
-    enable_collaborative_reasoning = get_bool_env("ENABLE_COLLABORATIVE_REASONING", args.enable_collaborative_reasoning)
+    # Resolve feature flags: CLI arg > env var > config_loader default
+    from config_loader import get_default_config
+
+    _defaults = get_default_config()
+
+    def _resolve_flag(cli_val, env_key, config_key):
+        """CLI arg (if not None) > env var (if set) > config_loader default."""
+        if cli_val is not None:
+            return cli_val
+        return get_bool_env(env_key, _defaults.get(config_key, False))
+
+    enable_semgrep = _resolve_flag(args.enable_semgrep, "ENABLE_SEMGREP", "enable_semgrep")
+    enable_trivy = _resolve_flag(args.enable_trivy, "ENABLE_TRIVY", "enable_trivy")
+    enable_checkov = _resolve_flag(args.enable_checkov, "ENABLE_CHECKOV", "enable_checkov")
+    enable_trufflehog = _resolve_flag(args.enable_trufflehog, "ENABLE_TRUFFLEHOG", "enable_trufflehog")
+    enable_api_security = _resolve_flag(args.enable_api_security, "ENABLE_API_SECURITY", "enable_api_security")
+    enable_dast = _resolve_flag(args.enable_dast, "ENABLE_DAST", "enable_dast")
+    enable_supply_chain = _resolve_flag(args.enable_supply_chain, "ENABLE_SUPPLY_CHAIN", "enable_supply_chain")
+    enable_fuzzing = _resolve_flag(args.enable_fuzzing, "ENABLE_FUZZING", "enable_fuzzing")
+    enable_threat_intel = _resolve_flag(args.enable_threat_intel, "ENABLE_THREAT_INTEL", "enable_threat_intel")
+    enable_remediation = _resolve_flag(args.enable_remediation, "ENABLE_REMEDIATION", "enable_remediation")
+    enable_runtime_security = _resolve_flag(
+        args.enable_runtime_security, "ENABLE_RUNTIME_SECURITY", "enable_runtime_security"
+    )
+    enable_regression_testing = _resolve_flag(
+        args.enable_regression_testing, "ENABLE_REGRESSION_TESTING", "enable_regression_testing"
+    )
+    enable_ai_enrichment = _resolve_flag(args.enable_ai_enrichment, "ENABLE_AI_ENRICHMENT", "enable_ai_enrichment")
+    enable_iris = _resolve_flag(args.enable_iris, "ENABLE_IRIS", "enable_iris")
+    enable_multi_agent = _resolve_flag(args.enable_multi_agent, "ENABLE_MULTI_AGENT", "enable_multi_agent")
+    enable_spontaneous_discovery = _resolve_flag(
+        args.enable_spontaneous_discovery, "ENABLE_SPONTANEOUS_DISCOVERY", "enable_spontaneous_discovery"
+    )
+    enable_collaborative_reasoning = _resolve_flag(
+        args.enable_collaborative_reasoning, "ENABLE_COLLABORATIVE_REASONING", "enable_collaborative_reasoning"
+    )
 
     # Disclosure options (set via environment for pipeline use)
     if args.enable_disclosure_report:
@@ -169,10 +245,10 @@ def main():
 
     # Initialize analyzer
     analyzer = HybridSecurityAnalyzer(
-        enable_semgrep=args.enable_semgrep,
+        enable_semgrep=enable_semgrep,
         enable_trufflehog=enable_trufflehog,
-        enable_trivy=args.enable_trivy,
-        enable_checkov=args.enable_checkov,
+        enable_trivy=enable_trivy,
+        enable_checkov=enable_checkov,
         enable_api_security=enable_api_security,
         enable_dast=enable_dast,
         enable_supply_chain=enable_supply_chain,
@@ -181,11 +257,11 @@ def main():
         enable_remediation=enable_remediation,
         enable_runtime_security=enable_runtime_security,
         enable_regression_testing=enable_regression_testing,
-        enable_ai_enrichment=args.enable_ai_enrichment,
+        enable_ai_enrichment=enable_ai_enrichment,
         enable_multi_agent=enable_multi_agent,
         enable_spontaneous_discovery=enable_spontaneous_discovery,
         enable_collaborative_reasoning=enable_collaborative_reasoning,
-        enable_iris=args.enable_iris,  # IRIS semantic analysis
+        enable_iris=enable_iris,
         ai_provider=args.ai_provider,
         dast_target_url=dast_target_url,
         fuzzing_duration=fuzzing_duration,

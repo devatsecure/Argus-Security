@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 # Project root detection
 # ---------------------------------------------------------------------------
 
+
 def _find_project_root() -> Path:
     """Find the Argus project root by looking for known markers."""
     # Walk up from this file's directory
@@ -40,6 +41,7 @@ PROJECT_ROOT = _find_project_root()
 # Default configuration (all 47+ parameters)
 # ---------------------------------------------------------------------------
 
+
 def get_default_config() -> Dict[str, Any]:
     """Return all configuration parameters with sensible defaults.
 
@@ -54,7 +56,6 @@ def get_default_config() -> Dict[str, Any]:
         "anthropic_api_key": "",
         "openai_api_key": "",
         "ollama_endpoint": "",
-
         # -- Scanner toggles --
         "enable_semgrep": True,
         "enable_trivy": True,
@@ -67,13 +68,10 @@ def get_default_config() -> Dict[str, Any]:
         "enable_remediation": True,
         "enable_runtime_security": False,
         "enable_regression_testing": True,
-
         # -- MCP Server --
         "enable_mcp_server": False,
-
         # -- DAST auth --
         "dast_auth_config_path": "",
-
         # -- Feature toggles --
         "enable_multi_agent": True,
         "enable_spontaneous_discovery": True,
@@ -86,16 +84,13 @@ def get_default_config() -> Dict[str, Any]:
         "enable_iris": True,
         "enable_proof_by_exploitation": False,  # opt-in: LLM-powered PoC generation + sandbox validation
         "max_exploit_attempts": 10,
-
         # -- Audit Trail --
         "enable_audit_trail": True,
         "audit_save_prompts": True,
-
         # -- Smart Retry --
         "enable_smart_retry": True,
         "retry_max_attempts": 3,
         "retry_billing_delay": 60,
-
         # -- Limits --
         "max_files": 50,
         "max_file_size": 50000,
@@ -105,74 +100,67 @@ def get_default_config() -> Dict[str, Any]:
         "exploitability_threshold": "moderate",
         "fuzzing_duration": 300,
         "runtime_monitoring_duration": 60,
-
         # -- Files --
         "only_changed": False,
         "include_paths": "",
         "exclude_paths": ".github/**,node_modules/**,*.lock,package-lock.json",
-
         # -- Deep analysis --
         "deep_analysis_mode": "off",
         "deep_analysis_max_files": 50,
         "deep_analysis_timeout": 300,
         "deep_analysis_cost_ceiling": 5.0,
-
         # -- Output --
         "review_type": "audit",
         "project_type": "auto",
         "fail_on": "",
-
         # -- Parallel agents --
         "enable_parallel_agents": True,
         "parallel_agent_workers": 3,
-
         # -- Phase gating --
         "enable_phase_gating": True,
         "phase_gate_strict": False,  # True = stop on failure, False = warn and continue
-
         # -- Agent profile --
         "agent_profile": "default",
-
         # -- Temporal orchestration --
         "enable_temporal": False,
         "temporal_server": "localhost:7233",
         "temporal_namespace": "argus",
         "temporal_retry_mode": "production",
-
         # -- Vulnerability enrichment & compliance --
         "enable_license_risk_scoring": True,
         "enable_epss_scoring": True,
         "epss_cache_ttl_hours": 24,
         "enable_fix_version_tracking": True,
         "enable_vex": True,
-        "vex_paths": "",                 # comma-separated paths to VEX docs
+        "vex_paths": "",  # comma-separated paths to VEX docs
         "vex_auto_discover_dir": ".argus/vex",
         "enable_vuln_deduplication": True,
         "deduplication_strategy": "auto",  # auto, strict, standard, relaxed
         "enable_advanced_suppression": True,
         "suppression_auto_expire_days": 90,
         "enable_compliance_mapping": True,
-        "compliance_frameworks": "",     # comma-separated: nist_800_53,pci_dss_4,owasp_top10_2021,soc2,cis_kubernetes,iso_27001
-
+        "compliance_frameworks": "",  # comma-separated: nist_800_53,pci_dss_4,owasp_top10_2021,soc2,cis_kubernetes,iso_27001
         # -- Post-Phase-3 quality filter --
         "enable_quality_filter": True,
         "quality_filter_min_confidence": 0.30,
     }
 
+
 # ---------------------------------------------------------------------------
 # Profile loading
 # ---------------------------------------------------------------------------
 
+
 def _profile_search_paths(profile_name: str) -> List[Path]:
     """Return candidate YAML paths for *profile_name*, in priority order.
 
-    Later entries take precedence (project-local overrides user overrides
-    built-in).
+    First match wins, so higher-priority paths come first:
+    project-local > user > built-in.
     """
     return [
-        PROJECT_ROOT / "profiles" / f"{profile_name}.yml",          # built-in
+        Path(".argus") / "profiles" / f"{profile_name}.yml",  # project-local (highest)
         Path.home() / ".argus" / "profiles" / f"{profile_name}.yml",  # user
-        Path(".argus") / "profiles" / f"{profile_name}.yml",          # project-local
+        PROJECT_ROOT / "profiles" / f"{profile_name}.yml",  # built-in (lowest)
     ]
 
 
@@ -202,10 +190,7 @@ def _load_raw_profile(profile_name: str, _chain: Optional[List[str]] = None) -> 
         _chain = []
 
     if profile_name in _chain:
-        raise ValueError(
-            f"Circular profile inheritance detected: "
-            f"{' -> '.join(_chain)} -> {profile_name}"
-        )
+        raise ValueError(f"Circular profile inheritance detected: {' -> '.join(_chain)} -> {profile_name}")
     _chain.append(profile_name)
 
     # Search for the profile YAML
@@ -223,7 +208,7 @@ def _load_raw_profile(profile_name: str, _chain: Optional[List[str]] = None) -> 
         )
 
     logger.info("Loading profile '%s' from %s", profile_name, loaded_path)
-    with open(loaded_path, "r", encoding="utf-8") as fh:
+    with open(loaded_path, encoding="utf-8") as fh:
         raw = yaml.safe_load(fh) or {}
 
     # Handle inheritance
@@ -239,15 +224,12 @@ def _deep_merge_nested(base: dict, override: dict) -> dict:
     """Recursively merge *override* into *base* (nested dicts)."""
     merged = dict(base)
     for key, value in override.items():
-        if (
-            key in merged
-            and isinstance(merged[key], dict)
-            and isinstance(value, dict)
-        ):
+        if key in merged and isinstance(merged[key], dict) and isinstance(value, dict):
             merged[key] = _deep_merge_nested(merged[key], value)
         else:
             merged[key] = value
     return merged
+
 
 # ---------------------------------------------------------------------------
 # Flatten nested YAML -> flat config dict
@@ -331,7 +313,10 @@ def flatten_profile(nested: dict) -> Dict[str, Any]:
 
     # -- top-level scalars --
     for scalar_key in (
-        "name", "description", "agent_profile", "secrets_scanners_only",
+        "name",
+        "description",
+        "agent_profile",
+        "secrets_scanners_only",
         "dast_auth_config_path",
     ):
         if nested.get(scalar_key) is not None:
@@ -343,10 +328,10 @@ def flatten_profile(nested: dict) -> Dict[str, Any]:
 def load_profile(profile_name: str) -> Dict[str, Any]:
     """Load a profile by name and return a flat config dict.
 
-    Search order (first match wins per path):
-      1. ``{PROJECT_ROOT}/profiles/{name}.yml``   (built-in)
+    Search order (first match wins):
+      1. ``.argus/profiles/{name}.yml``            (project-local, highest priority)
       2. ``~/.argus/profiles/{name}.yml``          (user)
-      3. ``.argus/profiles/{name}.yml``            (project-local)
+      3. ``{PROJECT_ROOT}/profiles/{name}.yml``    (built-in, lowest priority)
 
     The ``_extends`` key enables profile inheritance: the parent profile is
     loaded first and the child values are overlaid on top.
@@ -364,6 +349,7 @@ def load_profile(profile_name: str) -> Dict[str, Any]:
     raw = _load_raw_profile(profile_name)
     return flatten_profile(raw)
 
+
 # ---------------------------------------------------------------------------
 # Environment variable overrides
 # ---------------------------------------------------------------------------
@@ -372,106 +358,93 @@ def load_profile(profile_name: str) -> Dict[str, Any]:
 # Types: "str", "bool", "int", "float"
 _ENV_MAPPINGS: List[tuple] = [
     # AI
-    (("AI_PROVIDER", "INPUT_AI_PROVIDER"),          "ai_provider",          "str"),
-    (("MODEL", "INPUT_MODEL"),                      "model",                "str"),
-    (("MULTI_AGENT_MODE", "INPUT_MULTI_AGENT_MODE"),"multi_agent_mode",     "str"),
-    (("ANTHROPIC_API_KEY",),                        "anthropic_api_key",    "str"),
-    (("OPENAI_API_KEY",),                           "openai_api_key",       "str"),
-    (("OLLAMA_ENDPOINT",),                          "ollama_endpoint",      "str"),
-
+    (("AI_PROVIDER", "INPUT_AI_PROVIDER"), "ai_provider", "str"),
+    (("MODEL", "INPUT_MODEL"), "model", "str"),
+    (("MULTI_AGENT_MODE", "INPUT_MULTI_AGENT_MODE"), "multi_agent_mode", "str"),
+    (("ANTHROPIC_API_KEY",), "anthropic_api_key", "str"),
+    (("OPENAI_API_KEY",), "openai_api_key", "str"),
+    (("OLLAMA_ENDPOINT",), "ollama_endpoint", "str"),
     # Limits
-    (("MAX_FILES", "INPUT_MAX_FILES"),              "max_files",            "int"),
-    (("MAX_FILE_SIZE", "INPUT_MAX_FILE_SIZE"),       "max_file_size",        "int"),
-    (("MAX_TOKENS", "INPUT_MAX_TOKENS"),            "max_tokens",           "int"),
-    (("COST_LIMIT", "INPUT_COST_LIMIT"),            "cost_limit",           "float"),
-    (("FUZZING_DURATION",),                         "fuzzing_duration",     "int"),
-    (("RUNTIME_MONITORING_DURATION",),              "runtime_monitoring_duration", "int"),
-
+    (("MAX_FILES", "INPUT_MAX_FILES"), "max_files", "int"),
+    (("MAX_FILE_SIZE", "INPUT_MAX_FILE_SIZE"), "max_file_size", "int"),
+    (("MAX_TOKENS", "INPUT_MAX_TOKENS"), "max_tokens", "int"),
+    (("COST_LIMIT", "INPUT_COST_LIMIT"), "cost_limit", "float"),
+    (("FUZZING_DURATION",), "fuzzing_duration", "int"),
+    (("RUNTIME_MONITORING_DURATION",), "runtime_monitoring_duration", "int"),
     # Files
-    (("ONLY_CHANGED", "INPUT_ONLY_CHANGED"),        "only_changed",         "bool"),
-    (("INCLUDE_PATHS", "INPUT_INCLUDE_PATHS"),       "include_paths",        "str"),
-    (("EXCLUDE_PATHS", "INPUT_EXCLUDE_PATHS"),       "exclude_paths",        "str"),
-
+    (("ONLY_CHANGED", "INPUT_ONLY_CHANGED"), "only_changed", "bool"),
+    (("INCLUDE_PATHS", "INPUT_INCLUDE_PATHS"), "include_paths", "str"),
+    (("EXCLUDE_PATHS", "INPUT_EXCLUDE_PATHS"), "exclude_paths", "str"),
     # Scanner toggles
-    (("ENABLE_SEMGREP", "SEMGREP_ENABLED"),         "enable_semgrep",       "bool"),
-    (("ENABLE_TRIVY",),                             "enable_trivy",         "bool"),
-    (("ENABLE_CHECKOV",),                           "enable_checkov",       "bool"),
-    (("ENABLE_API_SECURITY",),                      "enable_api_security",  "bool"),
-    (("ENABLE_DAST",),                              "enable_dast",          "bool"),
-    (("ENABLE_SUPPLY_CHAIN",),                      "enable_supply_chain",  "bool"),
-    (("ENABLE_FUZZING",),                           "enable_fuzzing",       "bool"),
-    (("ENABLE_THREAT_INTEL",),                      "enable_threat_intel",  "bool"),
-    (("ENABLE_REMEDIATION",),                       "enable_remediation",   "bool"),
-    (("ENABLE_RUNTIME_SECURITY",),                  "enable_runtime_security", "bool"),
-    (("ENABLE_REGRESSION_TESTING",),                "enable_regression_testing", "bool"),
-
+    (("ENABLE_SEMGREP", "SEMGREP_ENABLED"), "enable_semgrep", "bool"),
+    (("ENABLE_TRIVY",), "enable_trivy", "bool"),
+    (("ENABLE_CHECKOV",), "enable_checkov", "bool"),
+    (("ENABLE_API_SECURITY",), "enable_api_security", "bool"),
+    (("ENABLE_DAST",), "enable_dast", "bool"),
+    (("ENABLE_SUPPLY_CHAIN",), "enable_supply_chain", "bool"),
+    (("ENABLE_FUZZING",), "enable_fuzzing", "bool"),
+    (("ENABLE_THREAT_INTEL",), "enable_threat_intel", "bool"),
+    (("ENABLE_REMEDIATION",), "enable_remediation", "bool"),
+    (("ENABLE_RUNTIME_SECURITY",), "enable_runtime_security", "bool"),
+    (("ENABLE_REGRESSION_TESTING",), "enable_regression_testing", "bool"),
     # MCP Server
-    (("ENABLE_MCP_SERVER",),                        "enable_mcp_server",    "bool"),
-
+    (("ENABLE_MCP_SERVER",), "enable_mcp_server", "bool"),
     # Feature toggles
     (("ENABLE_MULTI_AGENT", "INPUT_ENABLE_MULTI_AGENT"), "enable_multi_agent", "bool"),
-    (("ENABLE_SPONTANEOUS_DISCOVERY",),             "enable_spontaneous_discovery", "bool"),
-    (("ENABLE_COLLABORATIVE_REASONING",),           "enable_collaborative_reasoning", "bool"),
-    (("ENABLE_AI_ENRICHMENT",),                     "enable_ai_enrichment", "bool"),
-    (("ENABLE_IRIS",),                              "enable_iris",          "bool"),
-    (("ENABLE_THREAT_MODELING",),                   "enable_threat_modeling", "bool"),
-    (("ENABLE_SANDBOX_VALIDATION",),                "enable_sandbox_validation", "bool"),
-    (("ENABLE_HEURISTICS",),                        "enable_heuristics",    "bool"),
-    (("ENABLE_CONSENSUS",),                         "enable_consensus",     "bool"),
-    (("ENABLE_PROOF_BY_EXPLOITATION",),             "enable_proof_by_exploitation", "bool"),
-    (("MAX_EXPLOIT_ATTEMPTS",),                     "max_exploit_attempts", "int"),
-    (("ENABLE_AUDIT_TRAIL",),                        "enable_audit_trail",   "bool"),
-    (("AUDIT_SAVE_PROMPTS",),                        "audit_save_prompts",   "bool"),
-    (("ENABLE_SMART_RETRY",),                       "enable_smart_retry",   "bool"),
-    (("RETRY_MAX_ATTEMPTS",),                       "retry_max_attempts",   "int"),
-    (("RETRY_BILLING_DELAY",),                      "retry_billing_delay",  "int"),
-    (("CONSENSUS_THRESHOLD",),                      "consensus_threshold",  "float"),
-    (("EXPLOITABILITY_THRESHOLD",),                 "exploitability_threshold", "str"),
-
+    (("ENABLE_SPONTANEOUS_DISCOVERY",), "enable_spontaneous_discovery", "bool"),
+    (("ENABLE_COLLABORATIVE_REASONING",), "enable_collaborative_reasoning", "bool"),
+    (("ENABLE_AI_ENRICHMENT",), "enable_ai_enrichment", "bool"),
+    (("ENABLE_IRIS",), "enable_iris", "bool"),
+    (("ENABLE_THREAT_MODELING",), "enable_threat_modeling", "bool"),
+    (("ENABLE_SANDBOX_VALIDATION",), "enable_sandbox_validation", "bool"),
+    (("ENABLE_HEURISTICS",), "enable_heuristics", "bool"),
+    (("ENABLE_CONSENSUS",), "enable_consensus", "bool"),
+    (("ENABLE_PROOF_BY_EXPLOITATION",), "enable_proof_by_exploitation", "bool"),
+    (("MAX_EXPLOIT_ATTEMPTS",), "max_exploit_attempts", "int"),
+    (("ENABLE_AUDIT_TRAIL",), "enable_audit_trail", "bool"),
+    (("AUDIT_SAVE_PROMPTS",), "audit_save_prompts", "bool"),
+    (("ENABLE_SMART_RETRY",), "enable_smart_retry", "bool"),
+    (("RETRY_MAX_ATTEMPTS",), "retry_max_attempts", "int"),
+    (("RETRY_BILLING_DELAY",), "retry_billing_delay", "int"),
+    (("CONSENSUS_THRESHOLD",), "consensus_threshold", "float"),
+    (("EXPLOITABILITY_THRESHOLD",), "exploitability_threshold", "str"),
     # Parallel agents
-    (("ENABLE_PARALLEL_AGENTS",),                   "enable_parallel_agents", "bool"),
-    (("PARALLEL_AGENT_WORKERS",),                   "parallel_agent_workers", "int"),
-
+    (("ENABLE_PARALLEL_AGENTS",), "enable_parallel_agents", "bool"),
+    (("PARALLEL_AGENT_WORKERS",), "parallel_agent_workers", "int"),
     # Phase gating
-    (("ENABLE_PHASE_GATING",),                      "enable_phase_gating",  "bool"),
-    (("PHASE_GATE_STRICT",),                        "phase_gate_strict",    "bool"),
-
+    (("ENABLE_PHASE_GATING",), "enable_phase_gating", "bool"),
+    (("PHASE_GATE_STRICT",), "phase_gate_strict", "bool"),
     # Temporal orchestration
-    (("ENABLE_TEMPORAL",),                          "enable_temporal",      "bool"),
-    (("TEMPORAL_SERVER",),                          "temporal_server",      "str"),
-    (("TEMPORAL_NAMESPACE",),                       "temporal_namespace",   "str"),
-    (("TEMPORAL_RETRY_MODE",),                      "temporal_retry_mode",  "str"),
-
+    (("ENABLE_TEMPORAL",), "enable_temporal", "bool"),
+    (("TEMPORAL_SERVER",), "temporal_server", "str"),
+    (("TEMPORAL_NAMESPACE",), "temporal_namespace", "str"),
+    (("TEMPORAL_RETRY_MODE",), "temporal_retry_mode", "str"),
     # Deep analysis
-    (("DEEP_ANALYSIS_MODE",),                       "deep_analysis_mode",   "str"),
+    (("DEEP_ANALYSIS_MODE",), "deep_analysis_mode", "str"),
     (("DEEP_ANALYSIS_MAX_FILES", "MAX_FILES_DEEP_ANALYSIS"), "deep_analysis_max_files", "int"),
-    (("DEEP_ANALYSIS_TIMEOUT",),                    "deep_analysis_timeout", "int"),
-    (("DEEP_ANALYSIS_COST_CEILING",),               "deep_analysis_cost_ceiling", "float"),
-
+    (("DEEP_ANALYSIS_TIMEOUT",), "deep_analysis_timeout", "int"),
+    (("DEEP_ANALYSIS_COST_CEILING",), "deep_analysis_cost_ceiling", "float"),
     # Output
-    (("FAIL_ON", "INPUT_FAIL_ON"),                  "fail_on",              "str"),
-
+    (("FAIL_ON", "INPUT_FAIL_ON"), "fail_on", "str"),
     # DAST auth
-    (("DAST_AUTH_CONFIG_PATH",),                    "dast_auth_config_path", "str"),
-
+    (("DAST_AUTH_CONFIG_PATH",), "dast_auth_config_path", "str"),
     # Vulnerability enrichment & compliance
-    (("ENABLE_LICENSE_RISK_SCORING",),              "enable_license_risk_scoring", "bool"),
-    (("ENABLE_EPSS_SCORING",),                      "enable_epss_scoring",  "bool"),
-    (("EPSS_CACHE_TTL_HOURS",),                     "epss_cache_ttl_hours", "int"),
-    (("ENABLE_FIX_VERSION_TRACKING",),              "enable_fix_version_tracking", "bool"),
-    (("ENABLE_VEX",),                               "enable_vex",           "bool"),
-    (("VEX_PATHS",),                                "vex_paths",            "str"),
-    (("VEX_AUTO_DISCOVER_DIR",),                    "vex_auto_discover_dir", "str"),
-    (("ENABLE_VULN_DEDUPLICATION",),                "enable_vuln_deduplication", "bool"),
-    (("DEDUPLICATION_STRATEGY",),                   "deduplication_strategy", "str"),
-    (("ENABLE_ADVANCED_SUPPRESSION",),              "enable_advanced_suppression", "bool"),
-    (("SUPPRESSION_AUTO_EXPIRE_DAYS",),             "suppression_auto_expire_days", "int"),
-    (("ENABLE_COMPLIANCE_MAPPING",),                "enable_compliance_mapping", "bool"),
-    (("COMPLIANCE_FRAMEWORKS",),                    "compliance_frameworks", "str"),
-
+    (("ENABLE_LICENSE_RISK_SCORING",), "enable_license_risk_scoring", "bool"),
+    (("ENABLE_EPSS_SCORING",), "enable_epss_scoring", "bool"),
+    (("EPSS_CACHE_TTL_HOURS",), "epss_cache_ttl_hours", "int"),
+    (("ENABLE_FIX_VERSION_TRACKING",), "enable_fix_version_tracking", "bool"),
+    (("ENABLE_VEX",), "enable_vex", "bool"),
+    (("VEX_PATHS",), "vex_paths", "str"),
+    (("VEX_AUTO_DISCOVER_DIR",), "vex_auto_discover_dir", "str"),
+    (("ENABLE_VULN_DEDUPLICATION",), "enable_vuln_deduplication", "bool"),
+    (("DEDUPLICATION_STRATEGY",), "deduplication_strategy", "str"),
+    (("ENABLE_ADVANCED_SUPPRESSION",), "enable_advanced_suppression", "bool"),
+    (("SUPPRESSION_AUTO_EXPIRE_DAYS",), "suppression_auto_expire_days", "int"),
+    (("ENABLE_COMPLIANCE_MAPPING",), "enable_compliance_mapping", "bool"),
+    (("COMPLIANCE_FRAMEWORKS",), "compliance_frameworks", "str"),
     # Post-Phase-3 quality filter — removes low-quality findings before reporting
-    (("ENABLE_QUALITY_FILTER",),                    "enable_quality_filter", "bool"),
-    (("QUALITY_FILTER_MIN_CONFIDENCE",),            "quality_filter_min_confidence", "float"),
+    (("ENABLE_QUALITY_FILTER",), "enable_quality_filter", "bool"),
+    (("QUALITY_FILTER_MIN_CONFIDENCE",), "quality_filter_min_confidence", "float"),
 ]
 
 
@@ -507,11 +480,15 @@ def load_env_overrides() -> Dict[str, Any]:
                 except (ValueError, TypeError) as exc:
                     logger.warning(
                         "Ignoring env var %s: could not convert %r to %s (%s)",
-                        env_name, os.environ[env_name], type_tag, exc,
+                        env_name,
+                        os.environ[env_name],
+                        type_tag,
+                        exc,
                     )
                 break  # first match wins
 
     return overrides
+
 
 # ---------------------------------------------------------------------------
 # CLI argument extraction
@@ -626,9 +603,11 @@ def extract_cli_overrides(args: Any) -> Dict[str, Any]:
 
     return overrides
 
+
 # ---------------------------------------------------------------------------
 # Merge helpers
 # ---------------------------------------------------------------------------
+
 
 def deep_merge(base: dict, override: dict) -> dict:
     """Merge *override* into *base*.  Only non-None override values win.
@@ -642,9 +621,11 @@ def deep_merge(base: dict, override: dict) -> dict:
             merged[key] = value
     return merged
 
+
 # ---------------------------------------------------------------------------
 # .argus.yml loader
 # ---------------------------------------------------------------------------
+
 
 def _load_argus_yml(repo_path: str) -> Dict[str, Any]:
     """Load ``.argus.yml`` from *repo_path* and return flat config dict.
@@ -656,16 +637,18 @@ def _load_argus_yml(repo_path: str) -> Dict[str, Any]:
         return {}
 
     logger.info("Loading .argus.yml from %s", yml_path)
-    with open(yml_path, "r", encoding="utf-8") as fh:
+    with open(yml_path, encoding="utf-8") as fh:
         raw = yaml.safe_load(fh) or {}
 
     # .argus.yml may contain a top-level "profile" key
     # and/or nested config sections identical to profile YAML
     return flatten_profile(raw)
 
+
 # ---------------------------------------------------------------------------
 # Main entry point
 # ---------------------------------------------------------------------------
+
 
 def build_unified_config(
     profile: Optional[str] = None,
@@ -737,9 +720,11 @@ def build_unified_config(
 
     return config
 
+
 # ---------------------------------------------------------------------------
 # Profile discovery
 # ---------------------------------------------------------------------------
+
 
 def list_available_profiles() -> List[str]:
     """Return the names of all available profiles.
@@ -762,6 +747,7 @@ def list_available_profiles() -> List[str]:
                 names.add(yml_file.stem)
 
     return sorted(names)
+
 
 # ---------------------------------------------------------------------------
 # Configuration validation
@@ -787,24 +773,15 @@ def validate_config(config: Dict[str, Any]) -> List[str]:
     # -- API key requirements per provider --
     provider = config.get("ai_provider", "auto")
     if provider == "anthropic" and not config.get("anthropic_api_key"):
-        issues.append(
-            "ERROR: ai_provider is 'anthropic' but ANTHROPIC_API_KEY is not set."
-        )
+        issues.append("ERROR: ai_provider is 'anthropic' but ANTHROPIC_API_KEY is not set.")
     if provider == "openai" and not config.get("openai_api_key"):
-        issues.append(
-            "ERROR: ai_provider is 'openai' but OPENAI_API_KEY is not set."
-        )
+        issues.append("ERROR: ai_provider is 'openai' but OPENAI_API_KEY is not set.")
     if provider == "ollama" and not config.get("ollama_endpoint"):
         issues.append(
-            "WARNING: ai_provider is 'ollama' but OLLAMA_ENDPOINT is not set. "
-            "Defaulting to http://localhost:11434."
+            "WARNING: ai_provider is 'ollama' but OLLAMA_ENDPOINT is not set. Defaulting to http://localhost:11434."
         )
     if provider == "auto":
-        has_any = (
-            config.get("anthropic_api_key")
-            or config.get("openai_api_key")
-            or config.get("ollama_endpoint")
-        )
+        has_any = config.get("anthropic_api_key") or config.get("openai_api_key") or config.get("ollama_endpoint")
         if not has_any:
             issues.append(
                 "WARNING: ai_provider is 'auto' but no API keys or endpoints are "
@@ -814,15 +791,13 @@ def validate_config(config: Dict[str, Any]) -> List[str]:
     # -- Valid enum values --
     if provider not in _VALID_AI_PROVIDERS:
         issues.append(
-            f"ERROR: Invalid ai_provider '{provider}'. "
-            f"Must be one of: {', '.join(sorted(_VALID_AI_PROVIDERS))}"
+            f"ERROR: Invalid ai_provider '{provider}'. Must be one of: {', '.join(sorted(_VALID_AI_PROVIDERS))}"
         )
 
     mam = config.get("multi_agent_mode", "single")
     if mam not in _VALID_MULTI_AGENT_MODES:
         issues.append(
-            f"ERROR: Invalid multi_agent_mode '{mam}'. "
-            f"Must be one of: {', '.join(sorted(_VALID_MULTI_AGENT_MODES))}"
+            f"ERROR: Invalid multi_agent_mode '{mam}'. Must be one of: {', '.join(sorted(_VALID_MULTI_AGENT_MODES))}"
         )
 
     dam = config.get("deep_analysis_mode", "off")
@@ -861,15 +836,11 @@ def validate_config(config: Dict[str, Any]) -> List[str]:
         )
 
     if config.get("enable_consensus") and not config.get("enable_multi_agent"):
-        issues.append(
-            "WARNING: enable_consensus requires enable_multi_agent. "
-            "Consensus building will be skipped."
-        )
+        issues.append("WARNING: enable_consensus requires enable_multi_agent. Consensus building will be skipped.")
 
     if config.get("enable_dast") and not config.get("dast_target_url"):
         issues.append(
-            "WARNING: enable_dast is true but no DAST target URL is configured. "
-            "DAST scanning will be skipped."
+            "WARNING: enable_dast is true but no DAST target URL is configured. DAST scanning will be skipped."
         )
 
     return issues
