@@ -469,7 +469,7 @@ for port in common_ports:
         with urllib.request.urlopen(url, timeout=1) as response:
             open_ports.append(port)
             print(f"  ✓ Port {port} is open")
-    except:
+    except (OSError, urllib.error.URLError):
         pass
 
 if open_ports:

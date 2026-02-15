@@ -283,7 +283,7 @@ def render_time_series(decisions, feedback):
                 timestamp = d.get("timestamp", "")
                 date = datetime.fromisoformat(timestamp).date()
                 dates.append(date)
-            except:
+            except (ValueError, TypeError):
                 continue
 
         if dates:
@@ -308,7 +308,7 @@ def render_time_series(decisions, feedback):
                 timestamp = f.get("timestamp", "")
                 date = datetime.fromisoformat(timestamp).date()
                 dates.append(date)
-            except:
+            except (ValueError, TypeError):
                 continue
 
         if dates:

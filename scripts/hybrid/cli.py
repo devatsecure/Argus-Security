@@ -7,6 +7,7 @@ AI enrichment capabilities.
 
 import argparse
 import os
+import re
 import sys
 
 from hybrid_analyzer import HybridSecurityAnalyzer
@@ -229,13 +230,21 @@ def main():
         args.enable_collaborative_reasoning, "ENABLE_COLLABORATIVE_REASONING", "enable_collaborative_reasoning"
     )
 
-    # Disclosure options (set via environment for pipeline use)
+    # Disclosure options: set via os.environ because downstream pipeline
+    # modules (e.g. disclosure_report.py) read these values from the
+    # environment rather than accepting them as function arguments.
     if args.enable_disclosure_report:
         os.environ["ENABLE_DISCLOSURE_REPORT"] = "true"
     if args.disclosure_repo:
-        os.environ["DISCLOSURE_REPO_URL"] = args.disclosure_repo
+        if args.disclosure_repo.startswith(("https://", "http://")):
+            os.environ["DISCLOSURE_REPO_URL"] = args.disclosure_repo
+        else:
+            print(f"WARNING: --disclosure-repo must start with https:// or http://, got: {args.disclosure_repo!r}. Skipping.")
     if args.disclosure_reporter:
-        os.environ["DISCLOSURE_REPORTER"] = args.disclosure_reporter
+        if re.fullmatch(r"[A-Za-z0-9@._-]+", args.disclosure_reporter):
+            os.environ["DISCLOSURE_REPORTER"] = args.disclosure_reporter
+        else:
+            print(f"WARNING: --disclosure-reporter contains unsafe characters: {args.disclosure_reporter!r}. Skipping.")
     if args.disclosure_create_discussion:
         os.environ["DISCLOSURE_CREATE_DISCUSSION"] = "true"
 

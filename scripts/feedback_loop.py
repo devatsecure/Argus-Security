@@ -353,7 +353,7 @@ class FeedbackLoop:
             with open(self.adjustments_file, "r") as f:
                 adjustments = json.load(f)
                 return adjustments.get(pattern_id, {}).get("multiplier", 1.0)
-        except:
+        except (OSError, json.JSONDecodeError, KeyError):
             return 1.0
 
     def apply_adjustments(
