@@ -625,13 +625,12 @@ class TestOrchestratorE2E:
 
         # Create a minimal analyzer with all scanners disabled but AI "enabled" to pass validation
         with patch.multiple(
-            "hybrid_analyzer",
+            "enrichment_pipeline",
             _EPSS_OK=False,
             _FIX_OK=False,
             _VEX_OK=False,
             _DEDUP_OK=False,
-            _REGISTRY_OK=False,
-        ):
+        ), patch("hybrid_analyzer._REGISTRY_OK", False):
             analyzer = HybridSecurityAnalyzer.__new__(HybridSecurityAnalyzer)
             # Manually set all attributes (skip __init__ scanner setup)
             analyzer.enable_semgrep = False
@@ -653,6 +652,8 @@ class TestOrchestratorE2E:
             analyzer.enable_collaborative_reasoning = False
             analyzer.enable_trufflehog = False
             analyzer.enable_iris = False
+            analyzer.enable_nuclei_templates = False
+            analyzer.enable_zap_baseline = False
             analyzer.semgrep_scanner = None
             analyzer.trivy_scanner = None
             analyzer.checkov_scanner = None
