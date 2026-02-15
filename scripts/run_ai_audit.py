@@ -29,8 +29,10 @@ import re
 import subprocess
 import sys
 import time
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any, Optional
 
 from tenacity import (
     before_sleep_log,
@@ -111,54 +113,15 @@ from orchestrator.cost_tracker import CostCircuitBreaker  # noqa: E402
 from phase_gate import PhaseGate  # noqa: E402
 
 # Vulnerability enrichment & compliance modules (v2.0 features)
+# EPSS, fix versions, VEX, dedup, compliance, and suppression are now
+# handled by the shared enrichment_pipeline module.  Only license risk
+# scoring is still imported here (runs separately on SBOM data).
 try:
     from license_risk_scorer import LicenseRiskScorer
 
     LICENSE_SCORING_AVAILABLE = True
 except ImportError:
     LICENSE_SCORING_AVAILABLE = False
-
-try:
-    from epss_scorer import EPSSScorer
-
-    EPSS_SCORING_AVAILABLE = True
-except ImportError:
-    EPSS_SCORING_AVAILABLE = False
-
-try:
-    from fix_version_tracker import FixVersionTracker
-
-    FIX_VERSION_AVAILABLE = True
-except ImportError:
-    FIX_VERSION_AVAILABLE = False
-
-try:
-    from vex_processor import VEXProcessor
-
-    VEX_AVAILABLE = True
-except ImportError:
-    VEX_AVAILABLE = False
-
-try:
-    from vuln_deduplicator import VulnDeduplicator
-
-    DEDUP_AVAILABLE = True
-except ImportError:
-    DEDUP_AVAILABLE = False
-
-try:
-    from advanced_suppression import AdvancedSuppressionManager
-
-    SUPPRESSION_AVAILABLE = True
-except ImportError:
-    SUPPRESSION_AVAILABLE = False
-
-try:
-    from compliance_mapper import ComplianceMapper
-
-    COMPLIANCE_AVAILABLE = True
-except ImportError:
-    COMPLIANCE_AVAILABLE = False
 
 # ---------------------------------------------------------------------------
 # Extracted modules — imported here for backward-compatible re-export.
@@ -870,180 +833,18 @@ def _parse_bool(value):
 def _run_enrichment_pipeline(findings, config, repo_path, metrics=None):
     """Run the v2.0 vulnerability enrichment pipeline on findings.
 
-    Pipeline order:
-      1. EPSS scoring (enrich CVE findings with exploit probability)
-      2. Fix version tracking (add upgrade path info)
-      3. VEX filtering (suppress not_affected findings)
-      4. Vulnerability deduplication (cross-scanner merge)
-      5. Advanced suppression (rule-based filtering)
-      6. Compliance mapping (map to frameworks)
+    Delegates to the shared ``enrichment_pipeline`` module which implements:
+      1. EPSS scoring
+      2. Fix version tracking
+      3. VEX filtering
+      4. Vulnerability deduplication
+      5. Compliance mapping
+      6. Advanced suppression
 
-    License risk scoring runs separately on SBOM data, not on findings.
-
-    Returns (enriched_findings, enrichment_metadata) where metadata contains
-    summaries from each enrichment step for inclusion in reports.
+    License risk scoring runs separately via ``_run_license_scoring()``.
     """
-    if not findings:
-        return findings, {}
-
-    metadata = {}
-    remaining = list(findings)
-
-    # -- Step 1: EPSS Scoring --
-    if (
-        EPSS_SCORING_AVAILABLE
-        and _parse_bool(config.get("enable_epss_scoring", True))
-    ):
-        try:
-            ttl = int(config.get("epss_cache_ttl_hours", 24))
-            scorer = EPSSScorer(
-                cache_dir=str(Path(repo_path) / ".argus-cache"),
-                ttl_hours=ttl,
-            )
-            remaining = scorer.enrich_findings(remaining)
-            cve_ids = [f.get("cve_id") or f.get("cve", "") for f in remaining if f.get("cve_id") or f.get("cve")]
-            if cve_ids:
-                scores = scorer.fetch_scores(cve_ids)
-                metadata["epss"] = scorer.get_summary(scores)
-                logger.info("EPSS scoring enriched %d findings", len(cve_ids))
-            print(f"   EPSS: enriched {len(cve_ids) if cve_ids else 0} CVE findings")
-        except Exception as e:
-            logger.warning("EPSS scoring failed (non-fatal): %s", e)
-            print(f"   EPSS: skipped ({e})")
-
-    # -- Step 2: Fix Version Tracking --
-    if (
-        FIX_VERSION_AVAILABLE
-        and _parse_bool(config.get("enable_fix_version_tracking", True))
-    ):
-        try:
-            tracker = FixVersionTracker()
-            fix_infos = []
-            for finding in remaining:
-                info = tracker.extract_fix_info(finding)
-                if info:
-                    fix_infos.append(info)
-            if fix_infos:
-                remaining = tracker.enrich_findings(remaining, fix_infos)
-                metadata["fix_versions"] = tracker.get_summary(fix_infos)
-            logger.info("Fix version tracking: %d fixes found", len(fix_infos))
-            print(f"   Fix versions: {len(fix_infos)} upgrade paths identified")
-        except Exception as e:
-            logger.warning("Fix version tracking failed (non-fatal): %s", e)
-            print(f"   Fix versions: skipped ({e})")
-
-    # -- Step 3: VEX Filtering --
-    suppressed_by_vex = []
-    if (
-        VEX_AVAILABLE
-        and _parse_bool(config.get("enable_vex", True))
-    ):
-        try:
-            vex_paths_str = config.get("vex_paths", "")
-            vex_paths = [p.strip() for p in vex_paths_str.split(",") if p.strip()] if vex_paths_str else None
-            auto_dir = config.get("vex_auto_discover_dir", ".argus/vex")
-            processor = VEXProcessor(vex_paths=vex_paths, auto_discover_dir=auto_dir)
-            statements = processor.load_statements()
-            if statements:
-                remaining, suppressed_by_vex = processor.filter_findings(remaining, statements)
-                metadata["vex"] = VEXProcessor.get_summary(statements)
-                logger.info("VEX: %d suppressed, %d remaining", len(suppressed_by_vex), len(remaining))
-            print(f"   VEX: {len(suppressed_by_vex)} suppressed, {len(statements) if statements else 0} statements loaded")
-        except Exception as e:
-            logger.warning("VEX processing failed (non-fatal): %s", e)
-            print(f"   VEX: skipped ({e})")
-
-    # -- Step 4: Vulnerability Deduplication --
-    if (
-        DEDUP_AVAILABLE
-        and _parse_bool(config.get("enable_vuln_deduplication", True))
-    ):
-        try:
-            strategy = config.get("deduplication_strategy", "auto")
-            deduplicator = VulnDeduplicator(strategy=strategy)
-            before_count = len(remaining)
-            result = deduplicator.deduplicate(remaining)
-            remaining = result.kept_findings
-            metadata["deduplication"] = VulnDeduplicator.get_summary(result)
-            removed = before_count - len(remaining)
-            logger.info("Deduplication: %d removed, %d remaining", removed, len(remaining))
-            print(f"   Dedup: {removed} duplicates removed ({before_count} -> {len(remaining)})")
-        except Exception as e:
-            logger.warning("Deduplication failed (non-fatal): %s", e)
-            print(f"   Dedup: skipped ({e})")
-
-    # -- Step 5: Advanced Suppression --
-    suppressed_by_rules = []
-    if (
-        SUPPRESSION_AVAILABLE
-        and _parse_bool(config.get("enable_advanced_suppression", True))
-    ):
-        try:
-            expire_days = int(config.get("suppression_auto_expire_days", 90))
-            manager = AdvancedSuppressionManager(
-                config_path=str(Path(repo_path) / ".argus-ignore.yml"),
-                auto_expire_days=expire_days,
-            )
-            rules = manager.load_rules()
-
-            # Add VEX-based suppression rules if VEX data available
-            if suppressed_by_vex:
-                vex_rules = manager.add_vex_rules(
-                    [{"cve_id": f.get("cve_id") or f.get("cve", ""), "reason": f.get("vex_justification", "VEX: not affected")}
-                     for f in suppressed_by_vex if f.get("cve_id") or f.get("cve")]
-                )
-                rules.extend(vex_rules)
-
-            # Add EPSS auto-suppress for very low probability findings
-            epss_rules = manager.add_epss_auto_suppress(remaining, threshold=0.01)
-            rules.extend(epss_rules)
-
-            if rules:
-                remaining, suppressed_by_rules = manager.filter_findings(remaining, rules)
-
-            # Warn about expired rules
-            expired = manager.get_expired_rules(rules)
-            if expired:
-                logger.warning("%d suppression rules have expired", len(expired))
-                print(f"   Suppression: {len(expired)} expired rules (review recommended)")
-
-            metadata["suppression"] = {
-                "rules_loaded": len(rules),
-                "suppressed": len(suppressed_by_rules),
-                "expired_rules": len(expired),
-            }
-            logger.info("Suppression: %d suppressed by rules", len(suppressed_by_rules))
-            print(f"   Suppression: {len(suppressed_by_rules)} findings suppressed by {len(rules)} rules")
-        except Exception as e:
-            logger.warning("Advanced suppression failed (non-fatal): %s", e)
-            print(f"   Suppression: skipped ({e})")
-
-    # -- Step 6: Compliance Mapping --
-    if (
-        COMPLIANCE_AVAILABLE
-        and _parse_bool(config.get("enable_compliance_mapping", True))
-    ):
-        try:
-            frameworks_str = config.get("compliance_frameworks", "")
-            frameworks = [f.strip() for f in frameworks_str.split(",") if f.strip()] if frameworks_str else None
-            mapper = ComplianceMapper(frameworks=frameworks)
-            reports = mapper.generate_all_reports(remaining)
-            if reports:
-                metadata["compliance"] = mapper.get_summary(reports)
-                # Save compliance report markdown
-                compliance_dir = Path(repo_path) / ".argus/reviews"
-                compliance_dir.mkdir(parents=True, exist_ok=True)
-                compliance_md = mapper.render_all_markdown(reports)
-                compliance_file = compliance_dir / "compliance-report.md"
-                with open(compliance_file, "w") as f:
-                    f.write(compliance_md)
-                logger.info("Compliance mapping: %d reports generated", len(reports))
-                print(f"   Compliance: {len(reports)} framework reports -> {compliance_file}")
-        except Exception as e:
-            logger.warning("Compliance mapping failed (non-fatal): %s", e)
-            print(f"   Compliance: skipped ({e})")
-
-    return remaining, metadata
+    from enrichment_pipeline import run_enrichment_pipeline
+    return run_enrichment_pipeline(findings, config, repo_path)
 
 
 def _run_license_scoring(config, repo_path):
@@ -1103,9 +904,41 @@ def _run_license_scoring(config, repo_path):
         return [], []
 
 
-def run_audit(repo_path, config, review_type="audit"):
-    """Run AI-powered code audit with multi-LLM support"""
+# ---------------------------------------------------------------------------
+# AuditContext dataclass — shared state bag passed between phase functions
+# ---------------------------------------------------------------------------
 
+@dataclass
+class AuditContext:
+    """Shared state passed between extracted phase functions."""
+
+    repo_path: str
+    config: dict
+    review_type: str
+    metrics: Any  # ReviewMetrics
+    provider: str
+    client: Any
+    model: str
+    max_tokens: int
+    circuit_breaker: Any
+    phase_gate: Optional[Any]
+    threat_model: Optional[dict]
+    files: list
+    context_tracker: Any  # ContextTracker
+    summarizer: Any  # FindingSummarizer
+
+
+# ---------------------------------------------------------------------------
+# Extracted phase functions (module-level, take AuditContext as first arg)
+# ---------------------------------------------------------------------------
+
+
+def _setup_audit(repo_path, config, review_type="audit"):
+    """Setup phase: provider detection, model init, phase gate, threat model, file loading.
+
+    Returns:
+        AuditContext with all shared state initialised, or calls sys.exit on failure.
+    """
     metrics = ReviewMetrics()
 
     print(f"🤖 Starting AI-powered {review_type} analysis...")
@@ -1224,13 +1057,37 @@ def run_audit(repo_path, config, review_type="audit"):
     print("📂 Analyzing codebase structure...")
     files = get_codebase_context(repo_path, config)
 
-    if not files:
-        print("⚠️  No files to analyze")
-        return 0, 0, metrics
+    # Initialize context tracker and summarizer
+    context_tracker = ContextTracker()
+    summarizer = FindingSummarizer()
 
-    # Record file metrics
-    for f in files:
-        metrics.record_file(f["lines"])
+    return AuditContext(
+        repo_path=repo_path,
+        config=config,
+        review_type=review_type,
+        metrics=metrics,
+        provider=provider,
+        client=client,
+        model=model,
+        max_tokens=max_tokens,
+        circuit_breaker=circuit_breaker,
+        phase_gate=phase_gate,
+        threat_model=threat_model,
+        files=files,
+        context_tracker=context_tracker,
+        summarizer=summarizer,
+    )
+
+
+def _run_scanner_phase(ctx: AuditContext) -> tuple[dict, dict]:
+    """Run heuristic pre-scanning and Semgrep SAST.
+
+    Returns:
+        (heuristic_results, semgrep_results) dictionaries.
+    """
+    config = ctx.config
+    files = ctx.files
+    metrics = ctx.metrics
 
     # FEATURE: Heuristic Pre-Scanning (from real_multi_agent_review.py)
     # Scan files with lightweight pattern matching before expensive LLM calls
@@ -1280,7 +1137,7 @@ def run_audit(repo_path, config, review_type="audit"):
                 }
             )
 
-            semgrep_results = semgrep_scanner.scan(repo_path)
+            semgrep_results = semgrep_scanner.scan(ctx.repo_path)
 
             if semgrep_results.get("findings"):
                 semgrep_count = len(semgrep_results["findings"])
@@ -1320,219 +1177,32 @@ def run_audit(repo_path, config, review_type="audit"):
             print(f"   ⚠️  Semgrep scan failed: {e}")
 
     # -- Phase gate: validate scanner orchestration output --
-    if phase_gate is not None:
+    if ctx.phase_gate is not None:
         scanner_output = {
             "findings": semgrep_results.get("findings", []) if semgrep_results else []
         }
-        gate_decision = phase_gate.validate("scanner_orchestration", scanner_output)
+        gate_decision = ctx.phase_gate.validate("scanner_orchestration", scanner_output)
         if not gate_decision.should_proceed:
             logger.error("Phase gate blocked after scanner orchestration: %s", gate_decision.reason)
             print(f"Phase gate BLOCKED: {gate_decision.reason}")
             sys.exit(2)
 
-    # Estimate cost
-    estimated_cost, est_input, est_output = estimate_cost(files, max_tokens, provider)
-    if provider == "ollama":
-        print("💰 Estimated cost: $0.00 (local Ollama)")
-    else:
-        print(f"💰 Estimated cost: ${estimated_cost:.2f}")
+    return heuristic_results, semgrep_results
 
-    if estimated_cost > cost_limit and provider != "ollama":
-        print(f"⚠️  Estimated cost ${estimated_cost:.2f} exceeds limit ${cost_limit:.2f}")
-        print("💡 Reduce max-files, use path filters, or increase cost-limit")
-        sys.exit(2)
 
-    # Check multi-agent mode
-    multi_agent_mode = config.get("multi_agent_mode", "single")
+def _run_phase1_research(ctx: AuditContext) -> dict:
+    """Phase 1: Research — identify files and areas that need attention.
 
-    if multi_agent_mode == "sequential":
-        # Run multi-agent sequential review (with threat model context)
-        report = run_multi_agent_sequential(
-            repo_path,
-            config,
-            review_type,
-            client,
-            provider,
-            model,
-            max_tokens,
-            files,
-            metrics,
-            circuit_breaker,
-            threat_model=threat_model,  # Pass threat model to agents
-        )
+    Returns:
+        research_data dict with keys: high_priority_files, focus_areas, rationale.
+    """
+    files = ctx.files
 
-        # Skip to saving reports (multi-agent handles its own analysis)
-        report_dir = Path(repo_path) / ".argus/reviews"
-        report_dir.mkdir(parents=True, exist_ok=True)
-
-        report_file = report_dir / f"{review_type}-report.md"
-        with open(report_file, "w") as f:
-            f.write(report)
-
-        print(f"✅ Multi-agent audit complete! Report saved to: {report_file}")
-
-        # Parse findings from final orchestrated report
-        findings = parse_findings_from_report(report)
-
-        # -- v2.0 Enrichment Pipeline --
-        print("\n🔬 Running enrichment pipeline...")
-        _run_license_scoring(config, repo_path)
-        findings, enrichment_meta = _run_enrichment_pipeline(
-            findings, config, repo_path, metrics
-        )
-        if enrichment_meta:
-            json_output_meta = {"enrichment": enrichment_meta}
-        else:
-            json_output_meta = {}
-
-        # Generate SARIF with metrics
-        sarif = generate_sarif(findings, repo_path, metrics)
-        sarif_file = report_dir / "results.sarif"
-        with open(sarif_file, "w") as f:
-            json.dump(sarif, f, indent=2)
-        print(f"📄 SARIF saved to: {sarif_file}")
-
-        # Generate structured JSON
-        json_output = {
-            "version": "2.1.0",
-            "mode": "multi-agent-sequential",
-            "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-            "repository": os.environ.get("GITHUB_REPOSITORY", "unknown"),
-            "commit": os.environ.get("GITHUB_SHA", "unknown"),
-            "provider": provider,
-            "model": model,
-            "summary": metrics.metrics,
-            "findings": findings,
-            **json_output_meta,
-        }
-
-        json_file = report_dir / "results.json"
-        with open(json_file, "w") as f:
-            json.dump(json_output, f, indent=2)
-        print(f"📊 JSON saved to: {json_file}")
-
-        # Save metrics
-        metrics_file = report_dir / "metrics.json"
-        metrics.finalize()
-        metrics.save(metrics_file)
-
-        # Count blockers and suggestions
-        blocker_count = metrics.metrics["findings"]["critical"] + metrics.metrics["findings"]["high"]
-        suggestion_count = metrics.metrics["findings"]["medium"] + metrics.metrics["findings"]["low"]
-
-        print("\n📊 Final Results:")
-        print(f"   Critical: {metrics.metrics['findings']['critical']}")
-        print(f"   High: {metrics.metrics['findings']['high']}")
-        print(f"   Medium: {metrics.metrics['findings']['medium']}")
-        print(f"   Low: {metrics.metrics['findings']['low']}")
-        print(f"\n💰 Total Cost: ${metrics.metrics['cost_usd']:.2f}")
-        print(f"⏱️  Total Duration: {metrics.metrics['duration_seconds']}s")
-        print("🤖 Mode: Multi-Agent Sequential (7 agents)")
-
-        # Display exploitability metrics
-        if any(metrics.metrics["exploitability"].values()):
-            print("\n⚠️  Exploitability:")
-            if metrics.metrics["exploitability"]["trivial"] > 0:
-                print(f"   ⚠️  Trivial: {metrics.metrics['exploitability']['trivial']}")
-            if metrics.metrics["exploitability"]["moderate"] > 0:
-                print(f"   🟨 Moderate: {metrics.metrics['exploitability']['moderate']}")
-            if metrics.metrics["exploitability"]["complex"] > 0:
-                print(f"   🟦 Complex: {metrics.metrics['exploitability']['complex']}")
-            if metrics.metrics["exploitability"]["theoretical"] > 0:
-                print(f"   ⬜ Theoretical: {metrics.metrics['exploitability']['theoretical']}")
-
-        if metrics.metrics["exploit_chains_found"] > 0:
-            print(f"   ⛓️  Exploit Chains: {metrics.metrics['exploit_chains_found']}")
-
-        if metrics.metrics["tests_generated"] > 0:
-            print(f"   🧪 Tests Generated: {metrics.metrics['tests_generated']}")
-
-        # Display validation and timeout metrics (Medium Priority features)
-        try:
-            validation_summary = output_validator.get_validation_summary()  # noqa: F821
-        except NameError:
-            validation_summary = {}
-        try:
-            timeout_summary = timeout_manager.get_summary()  # noqa: F821
-        except NameError:
-            timeout_summary = {}
-
-        if validation_summary.get("total_validations", 0) > 0:
-            print(f"\n📋 Output Validation:")
-            print(f"   Valid outputs: {validation_summary['valid_outputs']}/{validation_summary['total_validations']}")
-            if validation_summary.get('total_warnings', 0) > 0:
-                print(f"   ⚠️  Warnings: {validation_summary['total_warnings']}")
-            if validation_summary.get('invalid_outputs', 0) > 0:
-                print(f"   ❌ Invalid: {validation_summary['invalid_outputs']}")
-
-        if timeout_summary.get("total_executions", 0) > 0:
-            print(f"\n⏱️  Timeout Management:")
-            print(f"   Completed: {timeout_summary['completed']}/{timeout_summary['total_executions']}")
-            print(f"   Avg duration: {timeout_summary['avg_duration']:.1f}s")
-            if timeout_summary.get('timeout_exceeded', 0) > 0:
-                print(f"   ⚠️  Timeouts exceeded: {timeout_summary['timeout_exceeded']}")
-
-        # Output for GitHub Actions
-        print("completed=true")
-        print(f"blockers={blocker_count}")
-        print(f"suggestions={suggestion_count}")
-        print(f"report-path={report_file}")
-        print(f"sarif-path={sarif_file}")
-        print(f"json-path={json_file}")
-        print(f"cost-estimate={metrics.metrics['cost_usd']:.4f}")
-        print(f"files-analyzed={metrics.metrics['files_reviewed']}")
-        print(f"duration-seconds={metrics.metrics['duration_seconds']}")
-
-        # Check fail-on conditions
-        fail_on = config.get("fail_on", "")
-        should_fail = False
-
-        if fail_on:
-            print(f"\n🚦 Checking fail conditions: {fail_on}")
-            conditions = [c.strip() for c in fail_on.split(",") if c.strip()]
-
-            for condition in conditions:
-                if ":" in condition:
-                    category, severity = condition.split(":", 1)
-                    category = category.strip().lower()
-                    severity = severity.strip().lower()
-
-                    if category == "any":
-                        if severity in metrics.metrics["findings"] and metrics.metrics["findings"][severity] > 0:
-                            print(f"   ❌ FAIL: Found {metrics.metrics['findings'][severity]} {severity} issues")
-                            should_fail = True
-                    else:
-                        matching_findings = [
-                            f for f in findings if f["category"] == category and f["severity"] == severity
-                        ]
-                        if matching_findings:
-                            print(f"   ❌ FAIL: Found {len(matching_findings)} {category}:{severity} issues")
-                            should_fail = True
-
-        if should_fail:
-            print("\n❌ Failing due to fail-on conditions")
-            sys.exit(1)
-
-        return blocker_count, suggestion_count, metrics
-
-    # Single-agent mode with DISCRETE PHASES (Best Practice #1)
-    print("🤖 Mode: Single-Agent (3-Phase Process)")
-    print("   Phase 1: Research & File Selection")
-    print("   Phase 2: Planning & Focus Area Identification")
-    print("   Phase 3: Detailed Implementation Analysis")
-
-    # Initialize context tracker and summarizer
-    context_tracker = ContextTracker()
-    summarizer = FindingSummarizer()
-
-    # ============================================================================
-    # PHASE 1: RESEARCH - Identify files and areas that need attention
-    # ============================================================================
     print("\n" + "=" * 80)
     print("📊 PHASE 1: RESEARCH & FILE SELECTION")
     print("=" * 80)
 
-    context_tracker.start_phase("phase1_research")
+    ctx.context_tracker.start_phase("phase1_research")
 
     # Build lightweight file summary (not full content)
     file_summary = []
@@ -1540,18 +1210,18 @@ def run_audit(repo_path, config, review_type="audit"):
         file_summary.append(f"- {f['path']} ({f['lines']} lines)")
     file_list = "\n".join(file_summary)
 
-    context_tracker.add_context("file_list", file_list, {"file_count": len(files)})
+    ctx.context_tracker.add_context("file_list", file_list, {"file_count": len(files)})
 
     # Add threat model if available
     threat_summary = ""
-    if threat_model:
+    if ctx.threat_model:
         threat_summary = f"""
 **Threat Model Available:**
-- {len(threat_model.get('threats', []))} threats identified
-- {len(threat_model.get('attack_surface', {}).get('entry_points', []))} entry points
-- {len(threat_model.get('assets', []))} critical assets
+- {len(ctx.threat_model.get('threats', []))} threats identified
+- {len(ctx.threat_model.get('attack_surface', {}).get('entry_points', []))} entry points
+- {len(ctx.threat_model.get('assets', []))} critical assets
 """
-        context_tracker.add_context("threat_model_summary", threat_summary, {"threats": len(threat_model.get('threats', []))})
+        ctx.context_tracker.add_context("threat_model_summary", threat_summary, {"threats": len(ctx.threat_model.get('threats', []))})
 
     research_prompt = f"""You are conducting initial research for a code audit.
 
@@ -1579,20 +1249,20 @@ def run_audit(repo_path, config, review_type="audit"):
 
 Be concise. This is research, not detailed analysis."""
 
-    context_tracker.end_phase()
+    ctx.context_tracker.end_phase()
 
     print("🧠 Analyzing codebase structure...")
     try:
         research_result, research_input, research_output = call_llm_api(
-            client,
-            provider,
-            model,
+            ctx.client,
+            ctx.provider,
+            ctx.model,
             research_prompt,
             2000,  # Shorter response for research
-            circuit_breaker=circuit_breaker,
+            circuit_breaker=ctx.circuit_breaker,
             operation="phase1_research",
         )
-        metrics.record_llm_call(research_input, research_output, provider)
+        ctx.metrics.record_llm_call(research_input, research_output, ctx.provider)
         print(f"✅ Research complete ({research_input} input tokens, {research_output} output tokens)")
 
         # Parse research results
@@ -1627,22 +1297,23 @@ Be concise. This is research, not detailed analysis."""
             "rationale": "Research phase failed, using all files"
         }
 
-    # ============================================================================
-    # PHASE 2: PLANNING - Create focused analysis plan
-    # ============================================================================
+    return research_data
+
+
+def _run_phase2_planning(ctx: AuditContext, research_data: dict, priority_files: list) -> str:
+    """Phase 2: Planning — create a focused analysis plan.
+
+    Returns:
+        plan_summary string.
+    """
     print("\n" + "=" * 80)
     print("📋 PHASE 2: PLANNING & FOCUS IDENTIFICATION")
     print("=" * 80)
 
-    context_tracker.start_phase("phase2_planning")
-
-    # Build context with ONLY priority files
-    priority_files = [f for f in files if f['path'] in research_data.get('high_priority_files', [])]
-    if not priority_files:
-        priority_files = files[:10]  # Fallback
+    ctx.context_tracker.start_phase("phase2_planning")
 
     priority_context = "\n\n".join([f"File: {f['path']}\n```\n{f['content'][:500]}...\n```" for f in priority_files])
-    context_tracker.add_context("priority_files_preview", priority_context, {"file_count": len(priority_files)})
+    ctx.context_tracker.add_context("priority_files_preview", priority_context, {"file_count": len(priority_files)})
 
     planning_prompt = f"""You are planning a detailed code audit based on initial research.
 
@@ -1672,144 +1343,167 @@ Be concise. This is research, not detailed analysis."""
 
 Be specific and actionable. This plan will guide the detailed analysis."""
 
-    context_tracker.end_phase()
+    ctx.context_tracker.end_phase()
 
     print("🧠 Creating analysis plan...")
     try:
         plan_result, plan_input, plan_output = call_llm_api(
-            client,
-            provider,
-            model,
+            ctx.client,
+            ctx.provider,
+            ctx.model,
             planning_prompt,
             3000,  # Medium response for planning
-            circuit_breaker=circuit_breaker,
+            circuit_breaker=ctx.circuit_breaker,
             operation="phase2_planning",
         )
-        metrics.record_llm_call(plan_input, plan_output, provider)
+        ctx.metrics.record_llm_call(plan_input, plan_output, ctx.provider)
         print(f"✅ Planning complete ({plan_input} input tokens, {plan_output} output tokens)")
 
         # Summarize the plan
-        plan_summary = summarizer.summarize_report(plan_result, max_length=800)
+        plan_summary = ctx.summarizer.summarize_report(plan_result, max_length=800)
 
     except Exception as e:
         logger.error(f"Planning phase failed: {e}")
         plan_summary = "Planning phase failed. Proceeding with general analysis."
 
-    # ============================================================================
-    # PHASE 2.7: DEEP ANALYSIS ENGINE - Advanced semantic and proactive analysis
-    # ============================================================================
+    return plan_summary
+
+
+def _run_phase2_deep_analysis(ctx: AuditContext, findings_dict: dict) -> tuple[list, dict]:
+    """Phase 2.7: Deep Analysis Engine — advanced semantic and proactive analysis.
+
+    Args:
+        findings_dict: mutable dict of findings accumulated so far (may be empty).
+
+    Returns:
+        (deep_analysis_findings list, updated findings_dict).
+    """
     deep_analysis_findings = []
-    findings = {}  # Initialize findings dict for Phase 2.7 (will be merged with Phase 3 findings later)
-    if DEEP_ANALYSIS_AVAILABLE:
-        try:
-            # Build deep analysis config from environment and config dict
-            deep_mode_str = config.get("deep_analysis_mode", os.getenv("DEEP_ANALYSIS_MODE", "off"))
-            deep_mode = DeepAnalysisMode.from_string(deep_mode_str)
-
-            if deep_mode != DeepAnalysisMode.OFF:
-                print("\n" + "=" * 80)
-                print("🔬 PHASE 2.7: DEEP ANALYSIS ENGINE")
-                print("=" * 80)
-
-                # Configure deep analysis
-                deep_config = DeepAnalysisConfig(
-                    mode=deep_mode,
-                    enabled_phases=deep_mode.get_enabled_phases(),
-                    max_files=int(config.get("deep_analysis_max_files",
-                                            os.getenv("DEEP_ANALYSIS_MAX_FILES", "50"))),
-                    timeout_seconds=int(config.get("deep_analysis_timeout",
-                                                   os.getenv("DEEP_ANALYSIS_TIMEOUT", "300"))),
-                    cost_ceiling=float(config.get("deep_analysis_cost_ceiling",
-                                                 os.getenv("DEEP_ANALYSIS_COST_CEILING", "5.0"))),
-                    dry_run=config.get("deep_analysis_dry_run", "false").lower() == "true",
-                )
-
-                # Check if benchmarking is enabled
-                enable_benchmarking = config.get("benchmark", "false").lower() == "true"
-
-                # Initialize engine
-                deep_engine = DeepAnalysisEngine(
-                    config=deep_config,
-                    ai_client=client,
-                    model=model,
-                    enable_benchmarking=enable_benchmarking
-                )
-
-                # Run analysis
-                print(f"   Mode: {deep_mode.value}")
-                print(f"   Enabled phases: {[p.value for p in deep_config.enabled_phases]}")
-                if enable_benchmarking:
-                    print(f"   📊 Benchmarking: ENABLED")
-
-                # Convert existing findings to pass as context
-                context_findings = []
-                for cat, items in findings.items():
-                    for item in items:
-                        context_findings.append({
-                            "category": cat,
-                            "severity": item.get("severity", "unknown"),
-                            "title": item.get("title", ""),
-                            "file": item.get("file", ""),
-                        })
-
-                deep_results = deep_engine.analyze(repo_path, context_findings)
-
-                # Merge findings into main results
-                for result in deep_results:
-                    deep_analysis_findings.extend(result.findings)
-
-                    # Add to findings dict with normalized field names
-                    if result.findings:
-                        category = f"deep_analysis_{result.phase.value}"
-                        if category not in findings:
-                            findings[category] = []
-
-                        # Normalize deep analysis findings to match expected format
-                        for finding in result.findings:
-                            normalized_finding = {
-                                "severity": finding.get("severity", "medium"),
-                                "category": finding.get("type", category),  # Map 'type' to 'category'
-                                "message": finding.get("title", ""),
-                                "file_path": finding.get("file", finding.get("files", ["unknown"])[0] if isinstance(finding.get("files"), list) else "unknown"),
-                                "line_number": finding.get("line", 1),
-                                "rule_id": f"{category.upper()}-{len(findings[category]) + 1:03d}",
-                                "description": finding.get("description", ""),
-                                "confidence": finding.get("confidence", 0.0),
-                            }
-                            findings[category].append(normalized_finding)
-
-                print(f"✅ Deep Analysis complete: {len(deep_analysis_findings)} findings, "
-                      f"${deep_engine.total_cost:.2f} cost")
-
-                # Export detailed results
-                deep_output = Path(repo_path) / "argus_deep_analysis_results.json"
-                deep_engine.export_results(str(deep_output))
-
-                # Print benchmark report if enabled
-                if enable_benchmarking:
-                    deep_engine.print_benchmark_report()
-            else:
-                print("\n⏭️  Phase 2.7: Deep Analysis skipped (mode=off)")
-
-        except Exception as e:
-            logger.error(f"Deep Analysis Engine failed: {e}")
-            logger.exception(e)
-    else:
+    if not DEEP_ANALYSIS_AVAILABLE:
         logger.info("⏭️  Phase 2.7: Deep Analysis Engine not available")
+        return deep_analysis_findings, findings_dict
 
-    # ============================================================================
-    # PHASE 3: IMPLEMENTATION - Detailed analysis based on plan
-    # ============================================================================
+    try:
+        # Build deep analysis config from environment and config dict
+        deep_mode_str = ctx.config.get("deep_analysis_mode", os.getenv("DEEP_ANALYSIS_MODE", "off"))
+        deep_mode = DeepAnalysisMode.from_string(deep_mode_str)
+
+        if deep_mode != DeepAnalysisMode.OFF:
+            print("\n" + "=" * 80)
+            print("🔬 PHASE 2.7: DEEP ANALYSIS ENGINE")
+            print("=" * 80)
+
+            # Configure deep analysis
+            deep_config = DeepAnalysisConfig(
+                mode=deep_mode,
+                enabled_phases=deep_mode.get_enabled_phases(),
+                max_files=int(ctx.config.get("deep_analysis_max_files",
+                                        os.getenv("DEEP_ANALYSIS_MAX_FILES", "50"))),
+                timeout_seconds=int(ctx.config.get("deep_analysis_timeout",
+                                               os.getenv("DEEP_ANALYSIS_TIMEOUT", "300"))),
+                cost_ceiling=float(ctx.config.get("deep_analysis_cost_ceiling",
+                                             os.getenv("DEEP_ANALYSIS_COST_CEILING", "5.0"))),
+                dry_run=ctx.config.get("deep_analysis_dry_run", "false").lower() == "true",
+            )
+
+            # Check if benchmarking is enabled
+            enable_benchmarking = ctx.config.get("benchmark", "false").lower() == "true"
+
+            # Initialize engine
+            deep_engine = DeepAnalysisEngine(
+                config=deep_config,
+                ai_client=ctx.client,
+                model=ctx.model,
+                enable_benchmarking=enable_benchmarking
+            )
+
+            # Run analysis
+            print(f"   Mode: {deep_mode.value}")
+            print(f"   Enabled phases: {[p.value for p in deep_config.enabled_phases]}")
+            if enable_benchmarking:
+                print("   📊 Benchmarking: ENABLED")
+
+            # Convert existing findings to pass as context
+            context_findings = []
+            for cat, items in findings_dict.items():
+                for item in items:
+                    context_findings.append({
+                        "category": cat,
+                        "severity": item.get("severity", "unknown"),
+                        "title": item.get("title", ""),
+                        "file": item.get("file", ""),
+                    })
+
+            deep_results = deep_engine.analyze(ctx.repo_path, context_findings)
+
+            # Merge findings into main results
+            for result in deep_results:
+                deep_analysis_findings.extend(result.findings)
+
+                # Add to findings dict with normalized field names
+                if result.findings:
+                    category = f"deep_analysis_{result.phase.value}"
+                    if category not in findings_dict:
+                        findings_dict[category] = []
+
+                    # Normalize deep analysis findings to match expected format
+                    for finding in result.findings:
+                        normalized_finding = {
+                            "severity": finding.get("severity", "medium"),
+                            "category": finding.get("type", category),  # Map 'type' to 'category'
+                            "message": finding.get("title", ""),
+                            "file_path": finding.get("file", finding.get("files", ["unknown"])[0] if isinstance(finding.get("files"), list) else "unknown"),
+                            "line_number": finding.get("line", 1),
+                            "rule_id": f"{category.upper()}-{len(findings_dict[category]) + 1:03d}",
+                            "description": finding.get("description", ""),
+                            "confidence": finding.get("confidence", 0.0),
+                        }
+                        findings_dict[category].append(normalized_finding)
+
+            print(f"✅ Deep Analysis complete: {len(deep_analysis_findings)} findings, "
+                  f"${deep_engine.total_cost:.2f} cost")
+
+            # Export detailed results
+            deep_output = Path(ctx.repo_path) / "argus_deep_analysis_results.json"
+            deep_engine.export_results(str(deep_output))
+
+            # Print benchmark report if enabled
+            if enable_benchmarking:
+                deep_engine.print_benchmark_report()
+        else:
+            print("\n⏭️  Phase 2.7: Deep Analysis skipped (mode=off)")
+
+    except Exception as e:
+        logger.error(f"Deep Analysis Engine failed: {e}")
+        logger.exception(e)
+
+    return deep_analysis_findings, findings_dict
+
+
+def _run_phase3_analysis(ctx: AuditContext, plan_summary: str, priority_files: list, findings_dict: dict) -> tuple[list, str, Any]:
+    """Phase 3: Detailed Implementation Analysis.
+
+    Args:
+        plan_summary: summary from Phase 2.
+        priority_files: files selected for deep review.
+        findings_dict: deep analysis findings dict from Phase 2.7.
+
+    Returns:
+        (findings list, report text, report_file Path).
+
+    Raises:
+        Exception: propagated to caller's try/except.
+    """
     print("\n" + "=" * 80)
     print("🔍 PHASE 3: DETAILED IMPLEMENTATION ANALYSIS")
     print("=" * 80)
 
-    context_tracker.start_phase("phase3_implementation")
+    ctx.context_tracker.start_phase("phase3_implementation")
 
     # Build FULL context for priority files only
     codebase_context = "\n\n".join([f"File: {f['path']}\n```\n{f['content']}\n```" for f in priority_files])
-    context_tracker.add_context("full_codebase", codebase_context, {"file_count": len(priority_files)})
-    context_tracker.add_context("analysis_plan", plan_summary, {"from_phase": 2})
+    ctx.context_tracker.add_context("full_codebase", codebase_context, {"file_count": len(priority_files)})
+    ctx.context_tracker.add_context("analysis_plan", plan_summary, {"from_phase": 2})
 
     # Load audit instructions
     audit_command_path = (
@@ -1834,7 +1528,7 @@ For each issue found, classify it as:
 """
 
     # Check for contradictions
-    contradictions = context_tracker.detect_contradictions(audit_instructions, plan_summary)
+    contradictions = ctx.context_tracker.detect_contradictions(audit_instructions, plan_summary)
     if contradictions:
         logger.warning("⚠️  Potential contradictions detected:")
         for warning in contradictions:
@@ -1899,29 +1593,269 @@ Final recommendation: APPROVED / REQUIRES FIXES / DO NOT MERGE
 Be specific with file names and line numbers. Use format: `filename.ext:123` for references.
 Focus on issues identified in the analysis plan."""
 
-    context_tracker.end_phase()
+    ctx.context_tracker.end_phase()
 
     # Sanitize provider/model names for logging (use str() to break taint chain)
-    safe_provider = str(provider).split("/")[-1] if provider else "unknown"
-    safe_model = str(model).split("/")[-1] if model else "unknown"
+    safe_provider = str(ctx.provider).split("/")[-1] if ctx.provider else "unknown"
+    safe_model = str(ctx.model).split("/")[-1] if ctx.model else "unknown"
     print(f"🧠 Performing detailed analysis with {safe_provider} ({safe_model})...")
 
-    try:
-        # Call LLM API with cost enforcement
-        report, input_tokens, output_tokens = call_llm_api(
-            client,
-            provider,
-            model,
-            prompt,
-            max_tokens,
-            circuit_breaker=circuit_breaker,
-            operation="phase3_implementation",
+    # Call LLM API with cost enforcement
+    report, input_tokens, output_tokens = call_llm_api(
+        ctx.client,
+        ctx.provider,
+        ctx.model,
+        prompt,
+        ctx.max_tokens,
+        circuit_breaker=ctx.circuit_breaker,
+        operation="phase3_implementation",
+    )
+
+    # Record LLM metrics
+    ctx.metrics.record_llm_call(input_tokens, output_tokens, ctx.provider)
+
+    # Save markdown report
+    report_dir = Path(ctx.repo_path) / ".argus/reviews"
+    report_dir.mkdir(parents=True, exist_ok=True)
+
+    report_file = report_dir / f"{ctx.review_type}-report.md"
+    with open(report_file, "w") as f:
+        f.write(report)
+
+    print(f"✅ Audit complete! Report saved to: {report_file}")
+
+    # Parse findings from Phase 3 report
+    phase3_findings = parse_findings_from_report(report)
+
+    # Merge Phase 2.7 findings (if any) with Phase 3 findings
+    # findings_dict was initialized before Phase 2.7 as a dict, need to convert to list
+    all_findings = list(phase3_findings)  # Start with Phase 3 findings
+
+    # Add Phase 2.7 deep analysis findings if they exist (findings_dict was a dict in Phase 2.7)
+    if isinstance(findings_dict, dict):
+        for _category, items in findings_dict.items():
+            all_findings.extend(items)
+
+    return all_findings, report, report_file
+
+
+def _run_reporting(ctx: AuditContext, findings: list, report_file: Any) -> tuple[int, int]:
+    """Reporting phase: enrichment, SARIF/JSON output, fail-on checks.
+
+    Returns:
+        (blocker_count, suggestion_count).
+    """
+    config = ctx.config
+    metrics = ctx.metrics
+    repo_path = ctx.repo_path
+
+    # -- v2.0 Enrichment Pipeline --
+    print("\n🔬 Running enrichment pipeline...")
+    _run_license_scoring(config, repo_path)
+    findings, enrichment_meta = _run_enrichment_pipeline(
+        findings, config, repo_path, metrics
+    )
+
+    # Record finding metrics
+    for finding in findings:
+        metrics.record_finding(finding["severity"], finding["category"])
+
+    # -- Phase gate: validate enriched findings before reporting --
+    if ctx.phase_gate is not None:
+        enrichment_output = {"enriched_findings": findings}
+        gate_decision = ctx.phase_gate.validate("ai_enrichment", enrichment_output)
+        if not gate_decision.should_proceed:
+            logger.error("Phase gate blocked before reporting: %s", gate_decision.reason)
+            print(f"Phase gate BLOCKED: {gate_decision.reason}")
+            sys.exit(2)
+
+    report_dir = Path(repo_path) / ".argus/reviews"
+    report_dir.mkdir(parents=True, exist_ok=True)
+
+    # Generate SARIF with metrics
+    sarif = generate_sarif(findings, repo_path, metrics)
+    sarif_file = report_dir / "results.sarif"
+    with open(sarif_file, "w") as f:
+        json.dump(sarif, f, indent=2)
+    print(f"📄 SARIF saved to: {sarif_file}")
+
+    # Generate structured JSON
+    json_output = {
+        "version": "2.0.0",
+        "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "repository": os.environ.get("GITHUB_REPOSITORY", "unknown"),
+        "commit": os.environ.get("GITHUB_SHA", "unknown"),
+        "provider": ctx.provider,
+        "model": ctx.model,
+        "summary": metrics.metrics,
+        "findings": findings,
+    }
+    if enrichment_meta:
+        json_output["enrichment"] = enrichment_meta
+
+    json_file = report_dir / "results.json"
+    with open(json_file, "w") as f:
+        json.dump(json_output, f, indent=2)
+    print(f"📊 JSON saved to: {json_file}")
+
+    # Save metrics
+    metrics_file = report_dir / "metrics.json"
+    metrics.finalize()
+    metrics.save(metrics_file)
+
+    # Count blockers and suggestions
+    blocker_count = metrics.metrics["findings"]["critical"] + metrics.metrics["findings"]["high"]
+    suggestion_count = metrics.metrics["findings"]["medium"] + metrics.metrics["findings"]["low"]
+
+    # Save context tracking summary
+    context_summary = ctx.context_tracker.get_summary()
+    context_file = report_dir / "context-tracking.json"
+    with open(context_file, "w") as f:
+        json.dump(context_summary, f, indent=2)
+    print(f"📊 Context tracking saved to: {context_file}")
+
+    print("\n📊 Results:")
+    print(f"   Critical: {metrics.metrics['findings']['critical']}")
+    print(f"   High: {metrics.metrics['findings']['high']}")
+    print(f"   Medium: {metrics.metrics['findings']['medium']}")
+    print(f"   Low: {metrics.metrics['findings']['low']}")
+    print(f"\n💰 Cost: ${metrics.metrics['cost_usd']:.2f}")
+    print(f"⏱️  Duration: {metrics.metrics['duration_seconds']}s")
+    # Sanitize for logging (use str() to break taint chain)
+    safe_provider = str(ctx.provider).split("/")[-1] if ctx.provider else "unknown"
+    safe_model = str(ctx.model).split("/")[-1] if ctx.model else "unknown"
+    print(f"🔧 Provider: {safe_provider} ({safe_model})")
+
+    # Display context tracking summary
+    print("\n📊 Context Management:")
+    print(f"   Phases: {context_summary['total_phases']}")
+    print(f"   Total tokens (estimated): ~{context_summary['total_tokens_estimate']:,}")
+    for phase in context_summary['phases']:
+        print(f"   - {phase['name']}: {phase['components']} components, ~{phase['tokens_estimate']:,} tokens")
+
+    # Check fail-on conditions
+    fail_on = config.get("fail_on", "")
+    should_fail = False
+
+    if fail_on:
+        print(f"\n🚦 Checking fail conditions: {fail_on}")
+        conditions = [c.strip() for c in fail_on.split(",") if c.strip()]
+
+        for condition in conditions:
+            if ":" in condition:
+                category, severity = condition.split(":", 1)
+                category = category.strip().lower()
+                severity = severity.strip().lower()
+
+                # Check if condition is met
+                if category == "any":
+                    # any:critical means any category with critical severity
+                    if severity in metrics.metrics["findings"] and metrics.metrics["findings"][severity] > 0:
+                        print(f"   ❌ FAIL: Found {metrics.metrics['findings'][severity]} {severity} issues")
+                        should_fail = True
+                else:
+                    # Check specific category:severity combination
+                    matching_findings = [
+                        f for f in findings if f["category"] == category and f["severity"] == severity
+                    ]
+                    if matching_findings:
+                        print(f"   ❌ FAIL: Found {len(matching_findings)} {category}:{severity} issues")
+                        should_fail = True
+
+    # Output for GitHub Actions (using GITHUB_OUTPUT)
+    github_output = os.environ.get("GITHUB_OUTPUT")
+    if github_output:
+        with open(github_output, "a") as f:
+            f.write(f"blockers={blocker_count}\n")
+            f.write(f"suggestions={suggestion_count}\n")
+            f.write(f"report-path={report_file}\n")
+            f.write(f"sarif-path={sarif_file}\n")
+            f.write(f"json-path={json_file}\n")
+            f.write(f"cost-estimate={metrics.metrics['cost_usd']:.2f}\n")
+            f.write(f"files-analyzed={metrics.metrics['files_reviewed']}\n")
+            f.write(f"duration-seconds={metrics.metrics['duration_seconds']}\n")
+    else:
+        # Fallback for local testing
+        print(f"\nblockers={blocker_count}")
+        print(f"suggestions={suggestion_count}")
+        print(f"report-path={report_file}")
+        print(f"sarif-path={sarif_file}")
+        print(f"json-path={json_file}")
+        print(f"cost-estimate={metrics.metrics['cost_usd']:.2f}")
+        print(f"files-analyzed={metrics.metrics['files_reviewed']}")
+        print(f"duration-seconds={metrics.metrics['duration_seconds']}")
+
+    # Exit with appropriate code
+    if should_fail:
+        print("\n❌ Failing due to fail-on conditions")
+        sys.exit(1)
+
+    return blocker_count, suggestion_count
+
+
+def run_audit(repo_path, config, review_type="audit"):
+    """Run AI-powered code audit with multi-LLM support.
+
+    Thin orchestrator that delegates to extracted phase functions:
+      _setup_audit          -> provider/model/phase-gate/threat-model/file loading
+      _run_scanner_phase    -> heuristic + Semgrep SAST
+      _run_phase1_research  -> LLM research pass
+      _run_phase2_planning  -> LLM planning pass
+      _run_phase2_deep_analysis -> deep analysis engine
+      _run_phase3_analysis  -> LLM detailed analysis + finding merge
+      _run_reporting        -> enrichment, SARIF/JSON output, fail-on checks
+
+    The multi-agent branch (sequential mode) is kept inline because it is
+    an entirely separate code-path with its own reporting logic.
+    """
+
+    # -- Setup: provider, model, circuit breaker, threat model, files --
+    ctx = _setup_audit(repo_path, config, review_type)
+
+    if not ctx.files:
+        print("⚠️  No files to analyze")
+        return 0, 0, ctx.metrics
+
+    # Record file metrics
+    for f in ctx.files:
+        ctx.metrics.record_file(f["lines"])
+
+    # -- Scanner phase: heuristic + Semgrep --
+    heuristic_results, semgrep_results = _run_scanner_phase(ctx)
+
+    # -- Cost estimation --
+    cost_limit = float(config.get("cost_limit", 1.0))
+    estimated_cost, est_input, est_output = estimate_cost(ctx.files, ctx.max_tokens, ctx.provider)
+    if ctx.provider == "ollama":
+        print("💰 Estimated cost: $0.00 (local Ollama)")
+    else:
+        print(f"💰 Estimated cost: ${estimated_cost:.2f}")
+
+    if estimated_cost > cost_limit and ctx.provider != "ollama":
+        print(f"⚠️  Estimated cost ${estimated_cost:.2f} exceeds limit ${cost_limit:.2f}")
+        print("💡 Reduce max-files, use path filters, or increase cost-limit")
+        sys.exit(2)
+
+    # -- Multi-agent branch (kept inline — separate code-path) --
+    multi_agent_mode = config.get("multi_agent_mode", "single")
+
+    if multi_agent_mode == "sequential":
+        # Run multi-agent sequential review (with threat model context)
+        report = run_multi_agent_sequential(
+            repo_path,
+            config,
+            review_type,
+            ctx.client,
+            ctx.provider,
+            ctx.model,
+            ctx.max_tokens,
+            ctx.files,
+            ctx.metrics,
+            ctx.circuit_breaker,
+            threat_model=ctx.threat_model,  # Pass threat model to agents
         )
 
-        # Record LLM metrics
-        metrics.record_llm_call(input_tokens, output_tokens, provider)
-
-        # Save markdown report
+        # Skip to saving reports (multi-agent handles its own analysis)
         report_dir = Path(repo_path) / ".argus/reviews"
         report_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1929,44 +1863,24 @@ Focus on issues identified in the analysis plan."""
         with open(report_file, "w") as f:
             f.write(report)
 
-        print(f"✅ Audit complete! Report saved to: {report_file}")
+        print(f"✅ Multi-agent audit complete! Report saved to: {report_file}")
 
-        # Parse findings from Phase 3 report
-        phase3_findings = parse_findings_from_report(report)
-
-        # Merge Phase 2.7 findings (if any) with Phase 3 findings
-        # findings dict was initialized before Phase 2.7 as a dict, need to convert to list
-        all_findings = list(phase3_findings)  # Start with Phase 3 findings
-
-        # Add Phase 2.7 deep analysis findings if they exist (findings was a dict in Phase 2.7)
-        if isinstance(findings, dict):
-            for category, items in findings.items():
-                all_findings.extend(items)
-
-        findings = all_findings  # Now findings is a list as expected by the rest of the code
+        # Parse findings from final orchestrated report
+        findings = parse_findings_from_report(report)
 
         # -- v2.0 Enrichment Pipeline --
         print("\n🔬 Running enrichment pipeline...")
         _run_license_scoring(config, repo_path)
         findings, enrichment_meta = _run_enrichment_pipeline(
-            findings, config, repo_path, metrics
+            findings, config, repo_path, ctx.metrics
         )
-
-        # Record finding metrics
-        for finding in findings:
-            metrics.record_finding(finding["severity"], finding["category"])
-
-        # -- Phase gate: validate enriched findings before reporting --
-        if phase_gate is not None:
-            enrichment_output = {"enriched_findings": findings}
-            gate_decision = phase_gate.validate("ai_enrichment", enrichment_output)
-            if not gate_decision.should_proceed:
-                logger.error("Phase gate blocked before reporting: %s", gate_decision.reason)
-                print(f"Phase gate BLOCKED: {gate_decision.reason}")
-                sys.exit(2)
+        if enrichment_meta:
+            json_output_meta = {"enrichment": enrichment_meta}
+        else:
+            json_output_meta = {}
 
         # Generate SARIF with metrics
-        sarif = generate_sarif(findings, repo_path, metrics)
+        sarif = generate_sarif(findings, repo_path, ctx.metrics)
         sarif_file = report_dir / "results.sarif"
         with open(sarif_file, "w") as f:
             json.dump(sarif, f, indent=2)
@@ -1974,17 +1888,17 @@ Focus on issues identified in the analysis plan."""
 
         # Generate structured JSON
         json_output = {
-            "version": "2.0.0",
+            "version": "2.1.0",
+            "mode": "multi-agent-sequential",
             "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "repository": os.environ.get("GITHUB_REPOSITORY", "unknown"),
             "commit": os.environ.get("GITHUB_SHA", "unknown"),
-            "provider": provider,
-            "model": model,
-            "summary": metrics.metrics,
+            "provider": ctx.provider,
+            "model": ctx.model,
+            "summary": ctx.metrics.metrics,
             "findings": findings,
+            **json_output_meta,
         }
-        if enrichment_meta:
-            json_output["enrichment"] = enrichment_meta
 
         json_file = report_dir / "results.json"
         with open(json_file, "w") as f:
@@ -1993,38 +1907,75 @@ Focus on issues identified in the analysis plan."""
 
         # Save metrics
         metrics_file = report_dir / "metrics.json"
-        metrics.finalize()
-        metrics.save(metrics_file)
+        ctx.metrics.finalize()
+        ctx.metrics.save(metrics_file)
 
         # Count blockers and suggestions
-        blocker_count = metrics.metrics["findings"]["critical"] + metrics.metrics["findings"]["high"]
-        suggestion_count = metrics.metrics["findings"]["medium"] + metrics.metrics["findings"]["low"]
+        blocker_count = ctx.metrics.metrics["findings"]["critical"] + ctx.metrics.metrics["findings"]["high"]
+        suggestion_count = ctx.metrics.metrics["findings"]["medium"] + ctx.metrics.metrics["findings"]["low"]
 
-        # Save context tracking summary
-        context_summary = context_tracker.get_summary()
-        context_file = report_dir / "context-tracking.json"
-        with open(context_file, "w") as f:
-            json.dump(context_summary, f, indent=2)
-        print(f"📊 Context tracking saved to: {context_file}")
+        print("\n📊 Final Results:")
+        print(f"   Critical: {ctx.metrics.metrics['findings']['critical']}")
+        print(f"   High: {ctx.metrics.metrics['findings']['high']}")
+        print(f"   Medium: {ctx.metrics.metrics['findings']['medium']}")
+        print(f"   Low: {ctx.metrics.metrics['findings']['low']}")
+        print(f"\n💰 Total Cost: ${ctx.metrics.metrics['cost_usd']:.2f}")
+        print(f"⏱️  Total Duration: {ctx.metrics.metrics['duration_seconds']}s")
+        print("🤖 Mode: Multi-Agent Sequential (7 agents)")
 
-        print("\n📊 Results:")
-        print(f"   Critical: {metrics.metrics['findings']['critical']}")
-        print(f"   High: {metrics.metrics['findings']['high']}")
-        print(f"   Medium: {metrics.metrics['findings']['medium']}")
-        print(f"   Low: {metrics.metrics['findings']['low']}")
-        print(f"\n💰 Cost: ${metrics.metrics['cost_usd']:.2f}")
-        print(f"⏱️  Duration: {metrics.metrics['duration_seconds']}s")
-        # Sanitize for logging (use str() to break taint chain)
-        safe_provider = str(provider).split("/")[-1] if provider else "unknown"
-        safe_model = str(model).split("/")[-1] if model else "unknown"
-        print(f"🔧 Provider: {safe_provider} ({safe_model})")
+        # Display exploitability metrics
+        if any(ctx.metrics.metrics["exploitability"].values()):
+            print("\n⚠️  Exploitability:")
+            if ctx.metrics.metrics["exploitability"]["trivial"] > 0:
+                print(f"   ⚠️  Trivial: {ctx.metrics.metrics['exploitability']['trivial']}")
+            if ctx.metrics.metrics["exploitability"]["moderate"] > 0:
+                print(f"   🟨 Moderate: {ctx.metrics.metrics['exploitability']['moderate']}")
+            if ctx.metrics.metrics["exploitability"]["complex"] > 0:
+                print(f"   🟦 Complex: {ctx.metrics.metrics['exploitability']['complex']}")
+            if ctx.metrics.metrics["exploitability"]["theoretical"] > 0:
+                print(f"   ⬜ Theoretical: {ctx.metrics.metrics['exploitability']['theoretical']}")
 
-        # Display context tracking summary
-        print(f"\n📊 Context Management:")
-        print(f"   Phases: {context_summary['total_phases']}")
-        print(f"   Total tokens (estimated): ~{context_summary['total_tokens_estimate']:,}")
-        for phase in context_summary['phases']:
-            print(f"   - {phase['name']}: {phase['components']} components, ~{phase['tokens_estimate']:,} tokens")
+        if ctx.metrics.metrics["exploit_chains_found"] > 0:
+            print(f"   ⛓️  Exploit Chains: {ctx.metrics.metrics['exploit_chains_found']}")
+
+        if ctx.metrics.metrics["tests_generated"] > 0:
+            print(f"   🧪 Tests Generated: {ctx.metrics.metrics['tests_generated']}")
+
+        # Display validation and timeout metrics (Medium Priority features)
+        try:
+            validation_summary = output_validator.get_validation_summary()  # noqa: F821
+        except NameError:
+            validation_summary = {}
+        try:
+            timeout_summary = timeout_manager.get_summary()  # noqa: F821
+        except NameError:
+            timeout_summary = {}
+
+        if validation_summary.get("total_validations", 0) > 0:
+            print(f"\n📋 Output Validation:")
+            print(f"   Valid outputs: {validation_summary['valid_outputs']}/{validation_summary['total_validations']}")
+            if validation_summary.get('total_warnings', 0) > 0:
+                print(f"   ⚠️  Warnings: {validation_summary['total_warnings']}")
+            if validation_summary.get('invalid_outputs', 0) > 0:
+                print(f"   ❌ Invalid: {validation_summary['invalid_outputs']}")
+
+        if timeout_summary.get("total_executions", 0) > 0:
+            print(f"\n⏱️  Timeout Management:")
+            print(f"   Completed: {timeout_summary['completed']}/{timeout_summary['total_executions']}")
+            print(f"   Avg duration: {timeout_summary['avg_duration']:.1f}s")
+            if timeout_summary.get('timeout_exceeded', 0) > 0:
+                print(f"   ⚠️  Timeouts exceeded: {timeout_summary['timeout_exceeded']}")
+
+        # Output for GitHub Actions
+        print("completed=true")
+        print(f"blockers={blocker_count}")
+        print(f"suggestions={suggestion_count}")
+        print(f"report-path={report_file}")
+        print(f"sarif-path={sarif_file}")
+        print(f"json-path={json_file}")
+        print(f"cost-estimate={ctx.metrics.metrics['cost_usd']:.4f}")
+        print(f"files-analyzed={ctx.metrics.metrics['files_reviewed']}")
+        print(f"duration-seconds={ctx.metrics.metrics['duration_seconds']}")
 
         # Check fail-on conditions
         fail_on = config.get("fail_on", "")
@@ -2040,14 +1991,11 @@ Focus on issues identified in the analysis plan."""
                     category = category.strip().lower()
                     severity = severity.strip().lower()
 
-                    # Check if condition is met
                     if category == "any":
-                        # any:critical means any category with critical severity
-                        if severity in metrics.metrics["findings"] and metrics.metrics["findings"][severity] > 0:
-                            print(f"   ❌ FAIL: Found {metrics.metrics['findings'][severity]} {severity} issues")
+                        if severity in ctx.metrics.metrics["findings"] and ctx.metrics.metrics["findings"][severity] > 0:
+                            print(f"   ❌ FAIL: Found {ctx.metrics.metrics['findings'][severity]} {severity} issues")
                             should_fail = True
                     else:
-                        # Check specific category:severity combination
                         matching_findings = [
                             f for f in findings if f["category"] == category and f["severity"] == severity
                         ]
@@ -2055,35 +2003,41 @@ Focus on issues identified in the analysis plan."""
                             print(f"   ❌ FAIL: Found {len(matching_findings)} {category}:{severity} issues")
                             should_fail = True
 
-        # Output for GitHub Actions (using GITHUB_OUTPUT)
-        github_output = os.environ.get("GITHUB_OUTPUT")
-        if github_output:
-            with open(github_output, "a") as f:
-                f.write(f"blockers={blocker_count}\n")
-                f.write(f"suggestions={suggestion_count}\n")
-                f.write(f"report-path={report_file}\n")
-                f.write(f"sarif-path={sarif_file}\n")
-                f.write(f"json-path={json_file}\n")
-                f.write(f"cost-estimate={metrics.metrics['cost_usd']:.2f}\n")
-                f.write(f"files-analyzed={metrics.metrics['files_reviewed']}\n")
-                f.write(f"duration-seconds={metrics.metrics['duration_seconds']}\n")
-        else:
-            # Fallback for local testing
-            print(f"\nblockers={blocker_count}")
-            print(f"suggestions={suggestion_count}")
-            print(f"report-path={report_file}")
-            print(f"sarif-path={sarif_file}")
-            print(f"json-path={json_file}")
-            print(f"cost-estimate={metrics.metrics['cost_usd']:.2f}")
-            print(f"files-analyzed={metrics.metrics['files_reviewed']}")
-            print(f"duration-seconds={metrics.metrics['duration_seconds']}")
-
-        # Exit with appropriate code
         if should_fail:
             print("\n❌ Failing due to fail-on conditions")
             sys.exit(1)
 
-        return blocker_count, suggestion_count, metrics
+        return blocker_count, suggestion_count, ctx.metrics
+
+    # -- Single-agent mode with DISCRETE PHASES --
+    print("🤖 Mode: Single-Agent (3-Phase Process)")
+    print("   Phase 1: Research & File Selection")
+    print("   Phase 2: Planning & Focus Area Identification")
+    print("   Phase 3: Detailed Implementation Analysis")
+
+    try:
+        # Phase 1: Research
+        research_data = _run_phase1_research(ctx)
+
+        # Compute priority files for Phases 2 & 3
+        priority_files = [f for f in ctx.files if f['path'] in research_data.get('high_priority_files', [])]
+        if not priority_files:
+            priority_files = ctx.files[:10]  # Fallback
+
+        # Phase 2: Planning
+        plan_summary = _run_phase2_planning(ctx, research_data, priority_files)
+
+        # Phase 2.7: Deep Analysis
+        findings_dict = {}  # Initialize findings dict for Phase 2.7
+        deep_analysis_findings, findings_dict = _run_phase2_deep_analysis(ctx, findings_dict)
+
+        # Phase 3: Detailed Analysis
+        findings, report, report_file = _run_phase3_analysis(ctx, plan_summary, priority_files, findings_dict)
+
+        # Reporting: enrichment, SARIF/JSON, fail-on checks
+        blocker_count, suggestion_count = _run_reporting(ctx, findings, report_file)
+
+        return blocker_count, suggestion_count, ctx.metrics
 
     except Exception as e:
         print(f"❌ Error during AI analysis: {e}")

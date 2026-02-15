@@ -110,48 +110,9 @@ except ImportError:
     _REGISTRY_OK = False
 
 # Vulnerability enrichment modules (v2.0)
-try:
-    from epss_scorer import EPSSScorer
-
-    _EPSS_OK = True
-except ImportError:
-    _EPSS_OK = False
-
-try:
-    from fix_version_tracker import FixVersionTracker
-
-    _FIX_OK = True
-except ImportError:
-    _FIX_OK = False
-
-try:
-    from vex_processor import VEXProcessor
-
-    _VEX_OK = True
-except ImportError:
-    _VEX_OK = False
-
-try:
-    from vuln_deduplicator import VulnDeduplicator
-
-    _DEDUP_OK = True
-except ImportError:
-    _DEDUP_OK = False
-
-try:
-    from compliance_mapper import ComplianceMapper
-
-    _COMPLIANCE_OK = True
-except ImportError:
-    _COMPLIANCE_OK = False
-
-try:
-    from advanced_suppression import AdvancedSuppressionManager
-
-    _SUPPRESSION_OK = True
-except ImportError:
-    _SUPPRESSION_OK = False
-
+# EPSS, fix versions, VEX, dedup, compliance, and suppression are now
+# handled by the shared enrichment_pipeline module.  Only license risk
+# scoring is still used directly here (operates on SBOM components).
 try:
     from license_risk_scorer import LicenseRiskScorer
 
@@ -562,29 +523,19 @@ class HybridSecurityAnalyzer:
                 logger.warning("Scanner registry init failed (non-fatal): %s", e)
 
         # Validation: At least one scanner or AI enrichment must be enabled
-        if (
-            not self.enable_semgrep
-            and not self.enable_trivy
-            and not self.enable_checkov
-            and not self.enable_api_security
-            and not self.enable_dast
-            and not self.enable_supply_chain
-            and not self.enable_fuzzing
-            and not self.enable_threat_intel
-            and not self.enable_remediation
-            and not self.enable_runtime_security
-            and not self.enable_regression_testing
-            and not self.enable_ai_enrichment
-            and not self.enable_nuclei_templates
-            and not self.enable_zap_baseline
-        ):
+        active_features = [
+            name for name in (
+                "semgrep", "trivy", "checkov", "api_security", "dast",
+                "supply_chain", "fuzzing", "threat_intel", "remediation",
+                "runtime_security", "regression_testing", "ai_enrichment",
+                "nuclei_templates", "zap_baseline",
+            )
+            if getattr(self, f"enable_{name}", False)
+        ]
+        if not active_features:
             raise ValueError(
-                "❌ ERROR: At least one tool must be enabled!\n"
-                "   Enable: --enable-semgrep, --enable-trivy, --enable-checkov, "
-                "--enable-api-security, --enable-dast, --enable-supply-chain, "
-                "--enable-fuzzing, --enable-threat-intel, --enable-remediation, "
-                "--enable-runtime-security, --enable-regression-testing, "
-                "--enable-nuclei-templates, --enable-zap-baseline, or --enable-ai-enrichment"
+                "At least one tool must be enabled! "
+                "Use --help to see available scanner flags."
             )
 
     def analyze(
@@ -803,40 +754,39 @@ class HybridSecurityAnalyzer:
     # ------------------------------------------------------------------
 
     def _enrich_findings(self, findings: list[HybridFinding], target_path: str) -> list[HybridFinding]:
-        """Enrich findings with EPSS scores, fix versions, VEX, dedup."""
+        """Enrich findings with EPSS scores, fix versions, VEX, dedup, etc.
+
+        Delegates the 6-step enrichment pipeline to the shared
+        ``enrichment_pipeline`` module, then handles license risk scoring
+        (which operates on SBOM components extracted from findings, not on
+        findings directly) and reconstructs HybridFinding dataclasses.
+        """
         if not findings:
             return findings
 
-        enable_epss = self.config.get("enable_epss_scoring", True)
-        enable_fix = self.config.get("enable_fix_version_tracking", True)
-        enable_vex = self.config.get("enable_vex", True)
-        enable_dedup = self.config.get("enable_vuln_deduplication", True)
-
-        # Convert dataclasses to dicts for enrichment, then write fields back
+        # Convert dataclasses to dicts for the shared enrichment pipeline
         finding_dicts = [asdict(f) for f in findings]
 
-        # EPSS scoring
-        if _EPSS_OK and enable_epss:
-            try:
-                scorer = EPSSScorer(
-                    cache_dir=str(Path(target_path) / ".argus-cache"),
-                )
-                finding_dicts = scorer.enrich_findings(finding_dicts)
-                logger.info("EPSS: enriched findings with exploit probability scores")
-            except Exception as e:
-                logger.warning("EPSS scoring failed (non-fatal): %s", e)
+        # -- Shared 6-step enrichment pipeline --
+        from enrichment_pipeline import run_enrichment_pipeline
 
-        # License risk scoring (operates on SBOM components, not findings)
+        finding_dicts, _enrichment_meta = run_enrichment_pipeline(
+            finding_dicts, self.config, target_path,
+        )
+
+        # -- License risk scoring (hybrid_analyzer-specific, SBOM-based) --
         if _LICENSE_OK and self.config.get("enable_license_risk_scoring", True):
             try:
                 license_scorer = LicenseRiskScorer()
-                # Extract package components from findings that have package info
                 components = []
                 for fd in finding_dicts:
                     pkg = fd.get("cve_id") and fd.get("title", "")
                     if pkg and " in " in pkg:
                         pkg_name = pkg.split(" in ")[-1].strip()
-                        components.append({"name": pkg_name, "version": fd.get("installed_version", "unknown")})
+                        components.append({
+                            "name": pkg_name,
+                            "version": fd.get("installed_version", "unknown"),
+                        })
                 if components:
                     risks = license_scorer.score_components(components)
                     if risks:
@@ -845,78 +795,6 @@ class HybridSecurityAnalyzer:
                     logger.info("License risk: no SBOM components to score")
             except Exception as e:
                 logger.warning("License risk scoring failed (non-fatal): %s", e)
-
-        # Fix version tracking
-        if _FIX_OK and enable_fix:
-            try:
-                tracker = FixVersionTracker()
-                fix_infos = [info for f in finding_dicts if (info := tracker.extract_fix_info(f)) is not None]
-                if fix_infos:
-                    finding_dicts = tracker.enrich_findings(finding_dicts, fix_infos)
-                    logger.info("Fix versions: %d upgrade paths found", len(fix_infos))
-            except Exception as e:
-                logger.warning("Fix version tracking failed (non-fatal): %s", e)
-
-        # VEX filtering
-        if _VEX_OK and enable_vex:
-            try:
-                processor = VEXProcessor(
-                    auto_discover_dir=str(Path(target_path) / ".argus/vex"),
-                )
-                statements = processor.load_statements()
-                if statements:
-                    finding_dicts, suppressed = processor.filter_findings(finding_dicts, statements)
-                    logger.info("VEX: %d suppressed, %d remaining", len(suppressed), len(finding_dicts))
-            except Exception as e:
-                logger.warning("VEX processing failed (non-fatal): %s", e)
-
-        # Deduplication
-        if _DEDUP_OK and enable_dedup:
-            try:
-                strategy = self.config.get("deduplication_strategy", "auto")
-                deduplicator = VulnDeduplicator(strategy=strategy)
-                result = deduplicator.deduplicate(finding_dicts)
-                finding_dicts = result.kept_findings
-                logger.info("Dedup: %d findings after deduplication", len(finding_dicts))
-            except Exception as e:
-                logger.warning("Deduplication failed (non-fatal): %s", e)
-
-        # Compliance mapping
-        if _COMPLIANCE_OK and self.config.get("enable_compliance_mapping", True):
-            try:
-                frameworks_str = self.config.get("compliance_frameworks", "")
-                frameworks = [f.strip() for f in frameworks_str.split(",") if f.strip()] if frameworks_str else None
-                mapper = ComplianceMapper(frameworks=frameworks)
-                mappings = mapper.map_findings(finding_dicts)
-                # Attach compliance data back to findings
-                if mappings:
-                    _mapping_by_cwe = {}
-                    for m in mappings:
-                        cwe = getattr(m, "cwe_id", None) or getattr(m, "finding_id", None)
-                        if cwe:
-                            _mapping_by_cwe.setdefault(cwe, []).append(
-                                {"framework": getattr(m, "framework", ""), "control": getattr(m, "control_id", "")}
-                            )
-                    logger.info("Compliance mapping: %d findings mapped to %d controls", len(finding_dicts), len(mappings))
-            except Exception as e:
-                logger.warning("Compliance mapping failed (non-fatal): %s", e)
-
-        # Advanced suppression (.argus-ignore.yml)
-        if _SUPPRESSION_OK and self.config.get("enable_advanced_suppression", True):
-            try:
-                ignore_path = Path(target_path) / ".argus-ignore.yml"
-                suppressor = AdvancedSuppressionManager(
-                    config_path=str(ignore_path),
-                    auto_expire_days=self.config.get("suppression_auto_expire_days", 90),
-                )
-                suppressor.load_rules()
-                before_count = len(finding_dicts)
-                remaining, suppressed_list = suppressor.filter_findings(finding_dicts)
-                finding_dicts = remaining
-                if suppressed_list:
-                    logger.info("Suppression: %d findings suppressed via .argus-ignore.yml", len(suppressed_list))
-            except Exception as e:
-                logger.warning("Advanced suppression failed (non-fatal): %s", e)
 
         # Reconstruct HybridFinding objects from enriched dicts
         enriched = []
