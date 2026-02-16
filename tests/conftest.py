@@ -1,9 +1,11 @@
 """Pytest configuration and shared fixtures"""
 
 import os
+import subprocess
 import sys
 from collections.abc import Generator
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -61,3 +63,48 @@ def reset_env():
     yield
     os.environ.clear()
     os.environ.update(original_env)
+
+
+# ---------------------------------------------------------------------------
+# Performance: auto-mock slow subprocess version checks
+# ---------------------------------------------------------------------------
+# TruffleHogScanner.__init__ and ZAPAgent.__init__ call subprocess.run to
+# check if their binary is installed. Each call has a 5s timeout that fires
+# when the binary isn't present, adding ~2-5s per test instantiation.
+# This fixture intercepts those specific calls and returns instantly.
+# ---------------------------------------------------------------------------
+
+_ORIGINAL_SUBPROCESS_RUN = subprocess.run
+
+_VERSION_CHECK_BINARIES = frozenset(
+    ["trufflehog", "zap-cli", "nuclei", "gitleaks", "falco"]
+)
+
+
+def _fast_subprocess_run(cmd, *args, **kwargs):
+    """Intercept version-check subprocess calls for speed."""
+    if isinstance(cmd, (list, tuple)) and len(cmd) >= 1:
+        binary = os.path.basename(cmd[0])
+        # Only intercept --version / version checks
+        if binary in _VERSION_CHECK_BINARIES and any(
+            v in cmd for v in ["--version", "version", "--help"]
+        ):
+            mock_result = MagicMock()
+            mock_result.returncode = 1  # "not installed"
+            mock_result.stdout = ""
+            mock_result.stderr = "mocked: not installed"
+            return mock_result
+        # Also intercept "docker images" checks for ZAP
+        if binary == "docker" and len(cmd) >= 2 and cmd[1] == "images":
+            mock_result = MagicMock()
+            mock_result.returncode = 0
+            mock_result.stdout = ""
+            mock_result.stderr = ""
+            return mock_result
+    return _ORIGINAL_SUBPROCESS_RUN(cmd, *args, **kwargs)
+
+
+@pytest.fixture(autouse=True)
+def _fast_version_checks(monkeypatch):
+    """Auto-mock scanner version checks to avoid 5s timeouts per test."""
+    monkeypatch.setattr(subprocess, "run", _fast_subprocess_run)

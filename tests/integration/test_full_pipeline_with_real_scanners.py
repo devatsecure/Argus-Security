@@ -4,10 +4,33 @@ Tests the entire Argus workflow from scan to report generation
 """
 import json
 import os
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
 import pytest
+
+
+def _is_semgrep_functional() -> bool:
+    """Check if semgrep is installed AND responds to --version within timeout.
+
+    Mirrors the check in SemgrepScanner._check_semgrep_installed() so that
+    the skip condition matches what the scanner itself considers 'installed'.
+    """
+    semgrep_bin = shutil.which("semgrep")
+    if not semgrep_bin:
+        return False
+    try:
+        result = subprocess.run(
+            [semgrep_bin, "--version"], capture_output=True, text=True, timeout=5
+        )
+        return result.returncode == 0
+    except (subprocess.SubprocessError, FileNotFoundError, OSError):
+        return False
+
+
+_semgrep_available = _is_semgrep_functional()
 
 # Add test utilities to path
 TEST_ROOT = Path(__file__).parent.parent
@@ -87,6 +110,7 @@ class TestFullPipelineWithRealScanners:
 
         print(f"✅ Checkov found {len(failures)} IaC misconfigurations")
 
+    @pytest.mark.skipif(not _semgrep_available, reason="Semgrep binary not installed")
     def test_scanners_run_on_vulnerable_code(self):
         """Test that scanners can be run on vulnerable code samples"""
         vulnerable_path = fixture_manager.get_vulnerable_file_path("vulnerable_api.py")
@@ -98,6 +122,7 @@ class TestFullPipelineWithRealScanners:
 
         print(f"✅ Semgrep detected {semgrep_results['findings_count']} issues")
 
+    @pytest.mark.skipif(not _semgrep_available, reason="Semgrep binary not installed")
     def test_hybrid_analyzer_combines_scanners(self):
         """Test that hybrid analyzer successfully combines multiple scanners"""
         vulnerable_app = fixture_manager.get_vulnerable_file_path("vulnerable_api.py").parent
