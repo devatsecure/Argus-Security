@@ -71,8 +71,13 @@ def get_default_config() -> dict[str, Any]:
         "enable_gitleaks": True,
         # -- MCP Server --
         "enable_mcp_server": False,
-        # -- DAST auth --
+        # -- DAST (orchestrator) --
+        "dast_target_url": "",  # Target URL for DAST scanning (required when enable_dast=True)
         "dast_auth_config_path": "",
+        "dast_enable_nuclei": True,  # Enable Nuclei agent in DAST orchestrator
+        "dast_enable_zap": True,  # Enable ZAP agent in DAST orchestrator
+        "dast_max_duration": 900,  # Max DAST scan duration in seconds (15 min)
+        "dast_parallel_agents": True,  # Run Nuclei and ZAP in parallel
         # -- Feature toggles --
         "enable_multi_agent": True,
         "enable_spontaneous_discovery": True,
@@ -428,8 +433,13 @@ _ENV_MAPPINGS: list[tuple] = [
     (("DEEP_ANALYSIS_COST_CEILING",), "deep_analysis_cost_ceiling", "float"),
     # Output
     (("FAIL_ON", "INPUT_FAIL_ON"), "fail_on", "str"),
-    # DAST auth
+    # DAST (orchestrator)
+    (("DAST_TARGET_URL",), "dast_target_url", "str"),
     (("DAST_AUTH_CONFIG_PATH",), "dast_auth_config_path", "str"),
+    (("DAST_ENABLE_NUCLEI",), "dast_enable_nuclei", "bool"),
+    (("DAST_ENABLE_ZAP",), "dast_enable_zap", "bool"),
+    (("DAST_MAX_DURATION",), "dast_max_duration", "int"),
+    (("DAST_PARALLEL_AGENTS",), "dast_parallel_agents", "bool"),
     # Vulnerability enrichment & compliance
     (("ENABLE_LICENSE_RISK_SCORING",), "enable_license_risk_scoring", "bool"),
     (("ENABLE_EPSS_SCORING",), "enable_epss_scoring", "bool"),
@@ -555,7 +565,12 @@ _CLI_ATTR_MAP: dict[str, str] = {
     "temporal_server": "temporal_server",
     "temporal_namespace": "temporal_namespace",
     "temporal_retry_mode": "temporal_retry_mode",
+    "dast_target_url": "dast_target_url",
     "dast_auth_config_path": "dast_auth_config_path",
+    "dast_enable_nuclei": "dast_enable_nuclei",
+    "dast_enable_zap": "dast_enable_zap",
+    "dast_max_duration": "dast_max_duration",
+    "dast_parallel_agents": "dast_parallel_agents",
     "enable_license_risk_scoring": "enable_license_risk_scoring",
     "enable_epss_scoring": "enable_epss_scoring",
     "epss_cache_ttl_hours": "epss_cache_ttl_hours",
@@ -842,7 +857,9 @@ def validate_config(config: dict[str, Any]) -> list[str]:
 
     if config.get("enable_dast") and not config.get("dast_target_url"):
         issues.append(
-            "WARNING: enable_dast is true but no DAST target URL is configured. DAST scanning will be skipped."
+            "WARNING: enable_dast is true but no DAST target URL is configured. "
+            "The DAST orchestrator will attempt OpenAPI spec auto-discovery; "
+            "if no spec is found, DAST scanning will be skipped."
         )
 
     return issues

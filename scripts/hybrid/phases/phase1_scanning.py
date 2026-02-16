@@ -215,7 +215,7 @@ def run_phase1_scanning(
     # --- DAST ---
     if analyzer.enable_dast and analyzer.dast_scanner:
         try:
-            logger.info("   Running DAST scanner...")
+            logger.info("   Running DAST orchestrator (Nuclei + ZAP)...")
             dast_findings = analyzer._run_dast(target_path)
             all_findings.extend(dast_findings)
             logger.info("   DAST: %d runtime vulnerabilities", len(dast_findings))

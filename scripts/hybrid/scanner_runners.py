@@ -261,57 +261,87 @@ def _discover_openapi_spec(target_path: str, logger: logging.Logger) -> str | No
     return None
 
 
-def run_dast(scanner: Any, target_path: str, logger: logging.Logger, config: dict, dast_target_url: str | None = None) -> list[HybridFinding]:
-    """Run DAST Scanner and convert to HybridFinding format.
+def run_dast(
+    orchestrator: Any,
+    target_path: str,
+    logger: logging.Logger,
+    config: dict,
+    dast_target_url: str | None = None,
+) -> list[HybridFinding]:
+    """Run DAST Orchestrator (Nuclei + ZAP) and convert to HybridFinding format.
 
-    If no --dast-target-url is provided, auto-discovers OpenAPI/Swagger
-    spec files in the target directory for static DAST analysis.
+    The orchestrator coordinates multiple DAST agents (Nuclei, ZAP) in
+    parallel and returns aggregated, deduplicated findings.
+
+    If no ``dast_target_url`` is provided, auto-discovers OpenAPI/Swagger
+    spec files in the target directory for endpoint-aware scanning.
+
+    Args:
+        orchestrator: A ``DASTOrchestrator`` instance (from ``dast_orchestrator.py``).
+        target_path: Filesystem path to the project being scanned.
+        logger: Logger for status messages.
+        config: Pipeline configuration dict.
+        dast_target_url: Target URL for active DAST scanning.
+
+    Returns:
+        List of ``HybridFinding`` objects (empty list on error or no findings).
     """
-    findings = []
+    findings: list[HybridFinding] = []
 
     # If no URL provided, try to auto-discover an OpenAPI spec
+    openapi_spec: str | None = None
     if not dast_target_url:
         openapi_spec = _discover_openapi_spec(target_path, logger)
-        if openapi_spec:
-            # Reconfigure scanner with discovered spec
-            scanner.openapi_spec = openapi_spec
-        else:
-            logger.info("   ℹ️  DAST: No target URL or OpenAPI spec found, skipping")
+        if not openapi_spec:
+            logger.info("   DAST: No target URL or OpenAPI spec found, skipping")
             return findings
+        # Use a placeholder URL; the orchestrator will derive endpoints from spec
+        dast_target_url = config.get("dast_fallback_url", "http://localhost:8080")
+        logger.info("   DAST: Using discovered OpenAPI spec with fallback URL %s", dast_target_url)
 
     try:
-        # Run DAST scanner
-        dast_config = {
-            "severity": config.get("dast_severity", "critical,high,medium"),
-            "timeout": config.get("dast_timeout", 300),
-        }
-        dast_result = scanner.scan(dast_config)
+        dast_result = orchestrator.scan(
+            target_url=dast_target_url,
+            openapi_spec=openapi_spec or config.get("openapi_spec"),
+            output_dir=config.get("dast_output_dir"),
+        )
 
-        # Convert to HybridFinding format
-        if isinstance(dast_result, list):
-            for dast_finding in dast_result:
-                finding = HybridFinding(
-                    finding_id=f"dast-{dast_finding.get('id', 'unknown')}",
-                    source_tool="dast",
-                    severity=normalize_severity(dast_finding.get("severity", "medium")),
-                    category="security",
-                    title=dast_finding.get("title", "DAST Issue"),
-                    description=dast_finding.get("description", ""),
-                    file_path=dast_finding.get("file_path", target_path),
-                    line_number=dast_finding.get("line_number"),
-                    cwe_id=dast_finding.get("cwe_id"),
-                    cve_id=dast_finding.get("cve_id"),
-                    cvss_score=dast_finding.get("cvss_score"),
-                    exploitability=dast_finding.get("exploitability"),
-                    recommendation=dast_finding.get("recommendation", ""),
-                    references=dast_finding.get("references", []),
-                    confidence=dast_finding.get("confidence", 0.9),
-                    llm_enriched=False,
-                )
-                findings.append(finding)
+        # Convert aggregated findings from DASTScanResult to HybridFinding
+        for idx, agg in enumerate(dast_result.aggregated_findings):
+            source_agent = agg.get("source", "dast")
+            raw = agg.get("raw", {})
+
+            # Extract CWE/CVE from Nuclei classification if available
+            classification = raw.get("info", {}).get("classification", {}) if isinstance(raw, dict) else {}
+            cwe_id = classification.get("cwe-id")
+            cve_id = classification.get("cve-id")
+
+            finding = HybridFinding(
+                finding_id=f"dast-{source_agent}-{idx}",
+                source_tool=f"dast-{source_agent}",
+                severity=normalize_severity(agg.get("severity", "medium")),
+                category="dast",
+                title=agg.get("name", "DAST Finding"),
+                description=agg.get("description", ""),
+                file_path=agg.get("url", dast_target_url),
+                line_number=None,
+                cwe_id=cwe_id if isinstance(cwe_id, str) else None,
+                cve_id=cve_id if isinstance(cve_id, str) else None,
+                recommendation="Review and remediate the runtime vulnerability",
+                references=[],
+                confidence=0.95,  # DAST findings are verified at runtime
+                llm_enriched=False,
+            )
+            findings.append(finding)
+
+        # Log agent health from the orchestrator result
+        if dast_result.agents_failed:
+            logger.warning(
+                "   DAST: Some agents failed: %s", ", ".join(dast_result.agents_failed)
+            )
 
     except Exception as e:
-        logger.error(f"❌ DAST scan failed: {e}")
+        logger.error("DAST orchestrator scan failed: %s", e)
 
     return findings
 
