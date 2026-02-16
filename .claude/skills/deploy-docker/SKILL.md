@@ -63,9 +63,24 @@ Expected arguments: `<target-repo-path> [--rebuild] [--ai-provider anthropic|ope
 
 Determine the AI provider (default: `anthropic`).
 
-First, detect the host Docker socket GID so Phase 4 sandbox validation can use Docker-in-Docker:
+First, detect the Docker socket path (macOS Docker Desktop vs Linux):
 ```
-DOCKER_GID=$(stat -f '%g' /var/run/docker.sock 2>/dev/null || stat -c '%g' /var/run/docker.sock 2>/dev/null || echo "")
+DOCKER_SOCK=""
+for sock in "$HOME/.docker/run/docker.sock" "/var/run/docker.sock" "/run/user/$(id -u)/docker.sock"; do
+    if [ -S "$sock" ]; then
+        DOCKER_SOCK="$sock"
+        break
+    fi
+done
+if [ -z "$DOCKER_SOCK" ]; then
+    echo "ERROR: No Docker socket found"
+    exit 1
+fi
+```
+
+Then detect the host Docker socket GID so Phase 4 sandbox validation can use Docker-in-Docker:
+```
+DOCKER_GID=$(stat -f '%g' "$DOCKER_SOCK" 2>/dev/null || stat -c '%g' "$DOCKER_SOCK" 2>/dev/null || echo "")
 ```
 
 Then run (include `--group-add` only when `DOCKER_GID` is non-empty):
@@ -73,7 +88,7 @@ Then run (include `--group-add` only when `DOCKER_GID` is non-empty):
 ```
 docker run --rm \
   -v /tmp/argus-target-rw:/workspace \
-  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v "$DOCKER_SOCK":/var/run/docker.sock \
   -v /tmp/argus-output:/output \
   -e ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
   ${DOCKER_GID:+--group-add "$DOCKER_GID"} \
