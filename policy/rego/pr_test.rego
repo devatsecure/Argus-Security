@@ -299,3 +299,90 @@ test_medium_in_hardened_suppressed if {
     }
     count(result) == 1
 }
+
+# ========================================
+# TEST: End-to-end decision — auto_fixable NEVER bypasses critical/high
+# ========================================
+
+# Critical SAST finding with auto_fixable=true must produce a "fail" decision
+test_decision_critical_auto_fixable_fails if {
+    result := decision with input as {
+        "findings": [{
+            "id": "SAST-E2E-001",
+            "category": "SAST",
+            "severity": "critical",
+            "exploitability": "trivial",
+            "auto_fixable": true,
+            "rule_name": "sql-injection",
+            "noise_score": 0.1,
+            "secret_verified": "false",
+            "reachability": "unknown",
+            "service_tier": "internal",
+            "historical_fix_rate": 0.8
+        }]
+    }
+    result.decision == "fail"
+    count(result.blocks) > 0
+}
+
+# High IaC finding with auto_fixable=true and public exposure must fail
+test_decision_high_iac_auto_fixable_fails if {
+    result := decision with input as {
+        "findings": [{
+            "id": "IAC-E2E-001",
+            "category": "IAC",
+            "severity": "high",
+            "service_tier": "public",
+            "auto_fixable": true,
+            "rule_name": "open-security-group",
+            "noise_score": 0.2,
+            "secret_verified": "false",
+            "exploitability": "moderate",
+            "reachability": "unknown",
+            "historical_fix_rate": 0.5
+        }]
+    }
+    result.decision == "fail"
+    count(result.blocks) > 0
+}
+
+# Verified secret with auto_fixable=true must fail
+test_decision_verified_secret_auto_fixable_fails if {
+    result := decision with input as {
+        "findings": [{
+            "id": "SECRET-E2E-001",
+            "category": "SECRETS",
+            "severity": "critical",
+            "secret_verified": "true",
+            "auto_fixable": true,
+            "rule_name": "aws-access-key",
+            "noise_score": 0.0,
+            "exploitability": "trivial",
+            "reachability": "yes",
+            "service_tier": "public",
+            "historical_fix_rate": 1.0
+        }]
+    }
+    result.decision == "fail"
+    count(result.blocks) > 0
+}
+
+# No critical findings = pass, even if warnings exist
+test_decision_no_blockers_warnings_pass if {
+    result := decision with input as {
+        "findings": [{
+            "id": "SECRET-E2E-002",
+            "category": "SECRETS",
+            "severity": "medium",
+            "secret_verified": "false",
+            "auto_fixable": false,
+            "rule_name": "potential-secret",
+            "noise_score": 0.3,
+            "exploitability": "complex",
+            "reachability": "unknown",
+            "service_tier": "internal",
+            "historical_fix_rate": 0.4
+        }]
+    }
+    result.decision == "pass"
+}

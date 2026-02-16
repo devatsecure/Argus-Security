@@ -234,37 +234,13 @@ delivery_impact := "low" if count(block_ids) == 0
 # FINAL DECISION
 # ========================================
 
-# Block if any critical findings (excluding auto-fixable)
-decision := result if {
-    count(block_ids) > 0
-    # Filter out auto-fixable from blocks
-    non_fixable_blocks := [id | 
-        id := block_ids[_]
-        not id in [f.id | f := auto_fixable_findings[_]]
-    ]
-    count(non_fixable_blocks) > 0
-    
-    reasons_list := array.concat(
-        critical_reasons,
-        [sprintf("See full report for %d warnings", [count(warning_ids)])]
-    )
-    result := {
-        "decision": "fail",
-        "reasons": reasons_list,
-        "blocks": non_fixable_blocks,
-        "warnings": warning_ids,
-        "velocity_metrics": velocity_metrics,
-        "auto_fixable_count": count(auto_fixable_findings)
-    }
-}
-
 # Critical reasons breakdown
 critical_reasons := r if {
     secrets := [f | f := blocking_findings[_]; critical_secret(f)]
     iac := [f | f := blocking_findings[_]; critical_iac(f)]
     sast := [f | f := blocking_findings[_]; critical_sast(f)]
     deps := [f | f := blocking_findings[_]; critical_deps(f)]
-    
+
     r := array.concat(
         array.concat(
             secret_reasons(secrets),
@@ -289,57 +265,11 @@ sast_reasons(sast) := [] if count(sast) == 0
 deps_reasons(deps) := [sprintf("🔴 %d critical CVE(s) with confirmed reachability - MUST FIX", [count(deps)])] if count(deps) > 0
 deps_reasons(deps) := [] if count(deps) == 0
 
-# Pass with warnings if only warnings exist
-decision := result if {
-    count(block_ids) == 0
-    count(warning_ids) > 0
-    result := {
-        "decision": "pass",
-        "reasons": [sprintf("✅ No blockers, but %d warning(s) found - review recommended", [count(warning_ids)])],
-        "blocks": [],
-        "warnings": warning_ids,
-        "velocity_metrics": velocity_metrics
-    }
-}
-
-# Clean pass if no findings
-decision := result if {
-    count(block_ids) == 0
-    count(warning_ids) == 0
-    result := {
-        "decision": "pass",
-        "reasons": ["✅ No security issues detected"],
-        "blocks": [],
-        "warnings": [],
-        "velocity_metrics": velocity_metrics
-    }
-}
-
-# Pass if all blockers are auto-fixable AND none are critical/high
-# HARDENED: Explicitly check that no critical/high findings attempted auto-fix bypass
+# DECISION 1: Block if ANY critical findings exist — auto_fixable is NEVER trusted for gating.
+# Critical/high findings always block regardless of auto_fixable status.
+# The auto_fixable field is AI-set and must not influence security gate decisions.
 decision := result if {
     count(block_ids) > 0
-    count(attempted_auto_fix_bypass_ids) == 0  # No critical/high attempted auto-fix
-    non_fixable_blocks := [id |
-        id := block_ids[_]
-        not id in [f.id | f := auto_fixable_findings[_]]
-    ]
-    count(non_fixable_blocks) == 0  # All blockers are auto-fixable (and none are critical/high)
-
-    result := {
-        "decision": "pass",
-        "reasons": [sprintf("✅ %d finding(s) will be auto-fixed - no manual action needed", [count(auto_fixable_findings)])],
-        "blocks": [],
-        "warnings": warning_ids,
-        "velocity_metrics": velocity_metrics,
-        "auto_fixable_count": count(auto_fixable_findings)
-    }
-}
-
-# HARDENED: Block if critical/high findings attempted auto-fix bypass
-decision := result if {
-    count(block_ids) > 0
-    count(attempted_auto_fix_bypass_ids) > 0  # Critical/high attempted auto-fix bypass
 
     bypass_reasons := [msg | msg := deny_auto_fix_critical_high[_]]
     reasons_list := array.concat(
@@ -356,6 +286,32 @@ decision := result if {
         "warnings": warning_ids,
         "velocity_metrics": velocity_metrics,
         "denied_auto_fix_bypass": attempted_auto_fix_bypass_ids
+    }
+}
+
+# DECISION 2: Pass with warnings if only warnings exist (no blockers)
+decision := result if {
+    count(block_ids) == 0
+    count(warning_ids) > 0
+    result := {
+        "decision": "pass",
+        "reasons": [sprintf("✅ No blockers, but %d warning(s) found - review recommended", [count(warning_ids)])],
+        "blocks": [],
+        "warnings": warning_ids,
+        "velocity_metrics": velocity_metrics
+    }
+}
+
+# DECISION 3: Clean pass if no findings at all
+decision := result if {
+    count(block_ids) == 0
+    count(warning_ids) == 0
+    result := {
+        "decision": "pass",
+        "reasons": ["✅ No security issues detected"],
+        "blocks": [],
+        "warnings": [],
+        "velocity_metrics": velocity_metrics
     }
 }
 
