@@ -21,10 +21,10 @@ from pydantic import BaseModel, Field, RootModel, field_validator
 class SARIFLocation(BaseModel):
     """SARIF physical location"""
     uri: str = Field(..., min_length=1, description="File path")
-    startLine: Optional[int] = Field(default=None, ge=1)
-    startColumn: Optional[int] = Field(default=None, ge=1)
-    endLine: Optional[int] = Field(default=None, ge=1)
-    endColumn: Optional[int] = Field(default=None, ge=1)
+    startLine: Optional[int] = Field(default=None, ge=1)  # noqa: N815
+    startColumn: Optional[int] = Field(default=None, ge=1)  # noqa: N815
+    endLine: Optional[int] = Field(default=None, ge=1)  # noqa: N815
+    endColumn: Optional[int] = Field(default=None, ge=1)  # noqa: N815
 
     @field_validator('uri')
     @classmethod
@@ -37,13 +37,13 @@ class SARIFLocation(BaseModel):
 
 class SARIFPhysicalLocation(BaseModel):
     """SARIF physical location wrapper"""
-    artifactLocation: dict[str, Any] = Field(default_factory=dict)
+    artifactLocation: dict[str, Any] = Field(default_factory=dict)  # noqa: N815
     region: dict[str, Any] = Field(default_factory=dict)
 
 
 class SARIFResult(BaseModel):
     """SARIF result item"""
-    ruleId: str = Field(..., min_length=1)
+    ruleId: str = Field(..., min_length=1)  # noqa: N815
     level: str = Field(default="warning")
     message: dict[str, Any] = Field(default_factory=dict)
     locations: list[dict[str, Any]] = Field(default_factory=list)

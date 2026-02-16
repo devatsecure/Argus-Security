@@ -20,7 +20,7 @@ SCRIPT_DIR = Path(__file__).parent.parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-import streamlit as st
+import streamlit as st  # noqa: E402
 
 try:
     from cache_manager import CacheManager

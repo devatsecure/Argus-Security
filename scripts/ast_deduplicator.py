@@ -17,6 +17,7 @@ Benefits:
 """
 
 import ast
+import contextlib
 import hashlib
 import logging
 import re
@@ -88,10 +89,8 @@ class ASTDeduplicator:
             CodeLocation with function/class context
         """
         # Normalize path
-        try:
+        with contextlib.suppress(Exception):
             file_path = str(Path(file_path).resolve())
-        except Exception:
-            pass  # Keep original path if resolution fails
 
         # Try AST parsing for structural languages
         if self._is_parseable(file_path):

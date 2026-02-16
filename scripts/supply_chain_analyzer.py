@@ -20,10 +20,10 @@ import sys
 import tempfile
 
 try:
-    import defusedxml.ElementTree as ET
+    import defusedxml.ElementTree as ET  # noqa: N817
 except ImportError:
     # Fallback to standard library with warning
-    import xml.etree.ElementTree as ET
+    import xml.etree.ElementTree as ET  # noqa: N817
     logging.warning("defusedxml not available - XML parsing may be vulnerable to XXE/billion laughs attacks")
 
 from dataclasses import asdict, dataclass, field

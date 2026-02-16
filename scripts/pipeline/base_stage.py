@@ -103,6 +103,6 @@ class BaseStage(ABC):
                 error=f"{type(exc).__name__}: {exc}",
             )
 
-    def rollback(self, ctx: PipelineContext) -> None:
+    def rollback(self, ctx: PipelineContext) -> None:  # noqa: B027
         """No-op rollback.  Override if the stage needs cleanup."""
         pass

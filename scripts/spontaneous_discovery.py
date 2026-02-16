@@ -28,7 +28,10 @@ import logging
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
+
+if TYPE_CHECKING:
+    from normalizer.base import Finding
 
 logger = logging.getLogger(__name__)
 

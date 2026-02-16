@@ -149,16 +149,16 @@ class HealthChecker:
             current_ver = pkg_version.parse(current)
             required_ver = pkg_version.parse(required_version)
 
-            if operator == ">=":
-                return current_ver >= required_ver
-            elif operator == ">":
-                return current_ver > required_ver
-            elif operator == "<=":
-                return current_ver <= required_ver
-            elif operator == "<":
-                return current_ver < required_ver
-            elif operator == "==":
-                return current_ver == required_ver
+            ops = {
+                ">=": lambda c, r: c >= r,
+                ">": lambda c, r: c > r,
+                "<=": lambda c, r: c <= r,
+                "<": lambda c, r: c < r,
+                "==": lambda c, r: c == r,
+            }
+            comparator = ops.get(operator)
+            if comparator is not None:
+                return comparator(current_ver, required_ver)
 
             return True
 

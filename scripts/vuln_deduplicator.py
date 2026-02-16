@@ -369,7 +369,7 @@ class VulnDeduplicator:
 
         merged: list[dict] = []
 
-        for vid, group in by_vuln.items():
+        for _vid, group in by_vuln.items():
             # Collect distinct scanners
             scanners = list({
                 str(f.get("scanner", f.get("source", "unknown")))

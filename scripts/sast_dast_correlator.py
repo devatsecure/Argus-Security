@@ -309,10 +309,7 @@ class SASTDASTCorrelator:
         sast_cwe = sast_finding.get("cwe", "")
         dast_cwe = dast_finding.get("cwe", "")
 
-        if sast_cwe and dast_cwe:
-            cwe_score = 1.0 if sast_cwe == dast_cwe else 0.0
-        else:
-            cwe_score = 0.5  # Unknown, give neutral score
+        cwe_score = (1.0 if sast_cwe == dast_cwe else 0.0) if sast_cwe and dast_cwe else 0.5
 
         score += cwe_score * weights["cwe"]
 

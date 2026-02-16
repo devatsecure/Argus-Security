@@ -13,6 +13,7 @@ Features:
 """
 
 import logging
+import os
 import sys
 import time
 from contextlib import contextmanager
@@ -471,10 +472,6 @@ class ProgressTracker:
         }
 
 
-# Import os for environment variable checks
-import os
-
-
 def create_progress_tracker(enable_rich: Optional[bool] = None) -> ProgressTracker:
     """Factory function to create a ProgressTracker instance
 
@@ -496,14 +493,14 @@ if __name__ == "__main__":
 
     # Simulate Semgrep scan
     semgrep_id = tracker.start_scan("Semgrep", total_files=50)
-    for i in range(50):
+    for step in range(50):
         time.sleep(0.05)  # Simulate work
-        tracker.update_progress(semgrep_id, completed=i+1, message=f"Scanning file {i+1}/50")
+        tracker.update_progress(semgrep_id, completed=step+1, message=f"Scanning file {step+1}/50")
     tracker.complete_scan(semgrep_id)
 
     # Simulate Trivy scan
     trivy_id = tracker.start_scan("Trivy", total_files=30)
-    for i in range(30):
+    for _i in range(30):
         time.sleep(0.05)
         tracker.update_progress(trivy_id, advance=1)
     tracker.complete_scan(trivy_id, message="Found 5 vulnerabilities")
@@ -533,7 +530,7 @@ if __name__ == "__main__":
     tracker.start()
 
     scan_id = tracker.start_scan("TruffleHog", total_files=20)
-    for i in range(10):
+    for _i in range(10):
         time.sleep(0.1)
         tracker.update_progress(scan_id, advance=1)
 
@@ -553,7 +550,7 @@ if __name__ == "__main__":
     # Run multiple scanners in sequence
     for scanner, files in [("Semgrep", 40), ("Checkov", 25), ("Gitleaks", 15)]:
         scan_id = tracker.start_scan(scanner, total_files=files)
-        for i in range(files):
+        for _i in range(files):
             time.sleep(0.03)
             tracker.update_progress(scan_id, advance=1)
         tracker.complete_scan(scan_id)

@@ -499,8 +499,8 @@ class EnhancedFalsePositiveDetector:
         finding.get("line", finding.get("line_number", 0))
 
         # Minimum evidence thresholds
-        MIN_CODE_SIGNALS_ALONE = 2  # Need strong code evidence without path (e.g., DEBUG + __main__)
-        MIN_SIGNALS_WITH_PATH = 1   # Need at least 1 code signal + path
+        min_code_signals_alone = 2  # Need strong code evidence without path (e.g., DEBUG + __main__)
+        min_signals_with_path = 1   # Need at least 1 code signal + path
 
         # Collect signals from different sources
         path_signals = self._check_dev_path_signals(file_path)
@@ -564,13 +564,13 @@ class EnhancedFalsePositiveDetector:
                 confidence = 0.85
                 all_evidence.append("High confidence from single strong signal")
 
-            elif code_count >= MIN_CODE_SIGNALS_ALONE:
+            elif code_count >= min_code_signals_alone:
                 # High confidence from code alone (e.g., __main__ + DEBUG + mock_ + console.log)
                 is_dev_only = True
                 confidence = min(0.7 + (code_count * 0.05), 0.95)
-                all_evidence.append(f"High confidence: {code_count} code signals (threshold: {MIN_CODE_SIGNALS_ALONE})")
+                all_evidence.append(f"High confidence: {code_count} code signals (threshold: {min_code_signals_alone})")
 
-            elif path_count > 0 and code_count >= MIN_SIGNALS_WITH_PATH:
+            elif path_count > 0 and code_count >= min_signals_with_path:
                 # Medium confidence: path + code evidence
                 is_dev_only = True
                 confidence = min(0.6 + (code_count * 0.1) + (path_count * 0.05), 0.90)
@@ -582,7 +582,7 @@ class EnhancedFalsePositiveDetector:
                 confidence = 0.0
                 all_evidence.append(
                     f"INSUFFICIENT EVIDENCE: {path_count} path signal(s) without code confirmation "
-                    f"(need {MIN_SIGNALS_WITH_PATH}+ code signals)"
+                    f"(need {min_signals_with_path}+ code signals)"
                 )
 
             else:
@@ -604,8 +604,8 @@ class EnhancedFalsePositiveDetector:
                 reasoning = (
                     "Insufficient evidence for dev-only classification. "
                     f"Found {code_count} code signals and {path_count} path signals. "
-                    f"Minimum required: {MIN_SIGNALS_WITH_PATH} code signal + path, "
-                    f"or {MIN_CODE_SIGNALS_ALONE} code signals alone. "
+                    f"Minimum required: {min_signals_with_path} code signal + path, "
+                    f"or {min_code_signals_alone} code signals alone. "
                     "Treating as production code to prevent false suppression."
                 )
 

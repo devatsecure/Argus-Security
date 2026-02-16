@@ -35,22 +35,21 @@ from tenacity import (
 logger = logging.getLogger(__name__)
 
 
-class LLMException(Exception):
+class LLMError(Exception):
     """Base exception for LLM-related errors"""
 
     pass
 
 
+LLMException = LLMError  # backwards-compat alias
+
 # CostLimitExceededError consolidated into exceptions module
-from exceptions import CostLimitExceededError  # noqa: F401 (re-exported via __init__)
-
-
 # ConsensusBuilder consolidated into consensus_builder.py (has AST-based dedup)
-from consensus_builder import ConsensusBuilder  # noqa: F401 (re-exported via __init__)
-
+from consensus_builder import ConsensusBuilder  # noqa: E402, F401
+from exceptions import CostLimitExceededError  # noqa: E402, F401
 
 # CostCircuitBreaker consolidated into cost_tracker.py
-from orchestrator.cost_tracker import CostCircuitBreaker
+from orchestrator.cost_tracker import CostCircuitBreaker  # noqa: E402
 
 
 class LLMManager:

@@ -800,7 +800,7 @@ Requirements:
         if code.startswith("```"):
             lines = code.split("\n")
             # Remove first and last lines (``` markers)
-            lines = [l for l in lines[1:] if not l.strip().startswith("```")]
+            lines = [line for line in lines[1:] if not line.strip().startswith("```")]
             code = "\n".join(lines)
 
         if not code.strip():

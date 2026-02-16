@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from providers.anthropic_provider import AnthropicProvider
+from providers.anthropic_provider import AnthropicProvider  # noqa: E402
 
 
 @dataclass

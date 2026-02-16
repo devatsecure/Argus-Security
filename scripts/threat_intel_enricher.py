@@ -1007,8 +1007,8 @@ class ThreatIntelEnricher:
 
     def _extract_cve(self, finding: dict) -> Optional[str]:
         """Extract CVE ID from finding"""
-        for field in ["cve", "id", "description", "title", "message"]:
-            value = str(finding.get(field, ""))
+        for field_name in ["cve", "id", "description", "title", "message"]:
+            value = str(finding.get(field_name, ""))
             match = self.CVE_PATTERN.search(value)
             if match:
                 return match.group(0)

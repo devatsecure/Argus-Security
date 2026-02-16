@@ -36,12 +36,15 @@ class CircuitState(Enum):
     HALF_OPEN = "half_open"  # Testing if service recovered
 
 
-class CircuitBreakerOpen(Exception):
+class CircuitBreakerOpenError(Exception):
     """Exception raised when circuit breaker is open"""
 
     def __init__(self, message: str = "Circuit breaker is open - too many failures"):
         self.message = message
         super().__init__(self.message)
+
+
+CircuitBreakerOpen = CircuitBreakerOpenError  # backwards-compat alias
 
 
 class CircuitBreaker:
@@ -115,7 +118,7 @@ class CircuitBreaker:
             else:
                 elapsed = (datetime.now() - self.last_failure_time).total_seconds()
                 remaining = self.timeout - elapsed
-                raise CircuitBreakerOpen(
+                raise CircuitBreakerOpenError(
                     f"Circuit breaker open - service unavailable. "
                     f"Try again in {remaining:.0f} seconds "
                     f"({self.failure_count} consecutive failures)"
@@ -396,7 +399,7 @@ def safe_api_call(
         # No protection - just call the function
         return func(*args, **kwargs)
 
-    except CircuitBreakerOpen as e:
+    except CircuitBreakerOpenError as e:
         logger.warning(f"Circuit breaker open for {func.__name__}: {e.message}")
         return None
 
@@ -578,7 +581,7 @@ if __name__ == "__main__":
             breaker.call(failing_function)
         except ValueError:
             print(f"Attempt {i + 1}: Caught expected ValueError")
-        except CircuitBreakerOpen as e:
+        except CircuitBreakerOpenError as e:
             print(f"Attempt {i + 1}: Circuit breaker opened - {e.message}")
 
     print(f"\nCircuit breaker stats: {breaker.get_stats()}")
@@ -614,7 +617,7 @@ if __name__ == "__main__":
         return "success"
 
     # This should trigger rate limiting
-    for i in range(5):
+    for _i in range(5):
         result = rate_limited_function()
 
     print("\n=== Testing Error Message Sanitization ===")

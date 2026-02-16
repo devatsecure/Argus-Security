@@ -336,7 +336,7 @@ class MetricsCalculator:
                 matches.append(match)
 
         # Add unmatched Codex findings
-        for i, codex in enumerate(codex_findings):
+        for i, _codex in enumerate(codex_findings):
             if i not in matched_codex_indices:
                 # Note: We track these but they don't appear in standard confusion matrix
                 # They represent findings that Codex found but Argus missed
@@ -569,15 +569,15 @@ class MetricsCalculator:
                     severity_stats[sev].both_agree += 1
 
         # Calculate agreement rates
-        for sev, stats in severity_stats.items():
-            if stats.codex_count > 0:
-                stats.agreement_rate = stats.both_agree / stats.codex_count
+        for _sev, sev_stats in severity_stats.items():
+            if sev_stats.codex_count > 0:
+                sev_stats.agreement_rate = sev_stats.both_agree / sev_stats.codex_count
                 # Simple Kappa approximation for this category
-                if stats.codex_count > 0:
-                    stats.kappa = 2 * (stats.agreement_rate) - 1.0
+                if sev_stats.codex_count > 0:
+                    sev_stats.kappa = 2 * (sev_stats.agreement_rate) - 1.0
             else:
-                stats.agreement_rate = 0.0
-                stats.kappa = 0.0
+                sev_stats.agreement_rate = 0.0
+                sev_stats.kappa = 0.0
 
         # Return only severities that appear in the data
         return [s for s in severity_stats.values() if s.argus_count > 0 or s.codex_count > 0]
@@ -616,15 +616,15 @@ class MetricsCalculator:
                     category_stats["UNKNOWN"].both_agree += 1
 
         # Calculate agreement rates
-        for cat, stats in category_stats.items():
-            if stats.codex_count > 0:
-                stats.agreement_rate = stats.both_agree / stats.codex_count
+        for _cat, cat_stats in category_stats.items():
+            if cat_stats.codex_count > 0:
+                cat_stats.agreement_rate = cat_stats.both_agree / cat_stats.codex_count
                 # Simple Kappa approximation for this category
-                if stats.codex_count > 0:
-                    stats.kappa = 2 * (stats.agreement_rate) - 1.0
+                if cat_stats.codex_count > 0:
+                    cat_stats.kappa = 2 * (cat_stats.agreement_rate) - 1.0
             else:
-                stats.agreement_rate = 0.0
-                stats.kappa = 0.0
+                cat_stats.agreement_rate = 0.0
+                cat_stats.kappa = 0.0
 
         # Return only categories that appear in the data
         return [s for s in category_stats.values() if s.argus_count > 0 or s.codex_count > 0]
