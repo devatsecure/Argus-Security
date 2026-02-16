@@ -450,7 +450,7 @@ def run_threat_intel(enricher: Any, findings: list[HybridFinding], logger: loggi
             logger.warning(f"⚠️  Threat intel enrichment failed for {finding.finding_id}: {e}")
             enriched.append(finding)
 
-    logger.info(f"   ✅ Threat intelligence enrichment complete")
+    logger.info("   ✅ Threat intelligence enrichment complete")
     return enriched
 
 
@@ -498,7 +498,7 @@ def run_remediation(engine: Any, findings: list[HybridFinding], logger: logging.
             logger.warning(f"⚠️  Remediation generation failed for {finding.finding_id}: {e}")
             remediated.append(finding)
 
-    logger.info(f"   ✅ Remediation suggestions generated")
+    logger.info("   ✅ Remediation suggestions generated")
     return remediated
 
 

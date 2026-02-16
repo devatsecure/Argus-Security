@@ -14,7 +14,6 @@ import contextlib
 import logging
 import os
 import secrets
-import shlex
 import socket
 import time
 from pathlib import Path

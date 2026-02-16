@@ -21,7 +21,7 @@ from collections import defaultdict
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -46,7 +46,7 @@ class FeedbackEntry:
     reason: str
     timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     source: str = "manual"
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         """Validate verdict values"""
@@ -159,7 +159,7 @@ class FeedbackTracker:
         verdict: str,
         reason: str,
         source: str = "manual",
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[dict[str, Any]] = None
     ) -> bool:
         """
         Record feedback for a finding
@@ -335,7 +335,7 @@ class FeedbackTracker:
         self,
         limit: Optional[int] = None,
         verdict: Optional[str] = None
-    ) -> List[FeedbackEntry]:
+    ) -> list[FeedbackEntry]:
         """
         Retrieve all feedback entries
 
@@ -451,7 +451,7 @@ class FeedbackTracker:
             logger.error(f"Failed to export feedback: {e}")
             return ""
 
-    def get_patterns(self, min_occurrences: int = 3) -> Dict[str, List[Dict[str, Any]]]:
+    def get_patterns(self, min_occurrences: int = 3) -> dict[str, list[dict[str, Any]]]:
         """
         Identify common false positive patterns
 
@@ -556,7 +556,7 @@ class FeedbackTracker:
             logger.error(f"Failed to detect patterns: {e}")
             return {}
 
-    def get_improvement_metrics(self, window_days: int = 30) -> Dict[str, Any]:
+    def get_improvement_metrics(self, window_days: int = 30) -> dict[str, Any]:
         """
         Track FP rate improvements over time
 
@@ -613,10 +613,7 @@ class FeedbackTracker:
                 current = self.get_false_positive_rate(scanner=scanner, days=window_days)
                 previous = self.get_false_positive_rate(scanner=scanner, days=window_days * 2)
 
-                if previous > 0:
-                    improvement = (previous - current) / previous * 100
-                else:
-                    improvement = 0.0
+                improvement = (previous - current) / previous * 100 if previous > 0 else 0.0
 
                 by_scanner[scanner] = {
                     "current_fp_rate": round(current, 3),
@@ -637,7 +634,7 @@ class FeedbackTracker:
             logger.error(f"Failed to calculate improvement metrics: {e}")
             return {}
 
-    def get_top_false_positive_patterns(self, limit: int = 10) -> List[Dict[str, Any]]:
+    def get_top_false_positive_patterns(self, limit: int = 10) -> list[dict[str, Any]]:
         """
         Find most common causes of false positives
 
@@ -669,7 +666,7 @@ class FeedbackTracker:
             logger.error(f"Failed to get top patterns: {e}")
             return []
 
-    def suggest_rule_adjustments(self) -> List[Dict[str, Any]]:
+    def suggest_rule_adjustments(self) -> list[dict[str, Any]]:
         """
         Generate AI-powered suggestions to reduce false positives
 
@@ -746,7 +743,7 @@ class FeedbackTracker:
             logger.error(f"Failed to generate suggestions: {e}")
             return []
 
-    def _find_common_path_patterns(self, paths: List[str]) -> List[str]:
+    def _find_common_path_patterns(self, paths: list[str]) -> list[str]:
         """
         Extract common path patterns from file paths
 
@@ -783,7 +780,7 @@ class FeedbackTracker:
 
         return sorted(common_segments, key=lambda x: segment_counts[x], reverse=True)
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """
         Get overall feedback statistics
 
@@ -906,19 +903,19 @@ def print_feedback_stats(tracker: FeedbackTracker) -> None:
 
     verdict_counts = stats.get('verdict_counts', {})
     if verdict_counts:
-        print(f"\nVerdict Breakdown:")
+        print("\nVerdict Breakdown:")
         for verdict, count in verdict_counts.items():
             print(f"  {verdict}: {count}")
 
     scanner_counts = stats.get('scanner_counts', {})
     if scanner_counts:
-        print(f"\nBy Scanner:")
+        print("\nBy Scanner:")
         for scanner, count in scanner_counts.items():
             print(f"  {scanner}: {count}")
 
     source_counts = stats.get('source_counts', {})
     if source_counts:
-        print(f"\nBy Source:")
+        print("\nBy Source:")
         for source, count in source_counts.items():
             print(f"  {source}: {count}")
 
@@ -1038,7 +1035,7 @@ def main():
         if success:
             print(f"✓ Recorded feedback for {args.finding_id}")
         else:
-            print(f"✗ Failed to record feedback")
+            print("✗ Failed to record feedback")
             return 1
 
     elif args.command == "stats":
@@ -1091,7 +1088,7 @@ def main():
                     print(f"   Suggested patterns: {', '.join(suggestion['suggested_patterns'])}")
 
                 if 'suggested_rules' in suggestion:
-                    print(f"   Suggested rules:")
+                    print("   Suggested rules:")
                     for rule in suggestion['suggested_rules']:
                         print(f"     - {rule}")
 
@@ -1111,7 +1108,7 @@ def main():
 
         by_scanner = metrics.get('by_scanner', {})
         if by_scanner:
-            print(f"\nBy Scanner:")
+            print("\nBy Scanner:")
             for scanner, scanner_metrics in by_scanner.items():
                 print(f"  {scanner}:")
                 print(f"    Current:     {scanner_metrics['current_fp_rate']:.1%}")

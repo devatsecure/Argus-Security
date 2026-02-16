@@ -4,8 +4,8 @@ Verdict Taxonomy for Argus Security Agent Personas
 Provides granular classification of security finding verdicts
 """
 
-from enum import Enum
 from dataclasses import dataclass
+from enum import Enum
 from typing import Optional
 
 

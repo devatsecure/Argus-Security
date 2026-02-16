@@ -15,7 +15,7 @@ import importlib.util
 import inspect
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Type
+from typing import Optional
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -34,7 +34,7 @@ class BaseScannerInterface:
     CAPABILITIES = []  # e.g., ["secrets", "sast", "cve", "iac"]
     SUPPORTED_LANGUAGES = []  # e.g., ["python", "javascript", "go"]
 
-    def scan(self, file_path: Path) -> List[Dict]:
+    def scan(self, file_path: Path) -> list[dict]:
         """
         Scan a file and return findings
 
@@ -66,8 +66,8 @@ class ScannerRegistry:
         Args:
             plugin_dir: Directory for plugin scanners (default: ~/.argus/plugins)
         """
-        self._scanners: Dict[str, Type[BaseScannerInterface]] = {}
-        self._scanner_instances: Dict[str, BaseScannerInterface] = {}
+        self._scanners: dict[str, type[BaseScannerInterface]] = {}
+        self._scanner_instances: dict[str, BaseScannerInterface] = {}
 
         # Default plugin directory
         if plugin_dir is None:
@@ -160,7 +160,7 @@ class ScannerRegistry:
                         continue
 
                     # Check if it has scan method
-                    if hasattr(obj, 'scan') and callable(getattr(obj, 'scan')):
+                    if hasattr(obj, 'scan') and callable(obj.scan):
                         scanner_name = getattr(obj, "SCANNER_NAME", name.lower())
 
                         # Don't override built-in scanners
@@ -181,7 +181,7 @@ class ScannerRegistry:
         if plugin_count > 0:
             logger.info(f"Loaded {plugin_count} plugin scanners")
 
-    def list_scanners(self, capability: Optional[str] = None) -> List[str]:
+    def list_scanners(self, capability: Optional[str] = None) -> list[str]:
         """
         List available scanners, optionally filtered by capability
 
@@ -242,7 +242,7 @@ class ScannerRegistry:
             logger.error(f"Failed to instantiate scanner {name}: {e}")
             return None
 
-    def get_scanner_info(self, name: str) -> Optional[Dict]:
+    def get_scanner_info(self, name: str) -> Optional[dict]:
         """
         Get scanner metadata
 
@@ -266,7 +266,7 @@ class ScannerRegistry:
             "module": scanner_class.__module__,
         }
 
-    def list_capabilities(self) -> List[str]:
+    def list_capabilities(self) -> list[str]:
         """
         List all available capabilities across all scanners
 
@@ -279,7 +279,7 @@ class ScannerRegistry:
             caps = getattr(scanner_class, "CAPABILITIES", [])
             capabilities.update(caps)
 
-        return sorted(list(capabilities))
+        return sorted(capabilities)
 
 
 def main():

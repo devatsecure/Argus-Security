@@ -33,7 +33,7 @@ import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 # Configure logging
 logging.basicConfig(
@@ -58,11 +58,11 @@ class FindingQualityReport:
     """Quality report for a single finding"""
     finding_id: str
     finding_title: str
-    checks: List[QualityCheck] = field(default_factory=list)
+    checks: list[QualityCheck] = field(default_factory=list)
     total_score: int = 0
     max_score: int = 100
     passed: bool = False
-    issues: List[str] = field(default_factory=list)
+    issues: list[str] = field(default_factory=list)
 
     def add_check(self, check: QualityCheck) -> None:
         """Add a quality check result"""
@@ -75,7 +75,7 @@ class FindingQualityReport:
         """Finalize the report and determine pass/fail"""
         self.passed = self.total_score >= threshold
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization"""
         return {
             "finding_id": self.finding_id,
@@ -104,9 +104,9 @@ class ValidationReport:
     passed_findings: int = 0
     failed_findings: int = 0
     overall_passed: bool = False
-    finding_reports: List[FindingQualityReport] = field(default_factory=list)
-    critical_blockers: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
+    finding_reports: list[FindingQualityReport] = field(default_factory=list)
+    critical_blockers: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
 
     def add_finding_report(self, report: FindingQualityReport) -> None:
         """Add a finding quality report"""
@@ -135,7 +135,7 @@ class ValidationReport:
                 f"{self.failed_findings}/{self.total_findings} findings failed quality checks"
             )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization"""
         return {
             "timestamp": self.timestamp,
@@ -184,7 +184,7 @@ class ReportQualityValidator:
         """Initialize validator with custom threshold if needed"""
         self.threshold = threshold
 
-    def validate_finding(self, finding: Dict[str, Any], index: int) -> FindingQualityReport:
+    def validate_finding(self, finding: dict[str, Any], index: int) -> FindingQualityReport:
         """
         Validate a single finding and generate quality report.
 
@@ -227,7 +227,7 @@ class ReportQualityValidator:
         # Check 2: Line number validation
         # Dependency scanners (trivy, supply-chain) report CVEs against lock files
         # which don't have meaningful line numbers — exempt them from this check.
-        line_number = finding.get("line_number", finding.get("line", None))
+        line_number = finding.get("line_number", finding.get("line"))
         source_tool = finding.get("source_tool", "").lower()
         is_dependency_finding = source_tool in ("trivy", "supply-chain") or finding.get("cve_id")
 
@@ -324,7 +324,7 @@ class ReportQualityValidator:
 
         return report
 
-    def validate_report(self, report_data: Dict[str, Any]) -> ValidationReport:
+    def validate_report(self, report_data: dict[str, Any]) -> ValidationReport:
         """
         Validate an entire report containing multiple findings.
 
@@ -376,7 +376,7 @@ class ReportQualityValidator:
 
         logger.info(f"Validating report: {report_path}")
 
-        with open(report_path, "r") as f:
+        with open(report_path) as f:
             report_data = json.load(f)
 
         return self.validate_report(report_data)
@@ -393,7 +393,7 @@ class ReportQualityValidator:
         print("=" * 80)
         print(f"\nTimestamp: {validation_report.timestamp}")
         print(f"\nOverall Status: {'✅ PASSED' if validation_report.overall_passed else '❌ FAILED'}")
-        print(f"\nFindings Summary:")
+        print("\nFindings Summary:")
         print(f"  Total Findings: {validation_report.total_findings}")
         print(f"  Passed: {validation_report.passed_findings}")
         print(f"  Failed: {validation_report.failed_findings}")
@@ -406,7 +406,7 @@ class ReportQualityValidator:
 
         # Print warnings
         if validation_report.warnings:
-            print(f"\n⚠️  WARNINGS:")
+            print("\n⚠️  WARNINGS:")
             for warning in validation_report.warnings:
                 print(f"  • {warning}")
 
@@ -421,10 +421,10 @@ class ReportQualityValidator:
                     print(f"\n❌ {finding_report.finding_title}")
                     print(f"   ID: {finding_report.finding_id}")
                     print(f"   Quality Score: {finding_report.total_score}/{finding_report.max_score}")
-                    print(f"   Issues:")
+                    print("   Issues:")
                     for issue in finding_report.issues:
                         print(f"     • {issue}")
-                    print(f"   Check Details:")
+                    print("   Check Details:")
                     for check in finding_report.checks:
                         status = "✓" if check.passed else "✗"
                         print(f"     {status} {check.name}: {check.points_awarded}/{check.max_points} points")

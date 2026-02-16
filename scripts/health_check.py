@@ -26,7 +26,7 @@ import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 import yaml
 
@@ -50,7 +50,7 @@ class CheckResult:
     name: str
     status: str  # 'passed', 'failed', 'warning', 'skipped'
     message: str
-    details: Dict[str, Any] = field(default_factory=dict)
+    details: dict[str, Any] = field(default_factory=dict)
     required: bool = True
 
 
@@ -66,7 +66,7 @@ class HealthCheckReport:
     failed: int
     warnings: int
     skipped: int
-    checks: List[CheckResult] = field(default_factory=list)
+    checks: list[CheckResult] = field(default_factory=list)
     overall_status: str = "unknown"
 
 
@@ -83,7 +83,7 @@ class HealthChecker:
         """
         self.verbose = verbose
         self.config_path = config_path or Path(__file__).parent.parent / "external-tools.yml"
-        self.results: List[CheckResult] = []
+        self.results: list[CheckResult] = []
 
         # Load configuration
         try:
@@ -243,7 +243,7 @@ class HealthChecker:
                 required=True,
             )
 
-    def check_external_tool(self, tool_config: Dict[str, Any]) -> CheckResult:
+    def check_external_tool(self, tool_config: dict[str, Any]) -> CheckResult:
         """
         Check if external tool is installed and meets version requirements
 
@@ -369,7 +369,7 @@ class HealthChecker:
                 required=not optional,
             )
 
-    def check_api_keys(self) -> List[CheckResult]:
+    def check_api_keys(self) -> list[CheckResult]:
         """Check if API keys are configured"""
         results = []
         env_vars = self.config.get("environment_variables", [])
@@ -485,7 +485,7 @@ class HealthChecker:
                 required=True,
             )
 
-    def check_system_requirements(self) -> List[CheckResult]:
+    def check_system_requirements(self) -> list[CheckResult]:
         """Check system requirements (memory, disk, etc.)"""
         results = []
 

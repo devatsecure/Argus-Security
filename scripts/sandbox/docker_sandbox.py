@@ -11,17 +11,16 @@ This module wraps DockerManager to provide specialized fuzzing sandbox capabilit
 - Result capture and analysis
 """
 
-import hashlib
 import json
 import logging
-import tempfile
-import time
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
 
 # Import the existing Docker infrastructure
 import sys
+import time
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Optional
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 try:
@@ -56,7 +55,7 @@ class SandboxResult:
     crashed: bool
     crash_type: Optional[str] = None
     stack_trace: str = ""
-    lines_executed: Optional[Set[int]] = None
+    lines_executed: Optional[set[int]] = None
 
 
 class DockerSandbox:
@@ -219,7 +218,7 @@ class DockerSandbox:
         """
         # Read the module code
         try:
-            with open(module_path, 'r') as f:
+            with open(module_path) as f:
                 code = f.read()
         except Exception as e:
             logger.error(f"Failed to read module {module_path}: {e}")
@@ -379,7 +378,7 @@ if __name__ == "__main__":
 '''
         return wrapper
 
-    def _parse_result(self, docker_result: Dict, execution_time_ms: int) -> SandboxResult:
+    def _parse_result(self, docker_result: dict, execution_time_ms: int) -> SandboxResult:
         """
         Parse Docker execution result into SandboxResult
 

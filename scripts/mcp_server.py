@@ -16,10 +16,9 @@ import json
 import logging
 import os
 import uuid
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +44,7 @@ VALID_SEVERITIES = frozenset({"critical", "high", "medium", "low", "info"})
 # CWE -> Remediation mapping (subset, mirrors remediation_engine.py)
 # ---------------------------------------------------------------------------
 
-CWE_REMEDIATION_MAP: Dict[str, str] = {
+CWE_REMEDIATION_MAP: dict[str, str] = {
     "CWE-78": (
         "Command Injection: Avoid constructing shell commands from user input. "
         "Use subprocess with a list of arguments instead of shell=True. "
@@ -109,7 +108,7 @@ CWE_REMEDIATION_MAP: Dict[str, str] = {
 # Default policy gate rules per stage
 # ---------------------------------------------------------------------------
 
-DEFAULT_GATE_RULES: Dict[str, Dict[str, Any]] = {
+DEFAULT_GATE_RULES: dict[str, dict[str, Any]] = {
     "pr": {
         "block_severities": ["critical"],
         "max_high": 5,
@@ -165,7 +164,7 @@ class FindingsStore:
     """In-memory findings store with persistence."""
 
     def __init__(self, output_dir: str) -> None:
-        self._findings: List[Finding] = []
+        self._findings: list[Finding] = []
         self._output_dir = output_dir
 
     @property
@@ -178,25 +177,25 @@ class FindingsStore:
         self.save_to_disk()
         return finding.finding_id
 
-    def get_all(self) -> List[Finding]:
+    def get_all(self) -> list[Finding]:
         """Return all findings."""
         return list(self._findings)
 
-    def get_by_severity(self, severity: str) -> List[Finding]:
+    def get_by_severity(self, severity: str) -> list[Finding]:
         """Filter findings by severity."""
         severity_lower = severity.lower()
         return [f for f in self._findings if f.severity.lower() == severity_lower]
 
-    def get_by_id(self, finding_id: str) -> Optional[Finding]:
+    def get_by_id(self, finding_id: str) -> Finding | None:
         """Look up a single finding by its ID."""
         for f in self._findings:
             if f.finding_id == finding_id:
                 return f
         return None
 
-    def summary(self) -> Dict[str, int]:
+    def summary(self) -> dict[str, int]:
         """Return a count of findings by severity."""
-        counts: Dict[str, int] = {s: 0 for s in VALID_SEVERITIES}
+        counts: dict[str, int] = dict.fromkeys(VALID_SEVERITIES, 0)
         for f in self._findings:
             key = f.severity.lower()
             counts[key] = counts.get(key, 0) + 1
@@ -224,9 +223,9 @@ class FindingsStore:
 
 def evaluate_policy_gate(
     stage: str,
-    findings: List[Dict[str, Any]],
-    custom_rules: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    findings: list[dict[str, Any]],
+    custom_rules: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Evaluate findings against policy gate rules for *stage*.
 
     Parameters
@@ -257,8 +256,8 @@ def evaluate_policy_gate(
     block_severities = {s.lower() for s in rules.get("block_severities", [])}
     max_high = rules.get("max_high", 5)
 
-    reasons: List[str] = []
-    severity_counts: Dict[str, int] = {}
+    reasons: list[str] = []
+    severity_counts: dict[str, int] = {}
     for f in findings:
         sev = f.get("severity", "unknown").lower()
         severity_counts[sev] = severity_counts.get(sev, 0) + 1
@@ -290,7 +289,7 @@ def evaluate_policy_gate(
 # ---------------------------------------------------------------------------
 
 
-def get_remediation(finding: Finding) -> Dict[str, Any]:
+def get_remediation(finding: Finding) -> dict[str, Any]:
     """Generate a remediation suggestion for a finding based on its CWE.
 
     Returns a dict with remediation details.
@@ -330,7 +329,7 @@ def get_remediation(finding: Finding) -> Dict[str, Any]:
 
 
 def create_argus_mcp_server(
-    repo_path: str, config: Optional[Dict[str, Any]] = None
+    repo_path: str, config: dict[str, Any] | None = None
 ) -> Any:
     """Factory creates MCP server with repo context in closure.
 

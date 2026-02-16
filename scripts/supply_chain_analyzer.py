@@ -29,12 +29,13 @@ except ImportError:
 from dataclasses import asdict, dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
+
 from tenacity import (
     retry,
-    wait_exponential,
-    stop_after_attempt,
     retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
 )
 
 logger = logging.getLogger(__name__)
@@ -81,14 +82,14 @@ class ThreatAssessment:
     package_name: str
     ecosystem: str
     threat_level: ThreatLevel
-    threat_types: List[str]  # ["typosquatting", "malicious_script", "low_scorecard"]
-    evidence: List[str]
-    recommendations: List[str]
-    similar_legitimate_packages: List[str] = field(default_factory=list)
+    threat_types: list[str]  # ["typosquatting", "malicious_script", "low_scorecard"]
+    evidence: list[str]
+    recommendations: list[str]
+    similar_legitimate_packages: list[str] = field(default_factory=list)
     scorecard_score: Optional[float] = None
     change_info: Optional[DependencyChange] = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization"""
         result = asdict(self)
         result["threat_level"] = self.threat_level.value
@@ -288,7 +289,7 @@ class SupplyChainAnalyzer:
 
     def analyze_dependency_diff(
         self, base_ref: str = "main", head_ref: str = "HEAD"
-    ) -> List[ThreatAssessment]:
+    ) -> list[ThreatAssessment]:
         """
         Analyze new/changed dependencies between two refs
 
@@ -321,7 +322,7 @@ class SupplyChainAnalyzer:
         logger.info(f"Found {len(threats)} potential supply chain threats")
         return threats
 
-    def _get_dependency_changes(self, base_ref: str, head_ref: str) -> List[DependencyChange]:
+    def _get_dependency_changes(self, base_ref: str, head_ref: str) -> list[DependencyChange]:
         """Get dependency changes between two refs"""
         changes = []
 
@@ -384,7 +385,7 @@ class SupplyChainAnalyzer:
             logger.debug(f"Could not get {file_path} at {ref}: {e}")
             return None
 
-    def _diff_npm_packages(self, base_ref: str, head_ref: str) -> List[DependencyChange]:
+    def _diff_npm_packages(self, base_ref: str, head_ref: str) -> list[DependencyChange]:
         """Detect npm package changes from package.json"""
         changes = []
         file_path = "package.json"
@@ -440,7 +441,7 @@ class SupplyChainAnalyzer:
 
         return changes
 
-    def _parse_npm_packages(self, content: str) -> Dict[str, str]:
+    def _parse_npm_packages(self, content: str) -> dict[str, str]:
         """Parse package.json and extract dependencies"""
         try:
             data = json.loads(content)
@@ -452,7 +453,7 @@ class SupplyChainAnalyzer:
             logger.warning(f"Failed to parse package.json: {e}")
             return {}
 
-    def _diff_python_packages(self, base_ref: str, head_ref: str) -> List[DependencyChange]:
+    def _diff_python_packages(self, base_ref: str, head_ref: str) -> list[DependencyChange]:
         """Detect Python package changes from requirements.txt or pyproject.toml"""
         changes = []
 
@@ -466,7 +467,7 @@ class SupplyChainAnalyzer:
 
         return changes
 
-    def _diff_requirements_txt(self, base_ref: str, head_ref: str) -> List[DependencyChange]:
+    def _diff_requirements_txt(self, base_ref: str, head_ref: str) -> list[DependencyChange]:
         """Parse requirements.txt changes"""
         changes = []
         file_path = "requirements.txt"
@@ -521,7 +522,7 @@ class SupplyChainAnalyzer:
 
         return changes
 
-    def _parse_requirements_txt(self, content: str) -> Dict[str, str]:
+    def _parse_requirements_txt(self, content: str) -> dict[str, str]:
         """Parse requirements.txt format"""
         deps = {}
         for line in content.splitlines():
@@ -541,7 +542,7 @@ class SupplyChainAnalyzer:
 
         return deps
 
-    def _diff_pyproject_toml(self, base_ref: str, head_ref: str) -> List[DependencyChange]:
+    def _diff_pyproject_toml(self, base_ref: str, head_ref: str) -> list[DependencyChange]:
         """Parse pyproject.toml changes"""
         changes = []
         file_path = "pyproject.toml"
@@ -596,7 +597,7 @@ class SupplyChainAnalyzer:
 
         return changes
 
-    def _parse_pyproject_toml(self, content: str) -> Dict[str, str]:
+    def _parse_pyproject_toml(self, content: str) -> dict[str, str]:
         """Parse pyproject.toml for dependencies (simple parser)"""
         deps = {}
         in_dependencies = False
@@ -628,7 +629,7 @@ class SupplyChainAnalyzer:
 
         return deps
 
-    def _diff_go_packages(self, base_ref: str, head_ref: str) -> List[DependencyChange]:
+    def _diff_go_packages(self, base_ref: str, head_ref: str) -> list[DependencyChange]:
         """Detect Go module changes from go.mod"""
         changes = []
         file_path = "go.mod"
@@ -683,7 +684,7 @@ class SupplyChainAnalyzer:
 
         return changes
 
-    def _parse_go_mod(self, content: str) -> Dict[str, str]:
+    def _parse_go_mod(self, content: str) -> dict[str, str]:
         """Parse go.mod file"""
         deps = {}
         in_require = False
@@ -715,7 +716,7 @@ class SupplyChainAnalyzer:
 
         return deps
 
-    def _diff_cargo_packages(self, base_ref: str, head_ref: str) -> List[DependencyChange]:
+    def _diff_cargo_packages(self, base_ref: str, head_ref: str) -> list[DependencyChange]:
         """Detect Cargo package changes from Cargo.toml"""
         changes = []
         file_path = "Cargo.toml"
@@ -770,7 +771,7 @@ class SupplyChainAnalyzer:
 
         return changes
 
-    def _parse_cargo_toml(self, content: str) -> Dict[str, str]:
+    def _parse_cargo_toml(self, content: str) -> dict[str, str]:
         """Parse Cargo.toml for dependencies"""
         deps = {}
         in_dependencies = False
@@ -797,7 +798,7 @@ class SupplyChainAnalyzer:
 
         return deps
 
-    def _diff_maven_packages(self, base_ref: str, head_ref: str) -> List[DependencyChange]:
+    def _diff_maven_packages(self, base_ref: str, head_ref: str) -> list[DependencyChange]:
         """Detect Maven package changes from pom.xml"""
         changes = []
         file_path = "pom.xml"
@@ -852,7 +853,7 @@ class SupplyChainAnalyzer:
 
         return changes
 
-    def _parse_pom_xml(self, content: str) -> Dict[str, str]:
+    def _parse_pom_xml(self, content: str) -> dict[str, str]:
         """Parse Maven pom.xml for dependencies"""
         deps = {}
         try:
@@ -997,7 +998,7 @@ class SupplyChainAnalyzer:
 
         return None
 
-    def check_typosquatting(self, package_name: str, ecosystem: str) -> Optional[Dict[str, Any]]:
+    def check_typosquatting(self, package_name: str, ecosystem: str) -> Optional[dict[str, Any]]:
         """
         Check if package name is typosquatting a popular package
 
@@ -1052,7 +1053,7 @@ class SupplyChainAnalyzer:
 
         return previous_row[-1]
 
-    def analyze_package_behavior(self, package_name: str, ecosystem: str) -> Optional[Dict[str, Any]]:
+    def analyze_package_behavior(self, package_name: str, ecosystem: str) -> Optional[dict[str, Any]]:
         """
         Analyze package for malicious behavior patterns
 
@@ -1359,7 +1360,7 @@ require {package_name} v0.0.0
             logger.debug(f"Go download failed: {e}")
             return False
 
-    def _analyze_package_behavior(self, package_path: Path, ecosystem: str) -> Dict[str, Any]:
+    def _analyze_package_behavior(self, package_path: Path, ecosystem: str) -> dict[str, Any]:
         """
         Analyze downloaded package for suspicious behavior
 
@@ -1468,7 +1469,7 @@ require {package_name} v0.0.0
             "patterns_found": patterns_found,
         }
 
-    def _get_install_scripts(self, package_path: Path, ecosystem: str) -> List[Path]:
+    def _get_install_scripts(self, package_path: Path, ecosystem: str) -> list[Path]:
         """
         Get list of install/setup scripts to scan based on ecosystem
 
@@ -1520,7 +1521,7 @@ require {package_name} v0.0.0
 
         return scripts
 
-    def _score_package_risk(self, analysis: Dict[str, Any]) -> int:
+    def _score_package_risk(self, analysis: dict[str, Any]) -> int:
         """
         Calculate risk score for package based on analysis
 
@@ -1564,7 +1565,7 @@ require {package_name} v0.0.0
         stop=stop_after_attempt(3),
         retry=retry_if_exception_type((subprocess.SubprocessError, OSError, json.JSONDecodeError)),
     )
-    def _fetch_openssf_scorecard(self, api_url: str) -> Dict[str, Any]:
+    def _fetch_openssf_scorecard(self, api_url: str) -> dict[str, Any]:
         """Fetch OpenSSF Scorecard data with retry logic
 
         Args:
@@ -1590,7 +1591,7 @@ require {package_name} v0.0.0
         data = json.loads(result.stdout)
         return data
 
-    def check_openssf_scorecard(self, package_name: str, ecosystem: str) -> Optional[Dict[str, Any]]:
+    def check_openssf_scorecard(self, package_name: str, ecosystem: str) -> Optional[dict[str, Any]]:
         """
         Check OpenSSF Scorecard score for package
 

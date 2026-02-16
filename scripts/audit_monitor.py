@@ -25,7 +25,7 @@ import statistics
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 logging.basicConfig(
     level=logging.INFO,
@@ -48,8 +48,8 @@ class AuditRun:
     codex_only_count: int
     agreement_rate: float
     average_score_difference: float
-    severity_distribution: Dict[str, int]
-    metadata: Dict[str, Any]
+    severity_distribution: dict[str, int]
+    metadata: dict[str, Any]
 
 
 @dataclass
@@ -66,7 +66,7 @@ class FindingComparison:
     codex_verdict: str
     severity: str
     category: str
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
 
 
 @dataclass
@@ -97,7 +97,7 @@ class Alert:
     metric_name: str
     metric_value: float
     threshold: float
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
 
 
 class AuditMonitor:
@@ -249,8 +249,8 @@ class AuditMonitor:
     def store_audit_run(
         self,
         audit_run: AuditRun,
-        findings_comparisons: List[FindingComparison]
-    ) -> Tuple[bool, Optional[str]]:
+        findings_comparisons: list[FindingComparison]
+    ) -> tuple[bool, Optional[str]]:
         """
         Store audit run and detailed findings comparison
 
@@ -367,7 +367,7 @@ class AuditMonitor:
         except Exception as e:
             logger.error(f"Error analyzing audit run: {e}")
 
-    def _detect_criteria_drift(self, audit_run_id: str) -> List[DriftEvent]:
+    def _detect_criteria_drift(self, audit_run_id: str) -> list[DriftEvent]:
         """
         Detect changes in evaluation criteria using statistical analysis
 
@@ -379,7 +379,7 @@ class AuditMonitor:
         Returns:
             List of detected drift events
         """
-        drift_events: List[DriftEvent] = []
+        drift_events: list[DriftEvent] = []
 
         try:
             # Get historical audit runs (last 30 days)
@@ -495,7 +495,7 @@ class AuditMonitor:
             logger.error(f"Error detecting criteria drift: {e}")
             return drift_events
 
-    def _detect_outlier_findings(self, audit_run_id: str) -> List[Dict[str, Any]]:
+    def _detect_outlier_findings(self, audit_run_id: str) -> list[dict[str, Any]]:
         """
         Detect findings that are statistical outliers
 
@@ -598,7 +598,7 @@ class AuditMonitor:
     def _generate_outlier_alerts(
         self,
         audit_run_id: str,
-        outliers: List[Dict[str, Any]]
+        outliers: list[dict[str, Any]]
     ) -> None:
         """Generate alerts for outlier findings"""
         try:
@@ -632,7 +632,7 @@ class AuditMonitor:
         except Exception as e:
             logger.error(f"Error generating outlier alerts: {e}")
 
-    def _store_drift_events(self, drift_events: List[DriftEvent]) -> None:
+    def _store_drift_events(self, drift_events: list[DriftEvent]) -> None:
         """Store detected drift events in database"""
         try:
             conn = sqlite3.connect(str(self.db_path))
@@ -742,7 +742,7 @@ class AuditMonitor:
         repo: Optional[str] = None,
         days: int = 30,
         limit: int = 100
-    ) -> List[AuditRun]:
+    ) -> list[AuditRun]:
         """
         Get historical audit runs
 
@@ -812,7 +812,7 @@ class AuditMonitor:
         self,
         repo: Optional[str] = None,
         days: int = 30
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get agreement rate trend data
 
@@ -859,7 +859,7 @@ class AuditMonitor:
         self,
         severity: Optional[str] = None,
         limit: int = 50
-    ) -> List[Alert]:
+    ) -> list[Alert]:
         """
         Get unacknowledged alerts
 
@@ -922,7 +922,7 @@ class AuditMonitor:
         audit_run_id: Optional[str] = None,
         days: int = 7,
         limit: int = 50
-    ) -> List[DriftEvent]:
+    ) -> list[DriftEvent]:
         """
         Get recent drift detection events
 
@@ -990,7 +990,7 @@ class AuditMonitor:
         self,
         repo: Optional[str] = None,
         days: int = 30
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate metrics for visualization dashboard
 
@@ -1154,7 +1154,7 @@ class AuditMonitor:
 
     # Helper methods
 
-    def _get_category_distribution(self, audit_run_id: str) -> Dict[str, float]:
+    def _get_category_distribution(self, audit_run_id: str) -> dict[str, float]:
         """Get category distribution for audit run"""
         try:
             conn = sqlite3.connect(str(self.db_path))
@@ -1176,8 +1176,8 @@ class AuditMonitor:
 
     def _get_category_distribution_aggregate(
         self,
-        audit_run_ids: List[str]
-    ) -> Dict[str, float]:
+        audit_run_ids: list[str]
+    ) -> dict[str, float]:
         """Get aggregated category distribution"""
         try:
             all_dists = [self._get_category_distribution(aid) for aid in audit_run_ids]
@@ -1198,7 +1198,7 @@ class AuditMonitor:
             logger.error(f"Error calculating aggregated category distribution: {e}")
             return {}
 
-    def _get_severity_agreement_correlation(self, audit_run_id: str) -> Dict[str, float]:
+    def _get_severity_agreement_correlation(self, audit_run_id: str) -> dict[str, float]:
         """Get agreement rate by severity level"""
         try:
             conn = sqlite3.connect(str(self.db_path))
@@ -1220,8 +1220,8 @@ class AuditMonitor:
 
     def _get_severity_agreement_correlation_aggregate(
         self,
-        audit_run_ids: List[str]
-    ) -> Dict[str, float]:
+        audit_run_ids: list[str]
+    ) -> dict[str, float]:
         """Get aggregated severity-agreement correlation"""
         try:
             correlations = [
@@ -1244,7 +1244,7 @@ class AuditMonitor:
             logger.error(f"Error calculating aggregated severity correlation: {e}")
             return {}
 
-    def _get_score_differences(self, audit_run_id: str) -> List[float]:
+    def _get_score_differences(self, audit_run_id: str) -> list[float]:
         """Get all score differences for audit run"""
         try:
             conn = sqlite3.connect(str(self.db_path))
@@ -1261,7 +1261,7 @@ class AuditMonitor:
             logger.error(f"Error getting score differences: {e}")
             return []
 
-    def _get_score_differences_aggregate(self, audit_run_ids: List[str]) -> List[float]:
+    def _get_score_differences_aggregate(self, audit_run_ids: list[str]) -> list[float]:
         """Get all score differences across multiple audit runs"""
         try:
             return [
@@ -1274,7 +1274,7 @@ class AuditMonitor:
             logger.error(f"Error getting aggregated score differences: {e}")
             return []
 
-    def _calculate_significance(self, history: List[AuditRun], category: str) -> float:
+    def _calculate_significance(self, history: list[AuditRun], category: str) -> float:
         """Calculate statistical significance of change"""
         try:
             if len(history) < 2:
@@ -1298,7 +1298,7 @@ class AuditMonitor:
             logger.error(f"Error calculating significance: {e}")
             return 0.0
 
-    def _ks_statistic(self, sample1: List[float], sample2: List[float]) -> float:
+    def _ks_statistic(self, sample1: list[float], sample2: list[float]) -> float:
         """
         Simplified Kolmogorov-Smirnov statistic
         Returns maximum difference between two empirical distributions

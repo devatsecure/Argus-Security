@@ -239,7 +239,7 @@ class TruffleHogScanner:
             verified_count = sum(1 for f in findings if f.verified)
             unverified_count = len(findings) - verified_count
 
-            logger.info(f"✅ TruffleHog scan complete:")
+            logger.info("✅ TruffleHog scan complete:")
             logger.info(f"   Total findings: {len(findings)}")
             logger.info(f"   Verified: {verified_count}")
             logger.info(f"   Unverified: {unverified_count}")
@@ -561,10 +561,7 @@ Examples:
         return 0
 
     # Run scan
-    if args.file:
-        results = scanner.scan_file(args.target)
-    else:
-        results = scanner.scan(args.target, scan_type=args.scan_type)
+    results = scanner.scan_file(args.target) if args.file else scanner.scan(args.target, scan_type=args.scan_type)
 
     # Save to file if requested
     if args.output:

@@ -10,7 +10,7 @@ Fixes:
 """
 
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -44,7 +44,7 @@ class CorrelationFindingInput(BaseModel):
     severity: str = Field(default="medium", description="Severity")
     cwe: Optional[str] = Field(default=None, description="CWE identifier")
     category: str = Field(default="UNKNOWN", description="Finding category")
-    evidence: Dict[str, Any] = Field(
+    evidence: dict[str, Any] = Field(
         default_factory=dict,
         description="Evidence data (message, url, method, poc, etc.)"
     )
@@ -76,12 +76,12 @@ class CorrelationInput(BaseModel):
     Input for correlation engine.
     Validates both SAST and DAST findings before correlation.
     """
-    sast_findings: List[Dict[str, Any]] = Field(
+    sast_findings: list[dict[str, Any]] = Field(
         ...,
         min_length=0,
         description="List of SAST findings (normalized format)"
     )
-    dast_findings: List[Dict[str, Any]] = Field(
+    dast_findings: list[dict[str, Any]] = Field(
         ...,
         min_length=0,
         description="List of DAST findings (normalized format)"
@@ -90,7 +90,7 @@ class CorrelationInput(BaseModel):
 
     @field_validator('sast_findings')
     @classmethod
-    def validate_sast_findings(cls, v: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def validate_sast_findings(cls, v: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Validate each SAST finding has required fields"""
         for i, finding in enumerate(v):
             try:
@@ -101,7 +101,7 @@ class CorrelationInput(BaseModel):
 
     @field_validator('dast_findings')
     @classmethod
-    def validate_dast_findings(cls, v: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def validate_dast_findings(cls, v: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Validate each DAST finding has required fields"""
         for i, finding in enumerate(v):
             try:
@@ -130,8 +130,8 @@ class CorrelationResult(BaseModel):
     reasoning: str = Field(..., min_length=1, description="Reasoning for correlation")
     poc_exploit: Optional[str] = Field(default=None, description="Proof of concept")
     match_score: float = Field(default=0.0, ge=0.0, le=1.0, description="Match similarity score")
-    sast_summary: Optional[Dict[str, Any]] = Field(default=None, description="SAST finding summary")
-    dast_summary: Optional[Dict[str, Any]] = Field(default=None, description="DAST finding summary")
+    sast_summary: Optional[dict[str, Any]] = Field(default=None, description="SAST finding summary")
+    dast_summary: Optional[dict[str, Any]] = Field(default=None, description="DAST finding summary")
 
     @field_validator('reasoning')
     @classmethod
@@ -159,14 +159,14 @@ class CorrelationOutput(BaseModel):
     Ensures all correlation results have proper structure.
     """
     metadata: CorrelationMetadata = Field(..., description="Summary statistics")
-    correlations: List[Dict[str, Any]] = Field(
+    correlations: list[dict[str, Any]] = Field(
         default_factory=list,
         description="List of correlation results"
     )
 
     @field_validator('correlations')
     @classmethod
-    def validate_correlation_results(cls, v: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def validate_correlation_results(cls, v: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Validate each correlation result"""
         for i, result in enumerate(v):
             try:

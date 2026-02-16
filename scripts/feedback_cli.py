@@ -4,7 +4,7 @@ CLI tool for managing feedback loop
 """
 
 import argparse
-import sys
+
 from feedback_loop import FeedbackLoop
 
 

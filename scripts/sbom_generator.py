@@ -146,7 +146,7 @@ class SBOMGenerator:
             SBOMGenerationError: If the file cannot be read or parsed.
         """
         try:
-            with open(sbom_path, "r") as f:
+            with open(sbom_path) as f:
                 return json.load(f)
         except FileNotFoundError:
             raise SBOMGenerationError(

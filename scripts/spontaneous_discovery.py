@@ -25,12 +25,10 @@ Integration:
 import hashlib
 import json
 import logging
-import os
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -49,14 +47,14 @@ class Discovery:
     description: str
     confidence: float  # 0.0-1.0, only return if >0.7
     severity: str  # "critical", "high", "medium", "low"
-    evidence: List[str]  # File paths or patterns that support this finding
+    evidence: list[str]  # File paths or patterns that support this finding
     remediation: str
     cwe_id: Optional[str] = None
 
     # Additional metadata
-    affected_files: List[str] = field(default_factory=list)
-    code_snippets: List[str] = field(default_factory=list)
-    references: List[str] = field(default_factory=list)
+    affected_files: list[str] = field(default_factory=list)
+    code_snippets: list[str] = field(default_factory=list)
+    references: list[str] = field(default_factory=list)
 
     def to_finding(self, repo: str, commit_sha: str, branch: str) -> "Finding":
         """
@@ -114,7 +112,7 @@ class Discovery:
             fix_suggestion=self.remediation
         )
 
-    def _generate_id(self, repo: str, title: str, files: List[str]) -> str:
+    def _generate_id(self, repo: str, title: str, files: list[str]) -> str:
         """Generate unique ID for discovery"""
         key = f"{repo}:spontaneous:{title}:{':'.join(sorted(files))}"
         return hashlib.sha256(key.encode()).hexdigest()[:16]
@@ -180,11 +178,11 @@ class SpontaneousDiscovery:
 
     def discover(
         self,
-        files: List[str],
-        existing_findings: List[Dict],
+        files: list[str],
+        existing_findings: list[dict],
         architecture: str,
         max_files_analyze: int = 50
-    ) -> List[Discovery]:
+    ) -> list[Discovery]:
         """
         Main entry point - discover security issues beyond scanner rules
 
@@ -246,7 +244,7 @@ class SpontaneousDiscovery:
 
         return deduplicated
 
-    def analyze_architecture(self, files: List[str], architecture: str) -> List[Discovery]:
+    def analyze_architecture(self, files: list[str], architecture: str) -> list[Discovery]:
         """
         Analyze overall architecture for security gaps
 
@@ -292,9 +290,9 @@ class SpontaneousDiscovery:
 
     def find_hidden_vulnerabilities(
         self,
-        files: List[str],
-        existing_findings: List[Dict]
-    ) -> List[Discovery]:
+        files: list[str],
+        existing_findings: list[dict]
+    ) -> list[Discovery]:
         """
         Look for vulnerabilities that scanners might miss
 
@@ -337,9 +335,9 @@ class SpontaneousDiscovery:
 
     def check_configuration_security(
         self,
-        files: List[str],
+        files: list[str],
         architecture: str
-    ) -> List[Discovery]:
+    ) -> list[Discovery]:
         """
         Identify insecure configurations
 
@@ -380,7 +378,7 @@ class SpontaneousDiscovery:
 
         return discoveries
 
-    def analyze_data_security(self, files: List[str]) -> List[Discovery]:
+    def analyze_data_security(self, files: list[str]) -> list[Discovery]:
         """
         Analyze data security practices
 
@@ -422,7 +420,7 @@ class SpontaneousDiscovery:
 
     # ==================== Helper Methods ====================
 
-    def _analyze_file_patterns(self, files: List[str]) -> Dict[str, Any]:
+    def _analyze_file_patterns(self, files: list[str]) -> dict[str, Any]:
         """
         Analyze file structure to understand project patterns
 
@@ -495,8 +493,8 @@ class SpontaneousDiscovery:
 
     def _check_authentication_layer(
         self,
-        files: List[str],
-        patterns: Dict,
+        files: list[str],
+        patterns: dict,
         architecture: str
     ) -> Optional[Discovery]:
         """Check for missing authentication layer"""
@@ -540,8 +538,8 @@ class SpontaneousDiscovery:
 
     def _check_authorization_layer(
         self,
-        files: List[str],
-        patterns: Dict,
+        files: list[str],
+        patterns: dict,
         architecture: str
     ) -> Optional[Discovery]:
         """Check for missing authorization/access control"""
@@ -557,7 +555,7 @@ class SpontaneousDiscovery:
 
             for route_file in patterns["route_files"][:5]:
                 try:
-                    with open(route_file, "r", encoding="utf-8", errors="ignore") as f:
+                    with open(route_file, encoding="utf-8", errors="ignore") as f:
                         content = f.read().lower()
                         if any(pattern in content for pattern in authz_patterns):
                             has_authz = True
@@ -597,7 +595,7 @@ class SpontaneousDiscovery:
 
         return None
 
-    def _check_encryption_usage(self, files: List[str], patterns: Dict) -> Optional[Discovery]:
+    def _check_encryption_usage(self, files: list[str], patterns: dict) -> Optional[Discovery]:
         """Check for weak or missing encryption"""
 
         # Look for crypto usage in code files
@@ -618,7 +616,7 @@ class SpontaneousDiscovery:
                 continue
 
             try:
-                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                with open(file_path, encoding="utf-8", errors="ignore") as f:
                     content = f.read()
 
                     for pattern, description in weak_patterns:
@@ -662,7 +660,7 @@ class SpontaneousDiscovery:
 
         return None
 
-    def _check_input_validation(self, files: List[str], patterns: Dict) -> Optional[Discovery]:
+    def _check_input_validation(self, files: list[str], patterns: dict) -> Optional[Discovery]:
         """Check for missing input validation"""
 
         # If we have routes but no validation middleware, check deeper
@@ -675,7 +673,7 @@ class SpontaneousDiscovery:
         # Check if validation is present in the codebase
         for file_path in files[:30]:
             try:
-                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                with open(file_path, encoding="utf-8", errors="ignore") as f:
                     content = f.read().lower()
                     if any(pattern in content for pattern in validation_patterns):
                         validation_found = True
@@ -716,25 +714,25 @@ class SpontaneousDiscovery:
 
         return None
 
-    def _check_race_conditions(self, files: List[str]) -> Optional[Discovery]:
+    def _check_race_conditions(self, files: list[str]) -> Optional[Discovery]:
         """Check for potential race conditions in concurrent code"""
         # Implementation would analyze concurrent access patterns
         # Simplified for now
         return None
 
-    def _check_business_logic(self, files: List[str]) -> Optional[Discovery]:
+    def _check_business_logic(self, files: list[str]) -> Optional[Discovery]:
         """Check for business logic flaws"""
         # Would require deep semantic analysis
         # Simplified for now
         return None
 
-    def _check_insecure_defaults(self, files: List[str]) -> Optional[Discovery]:
+    def _check_insecure_defaults(self, files: list[str]) -> Optional[Discovery]:
         """Check for insecure default configurations"""
         # Implementation would check config files for insecure defaults
         # Simplified for now
         return None
 
-    def _check_security_headers(self, files: List[str]) -> Optional[Discovery]:
+    def _check_security_headers(self, files: list[str]) -> Optional[Discovery]:
         """Check for missing security headers"""
 
         # Look for server/framework configuration files
@@ -753,7 +751,7 @@ class SpontaneousDiscovery:
             if any(x in file_path.lower() for x in ["config", "server", "app", "main", "middleware"]):
                 config_files_checked.append(file_path)
                 try:
-                    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                    with open(file_path, encoding="utf-8", errors="ignore") as f:
                         content = f.read().lower()
                         for header in security_headers:
                             if header in content:
@@ -783,7 +781,7 @@ class SpontaneousDiscovery:
                 ],
                 remediation=(
                     "Add security headers to HTTP responses:\n"
-                    f"1. Strict-Transport-Security: max-age=31536000; includeSubDomains\n"
+                    "1. Strict-Transport-Security: max-age=31536000; includeSubDomains\n"
                     "2. X-Frame-Options: DENY or SAMEORIGIN\n"
                     "3. X-Content-Type-Options: nosniff\n"
                     "4. Content-Security-Policy: default-src 'self'\n"
@@ -798,13 +796,13 @@ class SpontaneousDiscovery:
 
         return None
 
-    def _check_iam_policies(self, files: List[str]) -> Optional[Discovery]:
+    def _check_iam_policies(self, files: list[str]) -> Optional[Discovery]:
         """Check for weak IAM/permission policies"""
         # Look for overly permissive policies in config files
         # Simplified for now
         return None
 
-    def _check_cors_configuration(self, files: List[str]) -> Optional[Discovery]:
+    def _check_cors_configuration(self, files: list[str]) -> Optional[Discovery]:
         """Check for insecure CORS configuration"""
 
         # Look for CORS configuration
@@ -816,7 +814,7 @@ class SpontaneousDiscovery:
                 continue
 
             try:
-                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                with open(file_path, encoding="utf-8", errors="ignore") as f:
                     content = f.read()
 
                     # Check for overly permissive CORS
@@ -860,7 +858,7 @@ class SpontaneousDiscovery:
 
         return None
 
-    def _check_debug_mode(self, files: List[str]) -> Optional[Discovery]:
+    def _check_debug_mode(self, files: list[str]) -> Optional[Discovery]:
         """Check for debug mode enabled in production"""
 
         debug_files = []
@@ -872,7 +870,7 @@ class SpontaneousDiscovery:
                 continue
 
             try:
-                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                with open(file_path, encoding="utf-8", errors="ignore") as f:
                     lines = f.readlines()
 
                     for i, line in enumerate(lines, 1):
@@ -921,7 +919,7 @@ class SpontaneousDiscovery:
 
         return None
 
-    def _check_admin_exposure(self, files: List[str], architecture: str) -> Optional[Discovery]:
+    def _check_admin_exposure(self, files: list[str], architecture: str) -> Optional[Discovery]:
         """Check for exposed admin interfaces"""
 
         # Look for admin routes/endpoints
@@ -933,7 +931,7 @@ class SpontaneousDiscovery:
                 continue
 
             try:
-                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                with open(file_path, encoding="utf-8", errors="ignore") as f:
                     lines = f.readlines()
 
                     for i, line in enumerate(lines, 1):
@@ -982,7 +980,7 @@ class SpontaneousDiscovery:
 
         return None
 
-    def _check_sensitive_logging(self, files: List[str]) -> Optional[Discovery]:
+    def _check_sensitive_logging(self, files: list[str]) -> Optional[Discovery]:
         """Check for sensitive data in logs"""
 
         sensitive_logging = []
@@ -1002,7 +1000,7 @@ class SpontaneousDiscovery:
 
         for file_path in files[:40]:
             try:
-                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                with open(file_path, encoding="utf-8", errors="ignore") as f:
                     content = f.read()
 
                     for pattern, description in sensitive_patterns:
@@ -1044,19 +1042,19 @@ class SpontaneousDiscovery:
 
         return None
 
-    def _check_pii_exposure(self, files: List[str]) -> Optional[Discovery]:
+    def _check_pii_exposure(self, files: list[str]) -> Optional[Discovery]:
         """Check for PII exposure risks"""
         # Would analyze data flow and API responses for PII
         # Simplified for now
         return None
 
-    def _check_data_storage(self, files: List[str]) -> Optional[Discovery]:
+    def _check_data_storage(self, files: list[str]) -> Optional[Discovery]:
         """Check for insecure data storage"""
         # Would analyze database configs and storage patterns
         # Simplified for now
         return None
 
-    def _check_encryption_at_rest(self, files: List[str]) -> Optional[Discovery]:
+    def _check_encryption_at_rest(self, files: list[str]) -> Optional[Discovery]:
         """Check for missing encryption at rest"""
         # Would check database and storage configurations
         # Simplified for now
@@ -1064,9 +1062,9 @@ class SpontaneousDiscovery:
 
     def _deduplicate_with_existing(
         self,
-        discoveries: List[Discovery],
-        existing_findings: List[Dict]
-    ) -> List[Discovery]:
+        discoveries: list[Discovery],
+        existing_findings: list[dict]
+    ) -> list[Discovery]:
         """
         Deduplicate discoveries with existing scanner findings
 

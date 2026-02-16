@@ -20,7 +20,7 @@ from __future__ import annotations
 import fnmatch
 import logging
 import os
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
@@ -141,7 +141,7 @@ class AdvancedSuppressionManager:
             return []
 
         try:
-            with open(file_path, "r", encoding="utf-8") as fh:
+            with open(file_path, encoding="utf-8") as fh:
                 data = yaml.safe_load(fh) or {}
         except Exception:
             logger.exception("Failed to parse suppression config: %s", file_path)

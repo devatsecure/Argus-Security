@@ -536,7 +536,7 @@ class CheckovScanner:
                 if len(parts) > 1:
                     frameworks.add(parts[1])
 
-        return sorted(list(frameworks))
+        return sorted(frameworks)
 
     def _get_checkov_version(self) -> str:
         """Get Checkov version"""

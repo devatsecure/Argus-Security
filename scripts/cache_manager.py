@@ -18,10 +18,9 @@ import json
 import logging
 import os
 import threading
-import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -175,7 +174,7 @@ class CacheManager:
         file_path: str,
         scanner_name: str,
         scanner_version: Optional[str] = None
-    ) -> Optional[Dict[str, Any]]:
+    ) -> Optional[dict[str, Any]]:
         """
         Retrieve cached scan result if valid
 
@@ -197,7 +196,7 @@ class CacheManager:
                 return None
 
             # Read cache entry
-            with open(cache_path, "r") as f:
+            with open(cache_path) as f:
                 cache_entry = json.load(f)
 
             # Validate cache entry
@@ -247,7 +246,7 @@ class CacheManager:
         self,
         file_path: str,
         scanner_name: str,
-        results: Dict[str, Any],
+        results: dict[str, Any],
         scanner_version: Optional[str] = None,
         ttl_seconds: Optional[int] = None
     ) -> bool:
@@ -331,7 +330,7 @@ class CacheManager:
             if not cache_path or not cache_path.exists():
                 return False
 
-            with open(cache_path, "r") as f:
+            with open(cache_path) as f:
                 cache_entry = json.load(f)
 
             return self._is_cache_entry_valid(
@@ -345,7 +344,7 @@ class CacheManager:
 
     def _is_cache_entry_valid(
         self,
-        cache_entry: Dict[str, Any],
+        cache_entry: dict[str, Any],
         file_path: str,
         scanner_version: Optional[str] = None
     ) -> bool:
@@ -468,7 +467,7 @@ class CacheManager:
 
                     for cache_file in scanner_dir.glob("*.json"):
                         try:
-                            with open(cache_file, "r") as f:
+                            with open(cache_file) as f:
                                 cache_entry = json.load(f)
 
                             # Check expiration
@@ -500,7 +499,7 @@ class CacheManager:
             logger.error(f"Error clearing expired cache: {e}")
             return deleted_count
 
-    def get_cache_stats(self) -> Dict[str, Any]:
+    def get_cache_stats(self) -> dict[str, Any]:
         """
         Get cache statistics
 
@@ -570,7 +569,7 @@ class CacheManager:
             metadata_path = self.cache_dir / "metadata.json"
 
             if metadata_path.exists():
-                with open(metadata_path, "r") as f:
+                with open(metadata_path) as f:
                     saved_stats = json.load(f)
 
                 # Merge with current stats (preserve runtime stats)
@@ -586,9 +585,8 @@ class CacheManager:
         try:
             metadata_path = self.cache_dir / "metadata.json"
 
-            with self._lock:
-                with open(metadata_path, "w") as f:
-                    json.dump(self._stats, f, indent=2)
+            with self._lock, open(metadata_path, "w") as f:
+                json.dump(self._stats, f, indent=2)
 
         except Exception as e:
             logger.debug(f"Could not save stats: {e}")
@@ -611,7 +609,7 @@ class CacheManager:
         except Exception:
             return "unknown"
 
-    def log_decision(self, decision_entry: Dict[str, Any]) -> bool:
+    def log_decision(self, decision_entry: dict[str, Any]) -> bool:
         """
         Log AI triage decision for analysis and improvement
 
@@ -668,7 +666,7 @@ class CacheManager:
                 return []
 
             decisions = []
-            with open(self.decision_log_path, "r") as f:
+            with open(self.decision_log_path) as f:
                 for line in f:
                     try:
                         decisions.append(json.loads(line))
@@ -733,7 +731,7 @@ def print_cache_stats(cache_manager: CacheManager) -> None:
     print(f"Total Size:     {stats['total_size_mb']} MB")
 
     if stats['scanners']:
-        print(f"\nPer-Scanner Stats:")
+        print("\nPer-Scanner Stats:")
         for scanner, scanner_stats in stats['scanners'].items():
             print(f"  {scanner}:")
             print(f"    Entries: {scanner_stats['entries']}")

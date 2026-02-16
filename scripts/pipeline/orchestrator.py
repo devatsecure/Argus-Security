@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from .protocol import PipelineContext, PipelineStage, StageResult
 
@@ -39,7 +39,7 @@ def _get_phase_gate_class():
 
 # Maps stage names (as registered in PipelineStage.name) to the schema
 # keys defined in PhaseGate.REQUIRED_SCHEMAS.
-_STAGE_TO_GATE_PHASE: Dict[str, str] = {
+_STAGE_TO_GATE_PHASE: dict[str, str] = {
     "phase1_scanner_orchestration": "scanner_orchestration",
     "scanner_orchestration": "scanner_orchestration",
     "phase2_ai_enrichment": "ai_enrichment",
@@ -78,8 +78,8 @@ class PipelineOrchestrator:
 
     def __init__(
         self,
-        stages: List[PipelineStage],
-        config: Dict[str, Any],
+        stages: list[PipelineStage],
+        config: dict[str, Any],
     ):
         self.stages = sorted(stages, key=lambda s: s.phase_number)
         self.config = config
@@ -124,7 +124,7 @@ class PipelineOrchestrator:
     @staticmethod
     def _build_gate_output(
         stage_name: str, ctx: PipelineContext
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Build a gate-compatible output dict from the pipeline context.
 
         Maps the mutable ``PipelineContext`` fields to the dict structure
@@ -168,8 +168,8 @@ class PipelineOrchestrator:
     def run(
         self,
         target_path: str,
-        ctx: Optional[PipelineContext] = None,
-    ) -> Tuple[PipelineContext, List[StageResult]]:
+        ctx: PipelineContext | None = None,
+    ) -> tuple[PipelineContext, list[StageResult]]:
         """Execute the full pipeline.
 
         Parameters
@@ -189,7 +189,7 @@ class PipelineOrchestrator:
         if ctx is None:
             ctx = self._build_context(target_path)
 
-        results: List[StageResult] = []
+        results: list[StageResult] = []
         completed_stages: set[str] = set()
         pipeline_start = time.time()
 

@@ -22,11 +22,10 @@ import json
 import logging
 import os
 import sys
-from collections import defaultdict
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 from tenacity import (
     before_sleep_log,
@@ -43,7 +42,6 @@ logger = logging.getLogger(__name__)
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from normalizer.base import Finding
 from providers.anthropic_provider import AnthropicProvider
 
 
@@ -52,8 +50,8 @@ class PairwiseComparison:
     """Comparison of a single finding pair"""
 
     finding_id: str
-    argus_finding: Optional[Dict[str, Any]] = None
-    codex_finding: Optional[Dict[str, Any]] = None
+    argus_finding: Optional[dict[str, Any]] = None
+    codex_finding: Optional[dict[str, Any]] = None
     match_type: str = "unmatched"  # matched, argus_only, codex_only
 
     # Judge scores (1-5 scale)
@@ -63,9 +61,9 @@ class PairwiseComparison:
 
     # Detailed reasoning
     judge_reasoning: str = ""
-    key_differences: List[str] = field(default_factory=list)
-    agreement_aspects: List[str] = field(default_factory=list)
-    disagreement_aspects: List[str] = field(default_factory=list)
+    key_differences: list[str] = field(default_factory=list)
+    agreement_aspects: list[str] = field(default_factory=list)
+    disagreement_aspects: list[str] = field(default_factory=list)
 
     # Metrics
     coverage_score: float = 0.0  # How much detail was provided
@@ -76,7 +74,7 @@ class PairwiseComparison:
     # Timestamps
     compared_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
         return asdict(self)
 
@@ -139,15 +137,15 @@ class FindingMatcher:
 
     def match_findings(
         self,
-        argus_findings: List[Dict[str, Any]],
-        codex_findings: List[Dict[str, Any]]
-    ) -> Tuple[List[Tuple[Dict, Dict]], List[Dict], List[Dict]]:
+        argus_findings: list[dict[str, Any]],
+        codex_findings: list[dict[str, Any]]
+    ) -> tuple[list[tuple[dict, dict]], list[dict], list[dict]]:
         """Match findings between two sets based on similarity
 
         Returns:
             Tuple of (matched_pairs, argus_only, codex_only)
         """
-        matched_pairs: List[Tuple[Dict, Dict]] = []
+        matched_pairs: list[tuple[dict, dict]] = []
         matched_codex_indices = set()
         unmatched_argus = []
 
@@ -179,7 +177,7 @@ class FindingMatcher:
 
         return matched_pairs, unmatched_argus, unmatched_codex
 
-    def _calculate_similarity(self, finding1: Dict[str, Any], finding2: Dict[str, Any]) -> float:
+    def _calculate_similarity(self, finding1: dict[str, Any], finding2: dict[str, Any]) -> float:
         """Calculate similarity score between two findings (0-1)
 
         Considers:
@@ -272,8 +270,8 @@ class PairwiseJudge:
     )
     def compare_matched_findings(
         self,
-        argus_finding: Dict[str, Any],
-        codex_finding: Dict[str, Any]
+        argus_finding: dict[str, Any],
+        codex_finding: dict[str, Any]
     ) -> PairwiseComparison:
         """Compare two matched findings and return detailed comparison
 
@@ -300,7 +298,7 @@ class PairwiseJudge:
 
     def compare_unmatched_finding(
         self,
-        finding: Dict[str, Any],
+        finding: dict[str, Any],
         tool_name: str  # "argus" or "codex"
     ) -> PairwiseComparison:
         """Evaluate an unmatched finding (found by only one tool)
@@ -327,8 +325,8 @@ class PairwiseJudge:
 
     def _build_comparison_prompt(
         self,
-        argus_finding: Dict[str, Any],
-        codex_finding: Dict[str, Any]
+        argus_finding: dict[str, Any],
+        codex_finding: dict[str, Any]
     ) -> str:
         """Build prompt for comparing two matched findings"""
         prompt = f"""You are a security expert evaluating two security analysis reports.
@@ -391,7 +389,7 @@ RESPOND WITH JSON ONLY, no other text:
 }}"""
         return prompt
 
-    def _build_evaluation_prompt(self, finding: Dict[str, Any], tool_name: str) -> str:
+    def _build_evaluation_prompt(self, finding: dict[str, Any], tool_name: str) -> str:
         """Build prompt for evaluating an unmatched finding"""
         tool_label = "ARGUS (Anthropic Claude)" if tool_name == "argus" else "CODEX (Independent)"
 
@@ -453,8 +451,8 @@ RESPOND WITH JSON ONLY:
     def _parse_judge_response(
         self,
         response: str,
-        argus_finding: Dict[str, Any],
-        codex_finding: Dict[str, Any],
+        argus_finding: dict[str, Any],
+        codex_finding: dict[str, Any],
         match_type: str
     ) -> PairwiseComparison:
         """Parse judge response into PairwiseComparison"""
@@ -462,10 +460,7 @@ RESPOND WITH JSON ONLY:
             # Extract JSON from response
             import re
             json_match = re.search(r"\{.*\}", response, re.DOTALL)
-            if json_match:
-                data = json.loads(json_match.group())
-            else:
-                data = json.loads(response)
+            data = json.loads(json_match.group()) if json_match else json.loads(response)
 
             # Calculate average scores
             argus_scores = data.get("argus_scores", {})
@@ -512,17 +507,14 @@ RESPOND WITH JSON ONLY:
     def _parse_evaluation_response(
         self,
         response: str,
-        finding: Dict[str, Any],
+        finding: dict[str, Any],
         tool_name: str
     ) -> PairwiseComparison:
         """Parse evaluation response for unmatched finding"""
         try:
             import re
             json_match = re.search(r"\{.*\}", response, re.DOTALL)
-            if json_match:
-                data = json.loads(json_match.group())
-            else:
-                data = json.loads(response)
+            data = json.loads(json_match.group()) if json_match else json.loads(response)
 
             if tool_name == "argus":
                 comparison = PairwiseComparison(
@@ -570,8 +562,8 @@ class PairwiseComparator:
 
     def __init__(
         self,
-        argus_findings: List[Dict[str, Any]],
-        codex_findings: List[Dict[str, Any]],
+        argus_findings: list[dict[str, Any]],
+        codex_findings: list[dict[str, Any]],
         judge_model: str = "anthropic",
         match_threshold: float = 0.7
     ):
@@ -587,7 +579,7 @@ class PairwiseComparator:
         self.codex_findings = codex_findings
         self.matcher = FindingMatcher(match_threshold=match_threshold)
         self.judge = PairwiseJudge(judge_model=judge_model)
-        self.comparisons: List[PairwiseComparison] = []
+        self.comparisons: list[PairwiseComparison] = []
 
     def run_comparison(self, max_comparisons: Optional[int] = None) -> PairwiseAggregation:
         """Run complete pairwise comparison
@@ -599,7 +591,7 @@ class PairwiseComparator:
             PairwiseAggregation with results
         """
         logger.info(f"\n{'='*80}")
-        logger.info(f"Pairwise Comparison Analysis")
+        logger.info("Pairwise Comparison Analysis")
         logger.info(f"Argus Findings: {len(self.argus_findings)}")
         logger.info(f"Codex Findings: {len(self.codex_findings)}")
         logger.info(f"{'='*80}\n")
@@ -643,12 +635,12 @@ class PairwiseComparator:
                 )
 
         # Step 3: Evaluate unmatched findings
-        logger.info(f"\nStep 3: Evaluating unmatched findings...")
+        logger.info("\nStep 3: Evaluating unmatched findings...")
 
         for finding in argus_only:
             if max_comparisons and len(self.comparisons) >= max_comparisons:
                 break
-            logger.info(f"  Evaluating Argus finding (not in Codex)...")
+            logger.info("  Evaluating Argus finding (not in Codex)...")
             try:
                 comparison = self.judge.compare_unmatched_finding(finding, "argus")
                 self.comparisons.append(comparison)
@@ -658,7 +650,7 @@ class PairwiseComparator:
         for finding in codex_only:
             if max_comparisons and len(self.comparisons) >= max_comparisons:
                 break
-            logger.info(f"  Evaluating Codex finding (not in Argus)...")
+            logger.info("  Evaluating Codex finding (not in Argus)...")
             try:
                 comparison = self.judge.compare_unmatched_finding(finding, "codex")
                 self.comparisons.append(comparison)
@@ -666,7 +658,7 @@ class PairwiseComparator:
                 logger.error(f"Failed to evaluate Codex finding: {e}")
 
         # Step 4: Aggregate results
-        logger.info(f"\nStep 4: Aggregating results...")
+        logger.info("\nStep 4: Aggregating results...")
         aggregation = self._aggregate_comparisons()
 
         return aggregation
@@ -760,7 +752,7 @@ class ComparisonReportGenerator:
 
     @staticmethod
     def generate_json_report(
-        comparisons: List[PairwiseComparison],
+        comparisons: list[PairwiseComparison],
         aggregation: PairwiseAggregation,
         output_file: str
     ) -> str:
@@ -779,7 +771,7 @@ class ComparisonReportGenerator:
 
     @staticmethod
     def generate_markdown_report(
-        comparisons: List[PairwiseComparison],
+        comparisons: list[PairwiseComparison],
         aggregation: PairwiseAggregation,
         output_file: str
     ) -> str:
@@ -853,7 +845,7 @@ Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
         text = f"#### Finding: {comp.finding_id}\n\n"
 
         if comp.match_type == "matched":
-            text += f"**Status**: Both tools found this issue\n\n"
+            text += "**Status**: Both tools found this issue\n\n"
             if comp.argus_finding:
                 text += f"**Argus**: Score {comp.argus_score}/5\n"
                 text += f"- Severity: {comp.argus_finding.get('severity', 'unknown')}\n"
@@ -863,13 +855,13 @@ Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
                 text += f"- Severity: {comp.codex_finding.get('severity', 'unknown')}\n"
                 text += f"- Rule: {comp.codex_finding.get('rule_id', 'unknown')}\n"
         elif comp.match_type == "argus_only":
-            text += f"**Status**: Found by Argus only\n\n"
+            text += "**Status**: Found by Argus only\n\n"
             text += f"**Score**: {comp.argus_score}/5\n"
             if comp.argus_finding:
                 text += f"- Severity: {comp.argus_finding.get('severity', 'unknown')}\n"
                 text += f"- File: {comp.argus_finding.get('path', 'unknown')}\n"
         else:  # codex_only
-            text += f"**Status**: Found by Codex only\n\n"
+            text += "**Status**: Found by Codex only\n\n"
             text += f"**Score**: {comp.codex_score}/5\n"
             if comp.codex_finding:
                 text += f"- Severity: {comp.codex_finding.get('severity', 'unknown')}\n"
@@ -882,13 +874,13 @@ Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
             text += f"**Judge Reasoning**:\n{comp.judge_reasoning}\n\n"
 
         if comp.key_differences:
-            text += f"**Key Differences**:\n"
+            text += "**Key Differences**:\n"
             for diff in comp.key_differences:
                 text += f"- {diff}\n"
             text += "\n"
 
         if comp.agreement_aspects:
-            text += f"**Agreement**:\n"
+            text += "**Agreement**:\n"
             for aspect in comp.agreement_aspects:
                 text += f"- {aspect}\n"
             text += "\n"
@@ -897,7 +889,7 @@ Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
         return text
 
     @staticmethod
-    def _generate_analysis_summary(aggregation: PairwiseAggregation, comparisons: List[PairwiseComparison]) -> str:
+    def _generate_analysis_summary(aggregation: PairwiseAggregation, comparisons: list[PairwiseComparison]) -> str:
         """Generate analysis summary"""
         summary = ""
 
@@ -941,9 +933,9 @@ Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
         return summary
 
 
-def load_findings(file_path: str) -> List[Dict[str, Any]]:
+def load_findings(file_path: str) -> list[dict[str, Any]]:
     """Load findings from JSON file"""
-    with open(file_path, 'r') as f:
+    with open(file_path) as f:
         data = json.load(f)
 
     # Handle different formats
@@ -1023,7 +1015,7 @@ def main():
     aggregation = comparator.run_comparison(max_comparisons=args.max_comparisons)
 
     # Generate reports
-    logger.info(f"\nGenerating reports...")
+    logger.info("\nGenerating reports...")
     ComparisonReportGenerator.generate_json_report(
         comparator.comparisons,
         aggregation,
@@ -1039,7 +1031,7 @@ def main():
 
     # Print summary
     logger.info(f"\n{'='*80}")
-    logger.info(f"PAIRWISE COMPARISON COMPLETE")
+    logger.info("PAIRWISE COMPARISON COMPLETE")
     logger.info(f"{'='*80}")
     logger.info(f"\nWinner: {aggregation.overall_winner.upper()}")
     logger.info(f"Argus: {aggregation.avg_argus_score:.1f}/5 ({aggregation.argus_win_rate*100:.0f}% win rate)")

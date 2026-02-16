@@ -19,19 +19,20 @@ import json
 import logging
 import re
 import time
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Optional, List, Dict, Tuple
-import urllib.request
 import urllib.error
 import urllib.parse
+import urllib.request
 from collections import defaultdict
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Optional
+
 from tenacity import (
     retry,
-    wait_exponential,
-    stop_after_attempt,
     retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
 )
 
 logger = logging.getLogger(__name__)
@@ -52,15 +53,15 @@ class ThreatContext:
     kev_due_date: Optional[str] = None
     kev_action_required: Optional[str] = None
     public_exploit_available: bool = False
-    exploit_sources: List[str] = field(default_factory=list)
+    exploit_sources: list[str] = field(default_factory=list)
     exploit_count: int = 0
     trending: bool = False
     vendor_patch_available: bool = False
     patch_url: Optional[str] = None
-    github_advisories: List[Dict] = field(default_factory=list)
-    osv_entries: List[Dict] = field(default_factory=list)
-    cwe_ids: List[str] = field(default_factory=list)
-    references: List[str] = field(default_factory=list)
+    github_advisories: list[dict] = field(default_factory=list)
+    osv_entries: list[dict] = field(default_factory=list)
+    cwe_ids: list[str] = field(default_factory=list)
+    references: list[str] = field(default_factory=list)
     last_updated: Optional[str] = None
     confidence: float = 1.0  # Confidence in enrichment data (0.0-1.0)
 
@@ -69,12 +70,12 @@ class ThreatContext:
 class EnrichedFinding:
     """Finding enriched with threat intelligence"""
 
-    original_finding: Dict
+    original_finding: dict
     threat_context: Optional[ThreatContext]
     original_priority: str
     adjusted_priority: str
-    priority_boost_reasons: List[str]
-    priority_downgrade_reasons: List[str]
+    priority_boost_reasons: list[str]
+    priority_downgrade_reasons: list[str]
     recommended_action: str
     remediation_deadline: Optional[str]
     risk_score: float  # 0.0-10.0 composite risk score
@@ -133,7 +134,7 @@ class ThreatIntelEnricher:
         self.use_progress = use_progress
 
         # Rate limiting state
-        self._last_api_call: Dict[str, float] = defaultdict(float)
+        self._last_api_call: dict[str, float] = defaultdict(float)
 
         # Statistics (initialize before loading KEV catalog)
         self.stats = {
@@ -153,7 +154,7 @@ class ThreatIntelEnricher:
         # Load cached data sources
         self.kev_catalog = self._load_kev_catalog()
 
-    def enrich_findings(self, findings: List[Dict]) -> List[EnrichedFinding]:
+    def enrich_findings(self, findings: list[dict]) -> list[EnrichedFinding]:
         """
         Enrich findings with threat intelligence.
 
@@ -190,15 +191,15 @@ class ThreatIntelEnricher:
 
         return enriched
 
-    def _enrich_with_progress(self, findings: List[Dict]) -> List[EnrichedFinding]:
+    def _enrich_with_progress(self, findings: list[dict]) -> list[EnrichedFinding]:
         """Enrich findings with progress bar"""
         try:
             from rich.progress import (
+                BarColumn,
                 Progress,
                 SpinnerColumn,
-                TextColumn,
-                BarColumn,
                 TaskProgressColumn,
+                TextColumn,
                 TimeRemainingColumn,
             )
 
@@ -227,7 +228,7 @@ class ThreatIntelEnricher:
             logger.warning("Rich not available, falling back to simple progress")
             return self._enrich_without_progress(findings)
 
-    def _enrich_without_progress(self, findings: List[Dict]) -> List[EnrichedFinding]:
+    def _enrich_without_progress(self, findings: list[dict]) -> list[EnrichedFinding]:
         """Enrich findings without progress bar"""
         enriched = []
 
@@ -241,7 +242,7 @@ class ThreatIntelEnricher:
 
         return enriched
 
-    def _enrich_single_finding(self, finding: Dict) -> Optional[EnrichedFinding]:
+    def _enrich_single_finding(self, finding: dict) -> Optional[EnrichedFinding]:
         """Enrich a single finding"""
         cve_id = self._extract_cve(finding)
         if not cve_id:
@@ -396,7 +397,7 @@ class ThreatIntelEnricher:
         stop=stop_after_attempt(3),
         retry=retry_if_exception_type((urllib.error.URLError, urllib.error.HTTPError, ConnectionError, TimeoutError)),
     )
-    def _fetch_kev_data(self) -> Dict:
+    def _fetch_kev_data(self) -> dict:
         """Fetch KEV data from CISA API with retry logic"""
         logger.info("Fetching CISA KEV catalog...")
         self._rate_limit("kev")
@@ -409,7 +410,7 @@ class ThreatIntelEnricher:
 
         return data
 
-    def _load_kev_catalog(self) -> Optional[Dict]:
+    def _load_kev_catalog(self) -> Optional[dict]:
         """Load CISA KEV catalog with 24h caching"""
         cache_file = self.cache_dir / "kev_catalog.json"
 
@@ -446,7 +447,7 @@ class ThreatIntelEnricher:
             self.stats["api_errors"] += 1
             return None
 
-    def _check_kev(self, cve_id: str) -> Optional[Dict]:
+    def _check_kev(self, cve_id: str) -> Optional[dict]:
         """Check if CVE is in CISA KEV catalog"""
         if not self.kev_catalog:
             return None
@@ -462,7 +463,7 @@ class ThreatIntelEnricher:
         stop=stop_after_attempt(3),
         retry=retry_if_exception_type((urllib.error.URLError, urllib.error.HTTPError, ConnectionError, TimeoutError)),
     )
-    def _fetch_epss_data(self, cve_id: str) -> Dict:
+    def _fetch_epss_data(self, cve_id: str) -> dict:
         """Fetch EPSS data from FIRST API with retry logic"""
         self._rate_limit("epss")
         url = f"{self.EPSS_API_URL}?cve={cve_id}"
@@ -481,7 +482,7 @@ class ThreatIntelEnricher:
             }
         return {}
 
-    def _get_epss_score(self, cve_id: str) -> Optional[Dict]:
+    def _get_epss_score(self, cve_id: str) -> Optional[dict]:
         """Get EPSS score from FIRST API with caching"""
         cache_file = self.cache_dir / f"epss_{cve_id}.json"
 
@@ -519,7 +520,7 @@ class ThreatIntelEnricher:
         stop=stop_after_attempt(3),
         retry=retry_if_exception_type((urllib.error.URLError, ConnectionError, TimeoutError)),
     )
-    def _fetch_nvd_data(self, cve_id: str) -> Dict:
+    def _fetch_nvd_data(self, cve_id: str) -> dict:
         """Fetch NVD data from API with retry logic"""
         self._rate_limit("nvd")
         url = f"{self.NVD_API_URL}?cveId={cve_id}"
@@ -536,7 +537,7 @@ class ThreatIntelEnricher:
 
         return {}
 
-    def _get_nvd_data(self, cve_id: str) -> Optional[Dict]:
+    def _get_nvd_data(self, cve_id: str) -> Optional[dict]:
         """Get NVD data for CVE with caching"""
         cache_file = self.cache_dir / f"nvd_{cve_id}.json"
 
@@ -575,7 +576,7 @@ class ThreatIntelEnricher:
 
         return None
 
-    def _parse_nvd_vulnerability(self, vuln: Dict) -> Dict:
+    def _parse_nvd_vulnerability(self, vuln: dict) -> dict:
         """Parse NVD vulnerability data"""
         metrics = vuln.get("metrics", {})
 
@@ -640,7 +641,7 @@ class ThreatIntelEnricher:
         stop=stop_after_attempt(3),
         retry=retry_if_exception_type((urllib.error.URLError, urllib.error.HTTPError, ConnectionError, TimeoutError)),
     )
-    def _fetch_github_advisories(self, cve_id: str) -> List[Dict]:
+    def _fetch_github_advisories(self, cve_id: str) -> list[dict]:
         """Fetch GitHub advisories from API with retry logic"""
         self._rate_limit("github")
 
@@ -674,7 +675,7 @@ class ThreatIntelEnricher:
 
         return result
 
-    def _get_github_advisories(self, cve_id: str) -> List[Dict]:
+    def _get_github_advisories(self, cve_id: str) -> list[dict]:
         """Get GitHub Security Advisories for CVE"""
         cache_file = self.cache_dir / f"github_{cve_id}.json"
 
@@ -711,7 +712,7 @@ class ThreatIntelEnricher:
         stop=stop_after_attempt(3),
         retry=retry_if_exception_type((urllib.error.URLError, ConnectionError, TimeoutError)),
     )
-    def _fetch_osv_data(self, cve_id: str) -> List[Dict]:
+    def _fetch_osv_data(self, cve_id: str) -> list[dict]:
         """Fetch OSV data from API with retry logic"""
         self._rate_limit("osv")
         url = f"{self.OSV_API_URL}/{cve_id}"
@@ -735,7 +736,7 @@ class ThreatIntelEnricher:
 
         return result
 
-    def _get_osv_data(self, cve_id: str) -> List[Dict]:
+    def _get_osv_data(self, cve_id: str) -> list[dict]:
         """Get OSV (Open Source Vulnerabilities) data"""
         cache_file = self.cache_dir / f"osv_{cve_id}.json"
 
@@ -807,18 +808,11 @@ class ThreatIntelEnricher:
                 pass
 
         # High EPSS with multiple exploits suggests active exploitation
-        if (
-            context.epss_score
-            and context.epss_score > 0.7
-            and context.exploit_count >= 2
-        ):
-            return True
-
-        return False
+        return bool(context.epss_score and context.epss_score > 0.7 and context.exploit_count >= 2)
 
     def _adjust_priority(
         self, original: str, context: ThreatContext
-    ) -> Tuple[str, List[str], List[str]]:
+    ) -> tuple[str, list[str], list[str]]:
         """
         Adjust priority based on threat intelligence.
 
@@ -969,7 +963,7 @@ class ThreatIntelEnricher:
 
     def _recommend_action(
         self, context: ThreatContext, priority: str
-    ) -> Tuple[str, Optional[str]]:
+    ) -> tuple[str, Optional[str]]:
         """
         Recommend remediation action and deadline.
 
@@ -1003,7 +997,7 @@ class ThreatIntelEnricher:
         deadline = None
         return "Monitor and patch in next maintenance window", deadline
 
-    def _has_cve(self, finding: Dict) -> bool:
+    def _has_cve(self, finding: dict) -> bool:
         """Check if finding has a CVE identifier"""
         text = " ".join(
             str(finding.get(field, ""))
@@ -1011,7 +1005,7 @@ class ThreatIntelEnricher:
         )
         return bool(self.CVE_PATTERN.search(text))
 
-    def _extract_cve(self, finding: Dict) -> Optional[str]:
+    def _extract_cve(self, finding: dict) -> Optional[str]:
         """Extract CVE ID from finding"""
         for field in ["cve", "id", "description", "title", "message"]:
             value = str(finding.get(field, ""))
@@ -1034,7 +1028,7 @@ class ThreatIntelEnricher:
 
         return mappings.get(priority_upper, priority_upper)
 
-    def _print_enrichment_stats(self, enriched: List[EnrichedFinding]):
+    def _print_enrichment_stats(self, enriched: list[EnrichedFinding]):
         """Print enrichment statistics"""
         total = len(enriched)
         in_kev = self.stats["in_kev"]
@@ -1060,14 +1054,14 @@ class ThreatIntelEnricher:
         logger.info(f"Priority boosted:            {boosted}")
         logger.info(f"Priority downgraded:         {downgraded}")
         logger.info(f"Average risk score:          {avg_risk:.2f}/10.0")
-        logger.info(f"\nCache performance:")
+        logger.info("\nCache performance:")
         logger.info(f"  Cache hits:                {self.stats['cache_hits']}")
         logger.info(f"  Cache misses:              {self.stats['cache_misses']}")
         logger.info(f"  API errors:                {self.stats['api_errors']}")
         logger.info("=" * 70 + "\n")
 
     def export_enriched_findings(
-        self, enriched: List[EnrichedFinding], output_file: Path
+        self, enriched: list[EnrichedFinding], output_file: Path
     ):
         """Export enriched findings to JSON file"""
         output_data = []

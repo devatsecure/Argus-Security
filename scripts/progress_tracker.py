@@ -17,8 +17,7 @@ import sys
 import time
 from contextlib import contextmanager
 from datetime import datetime
-from pathlib import Path
-from typing import Dict, Optional, Union
+from typing import Optional, Union
 
 from rich.console import Console
 from rich.live import Live
@@ -91,10 +90,10 @@ class ProgressTracker:
         self.console = Console() if self.use_rich else None
         self.live: Optional[Live] = None
         self.progress: Optional[Progress] = None
-        self.tasks: Dict[str, TaskID] = {}
-        self.operation_spinners: Dict[str, TaskID] = {}
+        self.tasks: dict[str, TaskID] = {}
+        self.operation_spinners: dict[str, TaskID] = {}
         self.start_time = datetime.now()
-        self.stats: Dict[str, Union[int, float]] = {
+        self.stats: dict[str, Union[int, float]] = {
             "files_scanned": 0,
             "scanners_completed": 0,
             "llm_calls": 0,
@@ -459,7 +458,7 @@ class ProgressTracker:
             if subtitle:
                 logger.info(subtitle)
 
-    def get_stats(self) -> Dict[str, Union[int, float]]:
+    def get_stats(self) -> dict[str, Union[int, float]]:
         """Get current statistics
 
         Returns:

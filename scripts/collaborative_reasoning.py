@@ -20,9 +20,9 @@ import hashlib
 import json
 import logging
 from abc import ABC, abstractmethod
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -40,9 +40,9 @@ class AgentAnalysis:
     confidence: float  # 0.0 - 1.0
     reasoning: str
     severity_assessment: Optional[str] = None  # Agent's severity opinion
-    key_evidence: List[str] = field(default_factory=list)  # Key points
-    concerns: List[str] = field(default_factory=list)  # Concerns/doubts
-    questions_for_others: List[str] = field(default_factory=list)  # Discussion questions
+    key_evidence: list[str] = field(default_factory=list)  # Key points
+    concerns: list[str] = field(default_factory=list)  # Concerns/doubts
+    questions_for_others: list[str] = field(default_factory=list)  # Discussion questions
 
 
 @dataclass
@@ -52,8 +52,8 @@ class AgentOpinion:
     agent_name: str
     persona_type: str  # SecretHunter, FalsePositiveFilter, etc.
     analysis: AgentAnalysis
-    discussion_notes: List[str] = field(default_factory=list)  # Multi-round comments
-    opinion_changes: List[Dict[str, Any]] = field(default_factory=list)  # Track changes
+    discussion_notes: list[str] = field(default_factory=list)  # Multi-round comments
+    opinion_changes: list[dict[str, Any]] = field(default_factory=list)  # Track changes
     timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def to_dict(self) -> dict:
@@ -84,10 +84,10 @@ class CollaborativeVerdict:
     final_decision: str  # "confirmed", "false_positive", "needs_review"
     confidence: float  # 0.0 - 1.0
     reasoning: str  # Combined reasoning from all agents
-    agent_opinions: List[AgentOpinion]
+    agent_opinions: list[AgentOpinion]
     consensus_reached: bool
     discussion_rounds: int
-    decision_breakdown: Dict[str, int] = field(default_factory=dict)  # Count of each decision
+    decision_breakdown: dict[str, int] = field(default_factory=dict)  # Count of each decision
     conflict_resolution_method: Optional[str] = None  # How conflicts were resolved
     final_severity: Optional[str] = None
     escalation_reason: Optional[str] = None  # Why escalated if needs_review
@@ -136,7 +136,7 @@ class BaseAgentPersona(ABC):
         """Return system prompt defining agent's expertise and approach"""
         pass
 
-    def analyze(self, finding: Dict[str, Any], context: Optional[Dict] = None) -> AgentAnalysis:
+    def analyze(self, finding: dict[str, Any], context: Optional[dict] = None) -> AgentAnalysis:
         """
         Analyze a finding from this agent's perspective
 
@@ -168,7 +168,7 @@ class BaseAgentPersona(ABC):
             )
 
     def discuss(
-        self, finding: Dict[str, Any], other_opinions: List[AgentOpinion], context: Optional[Dict] = None
+        self, finding: dict[str, Any], other_opinions: list[AgentOpinion], context: Optional[dict] = None
     ) -> str:
         """
         Respond to other agents' opinions in discussion round
@@ -190,7 +190,7 @@ class BaseAgentPersona(ABC):
             logger.error(f"{self.name} discussion failed: {e}")
             return f"Unable to participate in discussion: {str(e)}"
 
-    def _build_analysis_prompt(self, finding: Dict[str, Any], context: Optional[Dict]) -> str:
+    def _build_analysis_prompt(self, finding: dict[str, Any], context: Optional[dict]) -> str:
         """Build prompt for initial analysis"""
         prompt = f"""Analyze this security finding from your specialized perspective.
 
@@ -228,7 +228,7 @@ Provide your analysis in this JSON format:
         return prompt
 
     def _build_discussion_prompt(
-        self, finding: Dict[str, Any], other_opinions: List[AgentOpinion], context: Optional[Dict]
+        self, finding: dict[str, Any], other_opinions: list[AgentOpinion], context: Optional[dict]
     ) -> str:
         """Build prompt for discussion round"""
         prompt = f"""You are participating in a multi-agent discussion about this finding.
@@ -427,7 +427,7 @@ class CollaborativeReasoning:
     with support for independent analysis and multi-round discussion.
     """
 
-    def __init__(self, agent_personas: List[BaseAgentPersona], min_consensus_threshold: float = 0.6):
+    def __init__(self, agent_personas: list[BaseAgentPersona], min_consensus_threshold: float = 0.6):
         """
         Initialize collaborative reasoning system
 
@@ -440,7 +440,7 @@ class CollaborativeReasoning:
         logger.info(f"Initialized collaborative reasoning with {len(self.agents)} agents")
 
     def analyze_collaboratively(
-        self, finding: Dict[str, Any], mode: str = "discussion", max_rounds: int = 2, context: Optional[Dict] = None
+        self, finding: dict[str, Any], mode: str = "discussion", max_rounds: int = 2, context: Optional[dict] = None
     ) -> CollaborativeVerdict:
         """
         Analyze finding collaboratively with multiple agents
@@ -475,7 +475,7 @@ class CollaborativeReasoning:
 
         return verdict
 
-    def _gather_opinions(self, finding: Dict[str, Any], context: Optional[Dict]) -> List[AgentOpinion]:
+    def _gather_opinions(self, finding: dict[str, Any], context: Optional[dict]) -> list[AgentOpinion]:
         """
         Gather independent opinions from all agents
 
@@ -515,8 +515,8 @@ class CollaborativeReasoning:
         return opinions
 
     def _run_discussion(
-        self, finding: Dict[str, Any], opinions: List[AgentOpinion], max_rounds: int, context: Optional[Dict]
-    ) -> tuple[List[AgentOpinion], int]:
+        self, finding: dict[str, Any], opinions: list[AgentOpinion], max_rounds: int, context: Optional[dict]
+    ) -> tuple[list[AgentOpinion], int]:
         """
         Run multi-round discussion between agents
 
@@ -576,7 +576,7 @@ class CollaborativeReasoning:
 
         return opinions, max_rounds
 
-    def _build_consensus(self, finding_id: str, opinions: List[AgentOpinion], discussion_rounds: int) -> CollaborativeVerdict:
+    def _build_consensus(self, finding_id: str, opinions: list[AgentOpinion], discussion_rounds: int) -> CollaborativeVerdict:
         """
         Build consensus from agent opinions
 
@@ -607,10 +607,7 @@ class CollaborativeReasoning:
         consensus_reached = consensus_pct >= self.min_consensus_threshold
 
         # Weighted confidence (average confidence of agents agreeing with majority)
-        if max_count > 0:
-            avg_confidence = confidence_weights[max_decision] / max_count
-        else:
-            avg_confidence = 0.0
+        avg_confidence = confidence_weights[max_decision] / max_count if max_count > 0 else 0.0
 
         # Determine final decision and resolution method
         if consensus_reached and max_decision in ["confirmed", "false_positive"]:
@@ -618,7 +615,7 @@ class CollaborativeReasoning:
             resolution_method = f"consensus ({max_count}/{total_agents} agents agree)"
         elif self._detect_conflict(opinions):
             final_decision = "needs_review"
-            resolution_method = f"conflicting opinions (escalated for manual review)"
+            resolution_method = "conflicting opinions (escalated for manual review)"
         else:
             # No clear consensus but not total conflict - use weighted approach
             if avg_confidence >= 0.7 and max_count >= (total_agents / 2):
@@ -653,7 +650,7 @@ class CollaborativeReasoning:
             escalation_reason=escalation_reason,
         )
 
-    def _check_early_consensus(self, opinions: List[AgentOpinion]) -> bool:
+    def _check_early_consensus(self, opinions: list[AgentOpinion]) -> bool:
         """Check if consensus already reached (for early termination)"""
         decisions = [op.analysis.decision for op in opinions]
         if not decisions:
@@ -662,7 +659,7 @@ class CollaborativeReasoning:
         consensus_pct = decisions.count(most_common) / len(decisions)
         return consensus_pct >= self.min_consensus_threshold
 
-    def _detect_conflict(self, opinions: List[AgentOpinion]) -> bool:
+    def _detect_conflict(self, opinions: list[AgentOpinion]) -> bool:
         """
         Detect significant conflict between agents
 
@@ -690,7 +687,7 @@ class CollaborativeReasoning:
         comment_lower = discussion_comment.lower()
         return any(indicator in comment_lower for indicator in reconsider_indicators)
 
-    def _build_combined_reasoning(self, opinions: List[AgentOpinion], final_decision: str, resolution_method: str) -> str:
+    def _build_combined_reasoning(self, opinions: list[AgentOpinion], final_decision: str, resolution_method: str) -> str:
         """Build combined reasoning from all agents"""
         reasoning_parts = [f"**Decision:** {final_decision}", f"**Resolution:** {resolution_method}", ""]
 
@@ -712,7 +709,7 @@ class CollaborativeReasoning:
 
         return "\n".join(reasoning_parts)
 
-    def _determine_severity(self, opinions: List[AgentOpinion], majority_decision: str) -> Optional[str]:
+    def _determine_severity(self, opinions: list[AgentOpinion], majority_decision: str) -> Optional[str]:
         """Determine final severity from agents agreeing with majority"""
         severity_order = ["critical", "high", "medium", "low", "info"]
 
@@ -731,7 +728,7 @@ class CollaborativeReasoning:
                 return severity
         return severities[0]
 
-    def _build_escalation_reason(self, opinions: List[AgentOpinion], decision_counts: Dict[str, int]) -> str:
+    def _build_escalation_reason(self, opinions: list[AgentOpinion], decision_counts: dict[str, int]) -> str:
         """Build explanation for why finding was escalated"""
         reasons = []
 
@@ -752,7 +749,7 @@ class CollaborativeReasoning:
 
         return "; ".join(reasons) if reasons else "Unable to reach consensus"
 
-    def _generate_finding_id(self, finding: Dict[str, Any]) -> str:
+    def _generate_finding_id(self, finding: dict[str, Any]) -> str:
         """Generate finding ID from finding data"""
         key = f"{finding.get('path', 'unknown')}:{finding.get('rule_id', 'unknown')}:{finding.get('line', 0)}"
         return hashlib.sha256(key.encode()).hexdigest()[:16]
@@ -763,7 +760,7 @@ class CollaborativeReasoning:
 # ============================================================================
 
 
-def create_default_agent_team(llm_provider) -> List[BaseAgentPersona]:
+def create_default_agent_team(llm_provider) -> list[BaseAgentPersona]:
     """
     Create default team of agent personas
 
@@ -780,7 +777,7 @@ def create_default_agent_team(llm_provider) -> List[BaseAgentPersona]:
     ]
 
 
-def create_comprehensive_agent_team(llm_provider) -> List[BaseAgentPersona]:
+def create_comprehensive_agent_team(llm_provider) -> list[BaseAgentPersona]:
     """
     Create comprehensive team of all agent personas
 

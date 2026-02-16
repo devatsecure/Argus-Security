@@ -16,7 +16,7 @@ import logging
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -31,7 +31,7 @@ class DecisionPattern:
         description: str,
         frequency: int,
         confidence: float,
-        examples: List[Dict[str, Any]]
+        examples: list[dict[str, Any]]
     ):
         """
         Initialize decision pattern
@@ -49,7 +49,7 @@ class DecisionPattern:
         self.confidence = confidence
         self.examples = examples
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
         return {
             "pattern_type": self.pattern_type,
@@ -78,7 +78,7 @@ class DecisionAnalyzer:
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
         scanner: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Load decisions from log file with optional filtering
 
@@ -97,7 +97,7 @@ class DecisionAnalyzer:
         decisions = []
 
         try:
-            with open(self.decision_log_path, "r") as f:
+            with open(self.decision_log_path) as f:
                 for line in f:
                     try:
                         decision = json.loads(line)
@@ -133,7 +133,7 @@ class DecisionAnalyzer:
             logger.error(f"Failed to load decisions: {e}")
             return []
 
-    def analyze_decisions(self, decisions: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def analyze_decisions(self, decisions: list[dict[str, Any]]) -> dict[str, Any]:
         """
         Aggregate decision logs and compute metrics
 
@@ -227,7 +227,7 @@ class DecisionAnalyzer:
 
         return analysis
 
-    def identify_patterns(self, decisions: List[Dict[str, Any]]) -> List[DecisionPattern]:
+    def identify_patterns(self, decisions: list[dict[str, Any]]) -> list[DecisionPattern]:
         """
         Find patterns in suppressed findings
 
@@ -331,9 +331,9 @@ class DecisionAnalyzer:
 
     def suggest_improvements(
         self,
-        analysis: Dict[str, Any],
-        patterns: List[DecisionPattern]
-    ) -> List[str]:
+        analysis: dict[str, Any],
+        patterns: list[DecisionPattern]
+    ) -> list[str]:
         """
         Recommend new heuristics based on decision patterns
 
@@ -384,7 +384,7 @@ class DecisionAnalyzer:
 
     def generate_report(
         self,
-        decisions: Optional[List[Dict[str, Any]]] = None,
+        decisions: Optional[list[dict[str, Any]]] = None,
         output_format: str = "text"
     ) -> str:
         """

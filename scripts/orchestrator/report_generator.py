@@ -18,7 +18,7 @@ import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -91,8 +91,8 @@ class ReportGenerator:
         return mapping.get(exploitability.lower(), 5)
 
     def generate_sarif(
-        self, findings: List[Dict[str, Any]], metrics: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, findings: list[dict[str, Any]], metrics: Optional[dict[str, Any]] = None
+    ) -> dict[str, Any]:
         """Generate SARIF 2.1.0 format for GitHub Code Scanning with exploitability data
 
         Args:
@@ -176,7 +176,7 @@ class ReportGenerator:
         return sarif
 
     def save_sarif_report(
-        self, findings: List[Dict[str, Any]], metrics: Optional[Dict[str, Any]] = None
+        self, findings: list[dict[str, Any]], metrics: Optional[dict[str, Any]] = None
     ) -> Path:
         """Generate and save SARIF report to file
 
@@ -202,11 +202,11 @@ class ReportGenerator:
 
     def generate_json_report(
         self,
-        findings: List[Dict[str, Any]],
+        findings: list[dict[str, Any]],
         provider: str,
         model: str,
-        metrics: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        metrics: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
         """Generate structured JSON output
 
         Args:
@@ -236,10 +236,10 @@ class ReportGenerator:
 
     def save_json_report(
         self,
-        findings: List[Dict[str, Any]],
+        findings: list[dict[str, Any]],
         provider: str,
         model: str,
-        metrics: Optional[Dict[str, Any]] = None,
+        metrics: Optional[dict[str, Any]] = None,
     ) -> Path:
         """Generate and save JSON report to file
 
@@ -286,7 +286,7 @@ class ReportGenerator:
         return report_file
 
     @staticmethod
-    def parse_findings_from_markdown(report_text: str) -> List[Dict[str, Any]]:
+    def parse_findings_from_markdown(report_text: str) -> list[dict[str, Any]]:
         """Parse findings from markdown report
 
         Args:
@@ -387,12 +387,12 @@ class ReportGenerator:
     def write_output_files(
         self,
         markdown_content: str,
-        findings: List[Dict[str, Any]],
+        findings: list[dict[str, Any]],
         provider: str,
         model: str,
-        metrics: Optional[Dict[str, Any]] = None,
+        metrics: Optional[dict[str, Any]] = None,
         review_type: str = "audit",
-    ) -> Dict[str, Path]:
+    ) -> dict[str, Path]:
         """Write all output files (Markdown, SARIF, JSON)
 
         Args:
@@ -426,8 +426,8 @@ class ReportGenerator:
 
     def create_pr_comment(
         self,
-        findings: List[Dict[str, Any]],
-        metrics: Optional[Dict[str, Any]] = None,
+        findings: list[dict[str, Any]],
+        metrics: Optional[dict[str, Any]] = None,
         max_issues: int = 10,
     ) -> str:
         """Create GitHub PR comment from findings
@@ -498,9 +498,9 @@ class ReportGenerator:
 
     def write_github_output(
         self,
-        findings: List[Dict[str, Any]],
-        output_files: Dict[str, Path],
-        metrics: Optional[Dict[str, Any]] = None,
+        findings: list[dict[str, Any]],
+        output_files: dict[str, Path],
+        metrics: Optional[dict[str, Any]] = None,
     ) -> None:
         """Write GitHub Actions output variables
 

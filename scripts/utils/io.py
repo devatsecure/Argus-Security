@@ -11,7 +11,7 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional, Union
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ class SafeIO:
     def read_json(
         file_path: Union[str, Path],
         validate_schema: Optional[callable] = None
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Read and validate JSON file
 
@@ -54,7 +54,7 @@ class SafeIO:
             raise FileNotFoundError(f"File not found: {file_path}")
 
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding='utf-8') as f:
                 data = json.load(f)
 
             # Validate against schema if provided
@@ -78,7 +78,7 @@ class SafeIO:
     @staticmethod
     def write_json(
         file_path: Union[str, Path],
-        data: Union[Dict, List],
+        data: Union[dict, list],
         indent: int = 2,
         sort_keys: bool = True,
         ensure_ascii: bool = False
@@ -121,7 +121,7 @@ class SafeIO:
             raise IOError(f"Failed to write {file_path}: {e}") from e
 
     @staticmethod
-    def read_sarif(file_path: Union[str, Path]) -> Dict[str, Any]:
+    def read_sarif(file_path: Union[str, Path]) -> dict[str, Any]:
         """
         Read and validate SARIF file
 
@@ -141,13 +141,13 @@ class SafeIO:
 
         # Validate SARIF structure
         if not isinstance(data, dict):
-            raise IOError(f"Invalid SARIF format: root must be object")
+            raise IOError("Invalid SARIF format: root must be object")
 
         if "version" not in data:
-            raise IOError(f"Invalid SARIF format: missing 'version' field")
+            raise IOError("Invalid SARIF format: missing 'version' field")
 
         if "runs" not in data or not isinstance(data["runs"], list):
-            raise IOError(f"Invalid SARIF format: missing or invalid 'runs' field")
+            raise IOError("Invalid SARIF format: missing or invalid 'runs' field")
 
         logger.debug(f"Successfully read SARIF from {file_path} ({len(data['runs'])} runs)")
         return data
@@ -155,7 +155,7 @@ class SafeIO:
     @staticmethod
     def write_sarif(
         file_path: Union[str, Path],
-        runs: List[Dict],
+        runs: list[dict],
         tool_name: str = "argus",
         tool_version: str = "1.0.0"
     ) -> None:
@@ -182,9 +182,9 @@ class SafeIO:
 
     @staticmethod
     def merge_sarif_files(
-        sarif_files: List[Union[str, Path]],
+        sarif_files: list[Union[str, Path]],
         output_file: Optional[Union[str, Path]] = None
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Merge multiple SARIF files into one
 
@@ -229,7 +229,7 @@ class SafeIO:
         file_path: Union[str, Path],
         strip: bool = True,
         skip_empty: bool = False
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Read file as list of lines
 
@@ -250,7 +250,7 @@ class SafeIO:
             raise FileNotFoundError(f"File not found: {file_path}")
 
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding='utf-8') as f:
                 lines = f.readlines()
 
             if strip:
@@ -268,7 +268,7 @@ class SafeIO:
     @staticmethod
     def write_lines(
         file_path: Union[str, Path],
-        lines: List[str],
+        lines: list[str],
         append: bool = False
     ) -> None:
         """
@@ -310,7 +310,7 @@ class MarkdownGenerator:
             title: Report title
         """
         self.title = title
-        self.sections: List[str] = []
+        self.sections: list[str] = []
 
     def add_header(self, text: str, level: int = 1) -> None:
         """
@@ -326,7 +326,7 @@ class MarkdownGenerator:
         """Add paragraph to report"""
         self.sections.append(f"{text}\n")
 
-    def add_list(self, items: List[str], ordered: bool = False) -> None:
+    def add_list(self, items: list[str], ordered: bool = False) -> None:
         """
         Add list to report
 
@@ -339,7 +339,7 @@ class MarkdownGenerator:
             self.sections.append(f"{prefix}{item}\n")
         self.sections.append("\n")
 
-    def add_table(self, headers: List[str], rows: List[List[str]]) -> None:
+    def add_table(self, headers: list[str], rows: list[list[str]]) -> None:
         """
         Add table to report
 

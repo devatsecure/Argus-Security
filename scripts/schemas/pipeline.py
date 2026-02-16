@@ -24,17 +24,13 @@ Hierarchy:
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator
 
 from .unified_finding import (
-    AssetType,
-    Category,
-    Severity,
     UnifiedFinding,
 )
-
 
 # ---------------------------------------------------------------------------
 # Evidence & context sub-models
@@ -52,10 +48,10 @@ class EvidenceData(BaseModel):
     message: str = ""
     snippet: str = ""
     artifact_url: str = ""
-    code: Optional[str] = None  # alternate name used by some agents
-    url: Optional[str] = None  # used by DAST findings
-    method: Optional[str] = None  # HTTP method, used by DAST findings
-    poc: Optional[str] = None  # proof-of-concept, used by DAST/sandbox
+    code: str | None = None  # alternate name used by some agents
+    url: str | None = None  # used by DAST findings
+    method: str | None = None  # HTTP method, used by DAST findings
+    poc: str | None = None  # proof-of-concept, used by DAST/sandbox
 
     model_config = {"extra": "allow"}
 
@@ -90,8 +86,8 @@ class ConsensusResult(BaseModel):
     total_agents: int
     consensus_level: str  # unanimous / strong / majority / weak
     confidence: float = Field(ge=0.0, le=1.0)
-    agents_agree: List[str]
-    all_descriptions: List[str] = Field(default_factory=list)
+    agents_agree: list[str]
+    all_descriptions: list[str] = Field(default_factory=list)
 
     @field_validator("consensus_level")
     @classmethod
@@ -116,10 +112,10 @@ class AgentVerdictSummary(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0)
     reasoning: str
     agreement_level: str
-    agent_verdicts: Dict[str, str] = Field(default_factory=dict)
-    agents_analyzed: List[str] = Field(default_factory=list)
-    evidence: List[str] = Field(default_factory=list)
-    recommendations: List[str] = Field(default_factory=list)
+    agent_verdicts: dict[str, str] = Field(default_factory=dict)
+    agents_analyzed: list[str] = Field(default_factory=list)
+    evidence: list[str] = Field(default_factory=list)
+    recommendations: list[str] = Field(default_factory=list)
 
     @field_validator("verdict")
     @classmethod
@@ -152,14 +148,14 @@ class SandboxResult(BaseModel):
     """
 
     validated: bool = False
-    result: Optional[str] = None  # exploitable / not_exploitable / partial / error
-    execution_time_ms: Optional[int] = None
-    indicators_found: List[str] = Field(default_factory=list)
-    error_message: Optional[str] = None
+    result: str | None = None  # exploitable / not_exploitable / partial / error
+    execution_time_ms: int | None = None
+    indicators_found: list[str] = Field(default_factory=list)
+    error_message: str | None = None
 
     @field_validator("result")
     @classmethod
-    def validate_result(cls, v: Optional[str]) -> Optional[str]:
+    def validate_result(cls, v: str | None) -> str | None:
         """Ensure result is one of the known outcomes when set."""
         if v is not None:
             allowed = {"exploitable", "not_exploitable", "partial", "error"}
@@ -192,21 +188,21 @@ class PipelineFinding(UnifiedFinding):
     # Fields present on HybridFinding but absent from UnifiedFinding
     title: str = ""
     description: str = ""
-    recommendation: Optional[str] = None
+    recommendation: str | None = None
 
     # Phase 3 - Consensus
-    consensus: Optional[ConsensusResult] = None
+    consensus: ConsensusResult | None = None
 
     # Phase 3 - Multi-agent verdict
-    agent_verdict: Optional[AgentVerdictSummary] = None
+    agent_verdict: AgentVerdictSummary | None = None
 
     # Phase 4 - Sandbox validation
-    sandbox: Optional[SandboxResult] = None
+    sandbox: SandboxResult | None = None
 
     # IRIS semantic analysis
     iris_verified: bool = False
-    iris_confidence: Optional[float] = None
-    iris_verdict: Optional[str] = None
+    iris_confidence: float | None = None
+    iris_verdict: str | None = None
 
     model_config = {
         "extra": "allow",
@@ -219,7 +215,7 @@ class PipelineFinding(UnifiedFinding):
     # ------------------------------------------------------------------
 
     @classmethod
-    def from_hybrid_finding(cls, hf: Any) -> "PipelineFinding":
+    def from_hybrid_finding(cls, hf: Any) -> PipelineFinding:
         """Convert a ``HybridFinding`` dataclass (hybrid_analyzer.py) into a
         ``PipelineFinding``.
 
@@ -257,7 +253,7 @@ class PipelineFinding(UnifiedFinding):
             raw_category.lower(), raw_category.upper()
         )
 
-        mapped: Dict[str, Any] = {
+        mapped: dict[str, Any] = {
             # Identity
             "id": raw.get("finding_id", ""),
             "origin": raw.get("source_tool", "unknown"),
@@ -293,7 +289,7 @@ class PipelineFinding(UnifiedFinding):
         return cls(**mapped)
 
     @classmethod
-    def from_normalizer_finding(cls, f: Any) -> "PipelineFinding":
+    def from_normalizer_finding(cls, f: Any) -> PipelineFinding:
         """Convert a normalizer ``Finding`` dataclass (normalizer/base.py)
         into a ``PipelineFinding``.
 
@@ -330,12 +326,12 @@ class PipelineMetadata(BaseModel):
     cost_usd: float = 0.0
     model: str = ""
     provider: str = ""
-    findings_summary: Dict[str, int] = Field(default_factory=dict)
-    categories_summary: Dict[str, int] = Field(default_factory=dict)
-    phase_timings: Dict[str, float] = Field(default_factory=dict)
-    tools_used: List[str] = Field(default_factory=list)
-    agents_executed: List[str] = Field(default_factory=list)
-    policy_decision: Optional[str] = None
+    findings_summary: dict[str, int] = Field(default_factory=dict)
+    categories_summary: dict[str, int] = Field(default_factory=dict)
+    phase_timings: dict[str, float] = Field(default_factory=dict)
+    tools_used: list[str] = Field(default_factory=list)
+    agents_executed: list[str] = Field(default_factory=list)
+    policy_decision: str | None = None
 
 
 class PipelineResult(BaseModel):
@@ -346,32 +342,32 @@ class PipelineResult(BaseModel):
     consumers.
     """
 
-    findings: List[PipelineFinding]
+    findings: list[PipelineFinding]
     metadata: PipelineMetadata
-    policy_gate_result: Optional[Dict[str, Any]] = None
-    raw_scan_result: Optional[Dict[str, Any]] = None
+    policy_gate_result: dict[str, Any] | None = None
+    raw_scan_result: dict[str, Any] | None = None
 
     # ------------------------------------------------------------------
     # Convenience accessors
     # ------------------------------------------------------------------
 
-    def findings_by_severity(self) -> Dict[str, int]:
+    def findings_by_severity(self) -> dict[str, int]:
         """Return a dict counting findings per severity level."""
-        counts: Dict[str, int] = {}
+        counts: dict[str, int] = {}
         for f in self.findings:
             sev = f.severity if isinstance(f.severity, str) else f.severity.value
             counts[sev] = counts.get(sev, 0) + 1
         return counts
 
-    def findings_by_source(self) -> Dict[str, int]:
+    def findings_by_source(self) -> dict[str, int]:
         """Return a dict counting findings per origin / source_tool."""
-        counts: Dict[str, int] = {}
+        counts: dict[str, int] = {}
         for f in self.findings:
             origin = f.origin
             counts[origin] = counts.get(origin, 0) + 1
         return counts
 
-    def critical_findings(self) -> List[PipelineFinding]:
+    def critical_findings(self) -> list[PipelineFinding]:
         """Return all findings with critical severity."""
         return [
             f

@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 import time
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from typing import Any
 
 from .protocol import PipelineContext, StageResult
 
@@ -47,7 +47,7 @@ class BaseStage(ABC):
         ...
 
     @property
-    def required_stages(self) -> List[str]:
+    def required_stages(self) -> list[str]:
         """Override to declare stage dependencies."""
         return []
 
@@ -56,7 +56,7 @@ class BaseStage(ABC):
         return True
 
     @abstractmethod
-    def _execute(self, ctx: PipelineContext) -> Dict[str, Any]:
+    def _execute(self, ctx: PipelineContext) -> dict[str, Any]:
         """Core stage logic.
 
         Mutate ``ctx`` as needed (append findings, set metadata, etc.)

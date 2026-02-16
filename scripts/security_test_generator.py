@@ -149,7 +149,7 @@ class SecurityTestGenerator:
 
         # Write to file
         if filename is None:
-            filename = f"test_security_generated.py" if language == "python" else "security.test.js"
+            filename = "test_security_generated.py" if language == "python" else "security.test.js"
 
         self._write_test_file(suite, output_path, filename)
 
@@ -629,7 +629,7 @@ test('regression: {vuln_type} vulnerability remains fixed - {finding_id}', async
         print(f"Total findings processed: {self.stats['total_findings']}")
         print(f"Tests successfully generated: {self.stats['tests_generated']}")
         print(f"Tests failed to generate: {self.stats['tests_failed']}")
-        print(f"\nLanguages detected:")
+        print("\nLanguages detected:")
         for lang, count in self.stats["languages"].items():
             print(f"  - {lang}: {count} findings")
         print("=" * 50 + "\n")
@@ -681,7 +681,7 @@ def main():
         elif isinstance(data, dict) and "findings" in data:
             findings = data["findings"]
         else:
-            print(f"❌ Error: Invalid input format. Expected list or dict with 'findings' key", file=sys.stderr)
+            print("❌ Error: Invalid input format. Expected list or dict with 'findings' key", file=sys.stderr)
             return 1
 
     except FileNotFoundError:

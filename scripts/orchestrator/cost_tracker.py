@@ -24,7 +24,6 @@ Usage:
 
 import logging
 import threading
-from typing import Dict, Optional
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -147,7 +146,7 @@ class CostCircuitBreaker:
             return 0.0
         return (self.current_cost / self.effective_limit) * 100
 
-    def get_summary(self) -> Dict[str, float]:
+    def get_summary(self) -> dict[str, float]:
         """Get cost summary for reporting
 
         Returns:

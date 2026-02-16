@@ -14,15 +14,15 @@ This module monitors container runtime behavior using Falco to detect:
 
 import json
 import logging
+import re
 import subprocess
+import sys
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Optional, List, Dict, Any
-import re
-import sys
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -62,12 +62,12 @@ class RuntimeEvent:
     process: Optional[str] = None
     command: Optional[str] = None
     file_path: Optional[str] = None
-    network_connection: Optional[Dict[str, Any]] = None
+    network_connection: Optional[dict[str, Any]] = None
     user: Optional[str] = None
     syscall: Optional[str] = None
-    raw_event: Dict[str, Any] = field(default_factory=dict)
+    raw_event: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
         data = asdict(self)
         data['severity'] = self.severity.value
@@ -82,12 +82,12 @@ class ThreatAlert:
     severity: ThreatSeverity
     threat_type: ThreatType
     description: str
-    indicators: List[str]
+    indicators: list[str]
     remediation: str
     confidence: float = 1.0
-    related_events: List[RuntimeEvent] = field(default_factory=list)
+    related_events: list[RuntimeEvent] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
         return {
             'alert_id': self.alert_id,
@@ -173,8 +173,8 @@ class RuntimeSecurityMonitor:
         """
         self.falco_path = falco_path
         self.rules_file = rules_file
-        self.events: List[RuntimeEvent] = []
-        self.alerts: List[ThreatAlert] = []
+        self.events: list[RuntimeEvent] = []
+        self.alerts: list[ThreatAlert] = []
         self.stats = {
             'total_events': 0,
             'events_by_severity': {},
@@ -211,7 +211,7 @@ class RuntimeSecurityMonitor:
         duration_seconds: int = 60,
         container_filter: Optional[str] = None,
         output_file: Optional[str] = None
-    ) -> List[ThreatAlert]:
+    ) -> list[ThreatAlert]:
         """
         Monitor runtime events in real-time
 
@@ -324,7 +324,7 @@ class RuntimeSecurityMonitor:
 
         return self.alerts
 
-    def analyze_log_file(self, log_file: str) -> List[ThreatAlert]:
+    def analyze_log_file(self, log_file: str) -> list[ThreatAlert]:
         """
         Analyze existing Falco JSON log file
 
@@ -341,7 +341,7 @@ class RuntimeSecurityMonitor:
             logger.error(f"Log file not found: {log_file}")
             return []
 
-        with open(log_file, 'r') as f:
+        with open(log_file) as f:
             for line_num, line in enumerate(f, 1):
                 line = line.strip()
                 if not line:
@@ -371,7 +371,7 @@ class RuntimeSecurityMonitor:
 
         return self.alerts
 
-    def _parse_falco_event(self, data: Dict[str, Any]) -> Optional[RuntimeEvent]:
+    def _parse_falco_event(self, data: dict[str, Any]) -> Optional[RuntimeEvent]:
         """Parse Falco JSON event into RuntimeEvent"""
         if "output" not in data:
             return None
@@ -684,7 +684,7 @@ class RuntimeSecurityMonitor:
         threat_type: ThreatType,
         severity: ThreatSeverity,
         description: str,
-        indicators: List[str],
+        indicators: list[str],
         remediation: str,
         confidence: float = 1.0
     ):
@@ -840,7 +840,7 @@ class RuntimeSecurityMonitor:
         print("=" * 80)
 
         # Statistics
-        print(f"\n📊 Statistics:")
+        print("\n📊 Statistics:")
         print(f"   Total Events: {len(self.events)}")
         print(f"   Security Alerts: {len(self.alerts)}")
 
@@ -849,7 +849,7 @@ class RuntimeSecurityMonitor:
 
         # Events by severity
         if self.stats.get('events_by_severity'):
-            print(f"\n📈 Events by Severity:")
+            print("\n📈 Events by Severity:")
             for severity in ['critical', 'high', 'medium', 'low']:
                 count = self.stats['events_by_severity'].get(severity, 0)
                 if count > 0:
@@ -857,7 +857,7 @@ class RuntimeSecurityMonitor:
 
         # Alerts by severity
         if self.alerts:
-            print(f"\n🚨 Alerts by Severity:")
+            print("\n🚨 Alerts by Severity:")
             by_severity = {}
             for alert in self.alerts:
                 by_severity[alert.severity] = by_severity.get(alert.severity, 0) + 1
@@ -872,7 +872,7 @@ class RuntimeSecurityMonitor:
                     print(f"   {emoji} {severity.value.upper()}: {count}")
 
             # Show top alerts
-            print(f"\n🚨 Top Alerts:")
+            print("\n🚨 Top Alerts:")
             critical_high = [a for a in self.alerts
                            if a.severity in [ThreatSeverity.CRITICAL, ThreatSeverity.HIGH]]
             for i, alert in enumerate(critical_high[:5], 1):
@@ -883,7 +883,7 @@ class RuntimeSecurityMonitor:
 
         # Container breakdown
         if self.stats.get('events_by_container'):
-            print(f"\n📦 Events by Container:")
+            print("\n📦 Events by Container:")
             sorted_containers = sorted(
                 self.stats['events_by_container'].items(),
                 key=lambda x: x[1],
@@ -898,15 +898,15 @@ class RuntimeSecurityMonitor:
             high_count = sum(1 for a in self.alerts if a.severity == ThreatSeverity.HIGH)
 
             if critical_count > 0:
-                print(f"\n⚠️  IMMEDIATE ACTION REQUIRED:")
+                print("\n⚠️  IMMEDIATE ACTION REQUIRED:")
                 print(f"   {critical_count} CRITICAL threats detected requiring immediate response")
             elif high_count > 0:
-                print(f"\n⚠️  ATTENTION REQUIRED:")
+                print("\n⚠️  ATTENTION REQUIRED:")
                 print(f"   {high_count} HIGH-severity threats detected")
             else:
-                print(f"\n✅ No critical threats detected")
+                print("\n✅ No critical threats detected")
         else:
-            print(f"\n✅ No security threats detected")
+            print("\n✅ No security threats detected")
 
         print("\n" + "=" * 80 + "\n")
 

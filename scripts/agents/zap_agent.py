@@ -8,12 +8,11 @@ import json
 import logging
 import subprocess
 import sys
-import time
 from dataclasses import dataclass, field
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
 from typing import Any, Optional
-from enum import Enum
 
 # Allow importing from parent scripts directory
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -41,7 +40,7 @@ class AuthType(Enum):
 @dataclass
 class ZAPConfig:
     """Configuration for ZAP agent"""
-    
+
     profile: ScanProfile = ScanProfile.BALANCED
     spider_max_depth: int = 3
     spider_max_duration: int = 300  # 5 minutes
@@ -65,7 +64,7 @@ class ZAPConfig:
 @dataclass
 class ZAPFinding:
     """A ZAP security finding"""
-    
+
     alert: str
     risk: str  # High, Medium, Low, Informational
     confidence: str  # High, Medium, Low
@@ -81,7 +80,7 @@ class ZAPFinding:
     wasc_id: Optional[int]
     plugin_id: int
     other_info: str = ""
-    
+
     def to_dict(self) -> dict:
         return {
             "alert": self.alert,
@@ -106,20 +105,20 @@ class ZAPAgent:
     """
     OWASP ZAP agent for dynamic application security testing
     """
-    
+
     def __init__(self, config: Optional[ZAPConfig] = None):
         """
         Initialize ZAP agent
-        
+
         Args:
             config: Agent configuration
         """
         self.config = config or ZAPConfig()
         self.zap_available = self._check_zap()
-        
+
         if not self.zap_available:
             logger.warning("ZAP not available - using Docker mode")
-    
+
     def _check_zap(self) -> bool:
         """Check if ZAP is installed"""
         try:
@@ -135,7 +134,7 @@ class ZAPAgent:
                 return True
         except (subprocess.SubprocessError, FileNotFoundError):
             pass
-        
+
         # Check for Docker
         try:
             result = subprocess.run(
@@ -149,9 +148,9 @@ class ZAPAgent:
                 return True
         except (subprocess.SubprocessError, FileNotFoundError):
             pass
-        
+
         return False
-    
+
     def scan(
         self,
         target_url: str,
@@ -160,24 +159,24 @@ class ZAPAgent:
     ) -> dict[str, Any]:
         """
         Run ZAP scan
-        
+
         Args:
             target_url: Target URL to scan
             openapi_spec: Optional OpenAPI spec for API scanning
             output_file: Optional path to save results
-            
+
         Returns:
             Scan results dictionary
         """
         logger.info(f"🕷️  ZAP Agent scanning: {target_url}")
         start_time = datetime.now()
-        
+
         # Use Docker-based ZAP scan
         findings = self._run_docker_scan(target_url, openapi_spec)
-        
+
         # Calculate duration
         duration = (datetime.now() - start_time).total_seconds()
-        
+
         # Build result
         scan_result = {
             "agent": "zap",
@@ -191,15 +190,15 @@ class ZAPAgent:
             "duration_seconds": duration,
             "risk_counts": self._count_by_risk(findings),
         }
-        
+
         logger.info(f"   ✅ ZAP complete: {len(findings)} findings in {duration:.1f}s")
-        
+
         # Save if requested
         if output_file:
             self._save_results(scan_result, output_file)
-        
+
         return scan_result
-    
+
     def _run_docker_scan(
         self,
         target_url: str,
@@ -207,11 +206,11 @@ class ZAPAgent:
     ) -> list[dict]:
         """
         Run ZAP scan using Docker
-        
+
         Args:
             target_url: Target URL
             openapi_spec: Optional OpenAPI spec path
-            
+
         Returns:
             List of findings
         """
@@ -222,12 +221,12 @@ class ZAPAgent:
             scan_script = "zap-api-scan.py"
         else:
             scan_script = "zap-full-scan.py"
-        
+
         # Create temp output file
         import tempfile
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             output_file = f.name
-        
+
         try:
             # Build Docker command
             cmd = [
@@ -239,17 +238,17 @@ class ZAPAgent:
                 "-J", Path(output_file).name,
                 "-T", str(self.config.spider_max_duration),
             ]
-            
+
             # Add OpenAPI spec if provided
             if openapi_spec and Path(openapi_spec).exists():
                 cmd.extend(["-f", "openapi"])
-            
+
             # Add headers
-            for key, value in self.config.custom_headers.items():
+            for key, _value in self.config.custom_headers.items():
                 cmd.extend(["-z", f"-config replacer.full_list(0).description={key}"])
-            
+
             logger.info(f"   Running ZAP Docker scan ({self.config.profile.value})...")
-            
+
             # Execute scan
             result = subprocess.run(
                 cmd,
@@ -257,12 +256,12 @@ class ZAPAgent:
                 text=True,
                 timeout=self.config.spider_max_duration + self.config.active_max_duration + 60,
             )
-            
+
             # ZAP returns non-zero if findings found
             if result.returncode not in [0, 1, 2]:
                 logger.warning(f"ZAP scan returned code {result.returncode}")
                 logger.debug(f"STDERR: {result.stderr}")
-            
+
             # Parse results
             if Path(output_file).exists():
                 with open(output_file) as f:
@@ -271,7 +270,7 @@ class ZAPAgent:
             else:
                 logger.warning("No ZAP output file generated")
                 return []
-        
+
         except subprocess.TimeoutExpired:
             logger.error("ZAP scan timed out")
             raise RuntimeError("ZAP scan timeout")
@@ -281,17 +280,17 @@ class ZAPAgent:
         finally:
             # Cleanup
             Path(output_file).unlink(missing_ok=True)
-    
+
     def _parse_zap_output(self, zap_data: dict) -> list[dict]:
         """Parse ZAP JSON output"""
         findings = []
-        
+
         # ZAP format: {"site": [...], "alerts": [...]}
         site_data = zap_data.get("site", [])
-        
+
         for site in site_data:
             alerts = site.get("alerts", [])
-            
+
             for alert in alerts:
                 # Map ZAP risk to standard severity
                 risk = alert.get("riskdesc", "Medium").split()[0]  # "High (Medium)" -> "High"
@@ -302,7 +301,7 @@ class ZAPAgent:
                     "Informational": "info",
                 }
                 severity = severity_map.get(risk, "medium")
-                
+
                 # Extract instances
                 instances = alert.get("instances", [])
                 for instance in instances:
@@ -325,9 +324,9 @@ class ZAPAgent:
                         "other_info": alert.get("other", ""),
                     }
                     findings.append(finding)
-        
+
         return findings
-    
+
     def _count_by_risk(self, findings: list[dict]) -> dict[str, int]:
         """Count findings by risk level"""
         counts = {"high": 0, "medium": 0, "low": 0, "info": 0}
@@ -336,7 +335,7 @@ class ZAPAgent:
             if severity in counts:
                 counts[severity] += 1
         return counts
-    
+
     def _get_version(self) -> str:
         """Get ZAP version"""
         try:
@@ -349,22 +348,22 @@ class ZAPAgent:
             return result.stdout.strip()
         except Exception:
             return "unknown"
-    
+
     def _save_results(self, results: dict, output_file: str) -> None:
         """Save results to file"""
         output_path = Path(output_file)
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         with open(output_path, "w") as f:
             json.dump(results, f, indent=2)
-        
+
         logger.info(f"   Results saved to: {output_path}")
 
 
 def main():
     """CLI entry point"""
     import argparse
-    
+
     parser = argparse.ArgumentParser(description="OWASP ZAP Agent")
     parser.add_argument("target", help="Target URL")
     parser.add_argument("--openapi", help="OpenAPI spec file")
@@ -374,12 +373,12 @@ def main():
     parser.add_argument("--spider-duration", type=int, default=300)
     parser.add_argument("--no-ajax", action="store_true", help="Disable AJAX spider")
     parser.add_argument("--no-active-scan", action="store_true", help="Disable active scan")
-    
+
     args = parser.parse_args()
-    
+
     # Configure logging
     logging.basicConfig(level=logging.INFO)
-    
+
     # Build config
     config = ZAPConfig(
         profile=ScanProfile(args.profile),
@@ -388,10 +387,10 @@ def main():
         ajax_spider=not args.no_ajax,
         active_scan=not args.no_active_scan,
     )
-    
+
     # Create agent
     agent = ZAPAgent(config=config)
-    
+
     # Run scan
     try:
         result = agent.scan(
@@ -407,7 +406,7 @@ def main():
     except Exception as e:
         print(f"\n❌ Scan failed: {e}")
         return 1
-    
+
     return 0
 
 

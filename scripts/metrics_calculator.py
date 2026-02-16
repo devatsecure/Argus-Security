@@ -22,7 +22,7 @@ import json
 import logging
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Optional
 
 import numpy as np
 from scipy import stats
@@ -792,19 +792,19 @@ if __name__ == "__main__":
               f"{report.cohens_kappa.confidence_interval_upper:.3f}]")
         print(f"  p-value: {report.cohens_kappa.p_value:.4f}")
     if report.precision_recall:
-        print(f"\nPrecision/Recall Metrics:")
+        print("\nPrecision/Recall Metrics:")
         print(f"  Precision: {report.precision_recall.precision:.3f}")
         print(f"  Recall: {report.precision_recall.recall:.3f}")
         print(f"  F1-Score: {report.precision_recall.f1_score:.3f}")
         print(f"  Accuracy: {report.precision_recall.accuracy:.3f}")
     if report.confusion_matrix:
-        print(f"\nConfusion Matrix:")
+        print("\nConfusion Matrix:")
         print(f"  True Positives: {report.confusion_matrix.true_positive}")
         print(f"  False Positives: {report.confusion_matrix.false_positive}")
         print(f"  False Negatives: {report.confusion_matrix.false_negative}")
         print(f"  True Negatives: {report.confusion_matrix.true_negative}")
     if report.severity_agreements:
-        print(f"\nSeverity Agreement:")
+        print("\nSeverity Agreement:")
         for sev in report.severity_agreements:
             print(f"  {sev.severity}: {sev.agreement_rate:.1%} agreement "
                   f"({sev.both_agree}/{sev.codex_count})")

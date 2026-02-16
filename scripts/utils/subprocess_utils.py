@@ -11,7 +11,7 @@ import logging
 import shlex
 import subprocess
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ class SubprocessError(Exception):
 
 
 def run_command_safe(
-    command: List[str],
+    command: list[str],
     cwd: Optional[Path] = None,
     timeout: int = 300,
     check: bool = True,
@@ -96,7 +96,7 @@ def run_command_safe(
 
         return result
 
-    except subprocess.TimeoutExpired as e:
+    except subprocess.TimeoutExpired:
         logger.error(f"Command timed out after {timeout}s: {sanitized_cmd[0]}")
         raise
 
@@ -114,7 +114,7 @@ def run_command_safe(
 
 
 def run_command_with_retry(
-    command: List[str],
+    command: list[str],
     max_retries: int = 3,
     retry_delay: float = 1.0,
     **kwargs
@@ -158,11 +158,11 @@ def run_command_with_retry(
 
 
 def run_command_streaming(
-    command: List[str],
+    command: list[str],
     cwd: Optional[Path] = None,
     timeout: Optional[int] = None,
     callback: Optional[callable] = None
-) -> Tuple[int, str, str]:
+) -> tuple[int, str, str]:
     """
     Run command with streaming output
 
@@ -284,7 +284,7 @@ def get_command_version(command: str, version_flag: str = "--version") -> Option
         return None
 
 
-def _sanitize_command(command: List[str]) -> List[str]:
+def _sanitize_command(command: list[str]) -> list[str]:
     """
     Remove sensitive data from command for logging
 
@@ -314,7 +314,7 @@ def _sanitize_command(command: List[str]) -> List[str]:
         "bearer ", "authorization:", "apikey="
     ]
 
-    for i, arg in enumerate(command):
+    for _i, arg in enumerate(command):
         if skip_next:
             sanitized.append("***REDACTED***")
             skip_next = False
@@ -343,7 +343,7 @@ def _sanitize_command(command: List[str]) -> List[str]:
     return sanitized
 
 
-def parse_command_string(command_str: str) -> List[str]:
+def parse_command_string(command_str: str) -> list[str]:
     """
     Safely parse a command string into argument list
 
@@ -368,7 +368,7 @@ def parse_command_string(command_str: str) -> List[str]:
 
 
 def run_git_command(
-    args: List[str],
+    args: list[str],
     repo_path: Optional[Path] = None,
     **kwargs
 ) -> subprocess.CompletedProcess:

@@ -21,14 +21,14 @@ import urllib.parse
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 import yaml
 from tenacity import (
     retry,
-    wait_exponential,
-    stop_after_attempt,
     retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
 )
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -319,10 +319,7 @@ class DASTScanner:
 
         # Read and parse spec
         with open(spec_path_obj) as f:
-            if spec_path_obj.suffix in [".yaml", ".yml"]:
-                spec = yaml.safe_load(f)
-            else:
-                spec = json.load(f)
+            spec = yaml.safe_load(f) if spec_path_obj.suffix in [".yaml", ".yml"] else json.load(f)
 
         # Extract base URL from spec or use provided
         if not base_url:

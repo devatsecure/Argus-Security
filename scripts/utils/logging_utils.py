@@ -14,7 +14,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Callable, Optional
 
 # Patterns for sensitive data that should be redacted
 SENSITIVE_PATTERNS = [

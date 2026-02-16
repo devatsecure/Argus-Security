@@ -36,7 +36,7 @@ from dataclasses import asdict, dataclass
 from difflib import SequenceMatcher
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 # Configure logging
 logging.basicConfig(
@@ -241,9 +241,9 @@ class SASTDASTCorrelator:
         """
         candidates = []
 
-        sast_path = sast_finding.get("path", "")
-        sast_type = self._normalize_vuln_type(sast_finding.get("rule_id", ""))
-        sast_cwe = sast_finding.get("cwe", "")
+        sast_finding.get("path", "")
+        self._normalize_vuln_type(sast_finding.get("rule_id", ""))
+        sast_finding.get("cwe", "")
 
         for dast in dast_findings:
             score = self._calculate_match_score(sast_finding, dast)
@@ -310,10 +310,7 @@ class SASTDASTCorrelator:
         dast_cwe = dast_finding.get("cwe", "")
 
         if sast_cwe and dast_cwe:
-            if sast_cwe == dast_cwe:
-                cwe_score = 1.0
-            else:
-                cwe_score = 0.0
+            cwe_score = 1.0 if sast_cwe == dast_cwe else 0.0
         else:
             cwe_score = 0.5  # Unknown, give neutral score
 
@@ -363,10 +360,7 @@ class SASTDASTCorrelator:
         # Remove protocol and domain
         if "://" in url:
             url = url.split("://", 1)[1]
-            if "/" in url:
-                url = "/" + url.split("/", 1)[1]
-            else:
-                url = "/"
+            url = "/" + url.split("/", 1)[1] if "/" in url else "/"
 
         # Remove query parameters and fragments
         url = url.split("?")[0].split("#")[0]
@@ -801,10 +795,7 @@ def main():
     try:
         with open(args.sast_file) as f:
             sast_data = json.load(f)
-            if isinstance(sast_data, dict):
-                sast_findings = sast_data.get("findings", [])
-            else:
-                sast_findings = sast_data
+            sast_findings = sast_data.get("findings", []) if isinstance(sast_data, dict) else sast_data
         logger.info(f"Loaded {len(sast_findings)} SAST findings from {args.sast_file}")
     except Exception as e:
         logger.error(f"Failed to load SAST findings: {e}")
@@ -814,10 +805,7 @@ def main():
     try:
         with open(args.dast_file) as f:
             dast_data = json.load(f)
-            if isinstance(dast_data, dict):
-                dast_findings = dast_data.get("findings", [])
-            else:
-                dast_findings = dast_data
+            dast_findings = dast_data.get("findings", []) if isinstance(dast_data, dict) else dast_data
         logger.info(f"Loaded {len(dast_findings)} DAST findings from {args.dast_file}")
     except Exception as e:
         logger.error(f"Failed to load DAST findings: {e}")

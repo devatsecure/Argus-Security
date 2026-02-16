@@ -22,7 +22,7 @@ import logging
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -159,7 +159,7 @@ class ASTDeduplicator:
         try:
             # Get or cache AST
             if file_path not in self._ast_cache:
-                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                with open(file_path, encoding="utf-8", errors="ignore") as f:
                     content = f.read()
 
                 # Parse with type_comments=False to avoid syntax errors in older Python versions
@@ -199,7 +199,7 @@ class ASTDeduplicator:
         tree: ast.AST,
         line_number: int,
         parent_class: Optional[str] = None
-    ) -> Optional[Tuple[Optional[str], Optional[str], int, int]]:
+    ) -> Optional[tuple[Optional[str], Optional[str], int, int]]:
         """
         Find enclosing function/class for a line using AST traversal
 
@@ -241,7 +241,7 @@ class ASTDeduplicator:
                             best_range = node_range
 
             # Check function definitions at module level
-            elif isinstance(node, ast.FunctionDef) or isinstance(node, ast.AsyncFunctionDef):
+            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 if hasattr(node, 'lineno') and hasattr(node, 'end_lineno'):
                     if node.lineno <= line_number <= (node.end_lineno or node.lineno):
                         node_range = (node.end_lineno or node.lineno) - node.lineno
@@ -256,7 +256,7 @@ class ASTDeduplicator:
         class_node: ast.ClassDef,
         line_number: int,
         class_name: str
-    ) -> Optional[Tuple[str, str, int, int]]:
+    ) -> Optional[tuple[str, str, int, int]]:
         """Find function within a class (handles methods)
 
         Args:
@@ -304,7 +304,7 @@ class ASTDeduplicator:
         try:
             # Get or cache file contents
             if file_path not in self._file_lines_cache:
-                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                with open(file_path, encoding="utf-8", errors="ignore") as f:
                     lines = f.readlines()
                 self._file_lines_cache[file_path] = lines
 
@@ -510,7 +510,6 @@ def create_enhanced_dedup_key(finding: dict, deduplicator: ASTDeduplicator = Non
 
 if __name__ == "__main__":
     # Example usage and testing
-    import json
 
     logging.basicConfig(level=logging.INFO)
 

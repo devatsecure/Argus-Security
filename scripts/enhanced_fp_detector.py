@@ -13,11 +13,10 @@ import os
 import re
 import stat
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, Optional
 
-from finding_router import FindingRouter, RoutingDecision
-from file_metadata_validator import FileMetadataValidator, MetadataValidationResult
+from file_metadata_validator import FileMetadataValidator
+from finding_router import FindingRouter
 
 logger = logging.getLogger(__name__)
 
@@ -116,7 +115,6 @@ class EnhancedFalsePositiveDetector:
         file_path = finding.get("path", finding.get("file_path", ""))
         message = finding.get("message", "").lower()
 
-        evidence = []
         is_public_client = False
         confidence = 0.0
 
@@ -188,7 +186,7 @@ class EnhancedFalsePositiveDetector:
             EnhancedFPAnalysis with file permission assessment
         """
         file_path = finding.get("path", finding.get("file_path", ""))
-        message = finding.get("message", "").lower()
+        finding.get("message", "").lower()
 
         evidence = []
         is_false_positive = False
@@ -201,8 +199,8 @@ class EnhancedFalsePositiveDetector:
                 mode = file_stat.st_mode
 
                 # Check file permissions
-                owner_read = bool(mode & stat.S_IRUSR)
-                owner_write = bool(mode & stat.S_IWUSR)
+                bool(mode & stat.S_IRUSR)
+                bool(mode & stat.S_IWUSR)
                 group_read = bool(mode & stat.S_IRGRP)
                 group_write = bool(mode & stat.S_IWGRP)
                 other_read = bool(mode & stat.S_IROTH)
@@ -227,7 +225,7 @@ class EnhancedFalsePositiveDetector:
                     confidence = 0.9
                     is_false_positive = False
 
-            except (OSError, IOError) as e:
+            except OSError as e:
                 evidence.append(f"Could not check file permissions: {str(e)}")
 
             # Check file location patterns
@@ -498,7 +496,7 @@ class EnhancedFalsePositiveDetector:
         """
         code_snippet = finding.get("evidence", {}).get("snippet", "")
         file_path = finding.get("path", finding.get("file_path", ""))
-        line_number = finding.get("line", finding.get("line_number", 0))
+        finding.get("line", finding.get("line_number", 0))
 
         # Minimum evidence thresholds
         MIN_CODE_SIGNALS_ALONE = 2  # Need strong code evidence without path (e.g., DEBUG + __main__)
@@ -556,8 +554,8 @@ class EnhancedFalsePositiveDetector:
                         break
 
             # Special case: heavily commented code (>=90%) with DEBUG flag is high confidence
-            has_heavy_comments = any("commented" in s and ("100%" in s or "90%" in s or "80%" in s) for s in code_signals)
-            has_debug_flag = any("DEBUG" in s or "Environment conditional" in s for s in code_signals)
+            any("commented" in s and ("100%" in s or "90%" in s or "80%" in s) for s in code_signals)
+            any("DEBUG" in s or "Environment conditional" in s for s in code_signals)
 
             # Decision logic with minimum evidence requirements
             if is_high_confidence_single:

@@ -13,10 +13,9 @@ Stages are designed to be independently testable:
 from __future__ import annotations
 
 import logging
-import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .base_stage import BaseStage
 from .protocol import PipelineContext
@@ -44,7 +43,7 @@ class ProjectContextStage(BaseStage):
     def should_run(self, ctx: PipelineContext) -> bool:
         return True
 
-    def _execute(self, ctx: PipelineContext) -> Dict[str, Any]:
+    def _execute(self, ctx: PipelineContext) -> dict[str, Any]:
         try:
             from project_context_detector import detect_project_context
             ctx.project_context = detect_project_context(ctx.target_path)
@@ -76,7 +75,7 @@ class ScannerOrchestrationStage(BaseStage):
     def should_run(self, ctx: PipelineContext) -> bool:
         return True  # Always run scanners
 
-    def _execute(self, ctx: PipelineContext) -> Dict[str, Any]:
+    def _execute(self, ctx: PipelineContext) -> dict[str, Any]:
         config = ctx.config
         scanners_run = []
 
@@ -164,7 +163,7 @@ class AIEnrichmentStage(BaseStage):
             and ctx.ai_client is not None
         )
 
-    def _execute(self, ctx: PipelineContext) -> Dict[str, Any]:
+    def _execute(self, ctx: PipelineContext) -> dict[str, Any]:
         enriched_count = 0
         for finding in ctx.findings:
             if hasattr(finding, "llm_enriched") and not finding.llm_enriched:
@@ -192,7 +191,7 @@ class RemediationStage(BaseStage):
             and len(ctx.findings) > 0
         )
 
-    def _execute(self, ctx: PipelineContext) -> Dict[str, Any]:
+    def _execute(self, ctx: PipelineContext) -> dict[str, Any]:
         try:
             from remediation_engine import RemediationEngine
             engine = RemediationEngine()
@@ -222,7 +221,7 @@ class SpontaneousDiscoveryStage(BaseStage):
             and ctx.ai_client is not None
         )
 
-    def _execute(self, ctx: PipelineContext) -> Dict[str, Any]:
+    def _execute(self, ctx: PipelineContext) -> dict[str, Any]:
         try:
             from spontaneous_discovery import SpontaneousDiscoveryEngine
             engine = SpontaneousDiscoveryEngine()
@@ -259,13 +258,13 @@ class MultiAgentReviewStage(BaseStage):
             and len(ctx.findings) > 0
         )
 
-    def _execute(self, ctx: PipelineContext) -> Dict[str, Any]:
+    def _execute(self, ctx: PipelineContext) -> dict[str, Any]:
         try:
             from agent_personas import (
-                SecretHunter,
                 ArchitectureReviewer,
                 ExploitAssessor,
                 FalsePositiveFilter,
+                SecretHunter,
                 ThreatModeler,
             )
             personas = [
@@ -301,10 +300,10 @@ class SandboxValidationStage(BaseStage):
             and len(ctx.findings) > 0
         )
 
-    def _execute(self, ctx: PipelineContext) -> Dict[str, Any]:
+    def _execute(self, ctx: PipelineContext) -> dict[str, Any]:
         try:
             from sandbox_validator import SandboxValidator
-            validator = SandboxValidator()
+            SandboxValidator()
             validated = 0
             exploitable = 0
             for finding in ctx.findings:
@@ -336,7 +335,7 @@ class PolicyGateStage(BaseStage):
     def should_run(self, ctx: PipelineContext) -> bool:
         return len(ctx.findings) > 0
 
-    def _execute(self, ctx: PipelineContext) -> Dict[str, Any]:
+    def _execute(self, ctx: PipelineContext) -> dict[str, Any]:
         # Convert findings to dicts for policy evaluation
         findings_dicts = []
         for f in ctx.findings:
@@ -358,15 +357,15 @@ class PolicyGateStage(BaseStage):
 
     def _evaluate_policy(
         self, findings: list, config: dict
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Evaluate findings against policy rules."""
         # Count critical/high findings
-        critical_count = sum(
+        sum(
             1
             for f in findings
             if f.get("severity") in ("critical",)
         )
-        high_count = sum(
+        sum(
             1
             for f in findings
             if f.get("severity") in ("high",)
@@ -416,7 +415,7 @@ class ReportingStage(BaseStage):
     def should_run(self, ctx: PipelineContext) -> bool:
         return True  # Always generate reports
 
-    def _execute(self, ctx: PipelineContext) -> Dict[str, Any]:
+    def _execute(self, ctx: PipelineContext) -> dict[str, Any]:
         import json
         from datetime import datetime
 
@@ -446,12 +445,12 @@ class ReportingStage(BaseStage):
 
         # Markdown summary
         md_lines = [
-            f"# Argus Security Report",
-            f"",
+            "# Argus Security Report",
+            "",
             f"**Target:** {ctx.target_path}",
             f"**Total findings:** {len(ctx.findings)}",
             f"**Pipeline stages:** {len(ctx.phase_timings)}",
-            f"",
+            "",
         ]
 
         if ctx.policy_gate_result:
@@ -466,7 +465,7 @@ class ReportingStage(BaseStage):
             md_lines.append("")
 
         # Severity breakdown
-        severity_counts: Dict[str, int] = {}
+        severity_counts: dict[str, int] = {}
         for f in ctx.findings:
             sev = "unknown"
             if hasattr(f, "severity"):
@@ -493,7 +492,7 @@ class ReportingStage(BaseStage):
 # ============================================================================
 
 
-def build_default_stages(config: Dict[str, Any]) -> List[BaseStage]:
+def build_default_stages(config: dict[str, Any]) -> list[BaseStage]:
     """Build the default set of pipeline stages based on config.
 
     Returns all stages; the orchestrator uses ``should_run`` to skip

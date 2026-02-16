@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class NucleiConfig:
     """Configuration for Nuclei agent"""
-    
+
     severity: list[str] = field(default_factory=lambda: ["critical", "high", "medium"])
     rate_limit: int = 150
     timeout: int = 5
@@ -42,7 +42,7 @@ class NucleiConfig:
 @dataclass
 class TechStackProfile:
     """Technology stack detection for smart template selection"""
-    
+
     name: str
     patterns: list[str]  # File/directory patterns
     templates: list[str]  # Nuclei templates to prioritize
@@ -146,7 +146,7 @@ class NucleiAgent:
     """
     Enhanced Nuclei agent with intelligent template selection
     """
-    
+
     def __init__(
         self,
         config: Optional[NucleiConfig] = None,
@@ -154,7 +154,7 @@ class NucleiAgent:
     ):
         """
         Initialize Nuclei agent
-        
+
         Args:
             config: Agent configuration
             project_path: Path to project for tech stack detection
@@ -163,16 +163,16 @@ class NucleiAgent:
         self.project_path = Path(project_path) if project_path else None
         self.nuclei_path = self._find_nuclei()
         self.detected_stack: list[TechStackProfile] = []
-        
+
         if not self.nuclei_path:
             logger.warning("Nuclei not installed")
-        
+
         # Detect tech stack if project path provided
         if self.project_path:
             self.detected_stack = self._detect_tech_stack()
             if self.detected_stack:
                 logger.info(f"Detected tech stacks: {[s.name for s in self.detected_stack]}")
-    
+
     def _find_nuclei(self) -> Optional[str]:
         """Find nuclei binary"""
         try:
@@ -187,19 +187,19 @@ class NucleiAgent:
             return None
         except (subprocess.SubprocessError, FileNotFoundError):
             return None
-    
+
     def _detect_tech_stack(self) -> list[TechStackProfile]:
         """
         Detect technology stack from project files
-        
+
         Returns:
             List of detected tech stack profiles
         """
         if not self.project_path or not self.project_path.exists():
             return []
-        
+
         detected = []
-        
+
         for profile in TECH_STACK_PROFILES:
             for pattern in profile.patterns:
                 # Check if pattern matches any file
@@ -208,43 +208,43 @@ class NucleiAgent:
                     detected.append(profile)
                     logger.debug(f"Detected {profile.name} via pattern: {pattern}")
                     break
-        
+
         # Sort by priority
         detected.sort(key=lambda p: p.priority, reverse=True)
         return detected
-    
+
     def _build_template_list(self) -> list[str]:
         """
         Build intelligent template list based on detected tech stack
-        
+
         Returns:
             List of template paths
         """
         templates = []
-        
+
         # If custom templates specified, use those
         if self.config.templates:
             return self.config.templates
-        
+
         # If tech stack detected, prioritize relevant templates
         if self.detected_stack:
             for stack in self.detected_stack:
                 templates.extend(stack.templates)
-        
+
         # Always include core templates
         core_templates = [
             "cves/",  # All CVEs
             "vulnerabilities/",  # All generic vulnerabilities
             "misconfiguration/",  # Misconfigurations
         ]
-        
+
         # Add core templates if not already included
         for template in core_templates:
             if template not in templates:
                 templates.append(template)
-        
+
         return templates
-    
+
     def scan(
         self,
         targets: list[str],
@@ -252,37 +252,37 @@ class NucleiAgent:
     ) -> dict[str, Any]:
         """
         Run Nuclei scan with intelligent template selection
-        
+
         Args:
             targets: List of target URLs to scan
             output_file: Optional path to save results
-            
+
         Returns:
             Scan results dictionary
         """
         if not self.nuclei_path:
             raise RuntimeError("Nuclei not installed")
-        
+
         if not targets:
             raise ValueError("No targets provided")
-        
+
         logger.info(f"🔍 Nuclei Agent scanning {len(targets)} targets")
         start_time = datetime.now()
-        
+
         # Build template list
         templates = self._build_template_list()
         logger.info(f"   Using {len(templates)} template sets")
-        
+
         # Create temporary file with targets
         with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             target_file = f.name
             for target in targets:
                 f.write(f"{target}\n")
-        
+
         try:
             # Build command
             cmd = self._build_command(target_file, templates)
-            
+
             # Execute scan
             logger.info(f"   Running Nuclei (max {self.config.max_duration}s)...")
             result = subprocess.run(
@@ -291,13 +291,13 @@ class NucleiAgent:
                 text=True,
                 timeout=self.config.max_duration,
             )
-            
+
             # Parse results
             findings = self._parse_output(result.stdout)
-            
+
             # Calculate duration
             duration = (datetime.now() - start_time).total_seconds()
-            
+
             # Build result
             scan_result = {
                 "agent": "nuclei",
@@ -311,15 +311,15 @@ class NucleiAgent:
                 "duration_seconds": duration,
                 "severity_counts": self._count_by_severity(findings),
             }
-            
+
             logger.info(f"   ✅ Nuclei complete: {len(findings)} findings in {duration:.1f}s")
-            
+
             # Save if requested
             if output_file:
                 self._save_results(scan_result, output_file)
-            
+
             return scan_result
-            
+
         except subprocess.TimeoutExpired:
             logger.error(f"   ❌ Nuclei scan timed out after {self.config.max_duration}s")
             raise RuntimeError("Nuclei scan timeout")
@@ -329,61 +329,61 @@ class NucleiAgent:
         finally:
             # Cleanup temp file
             Path(target_file).unlink(missing_ok=True)
-    
+
     def _build_command(self, target_file: str, templates: list[str]) -> list[str]:
         """Build Nuclei command"""
         cmd = [self.nuclei_path]
-        
+
         # Target list
         cmd.extend(["-list", target_file])
-        
+
         # Output format
         cmd.extend(["-jsonl"])
-        
+
         # Severity filter
         if self.config.severity:
             cmd.extend(["-severity", ",".join(self.config.severity)])
-        
+
         # Templates
         for template in templates:
             cmd.extend(["-t", template])
-        
+
         # Exclude templates
         for exclude in self.config.exclude_templates:
             cmd.extend(["-etags", exclude])
-        
+
         # Rate limiting
         cmd.extend(["-rate-limit", str(self.config.rate_limit)])
         cmd.extend(["-timeout", str(self.config.timeout)])
         cmd.extend(["-retries", str(self.config.retries)])
         cmd.extend(["-concurrency", str(self.config.concurrency)])
-        
+
         # Custom headers
         for key, value in self.config.headers.items():
             cmd.extend(["-header", f"{key}: {value}"])
-        
+
         # Silent mode
         cmd.append("-silent")
-        
+
         # Include request/response
         cmd.append("-include-rr")
-        
+
         return cmd
-    
+
     def _parse_output(self, output: str) -> list[dict]:
         """Parse Nuclei JSONL output"""
         findings = []
-        
+
         if not output or not output.strip():
             return findings
-        
+
         for line in output.strip().split("\n"):
             if not line.strip():
                 continue
-            
+
             try:
                 result = json.loads(line)
-                
+
                 finding = {
                     "id": result.get("template-id", ""),
                     "name": result.get("info", {}).get("name", "Unknown"),
@@ -402,15 +402,15 @@ class NucleiAgent:
                     "classification": result.get("info", {}).get("classification", {}),
                     "metadata": result.get("info", {}).get("metadata", {}),
                 }
-                
+
                 findings.append(finding)
-                
+
             except json.JSONDecodeError:
                 logger.warning(f"Failed to parse Nuclei line: {line[:100]}")
                 continue
-        
+
         return findings
-    
+
     def _count_by_severity(self, findings: list[dict]) -> dict[str, int]:
         """Count findings by severity"""
         counts = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
@@ -419,7 +419,7 @@ class NucleiAgent:
             if severity in counts:
                 counts[severity] += 1
         return counts
-    
+
     def _get_version(self) -> str:
         """Get Nuclei version"""
         try:
@@ -432,22 +432,22 @@ class NucleiAgent:
             return result.stdout.strip()
         except Exception:
             return "unknown"
-    
+
     def _save_results(self, results: dict, output_file: str) -> None:
         """Save results to file"""
         output_path = Path(output_file)
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         with open(output_path, "w") as f:
             json.dump(results, f, indent=2)
-        
+
         logger.info(f"   Results saved to: {output_path}")
 
 
 def main():
     """CLI entry point"""
     import argparse
-    
+
     parser = argparse.ArgumentParser(description="Enhanced Nuclei Agent")
     parser.add_argument("--targets", nargs="+", required=True, help="Target URLs")
     parser.add_argument("--project-path", help="Project path for tech stack detection")
@@ -456,12 +456,12 @@ def main():
     parser.add_argument("--rate-limit", type=int, default=150)
     parser.add_argument("--concurrency", type=int, default=25)
     parser.add_argument("--max-duration", type=int, default=600)
-    
+
     args = parser.parse_args()
-    
+
     # Configure logging
     logging.basicConfig(level=logging.INFO)
-    
+
     # Build config
     config = NucleiConfig(
         severity=args.severity.split(",") if args.severity else ["critical", "high", "medium"],
@@ -469,10 +469,10 @@ def main():
         concurrency=args.concurrency,
         max_duration=args.max_duration,
     )
-    
+
     # Create agent
     agent = NucleiAgent(config=config, project_path=args.project_path)
-    
+
     # Run scan
     try:
         result = agent.scan(targets=args.targets, output_file=args.output)
@@ -484,7 +484,7 @@ def main():
     except Exception as e:
         print(f"\n❌ Scan failed: {e}")
         return 1
-    
+
     return 0
 
 

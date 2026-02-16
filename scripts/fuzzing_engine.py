@@ -19,20 +19,18 @@ import importlib.util
 import inspect
 import json
 import logging
-import os
 import random
 import re
 import string
-import subprocess
 import sys
 import time
 import traceback
 from collections import defaultdict
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
-from urllib.parse import urljoin, urlparse
+from typing import Any, Optional
+from urllib.parse import urljoin
 
 # Import Docker sandbox for safe code execution
 try:
@@ -83,7 +81,7 @@ class FuzzConfig:
     corpus_dir: Optional[Path] = None
     dictionary: Optional[Path] = None
     use_ai_generation: bool = True
-    vulnerability_types: List[str] = field(default_factory=lambda: ["all"])
+    vulnerability_types: list[str] = field(default_factory=lambda: ["all"])
     base_url: Optional[str] = None
     timeout_seconds: int = 5
     verify_ssl: bool = True
@@ -103,7 +101,7 @@ class Crash:
     severity: str  # "critical", "high", "medium", "low"
     cwe: Optional[str] = None
     timestamp: float = field(default_factory=time.time)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -112,13 +110,13 @@ class FuzzResult:
     target: str
     duration_seconds: int
     total_iterations: int
-    crashes: List[Crash]
+    crashes: list[Crash]
     coverage: float
     corpus_size: int
     unique_crashes: int
     executions_per_second: float
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
         crashes_data = []
         for crash in self.crashes:
@@ -240,8 +238,8 @@ class FuzzingEngine:
     def __init__(self, llm_manager=None, config: Optional[FuzzConfig] = None):
         """Initialize fuzzing engine"""
         self.config = config
-        self.coverage_data: Dict[str, Set[int]] = defaultdict(set)
-        self.corpus: List[Any] = []
+        self.coverage_data: dict[str, set[int]] = defaultdict(set)
+        self.corpus: list[Any] = []
         self.sandbox: Optional[DockerSandbox] = None
 
         # Initialize LLM if available
@@ -361,7 +359,7 @@ class FuzzingEngine:
         )
 
     def fuzz_function(self, function_path: str, function_name: str,
-                     duration_minutes: int = 30, sast_findings: Optional[List[Dict]] = None) -> FuzzResult:
+                     duration_minutes: int = 30, sast_findings: Optional[list[dict]] = None) -> FuzzResult:
         """
         Fuzz a specific Python function with AI-generated inputs
 
@@ -496,7 +494,7 @@ class FuzzingEngine:
         )
 
     def generate_test_cases(self, function_signature: str,
-                           sast_findings: Optional[List[Dict]] = None) -> List[Any]:
+                           sast_findings: Optional[list[dict]] = None) -> list[Any]:
         """
         Use LLM to generate edge-case inputs
 
@@ -556,12 +554,12 @@ No explanations, just the JSON array."""
             logger.error(f"AI generation failed: {e}, using templates")
             return self._generate_template_test_cases()
 
-    def _generate_template_test_cases(self) -> List[str]:
+    def _generate_template_test_cases(self) -> list[str]:
         """Generate test cases from templates"""
         test_cases = []
 
         # Add all injection payloads
-        for category, payloads in self.INJECTION_PAYLOADS.items():
+        for _category, payloads in self.INJECTION_PAYLOADS.items():
             test_cases.extend(payloads)
 
         # Add edge cases
@@ -573,7 +571,7 @@ No explanations, just the JSON array."""
 
         return test_cases
 
-    def _parse_openapi(self, spec_path: str, base_url: Optional[str] = None) -> List[Dict]:
+    def _parse_openapi(self, spec_path: str, base_url: Optional[str] = None) -> list[dict]:
         """
         Parse OpenAPI/Swagger spec to extract endpoints
 
@@ -631,7 +629,7 @@ No explanations, just the JSON array."""
 
         return endpoints
 
-    def _generate_api_test_cases(self, endpoint: Dict) -> List[Dict]:
+    def _generate_api_test_cases(self, endpoint: dict) -> list[dict]:
         """
         Generate test cases for an API endpoint
 
@@ -691,7 +689,7 @@ No explanations, just the JSON array."""
 
         return test_cases
 
-    def _execute_api_test(self, test_case: Dict, verify_ssl: bool = True) -> Dict:
+    def _execute_api_test(self, test_case: dict, verify_ssl: bool = True) -> dict:
         """
         Execute an API test case
 
@@ -747,7 +745,7 @@ No explanations, just the JSON array."""
             result['crashed'] = True
             result['crash_type'] = 'connection_error'
             result['stack_trace'] = str(e)
-        except Exception as e:
+        except Exception:
             result['crashed'] = True
             result['crash_type'] = 'exception'
             result['stack_trace'] = traceback.format_exc()
@@ -778,7 +776,7 @@ No explanations, just the JSON array."""
 
             # Read the file to verify function exists
             try:
-                with open(file_path, 'r') as f:
+                with open(file_path) as f:
                     code = f.read()
                 if f"def {function_name}" not in code:
                     logger.warning(f"Function {function_name} not found in {file_path}")
@@ -822,7 +820,7 @@ No explanations, just the JSON array."""
             except Exception:
                 return "function(...)"
 
-    def _execute_function_test(self, func, test_input: Any, source_file: str) -> Dict:
+    def _execute_function_test(self, func, test_input: Any, source_file: str) -> dict:
         """
         Execute function with test input (SANDBOXED or UNSAFE fallback)
 
@@ -896,7 +894,7 @@ No explanations, just the JSON array."""
             result['crashed'] = True
             result['crash_type'] = 'timeout'
             result['stack_trace'] = "Function execution timeout"
-        except AssertionError as e:
+        except AssertionError:
             result['crashed'] = True
             result['crash_type'] = 'assertion'
             result['stack_trace'] = traceback.format_exc()
@@ -906,14 +904,14 @@ No explanations, just the JSON array."""
                 result['crashed'] = True
                 result['crash_type'] = 'exception'
                 result['stack_trace'] = traceback.format_exc()
-        except Exception as e:
+        except Exception:
             result['crashed'] = True
             result['crash_type'] = 'exception'
             result['stack_trace'] = traceback.format_exc()
 
         return result
 
-    def _execute_parser_test(self, parser_func, test_file: Dict) -> Dict:
+    def _execute_parser_test(self, parser_func, test_file: dict) -> dict:
         """Execute parser function with malformed file"""
         result = {
             'crashed': False,
@@ -933,14 +931,14 @@ No explanations, just the JSON array."""
             finally:
                 Path(temp_path).unlink(missing_ok=True)
 
-        except Exception as e:
+        except Exception:
             result['crashed'] = True
             result['crash_type'] = 'exception'
             result['stack_trace'] = traceback.format_exc()
 
         return result
 
-    def _generate_malformed_files(self, file_type: str) -> List[Dict]:
+    def _generate_malformed_files(self, file_type: str) -> list[dict]:
         """Generate malformed files for parser fuzzing"""
         files = []
 
@@ -978,7 +976,7 @@ No explanations, just the JSON array."""
 
         return files
 
-    def _create_crash_report(self, result: Dict, test_input: Any) -> Crash:
+    def _create_crash_report(self, result: dict, test_input: Any) -> Crash:
         """Create a Crash object from test result"""
         crash_type = result.get('crash_type', 'unknown')
         stack_trace = result.get('stack_trace', '')
@@ -1033,7 +1031,7 @@ No explanations, just the JSON array."""
 
         return "CWE-703"  # Improper check for unusual conditions
 
-    def _deduplicate_crashes(self, crashes: List[Crash]) -> List[Crash]:
+    def _deduplicate_crashes(self, crashes: list[Crash]) -> list[Crash]:
         """
         Remove duplicate crashes based on stack trace similarity
 
@@ -1043,7 +1041,7 @@ No explanations, just the JSON array."""
         Returns:
             Deduplicated list of crashes
         """
-        seen_fingerprints: Set[str] = set()
+        seen_fingerprints: set[str] = set()
         unique = []
 
         for crash in crashes:
@@ -1092,7 +1090,7 @@ No explanations, just the JSON array."""
 
         logger.info(f"Saved {len(self.corpus)} corpus items to {corpus_file}")
 
-    def load_corpus(self, input_dir: Path) -> List[Any]:
+    def load_corpus(self, input_dir: Path) -> list[Any]:
         """Load existing corpus"""
         corpus_file = input_dir / "corpus.json"
 
@@ -1105,7 +1103,7 @@ No explanations, just the JSON array."""
         logger.info(f"Loaded {len(corpus)} corpus items from {corpus_file}")
         return corpus
 
-    def export_crashes_to_sarif(self, crashes: List[Crash], output_file: Path):
+    def export_crashes_to_sarif(self, crashes: list[Crash], output_file: Path):
         """Export crashes to SARIF format for GitHub integration"""
         sarif = {
             "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",

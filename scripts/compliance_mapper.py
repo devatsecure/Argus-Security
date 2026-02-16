@@ -557,8 +557,8 @@ class ComplianceMapper:
         # -- Summary --
         lines.append("### Summary")
         lines.append("")
-        lines.append(f"| Metric | Value |")
-        lines.append(f"|--------|-------|")
+        lines.append("| Metric | Value |")
+        lines.append("|--------|-------|")
         lines.append(f"| Total Controls | {report.total_controls} |")
         lines.append(f"| Passing Controls | {report.passing_controls} |")
         lines.append(f"| Failing Controls | {report.failing_controls} |")
@@ -586,7 +586,7 @@ class ComplianceMapper:
                 lines.append("")
                 lines.append("| Control ID | Control Title | CWE | Severity | Finding |")
                 lines.append("|------------|---------------|-----|----------|---------|")
-                for cid, m in sorted(seen_controls.items()):
+                for _cid, m in sorted(seen_controls.items()):
                     lines.append(
                         f"| {m.control_id} | {m.control_title} "
                         f"| {m.cwe_id} | {m.severity} | {m.finding_id} |"

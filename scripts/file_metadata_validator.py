@@ -5,11 +5,9 @@ Validates file security posture using metadata when direct file access unavailab
 """
 
 import logging
-import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -252,11 +250,11 @@ class FileMetadataValidator:
                     content = deploy_file.read_text()
 
                     # Check for permission-related commands
-                    if f"chmod" in content and rel_path in content:
+                    if "chmod" in content and rel_path in content:
                         indicators.append(f"Permission setting found in {deploy_file.name}")
 
                     # Check for chown
-                    if f"chown" in content and rel_path in content:
+                    if "chown" in content and rel_path in content:
                         indicators.append(f"Ownership setting found in {deploy_file.name}")
 
                     # Check for secrets mounting

@@ -18,7 +18,6 @@ import time
 from typing import Any
 
 from hybrid.models import HybridFinding
-from pathlib import Path
 
 logger = logging.getLogger(__name__)
 

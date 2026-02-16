@@ -50,7 +50,7 @@ import re
 import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -83,22 +83,22 @@ class RemediationSuggestion:
     fixed_code: str
     diff: str
     explanation: str
-    testing_recommendations: List[str]
+    testing_recommendations: list[str]
     confidence: str  # "high", "medium", "low"
-    cwe_references: List[str]
-    metadata: Dict[str, Any] = None
+    cwe_references: list[str]
+    metadata: dict[str, Any] = None
 
     def __post_init__(self):
         """Initialize metadata if not provided"""
         if self.metadata is None:
             self.metadata = {}
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization"""
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict) -> "RemediationSuggestion":
+    def from_dict(cls, data: dict) -> "RemediationSuggestion":
         """Create RemediationSuggestion from dictionary"""
         return cls(**data)
 
@@ -388,7 +388,7 @@ def transfer():
         r"System\.err\.print",
     ]
 
-    def __init__(self, llm_manager=None, config: Dict = None):
+    def __init__(self, llm_manager=None, config: dict = None):
         """Initialize RemediationEngine
 
         Args:
@@ -429,12 +429,12 @@ def transfer():
 
     def _get_finding_attr(self, finding, *attrs, default=None):
         """Get attribute from finding, supporting both dict and dataclass objects.
-        
+
         Args:
             finding: Finding dict or dataclass object
             *attrs: Attribute names to try in order
             default: Default value if none found
-            
+
         Returns:
             First found attribute value or default
         """
@@ -460,13 +460,13 @@ def transfer():
             RemediationSuggestion with fix details
         """
         # Extract finding details (support both Finding dataclass and dict)
-        finding_id = self._get_finding_attr(finding, "id", "finding_id", default="unknown")
+        self._get_finding_attr(finding, "id", "finding_id", default="unknown")
         vuln_type = self._get_finding_attr(finding, "type", "rule_id", "title", default="unknown")
         file_path = self._get_finding_attr(finding, "path", "file_path", default="")
         line_number = self._get_finding_attr(finding, "line", "line_number", default=0)
-        description = self._get_finding_attr(finding, "description", "message", default="")
+        self._get_finding_attr(finding, "description", "message", default="")
         code_snippet = self._get_finding_attr(finding, "code_snippet", default="")
-        
+
         # Handle nested evidence dict
         if not code_snippet and isinstance(finding, dict):
             evidence = finding.get("evidence", {})
@@ -501,7 +501,7 @@ def transfer():
         code_snippet = self._get_finding_attr(finding, "code_snippet", default="")
         severity = self._get_finding_attr(finding, "severity", default="medium")
         language = self._detect_language(file_path)
-        
+
         # Handle nested evidence dict for code_snippet
         if not code_snippet and isinstance(finding, dict):
             evidence = finding.get("evidence", {})
@@ -589,7 +589,7 @@ Generate ONLY the JSON response, no markdown code blocks or additional text.
             metadata={"generator": "ai", "model": self.llm.model, "provider": self.llm.provider},
         )
 
-    def _template_generate_fix(self, finding: Dict) -> RemediationSuggestion:
+    def _template_generate_fix(self, finding: dict) -> RemediationSuggestion:
         """Generate fix using predefined templates
 
         Args:
@@ -724,7 +724,7 @@ Generate ONLY the JSON response, no markdown code blocks or additional text.
             metadata=metadata,
         )
 
-    def generate_batch_fixes(self, findings: List[Dict], max_findings: int = None) -> List[RemediationSuggestion]:
+    def generate_batch_fixes(self, findings: list[dict], max_findings: int = None) -> list[RemediationSuggestion]:
         """Generate fixes for multiple findings
 
         Args:
@@ -751,7 +751,7 @@ Generate ONLY the JSON response, no markdown code blocks or additional text.
         logger.info(f"Generated {len(suggestions)} fix suggestions")
         return suggestions
 
-    def export_as_markdown(self, suggestions: List[RemediationSuggestion], output_file: str):
+    def export_as_markdown(self, suggestions: list[RemediationSuggestion], output_file: str):
         """Export suggestions as markdown report
 
         Args:
@@ -811,7 +811,7 @@ Generate ONLY the JSON response, no markdown code blocks or additional text.
 
         logger.info(f"Exported remediation report to {output_file}")
 
-    def export_as_json(self, suggestions: List[RemediationSuggestion], output_file: str):
+    def export_as_json(self, suggestions: list[RemediationSuggestion], output_file: str):
         """Export suggestions as JSON
 
         Args:
@@ -845,7 +845,7 @@ Generate ONLY the JSON response, no markdown code blocks or additional text.
         if not code_snippet:
             return "unknown"
 
-        code_lower = code_snippet.lower()
+        code_snippet.lower()
 
         # Check for CLI/terminal output patterns
         for pattern in self.CLI_SAFE_PATTERNS:
@@ -940,7 +940,7 @@ Generate ONLY the JSON response, no markdown code blocks or additional text.
 
         return lang_map.get(ext, "text")
 
-    def _get_cwe_references(self, vuln_type: str) -> List[str]:
+    def _get_cwe_references(self, vuln_type: str) -> list[str]:
         """Get relevant CWE IDs for vulnerability type
 
         Args:
@@ -1048,7 +1048,7 @@ Examples:
     for s in suggestions:
         confidence_counts[s.confidence] = confidence_counts.get(s.confidence, 0) + 1
 
-    print(f"\n📊 Confidence Breakdown:")
+    print("\n📊 Confidence Breakdown:")
     print(f"   High:   {confidence_counts['high']}")
     print(f"   Medium: {confidence_counts['medium']}")
     print(f"   Low:    {confidence_counts['low']}")

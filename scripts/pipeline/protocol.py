@@ -13,9 +13,8 @@ execution for logging, metrics, and error reporting.
 
 from __future__ import annotations
 
-import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 
 @dataclass
@@ -70,7 +69,7 @@ class PipelineContext:
     """
 
     # -- Immutable configuration --
-    config: Dict[str, Any] = field(default_factory=dict)
+    config: dict[str, Any] = field(default_factory=dict)
     target_path: str = ""
 
     # -- AI client state (set during initialization) --
@@ -85,27 +84,27 @@ class PipelineContext:
     metrics: Any = None
 
     # -- Primary pipeline data --
-    findings: List[Any] = field(default_factory=list)
+    findings: list[Any] = field(default_factory=list)
 
     # -- Phase timings --
-    phase_timings: Dict[str, float] = field(default_factory=dict)
+    phase_timings: dict[str, float] = field(default_factory=dict)
 
     # -- Supplementary stage outputs --
-    threat_model: Optional[Dict[str, Any]] = None
+    threat_model: dict[str, Any] | None = None
     project_context: Any = None
-    policy_gate_result: Optional[Dict[str, Any]] = None
-    vulnerability_chains: Optional[Dict[str, Any]] = None
+    policy_gate_result: dict[str, Any] | None = None
+    vulnerability_chains: dict[str, Any] | None = None
 
     # -- Reports --
-    reports: Dict[str, str] = field(default_factory=dict)
-    report_paths: Dict[str, str] = field(default_factory=dict)
+    reports: dict[str, str] = field(default_factory=dict)
+    report_paths: dict[str, str] = field(default_factory=dict)
 
     # -- Multi-agent data --
-    agent_reports: Dict[str, str] = field(default_factory=dict)
-    consensus_results: List[Any] = field(default_factory=list)
+    agent_reports: dict[str, str] = field(default_factory=dict)
+    consensus_results: list[Any] = field(default_factory=list)
 
     # -- Error collection --
-    errors: List[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -139,10 +138,10 @@ class StageResult:
     duration_seconds: float = 0.0
     findings_before: int = 0
     findings_after: int = 0
-    error: Optional[str] = None
+    error: str | None = None
     skipped: bool = False
     skip_reason: str = ""
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @runtime_checkable
@@ -199,7 +198,7 @@ class PipelineStage(Protocol):
         ...
 
     @property
-    def required_stages(self) -> List[str]:
+    def required_stages(self) -> list[str]:
         """Names of stages that must complete before this one.
 
         Empty list means no dependencies.

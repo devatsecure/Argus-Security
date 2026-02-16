@@ -8,9 +8,8 @@ by providing a common argument parser factory with standard arguments.
 """
 
 import argparse
-import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 
 class AgentOSArgumentParser(argparse.ArgumentParser):
@@ -339,7 +338,7 @@ def setup_logging(args: argparse.Namespace):
     )
 
 
-def create_example_usage(script_name: str, examples: List[str]) -> str:
+def create_example_usage(script_name: str, examples: list[str]) -> str:
     """
     Create formatted example usage section for help text
 

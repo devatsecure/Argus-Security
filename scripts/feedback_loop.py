@@ -6,7 +6,6 @@ Learns from human TP/FP decisions to improve suppression accuracy over time
 
 import json
 import logging
-import os
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
@@ -173,7 +172,7 @@ class FeedbackLoop:
             return []
 
         feedback = []
-        with open(self.feedback_file, "r") as f:
+        with open(self.feedback_file) as f:
             for line in f:
                 record_dict = json.loads(line)
                 record = FeedbackRecord(**record_dict)
@@ -335,7 +334,7 @@ class FeedbackLoop:
             return {}
 
         patterns = {}
-        with open(self.feedback_file, "r") as f:
+        with open(self.feedback_file) as f:
             for line in f:
                 record = json.loads(line)
                 pattern_id = record.get("pattern_used")
@@ -350,7 +349,7 @@ class FeedbackLoop:
             return 1.0
 
         try:
-            with open(self.adjustments_file, "r") as f:
+            with open(self.adjustments_file) as f:
                 adjustments = json.load(f)
                 return adjustments.get(pattern_id, {}).get("multiplier", 1.0)
         except (OSError, json.JSONDecodeError, KeyError):
@@ -380,7 +379,7 @@ class FeedbackLoop:
         # Load existing adjustments
         adjustments_dict = {}
         if self.adjustments_file.exists():
-            with open(self.adjustments_file, "r") as f:
+            with open(self.adjustments_file) as f:
                 adjustments_dict = json.load(f)
 
         # Apply new adjustments
@@ -405,7 +404,7 @@ class FeedbackLoop:
             return {"total_records": 0}
 
         records = []
-        with open(self.feedback_file, "r") as f:
+        with open(self.feedback_file) as f:
             for line in f:
                 records.append(FeedbackRecord(**json.loads(line)))
 

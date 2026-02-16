@@ -28,7 +28,7 @@ import sys
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -76,10 +76,10 @@ class RegressionTester:
                 self.test_dir = Path("/cache/security_regression")
                 self.test_dir.mkdir(parents=True, exist_ok=True)
 
-        self.tests: List[RegressionTest] = []
+        self.tests: list[RegressionTest] = []
         self._load_existing_tests()
 
-    def generate_regression_test(self, fixed_finding: Dict[str, Any]) -> RegressionTest:
+    def generate_regression_test(self, fixed_finding: dict[str, Any]) -> RegressionTest:
         """Generate regression test for a fixed vulnerability"""
         vuln_type = fixed_finding.get("type", "unknown")
         file_path = fixed_finding.get("path", "")
@@ -140,7 +140,7 @@ class RegressionTester:
         content = f"{vuln_type}{file_path}{cve_id}".encode()
         return hashlib.sha256(content).hexdigest()[:12]
 
-    def _extract_function_name(self, finding: Dict[str, Any]) -> str:
+    def _extract_function_name(self, finding: dict[str, Any]) -> str:
         """Extract function name from finding"""
         # Try different fields where function name might be
         for field in ["function", "method", "symbol", "target"]:
@@ -553,7 +553,7 @@ func TestNormalInput{function_name.title()}(t *testing.T) {{
 
         logger.info(f"Loaded {len(self.tests)} existing regression tests")
 
-    def run_all_tests(self, vuln_type: Optional[str] = None) -> Dict[str, Any]:
+    def run_all_tests(self, vuln_type: Optional[str] = None) -> dict[str, Any]:
         """Run all regression tests"""
         tests_to_run = self.tests
         if vuln_type:
@@ -701,7 +701,7 @@ func TestNormalInput{function_name.title()}(t *testing.T) {{
         except Exception as e:
             return False, str(e)
 
-    def _print_results(self, results: Dict[str, Any]):
+    def _print_results(self, results: dict[str, Any]):
         """Print test results"""
         print("\n" + "=" * 80)
         print("🧪 SECURITY REGRESSION TEST RESULTS")
@@ -730,7 +730,7 @@ func TestNormalInput{function_name.title()}(t *testing.T) {{
         print(f"Success Rate: {success_rate:.1f}%")
         print(f"{'='*80}\n")
 
-    def _save_results(self, results: Dict[str, Any]):
+    def _save_results(self, results: dict[str, Any]):
         """Save test results to JSON"""
         results_file = self.test_dir / "latest_results.json"
         with open(results_file, "w") as f:
@@ -752,7 +752,7 @@ func TestNormalInput{function_name.title()}(t *testing.T) {{
 
         return mapping.get(ext, "unknown")
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get statistics about regression tests"""
         stats = {
             "total_tests": len(self.tests),

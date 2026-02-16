@@ -19,9 +19,9 @@ import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
-from .cost_tracker import CostCircuitBreaker, CostLimitExceededError
+from .cost_tracker import CostCircuitBreaker
 from .metrics_collector import ReviewMetrics
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -43,7 +43,7 @@ class AuditOrchestrator:
         blockers, suggestions, metrics = orchestrator.run()
     """
 
-    def __init__(self, repo_path: str, config: Dict[str, Any]):
+    def __init__(self, repo_path: str, config: dict[str, Any]):
         """Initialize the orchestrator"""
         self.repo_path = repo_path
         self.config = config
@@ -52,8 +52,8 @@ class AuditOrchestrator:
         self.client: Optional[Any] = None
         self.provider: Optional[str] = None
         self.model: Optional[str] = None
-        self.threat_model: Optional[Dict] = None
-        self.files: List[Dict] = []
+        self.threat_model: Optional[dict] = None
+        self.files: list[dict] = []
         logger.info(f"Orchestrator initialized for repository: {repo_path}")
 
     def initialize_provider(self) -> bool:
@@ -176,11 +176,11 @@ class AuditOrchestrator:
             logger.error(f"Threat modeling failed: {e}")
             return False
 
-    def run_heuristic_scan(self) -> Dict[str, List[str]]:
+    def run_heuristic_scan(self) -> dict[str, list[str]]:
         """Run heuristic pre-scan on files"""
         logger.info("Running heuristic pre-scan...")
         try:
-            if not self.config.get("enable_heuristics", "true").lower() == "true":
+            if self.config.get("enable_heuristics", "true").lower() != "true":
                 return {}
 
             from scripts.run_ai_audit import HeuristicScanner
@@ -200,7 +200,7 @@ class AuditOrchestrator:
             logger.warning(f"Heuristic scan failed: {e}")
             return {}
 
-    def run_semgrep_scan(self) -> Dict[str, Any]:
+    def run_semgrep_scan(self) -> dict[str, Any]:
         """Run Semgrep SAST scan"""
         logger.info("Running Semgrep SAST scan...")
         try:
@@ -240,7 +240,7 @@ class AuditOrchestrator:
         prompt: str,
         max_tokens: int,
         operation: str = "LLM call",
-    ) -> Tuple[str, int, int]:
+    ) -> tuple[str, int, int]:
         """Execute LLM analysis with cost enforcement"""
         logger.info(f"Executing LLM analysis ({operation})...")
         try:
@@ -265,10 +265,10 @@ class AuditOrchestrator:
 
     def generate_reports(
         self,
-        findings: List[Dict],
+        findings: list[dict],
         report_text: str,
         report_dir: Optional[Path] = None,
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """Generate audit reports in multiple formats"""
         logger.info("Generating reports...")
 
@@ -335,7 +335,7 @@ class AuditOrchestrator:
             logger.error(f"Report generation failed: {e}")
             raise
 
-    def print_summary(self, findings: List[Dict]) -> Tuple[int, int]:
+    def print_summary(self, findings: list[dict]) -> tuple[int, int]:
         """Print audit summary to console"""
         self.metrics.finalize()
 
@@ -374,7 +374,7 @@ class AuditOrchestrator:
 
         return blocker_count, suggestion_count
 
-    def check_fail_conditions(self, findings: List[Dict]) -> bool:
+    def check_fail_conditions(self, findings: list[dict]) -> bool:
         """Check if audit should fail based on configured conditions"""
         fail_on = self.config.get("fail_on", "")
         if not fail_on:
@@ -407,7 +407,7 @@ class AuditOrchestrator:
 
         return should_fail
 
-    def write_github_output(self, reports: Dict[str, str], blockers: int, suggestions: int) -> None:
+    def write_github_output(self, reports: dict[str, str], blockers: int, suggestions: int) -> None:
         """Write output for GitHub Actions"""
         github_output = os.environ.get("GITHUB_OUTPUT")
         if github_output:
@@ -423,7 +423,7 @@ class AuditOrchestrator:
             logger.info("GitHub Actions output written")
 
 
-def run_audit(repo_path: str, config: Dict[str, Any], review_type: str = "audit") -> Tuple[int, int, ReviewMetrics]:
+def run_audit(repo_path: str, config: dict[str, Any], review_type: str = "audit") -> tuple[int, int, ReviewMetrics]:
     """Run a complete AI-powered code audit
 
     Orchestrates the entire audit workflow from file selection through

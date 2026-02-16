@@ -9,7 +9,7 @@ Fixes:
 - Validates enrichment results
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -46,7 +46,7 @@ class EnrichmentInput(BaseModel):
     Input for threat intelligence enricher.
     Validates findings before enrichment.
     """
-    findings: List[Dict[str, Any]] = Field(
+    findings: list[dict[str, Any]] = Field(
         ...,
         min_length=0,
         description="List of findings to enrich"
@@ -54,7 +54,7 @@ class EnrichmentInput(BaseModel):
 
     @field_validator('findings')
     @classmethod
-    def validate_findings(cls, v: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def validate_findings(cls, v: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Validate each finding has minimum required fields"""
         for i, finding in enumerate(v):
             try:
@@ -80,15 +80,15 @@ class ThreatContext(BaseModel):
     kev_due_date: Optional[str] = Field(default=None)
     kev_action_required: Optional[str] = Field(default=None)
     public_exploit_available: bool = Field(default=False)
-    exploit_sources: List[str] = Field(default_factory=list)
+    exploit_sources: list[str] = Field(default_factory=list)
     exploit_count: int = Field(default=0, ge=0)
     trending: bool = Field(default=False)
     vendor_patch_available: bool = Field(default=False)
     patch_url: Optional[str] = Field(default=None)
-    github_advisories: List[Dict[str, Any]] = Field(default_factory=list)
-    osv_entries: List[Dict[str, Any]] = Field(default_factory=list)
-    cwe_ids: List[str] = Field(default_factory=list)
-    references: List[str] = Field(default_factory=list)
+    github_advisories: list[dict[str, Any]] = Field(default_factory=list)
+    osv_entries: list[dict[str, Any]] = Field(default_factory=list)
+    cwe_ids: list[str] = Field(default_factory=list)
+    references: list[str] = Field(default_factory=list)
     last_updated: Optional[str] = Field(default=None)
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
 
@@ -102,7 +102,7 @@ class ThreatContext(BaseModel):
 
     @field_validator('cwe_ids')
     @classmethod
-    def validate_cwe_formats(cls, v: List[str]) -> List[str]:
+    def validate_cwe_formats(cls, v: list[str]) -> list[str]:
         """Validate all CWE IDs have correct format"""
         for cwe in v:
             if not cwe.startswith("CWE-"):
@@ -115,22 +115,22 @@ class EnrichedFinding(BaseModel):
     Finding enriched with threat intelligence.
     Validates complete enrichment structure.
     """
-    original_finding: Dict[str, Any] = Field(..., description="Original finding data")
-    threat_context: Optional[Dict[str, Any]] = Field(
+    original_finding: dict[str, Any] = Field(..., description="Original finding data")
+    threat_context: Optional[dict[str, Any]] = Field(
         default=None,
         description="Threat intelligence context"
     )
     original_priority: str = Field(..., min_length=1, description="Original severity/priority")
     adjusted_priority: str = Field(..., min_length=1, description="Adjusted priority")
-    priority_boost_reasons: List[str] = Field(default_factory=list)
-    priority_downgrade_reasons: List[str] = Field(default_factory=list)
+    priority_boost_reasons: list[str] = Field(default_factory=list)
+    priority_downgrade_reasons: list[str] = Field(default_factory=list)
     recommended_action: str = Field(..., min_length=1, description="Recommended action")
     remediation_deadline: Optional[str] = Field(default=None)
     risk_score: float = Field(..., ge=0.0, le=10.0, description="Composite risk score")
 
     @field_validator('threat_context')
     @classmethod
-    def validate_threat_context(cls, v: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    def validate_threat_context(cls, v: Optional[dict[str, Any]]) -> Optional[dict[str, Any]]:
         """Validate threat context structure if present"""
         if v is not None:
             try:
@@ -141,7 +141,7 @@ class EnrichedFinding(BaseModel):
 
     @field_validator('original_finding')
     @classmethod
-    def validate_original_finding_has_id(cls, v: Dict[str, Any]) -> Dict[str, Any]:
+    def validate_original_finding_has_id(cls, v: dict[str, Any]) -> dict[str, Any]:
         """Ensure original finding has an ID"""
         if "id" not in v or not v["id"]:
             raise ValueError("Original finding must have an 'id' field")
@@ -169,14 +169,14 @@ class EnrichmentOutput(BaseModel):
     Validates all enriched findings.
     """
     metadata: EnrichmentMetadata = Field(..., description="Summary statistics")
-    enriched_findings: List[Dict[str, Any]] = Field(
+    enriched_findings: list[dict[str, Any]] = Field(
         default_factory=list,
         description="Enriched findings with threat context"
     )
 
     @field_validator('enriched_findings')
     @classmethod
-    def validate_enriched_findings(cls, v: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def validate_enriched_findings(cls, v: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Validate each enriched finding"""
         for i, finding in enumerate(v):
             try:

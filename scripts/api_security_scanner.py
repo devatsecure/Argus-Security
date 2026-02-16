@@ -18,7 +18,7 @@ import re
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -250,7 +250,7 @@ class APISecurityScanner:
         scan_duration = (datetime.now() - start_time).total_seconds()
         findings_by_severity = self._count_by_severity(self.findings)
         findings_by_owasp = self._count_by_owasp_category(self.findings)
-        frameworks = list(set(e.framework for e in self.endpoints))
+        frameworks = list({e.framework for e in self.endpoints})
 
         result = APIScanResult(
             scan_type=scan_type,
@@ -332,7 +332,7 @@ class APISecurityScanner:
         endpoints = []
 
         try:
-            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+            with open(file_path, encoding="utf-8", errors="ignore") as f:
                 content = f.read()
                 lines = content.split("\n")
 
@@ -458,10 +458,7 @@ class APISecurityScanner:
         end = min(len(lines), line_number + 1)
         context = "\n".join(lines[start:end])
 
-        for pattern in self.AUTH_PATTERNS:
-            if re.search(pattern, context, re.IGNORECASE):
-                return True
-        return False
+        return any(re.search(pattern, context, re.IGNORECASE) for pattern in self.AUTH_PATTERNS)
 
     def _extract_handler_name(self, lines: list[str], line_number: int) -> str:
         """Extract handler function name"""
@@ -611,8 +608,8 @@ class APISecurityScanner:
                         severity="MEDIUM",
                         title=f"Password reset endpoint requires review: {endpoint.path}",
                         description=(
-                            f"Password reset endpoint detected. Ensure it implements rate limiting, "
-                            f"secure token generation, and expiration."
+                            "Password reset endpoint detected. Ensure it implements rate limiting, "
+                            "secure token generation, and expiration."
                         ),
                         file_path=endpoint.file_path,
                         line_number=endpoint.line_number,
@@ -1060,7 +1057,7 @@ class APISecurityScanner:
 
         for file_path in graphql_files:
             try:
-                with open(file_path, "r", encoding="utf-8") as f:
+                with open(file_path, encoding="utf-8") as f:
                     content = f.read()
 
                 # Test 1: Introspection enabled (production risk)

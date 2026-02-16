@@ -11,12 +11,11 @@ Features:
 - Export feedback for model fine-tuning
 """
 
-import hashlib
 import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal, Optional
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -43,7 +42,7 @@ class FeedbackCollector:
         finding_id: str,
         feedback: Literal["tp", "fp"],
         reason: str,
-        finding_details: Optional[Dict[str, Any]] = None,
+        finding_details: Optional[dict[str, Any]] = None,
         user: str = "user"
     ) -> bool:
         """
@@ -101,7 +100,7 @@ class FeedbackCollector:
     def get_all_feedback(
         self,
         feedback_type: Optional[Literal["tp", "fp"]] = None
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Retrieve all feedback entries
 
@@ -118,7 +117,7 @@ class FeedbackCollector:
         try:
             feedback_list = []
 
-            with open(self.feedback_file, "r") as f:
+            with open(self.feedback_file) as f:
                 for line in f:
                     try:
                         entry = json.loads(line)
@@ -140,7 +139,7 @@ class FeedbackCollector:
             logger.error(f"Failed to load feedback: {e}")
             return []
 
-    def get_feedback_by_id(self, finding_id: str) -> Optional[Dict[str, Any]]:
+    def get_feedback_by_id(self, finding_id: str) -> Optional[dict[str, Any]]:
         """
         Retrieve feedback for a specific finding
 
@@ -163,7 +162,7 @@ class FeedbackCollector:
         finding_type: str,
         scanner: str,
         limit: int = 5
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Retrieve past feedback for similar findings (for few-shot prompting)
 
@@ -242,7 +241,7 @@ Reason: {reason}
 
         return "\n".join(examples)
 
-    def get_feedback_stats(self) -> Dict[str, Any]:
+    def get_feedback_stats(self) -> dict[str, Any]:
         """
         Get statistics about collected feedback
 
@@ -461,14 +460,14 @@ def main():
         print(f"False Positives:    {stats.get('false_positives', 0)} ({stats.get('fp_rate', 0):.1f}%)")
 
         if stats.get("by_scanner"):
-            print(f"\nBy Scanner:")
+            print("\nBy Scanner:")
             for scanner, scanner_stats in stats["by_scanner"].items():
                 fp_rate = (scanner_stats["fp"] / scanner_stats["total"] * 100) if scanner_stats["total"] > 0 else 0
                 print(f"  {scanner:20s}: {scanner_stats['total']:3d} total, "
                       f"{scanner_stats['fp']:3d} FP ({fp_rate:.0f}%)")
 
         if stats.get("recent_feedback"):
-            print(f"\nRecent Feedback:")
+            print("\nRecent Feedback:")
             for fb in stats["recent_feedback"]:
                 print(f"  {fb['finding_id'][:16]}: {fb['feedback'].upper()} - {fb['reason']}")
 

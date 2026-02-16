@@ -17,8 +17,8 @@ import json
 import logging
 import os
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any
 from enum import Enum
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -45,20 +45,20 @@ class IRISAnalysis:
 
     # Detailed findings
     attack_vector: Optional[str] = None
-    preconditions: List[str] = field(default_factory=list)
+    preconditions: list[str] = field(default_factory=list)
     exploitation_complexity: str = "UNKNOWN"  # LOW, MEDIUM, HIGH
     impact_severity: str = "UNKNOWN"  # CRITICAL, HIGH, MEDIUM, LOW
 
     # IRIS-specific metadata
-    reasoning_steps: List[str] = field(default_factory=list)
-    code_semantics: Dict[str, Any] = field(default_factory=dict)
+    reasoning_steps: list[str] = field(default_factory=list)
+    code_semantics: dict[str, Any] = field(default_factory=dict)
 
     # Token usage tracking
     input_tokens: int = 0
     output_tokens: int = 0
     cost_usd: float = 0.0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization"""
         return {
             "verdict": self.verdict.value,
@@ -94,7 +94,7 @@ class IRISFinding:
     exploitability_score: float = 0.0  # 0.0-1.0
     business_impact: str = "UNKNOWN"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
         result = {
             "finding_id": self.original_finding_id,
@@ -140,9 +140,9 @@ class IRISAnalyzer:
 
     def analyze_finding(
         self,
-        finding: Dict[str, Any],
+        finding: dict[str, Any],
         code_context: str,
-        repo_context: Optional[Dict[str, Any]] = None
+        repo_context: Optional[dict[str, Any]] = None
     ) -> IRISFinding:
         """
         Perform IRIS-style semantic analysis on a finding
@@ -217,9 +217,9 @@ class IRISAnalyzer:
 
     def _build_iris_prompt(
         self,
-        finding: Dict[str, Any],
+        finding: dict[str, Any],
         code_context: str,
-        repo_context: Optional[Dict[str, Any]]
+        repo_context: Optional[dict[str, Any]]
     ) -> str:
         """
         Build IRIS-style multi-step reasoning prompt
@@ -435,7 +435,7 @@ Respond with ONLY the JSON object, no additional text."""
         # Cap at 1.0
         return min(score, 1.0)
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """
         Get IRIS analyzer statistics
 
@@ -474,7 +474,7 @@ def load_code_context(file_path: str, line_number: int, lines_before: int = 20, 
         if not os.path.exists(file_path):
             return f"# File not found: {file_path}"
 
-        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+        with open(file_path, encoding='utf-8', errors='ignore') as f:
             lines = f.readlines()
 
         # Calculate range

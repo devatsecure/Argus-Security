@@ -16,13 +16,12 @@ License: MIT
 import json
 import logging
 import os
-import signal
 import threading
 import time
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +41,7 @@ class TokenUsage:
     def total_tokens(self) -> int:
         return self.input_tokens + self.output_tokens
 
-    def to_dict(self) -> Dict[str, int]:
+    def to_dict(self) -> dict[str, int]:
         return {
             "input": self.input_tokens,
             "output": self.output_tokens,
@@ -76,7 +75,7 @@ class DeepAnalysisMode(Enum):
         }
         return mode_map.get(mode_str.lower(), cls.OFF)
 
-    def get_enabled_phases(self) -> List[DeepAnalysisPhase]:
+    def get_enabled_phases(self) -> list[DeepAnalysisPhase]:
         """Get list of enabled phases for this mode"""
         if self == DeepAnalysisMode.OFF:
             return []
@@ -101,7 +100,7 @@ class DeepAnalysisMode(Enum):
 class DeepAnalysisConfig:
     """Configuration for Deep Analysis Engine with safety controls"""
     mode: DeepAnalysisMode = DeepAnalysisMode.OFF
-    enabled_phases: List[DeepAnalysisPhase] = field(default_factory=list)
+    enabled_phases: list[DeepAnalysisPhase] = field(default_factory=list)
     max_files: int = 50  # UPDATED: More conservative default (was 100)
     timeout_seconds: int = 300  # NEW: 5-minute timeout (default)
     cost_ceiling: float = 5.0  # UPDATED: More conservative (was 10.0)
@@ -135,14 +134,14 @@ class DeepAnalysisConfig:
 class DeepAnalysisResult:
     """Result from deep analysis phase with safety tracking and benchmarking"""
     phase: DeepAnalysisPhase
-    findings: List[Dict] = field(default_factory=list)
+    findings: list[dict] = field(default_factory=list)
     files_analyzed: int = 0
     files_skipped: int = 0  # Track skipped files
     execution_time: float = 0.0
     estimated_cost: float = 0.0
     aborted_reason: Optional[str] = None  # "timeout" | "cost_ceiling" | None
-    warnings: List[str] = field(default_factory=list)  # Track warnings
-    metadata: Dict = field(default_factory=dict)
+    warnings: list[str] = field(default_factory=list)  # Track warnings
+    metadata: dict = field(default_factory=dict)
 
     # Benchmark metrics
     token_usage: TokenUsage = field(default_factory=TokenUsage)
@@ -173,9 +172,9 @@ class CostEstimate:
     estimated_tokens: int
     estimated_time_seconds: float
     estimated_cost_usd: float
-    breakdown_by_phase: Dict[str, float] = field(default_factory=dict)
+    breakdown_by_phase: dict[str, float] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         return {
             "total_files": self.total_files,
             "files_to_analyze": self.files_to_analyze,
@@ -223,7 +222,7 @@ class DeepAnalysisEngine:
         self.ai_client = ai_client
         self.model = model
         self.total_cost = 0.0
-        self.results: List[DeepAnalysisResult] = []
+        self.results: list[DeepAnalysisResult] = []
         self.enable_benchmarking = enable_benchmarking
 
         # Safety control state
@@ -366,7 +365,7 @@ class DeepAnalysisEngine:
         logger.info(f"📊 Estimate: {files_to_analyze} files, ~{int(total_time)}s, ~${total_cost:.2f}")
         return estimate
 
-    def analyze(self, repo_path: str, existing_findings: Optional[List[Dict]] = None) -> List[DeepAnalysisResult]:
+    def analyze(self, repo_path: str, existing_findings: Optional[list[dict]] = None) -> list[DeepAnalysisResult]:
         """
         Run deep analysis on repository
 
@@ -442,7 +441,7 @@ class DeepAnalysisEngine:
 
         return self.results
 
-    def _discover_files(self, repo_path: str) -> List[Path]:
+    def _discover_files(self, repo_path: str) -> list[Path]:
         """Discover analyzable files in repository"""
         extensions = {".py", ".js", ".ts", ".java", ".go", ".rb", ".php", ".cs", ".cpp", ".c"}
         files = []
@@ -468,7 +467,7 @@ class DeepAnalysisEngine:
         self,
         phase: DeepAnalysisPhase,
         repo_path: str,
-        existing_findings: Optional[List[Dict]] = None
+        existing_findings: Optional[list[dict]] = None
     ) -> DeepAnalysisResult:
         """
         Run a specific deep analysis phase
@@ -542,7 +541,7 @@ class DeepAnalysisEngine:
 
         return result
 
-    def _analyze_proactive(self, repo_path: str, existing_findings: Optional[List[Dict]]) -> DeepAnalysisResult:
+    def _analyze_proactive(self, repo_path: str, existing_findings: Optional[list[dict]]) -> DeepAnalysisResult:
         """
         Proactive Scanner
         Hypothesis-driven vulnerability discovery based on codebase patterns
@@ -593,7 +592,7 @@ class DeepAnalysisEngine:
 
         return result
 
-    def _hunt_zero_days(self, repo_path: str, existing_findings: Optional[List[Dict]]) -> DeepAnalysisResult:
+    def _hunt_zero_days(self, repo_path: str, existing_findings: Optional[list[dict]]) -> DeepAnalysisResult:
         """
         Zero-Day Hunter
         Novel vulnerability pattern detection using advanced LLM reasoning
@@ -677,7 +676,7 @@ class DeepAnalysisEngine:
         print("=" * 85)
 
         # Additional statistics
-        print(f"\n📊 Additional Statistics:")
+        print("\n📊 Additional Statistics:")
         files_analyzed_total = sum(r.files_analyzed for r in self.results)
         if total_time > 0:
             print(f"   Files analyzed/sec: {files_analyzed_total / total_time:.2f}")
@@ -688,7 +687,7 @@ class DeepAnalysisEngine:
             print(f"   Avg cost per finding: ${avg_cost_per_finding:.4f}")
 
         # Phase breakdown
-        print(f"\n📈 Phase Breakdown:")
+        print("\n📈 Phase Breakdown:")
         for result in self.results:
             phase_name = result.phase.value
             print(f"   {phase_name}: {len(result.findings)} findings")
@@ -763,7 +762,7 @@ def main():
 
     if args.dry_run:
         estimate = engine.estimate_cost(args.repo_path)
-        print(f"\n📊 Cost Estimate:")
+        print("\n📊 Cost Estimate:")
         print(f"   Files: {estimate.files_to_analyze}/{estimate.total_files}")
         print(f"   Time: ~{int(estimate.estimated_time_seconds)}s")
         print(f"   Cost: ~${estimate.estimated_cost_usd:.2f}")
@@ -776,7 +775,7 @@ def main():
         if args.benchmark:
             engine.print_benchmark_report()
 
-        print(f"\n✅ Analysis complete!")
+        print("\n✅ Analysis complete!")
         print(f"   Total findings: {sum(len(r.findings) for r in results)}")
         print(f"   Total cost: ${engine.total_cost:.2f}")
         print(f"   Results: {args.output}")

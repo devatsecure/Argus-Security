@@ -18,7 +18,7 @@ import functools
 import logging
 import time
 import traceback
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
 from typing import Any, Callable, Optional, TypeVar, Union
 
@@ -129,7 +129,7 @@ class CircuitBreaker:
             self._on_success()
             return result
 
-        except self.expected_exception as e:
+        except self.expected_exception:
             # Failure - update state
             self._on_failure()
 

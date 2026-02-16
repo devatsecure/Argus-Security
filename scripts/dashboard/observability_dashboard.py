@@ -11,7 +11,6 @@ Features:
 - Pattern discovery visualization
 """
 
-import json
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -24,9 +23,9 @@ if str(SCRIPT_DIR) not in sys.path:
 import streamlit as st
 
 try:
+    from cache_manager import CacheManager
     from decision_analyzer import DecisionAnalyzer
     from feedback_collector import FeedbackCollector
-    from cache_manager import CacheManager
 except ImportError as e:
     st.error(f"Failed to import required modules: {e}")
     st.stop()
@@ -274,6 +273,7 @@ def render_time_series(decisions, feedback):
         st.subheader("Decision Volume")
 
         from collections import Counter
+
         import pandas as pd
 
         # Extract dates
@@ -300,6 +300,7 @@ def render_time_series(decisions, feedback):
         st.subheader("Feedback Volume")
 
         from collections import Counter
+
         import pandas as pd
 
         dates = []

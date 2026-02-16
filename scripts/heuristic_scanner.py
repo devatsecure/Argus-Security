@@ -314,11 +314,7 @@ class HeuristicScanner:
                 # 2. The value starts with the dummy indicator (e.g., "test_password")
                 # 3. The dummy is 6+ chars and makes up 40%+ (e.g., "123456" in "test123456")
                 dummy_percentage = len(dummy) / len(value)
-                if value.startswith(dummy) or value.endswith(dummy):
-                    return True
-                elif dummy_percentage >= 0.5:
-                    return True
-                elif len(dummy) >= 6 and dummy_percentage >= 0.4:
+                if value.startswith(dummy) or value.endswith(dummy) or dummy_percentage >= 0.5 or len(dummy) >= 6 and dummy_percentage >= 0.4:
                     return True
 
         # Check if value is just the word "password" or "secret" with simple additions
@@ -328,11 +324,7 @@ class HeuristicScanner:
             r"^\d{4,8}$",  # Simple numeric passwords like 123456
         ]
 
-        for pattern in simple_test_patterns:
-            if re.match(pattern, value, re.IGNORECASE):
-                return True
-
-        return False
+        return any(re.match(pattern, value, re.IGNORECASE) for pattern in simple_test_patterns)
 
     def _has_parameterized_queries(self, content: str) -> bool:
         """Check if the code uses parameterized queries (safe SQL patterns)
@@ -343,10 +335,7 @@ class HeuristicScanner:
         Returns:
             True if parameterized query patterns are found
         """
-        for pattern in self.parameterized_query_patterns:
-            if re.search(pattern, content, re.I):
-                return True
-        return False
+        return any(re.search(pattern, content, re.I) for pattern in self.parameterized_query_patterns)
 
     def _has_safe_exec_pattern(self, content: str) -> bool:
         """Check if command execution uses safe patterns (no shell, hardcoded args)
@@ -357,10 +346,7 @@ class HeuristicScanner:
         Returns:
             True if safe execution patterns are found
         """
-        for pattern in self.safe_exec_patterns:
-            if re.search(pattern, content, re.I):
-                return True
-        return False
+        return any(re.search(pattern, content, re.I) for pattern in self.safe_exec_patterns)
 
     def _has_input_validation_before_regex(self, content: str) -> bool:
         """Check if input is validated/bounded before regex operations
@@ -378,10 +364,7 @@ class HeuristicScanner:
         if not has_regex:
             return False
 
-        for pattern in self.input_validation_patterns:
-            if re.search(pattern, content, re.I):
-                return True
-        return False
+        return any(re.search(pattern, content, re.I) for pattern in self.input_validation_patterns)
 
     def _detect_deployment_context(self, file_path: str, content: str) -> dict:
         """Detect if the project is a localhost-only or dev tool
@@ -437,10 +420,7 @@ class HeuristicScanner:
         Returns:
             True if the file matches a backup file pattern
         """
-        for pattern in self.backup_file_patterns:
-            if re.search(pattern, file_path, re.I):
-                return True
-        return False
+        return any(re.search(pattern, file_path, re.I) for pattern in self.backup_file_patterns)
 
     def _creates_backup_files(self, content: str) -> bool:
         """Check if the code programmatically creates backup files
@@ -451,10 +431,7 @@ class HeuristicScanner:
         Returns:
             True if backup file creation patterns are found
         """
-        for pattern in self.backup_content_patterns:
-            if re.search(pattern, content, re.I):
-                return True
-        return False
+        return any(re.search(pattern, content, re.I) for pattern in self.backup_content_patterns)
 
     def _has_csrf_protection(self, content: str) -> bool:
         """Check if the code contains CSRF token/protection patterns
@@ -465,10 +442,7 @@ class HeuristicScanner:
         Returns:
             True if CSRF protection patterns are found
         """
-        for pattern in self.csrf_token_patterns:
-            if re.search(pattern, content, re.I):
-                return True
-        return False
+        return any(re.search(pattern, content, re.I) for pattern in self.csrf_token_patterns)
 
     def _has_form_actions(self, content: str) -> bool:
         """Check if the code contains form submissions or state-changing endpoints
@@ -479,10 +453,7 @@ class HeuristicScanner:
         Returns:
             True if form/state-changing patterns are found
         """
-        for pattern in self.form_action_patterns:
-            if re.search(pattern, content, re.I):
-                return True
-        return False
+        return any(re.search(pattern, content, re.I) for pattern in self.form_action_patterns)
 
     def _has_state_change_via_get(self, content: str) -> bool:
         """Check if state-changing operations use GET parameters (worse than missing CSRF)
@@ -503,10 +474,7 @@ class HeuristicScanner:
             r'request\.GET\s*\[\s*["\']password',  # Django request.GET['password']
             r'params\[\s*["\']password.*\]\s*.*GET',  # Generic GET password params
         ]
-        for pattern in get_state_patterns:
-            if re.search(pattern, content, re.I):
-                return True
-        return False
+        return any(re.search(pattern, content, re.I) for pattern in get_state_patterns)
 
     def _has_weak_session_ids(self, content: str) -> bool:
         """Check if the code uses weak/predictable session ID generation
@@ -517,10 +485,7 @@ class HeuristicScanner:
         Returns:
             True if weak session ID patterns are found
         """
-        for pattern in self.weak_session_patterns:
-            if re.search(pattern, content, re.I):
-                return True
-        return False
+        return any(re.search(pattern, content, re.I) for pattern in self.weak_session_patterns)
 
     def _has_insecure_cookie_flags(self, content: str) -> bool:
         """Check if cookies are set without httponly/secure flags

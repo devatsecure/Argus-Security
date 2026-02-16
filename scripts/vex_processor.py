@@ -22,8 +22,7 @@ from __future__ import annotations
 
 import json
 import logging
-import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
@@ -86,8 +85,6 @@ _STATUS_MAP: dict[str, VEXStatus] = {
     "affected": VEXStatus.AFFECTED,
     "fixed": VEXStatus.FIXED,
     "under_investigation": VEXStatus.UNDER_INVESTIGATION,
-    # CycloneDX analysis.state values
-    "not_affected": VEXStatus.NOT_AFFECTED,
     "exploitable": VEXStatus.AFFECTED,
     "resolved": VEXStatus.FIXED,
     "resolved_with_pedigree": VEXStatus.FIXED,
@@ -452,7 +449,7 @@ class VEXProcessor:
     def _load_file(self, path: str) -> list[VEXStatement]:
         """Load a single VEX file, detect its format, and parse it."""
         try:
-            with open(path, "r", encoding="utf-8") as fh:
+            with open(path, encoding="utf-8") as fh:
                 data = json.load(fh)
         except json.JSONDecodeError as exc:
             logger.warning("Skipping invalid JSON file %s: %s", path, exc)

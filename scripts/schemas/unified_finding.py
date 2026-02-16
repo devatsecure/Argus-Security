@@ -1,4 +1,4 @@
-"""
+r"""
 Unified Finding Schema - Strict Pydantic v2 validation
 
 This is the core schema for all security findings in Argus.
@@ -15,7 +15,7 @@ import hashlib
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -93,7 +93,7 @@ class FindingStatus(str, Enum):
 
 
 class UnifiedFinding(BaseModel):
-    """
+    r"""
     Unified security finding format for all scanners.
 
     This schema enforces strict validation to prevent data format issues:
@@ -134,11 +134,11 @@ class UnifiedFinding(BaseModel):
     stride: Optional[str] = Field(default=None, description="STRIDE threat category")
 
     # ========== Evidence ==========
-    evidence: Dict[str, Any] = Field(
+    evidence: dict[str, Any] = Field(
         default_factory=dict,
         description="Evidence data (message, snippet, etc.)"
     )
-    references: List[str] = Field(
+    references: list[str] = Field(
         default_factory=list,
         description="Reference URLs"
     )
@@ -197,7 +197,7 @@ class UnifiedFinding(BaseModel):
     )
 
     # ========== Business Context ==========
-    business_context: Dict[str, Any] = Field(
+    business_context: dict[str, Any] = Field(
         default_factory=lambda: {
             "service_tier": "internal",
             "exposure": "internal",
@@ -345,7 +345,7 @@ class UnifiedFinding(BaseModel):
         key_string = f"{self.repo}:{self.path}:{self.rule_id}:{self.line or 0}"
         return hashlib.sha256(key_string.encode()).hexdigest()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization"""
         data = self.model_dump()
         # Convert Path to string
@@ -357,7 +357,7 @@ class UnifiedFinding(BaseModel):
         return data
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "UnifiedFinding":
+    def from_dict(cls, data: dict[str, Any]) -> "UnifiedFinding":
         """Create UnifiedFinding from dictionary"""
         return cls(**data)
 

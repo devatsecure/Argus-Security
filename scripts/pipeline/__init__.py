@@ -13,19 +13,19 @@ Key components:
 - ``build_default_stages`` -- Factory for the standard 6-phase pipeline
 """
 
-from .protocol import PipelineStage, PipelineContext, StageResult
-from .orchestrator import PipelineOrchestrator
 from .base_stage import BaseStage
+from .orchestrator import PipelineOrchestrator
+from .protocol import PipelineContext, PipelineStage, StageResult
 from .stages import (
-    ProjectContextStage,
-    ScannerOrchestrationStage,
     AIEnrichmentStage,
-    RemediationStage,
-    SpontaneousDiscoveryStage,
     MultiAgentReviewStage,
-    SandboxValidationStage,
     PolicyGateStage,
+    ProjectContextStage,
+    RemediationStage,
     ReportingStage,
+    SandboxValidationStage,
+    ScannerOrchestrationStage,
+    SpontaneousDiscoveryStage,
     build_default_stages,
 )
 

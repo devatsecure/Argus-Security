@@ -15,13 +15,12 @@ Functions:
 
 import json
 import logging
-import os
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from hybrid.models import HybridFinding, HybridScanResult
+from hybrid.models import HybridScanResult
 
 logger = logging.getLogger(__name__)
 

@@ -18,25 +18,17 @@ Features:
 """
 
 import logging
-import os
 import shutil
-import sys
-from pathlib import Path
-
-from tenacity import (
-    before_sleep_log,
-    retry,
-    retry_if_exception,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
 
 from error_classifier import (
     classify_llm_error,
-    classified_retry_predicate,
-    classified_wait,
-    is_retryable_error,
+)
+from tenacity import (
+    before_sleep_log,
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
 )
 
 # Configure logging
@@ -50,11 +42,11 @@ class LLMException(Exception):
 
 
 # CostLimitExceededError consolidated into exceptions module
-from exceptions import CostLimitExceededError
+from exceptions import CostLimitExceededError  # noqa: F401 (re-exported via __init__)
 
 
 # ConsensusBuilder consolidated into consensus_builder.py (has AST-based dedup)
-from consensus_builder import ConsensusBuilder
+from consensus_builder import ConsensusBuilder  # noqa: F401 (re-exported via __init__)
 
 
 # CostCircuitBreaker consolidated into cost_tracker.py
@@ -124,8 +116,8 @@ class LLMManager:
             if str(scripts_dir) not in sys.path:
                 sys.path.insert(0, str(scripts_dir))
 
-            from feedback_collector import FeedbackCollector
             from cache_manager import CacheManager
+            from feedback_collector import FeedbackCollector
 
             self.feedback_collector = FeedbackCollector()
             self.cache_manager = CacheManager()
@@ -349,7 +341,7 @@ class LLMManager:
                 seen.add(model)
                 unique_models.append(model)
 
-        logger.info(f"Testing model accessibility for provider: anthropic")
+        logger.info("Testing model accessibility for provider: anthropic")
 
         for model_id in unique_models:
             try:
@@ -637,10 +629,7 @@ class LLMManager:
         Returns:
             Response text string.
         """
-        if system_prompt:
-            combined = f"{system_prompt}\n\n{user_prompt}"
-        else:
-            combined = user_prompt
+        combined = f"{system_prompt}\n\n{user_prompt}" if system_prompt else user_prompt
         text, _inp, _out = self.call_llm_api(combined, max_tokens=max_tokens)
         return text
 

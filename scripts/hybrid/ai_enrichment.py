@@ -16,7 +16,6 @@ Extracted from hybrid_analyzer.py for better modularity.
 
 import json
 import logging
-import os
 import re
 from pathlib import Path
 from typing import Any, Optional
@@ -316,7 +315,7 @@ def analyze_xss_output_destination(finding: HybridFinding, target_path: str, log
 
     try:
         # Read file content around the finding
-        with open(finding.file_path, 'r', encoding='utf-8', errors='ignore') as f:
+        with open(finding.file_path, encoding='utf-8', errors='ignore') as f:
             content = f.read()
 
         # Browser/HTML output patterns
@@ -441,7 +440,7 @@ def build_enrichment_prompt(
         if (finding.title and "xss" in finding.title.lower()) or (finding.description and "cross-site" in finding.description.lower()):
             output_dest = analyze_xss_output_destination(finding, target_path, logger)
             if output_dest == "terminal" or output_dest == "console":
-                prompt += f"""
+                prompt += """
 **⚠️  IMPORTANT XSS ANALYSIS:**
 - Code analysis shows output goes to TERMINAL/CONSOLE (e.g., console.log, print)
 - Terminal output is NOT browser-rendered HTML

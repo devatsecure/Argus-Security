@@ -9,7 +9,7 @@ import logging
 import os
 import subprocess
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Optional
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ class FileSelector:
     """
 
     # Extended language support for polyglot codebases
-    DEFAULT_EXTENSIONS: Set[str] = {
+    DEFAULT_EXTENSIONS: set[str] = {
         # Web/Frontend
         ".js",
         ".jsx",
@@ -63,7 +63,7 @@ class FileSelector:
     }
 
     # Directories to skip during traversal
-    DEFAULT_SKIP_DIRS: Set[str] = {
+    DEFAULT_SKIP_DIRS: set[str] = {
         ".git",
         "node_modules",
         "venv",
@@ -79,18 +79,18 @@ class FileSelector:
     }
 
     # Keywords for prioritizing security-sensitive files
-    SECURITY_KEYWORDS: List[str] = ["auth", "security", "password", "token", "secret", "crypto"]
+    SECURITY_KEYWORDS: list[str] = ["auth", "security", "password", "token", "secret", "crypto"]
 
     # Keywords for prioritizing API/Controller files
-    API_KEYWORDS: List[str] = ["controller", "api", "route", "handler", "endpoint"]
+    API_KEYWORDS: list[str] = ["controller", "api", "route", "handler", "endpoint"]
 
     # Keywords for prioritizing business logic files
-    LOGIC_KEYWORDS: List[str] = ["service", "model", "repository", "dao"]
+    LOGIC_KEYWORDS: list[str] = ["service", "model", "repository", "dao"]
 
     def __init__(
         self,
-        extensions: Optional[Set[str]] = None,
-        skip_dirs: Optional[Set[str]] = None,
+        extensions: Optional[set[str]] = None,
+        skip_dirs: Optional[set[str]] = None,
         max_file_size: int = 50000,
         max_files: int = 100,
     ):
@@ -107,7 +107,7 @@ class FileSelector:
         self.max_file_size = max_file_size
         self.max_files = max_files
 
-    def get_changed_files(self) -> List[str]:
+    def get_changed_files(self) -> list[str]:
         """Get list of changed files in git working directory.
 
         Retrieves files changed between HEAD^ and HEAD (typically used in PR context).
@@ -143,7 +143,7 @@ class FileSelector:
             logger.error(f"Unexpected error getting changed files: {type(e).__name__}: {e}")
             return []
 
-    def matches_glob_patterns(self, file_path: str, patterns: List[str]) -> bool:
+    def matches_glob_patterns(self, file_path: str, patterns: list[str]) -> bool:
         """Check if file matches any glob pattern.
 
         Args:
@@ -164,8 +164,8 @@ class FileSelector:
     def should_exclude_file(
         self,
         rel_path: str,
-        include_patterns: Optional[List[str]] = None,
-        exclude_patterns: Optional[List[str]] = None,
+        include_patterns: Optional[list[str]] = None,
+        exclude_patterns: Optional[list[str]] = None,
     ) -> bool:
         """Determine if a file should be excluded based on filters.
 
@@ -182,10 +182,7 @@ class FileSelector:
             return True
 
         # If exclude patterns are specified, file must not match any
-        if exclude_patterns and self.matches_glob_patterns(rel_path, exclude_patterns):
-            return True
-
-        return False
+        return bool(exclude_patterns and self.matches_glob_patterns(rel_path, exclude_patterns))
 
     def calculate_file_priority(
         self, rel_path: str, only_changed: bool = False
@@ -226,9 +223,9 @@ class FileSelector:
         self,
         repo_path: str,
         only_changed: bool = False,
-        include_patterns: Optional[List[str]] = None,
-        exclude_patterns: Optional[List[str]] = None,
-    ) -> List[Dict[str, any]]:
+        include_patterns: Optional[list[str]] = None,
+        exclude_patterns: Optional[list[str]] = None,
+    ) -> list[dict[str, any]]:
         """Get relevant codebase files for analysis with prioritization.
 
         This method walks the repository, filters files based on extension and
@@ -256,7 +253,7 @@ class FileSelector:
             changed_files = self.get_changed_files()
             print(f"📝 PR mode: Found {len(changed_files)} changed files")
 
-        file_priorities: List[Tuple[int, Dict]] = []
+        file_priorities: list[tuple[int, dict]] = []
 
         for root, dirs, files in os.walk(repo_path):
             # Skip common directories
@@ -325,8 +322,8 @@ class FileSelector:
     def get_files_to_review(
         self,
         repo_path: str,
-        config: Optional[Dict[str, any]] = None,
-    ) -> List[Dict[str, any]]:
+        config: Optional[dict[str, any]] = None,
+    ) -> list[dict[str, any]]:
         """Get files to review based on configuration.
 
         This is a convenience method that extracts configuration and calls

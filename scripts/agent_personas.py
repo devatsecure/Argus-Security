@@ -21,12 +21,12 @@ from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass, field
 from typing import Any, Optional
 
-# Import verdict taxonomy
-from verdict_taxonomy import VerdictType, VerdictClassifier, VerdictMetadata
-
 # Import enhanced FP detector and suppression policy
 from enhanced_fp_detector import EnhancedFalsePositiveDetector
 from suppression_policy import SuppressionPolicy
+
+# Import verdict taxonomy
+from verdict_taxonomy import VerdictClassifier, VerdictMetadata, VerdictType
 
 logger = logging.getLogger(__name__)
 

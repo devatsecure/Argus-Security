@@ -12,7 +12,7 @@ Usage:
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import yaml
 
@@ -42,7 +42,7 @@ PROJECT_ROOT = _find_project_root()
 # ---------------------------------------------------------------------------
 
 
-def get_default_config() -> Dict[str, Any]:
+def get_default_config() -> dict[str, Any]:
     """Return all configuration parameters with sensible defaults.
 
     This is the lowest-priority layer.  Every configurable key must appear
@@ -151,7 +151,7 @@ def get_default_config() -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def _profile_search_paths(profile_name: str) -> List[Path]:
+def _profile_search_paths(profile_name: str) -> list[Path]:
     """Return candidate YAML paths for *profile_name*, in priority order.
 
     First match wins, so higher-priority paths come first:
@@ -164,7 +164,7 @@ def _profile_search_paths(profile_name: str) -> List[Path]:
     ]
 
 
-def _load_raw_profile(profile_name: str, _chain: Optional[List[str]] = None) -> dict:
+def _load_raw_profile(profile_name: str, _chain: Optional[list[str]] = None) -> dict:
     """Load raw YAML dict for *profile_name*, resolving ``_extends``.
 
     Parameters
@@ -241,7 +241,7 @@ _SECTION_PREFIX_MAP = {
 }
 
 
-def flatten_profile(nested: dict) -> Dict[str, Any]:
+def flatten_profile(nested: dict) -> dict[str, Any]:
     """Convert a nested profile YAML dict to a flat config dict.
 
     Mapping rules:
@@ -260,7 +260,7 @@ def flatten_profile(nested: dict) -> Dict[str, Any]:
 
     Only non-None values are included.
     """
-    flat: Dict[str, Any] = {}
+    flat: dict[str, Any] = {}
 
     # -- ai section --
     ai = nested.get("ai")
@@ -325,7 +325,7 @@ def flatten_profile(nested: dict) -> Dict[str, Any]:
     return flat
 
 
-def load_profile(profile_name: str) -> Dict[str, Any]:
+def load_profile(profile_name: str) -> dict[str, Any]:
     """Load a profile by name and return a flat config dict.
 
     Search order (first match wins):
@@ -356,7 +356,7 @@ def load_profile(profile_name: str) -> Dict[str, Any]:
 
 # Mapping: (env_var_name, ...) -> (config_key, type)
 # Types: "str", "bool", "int", "float"
-_ENV_MAPPINGS: List[tuple] = [
+_ENV_MAPPINGS: list[tuple] = [
     # AI
     (("AI_PROVIDER", "INPUT_AI_PROVIDER"), "ai_provider", "str"),
     (("MODEL", "INPUT_MODEL"), "model", "str"),
@@ -459,7 +459,7 @@ def _coerce(raw: str, type_tag: str) -> Any:
     return raw
 
 
-def load_env_overrides() -> Dict[str, Any]:
+def load_env_overrides() -> dict[str, Any]:
     """Load configuration values from explicitly-set environment variables.
 
     Only variables that are **present** in ``os.environ`` are returned.
@@ -470,7 +470,7 @@ def load_env_overrides() -> Dict[str, Any]:
     prefixed names are supported.  The first found wins (left-to-right in
     the mapping tuple).
     """
-    overrides: Dict[str, Any] = {}
+    overrides: dict[str, Any] = {}
 
     for env_names, config_key, type_tag in _ENV_MAPPINGS:
         for env_name in env_names:
@@ -496,7 +496,7 @@ def load_env_overrides() -> Dict[str, Any]:
 
 # Mapping: argparse attribute -> config key
 # Only attributes that may be explicitly provided (not store_true defaults).
-_CLI_ATTR_MAP: Dict[str, str] = {
+_CLI_ATTR_MAP: dict[str, str] = {
     "provider": "ai_provider",
     "model": "model",
     "max_files": "max_files",
@@ -570,7 +570,7 @@ _CLI_ATTR_MAP: Dict[str, str] = {
 }
 
 
-def extract_cli_overrides(args: Any) -> Dict[str, Any]:
+def extract_cli_overrides(args: Any) -> dict[str, Any]:
     """Extract explicitly-set CLI arguments into a flat config dict.
 
     Only attributes whose value is not ``None`` are included, so that
@@ -589,7 +589,7 @@ def extract_cli_overrides(args: Any) -> Dict[str, Any]:
     if args is None:
         return {}
 
-    overrides: Dict[str, Any] = {}
+    overrides: dict[str, Any] = {}
     for attr, config_key in _CLI_ATTR_MAP.items():
         value = getattr(args, attr, None)
         if value is not None:
@@ -627,7 +627,7 @@ def deep_merge(base: dict, override: dict) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def _load_argus_yml(repo_path: str) -> Dict[str, Any]:
+def _load_argus_yml(repo_path: str) -> dict[str, Any]:
     """Load ``.argus.yml`` from *repo_path* and return flat config dict.
 
     Returns an empty dict if the file does not exist.
@@ -654,7 +654,7 @@ def build_unified_config(
     profile: Optional[str] = None,
     cli_args: Any = None,
     repo_path: str = ".",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Build a fully-merged configuration dict.
 
     Layer precedence (last wins):
@@ -726,7 +726,7 @@ def build_unified_config(
 # ---------------------------------------------------------------------------
 
 
-def list_available_profiles() -> List[str]:
+def list_available_profiles() -> list[str]:
     """Return the names of all available profiles.
 
     Searches:
@@ -759,7 +759,7 @@ _VALID_DEEP_ANALYSIS_MODES = {"off", "semantic-only", "conservative", "full"}
 _VALID_EXPLOITABILITY_THRESHOLDS = {"none", "low", "moderate", "high", "critical"}
 
 
-def validate_config(config: Dict[str, Any]) -> List[str]:
+def validate_config(config: dict[str, Any]) -> list[str]:
     """Validate a configuration dict and return a list of warnings/errors.
 
     Returns
@@ -768,7 +768,7 @@ def validate_config(config: Dict[str, Any]) -> List[str]:
         Human-readable warning/error messages.  An empty list means the
         config is valid.
     """
-    issues: List[str] = []
+    issues: list[str] = []
 
     # -- API key requirements per provider --
     provider = config.get("ai_provider", "auto")
