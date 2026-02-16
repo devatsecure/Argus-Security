@@ -5,7 +5,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
-## [Unreleased] - 2026-02-16
+## [Unreleased]
+
+---
+
+## [5.0.0] - 2026-02-16
 
 ### Added
 - Full 6-phase pipeline mode (`pipeline-mode: full`) in GitHub Action via `hybrid_analyzer.py` (47b4b82)
@@ -13,6 +17,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Gitleaks secret scanner wired into pipeline with `enable_gitleaks` config toggle (d6f15e8)
 - MCP server activated with config toggle (`enable_mcp_server`) in hybrid_analyzer (d8f574d)
 - DAST orchestrator wired into hybrid_analyzer pipeline (b8a52c0)
+- DAST agents wired with guarded imports and 43 tests (7b0646f)
+- Temporal orchestrator wired into hybrid_analyzer pipeline (63d5aad)
+- ZAP and Falco wired into Dockerfile.complete and pipeline (54ef375)
+- pytest-xdist for parallel test execution (ddac886)
+- mypy type annotations added to core modules (a99b506)
+- GitHub Actions test workflow with Python matrix (274468b)
 - DVWA-inspired scanner enhancements: backup detection, CSRF analysis, session ID checks (8a4df8d)
 - Phase 4 exploit validation, scanner health tracking, quality filter, DinD support (973e3ee)
 - Claude Code automations: 2 MCP servers, 4 skills, 4 hooks, 4 subagents (e99a5f3)
@@ -22,11 +32,22 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added (Tests)
 - 11 new test files covering 470+ tests for previously untested modules (15090e3)
+- 7 new test files covering 241 tests for previously untested modules (4cb709d)
 - Test coverage for phase_gate, threat_model_generator, remediation_engine (387401a)
 - Test coverage for pipeline stages, scanner runners, config loader (f084c70)
 - Audit Wave 3: tests for new modules, architecture diagrams (bce53ab)
 
+### Security
+- SHA256 integrity verification added to all binary downloads (76a779c)
+- Hardened 6 modules from self-scan dogfooding findings (44306ac)
+
 ### Fixed
+- Resolved 3 flaky tests caused by thread races and subprocess mock (34c7099)
+- Resolved MCP server thread race condition (47e8835)
+- Replaced 22 deprecated `datetime.utcnow()` calls with timezone-aware alternative (9a3e566)
+- Resolved 2 test failures and added conftest.py auto-mock for speed (7808466)
+- Fixed ZAP PHP echo regex to match echo without parentheses (a65f4e1)
+- Fixed 3 known bugs: noise_scorer, reachability ZeroDivision, max_files mismatch (899eab3)
 - Resolved test failures from agent integration changes (876a629)
 - Resolved 38 ruff linting errors across codebase (26a6778)
 - Updated OPA policy hardening tests for block_ids-based decision format (1be3fcd)
@@ -46,6 +67,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Dockerfile.complete HEALTHCHECK and dast-mvp.dockerfile USER directive fixed (0547dba)
 
 ### Changed
+- Refreshed README (578 to 297 lines) and added CHANGELOG (6c93a18)
 - Audit Wave 2: extracted phase functions, shared enrichment pipeline, schema validation (dcf8e49)
 - Auto-fixed 1,690 ruff errors across codebase (676d91b)
 - Aligned max_files default and fixed ruff errors in both orchestrators (79c3dc9)
@@ -53,6 +75,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Config bypass fixed: `os.environ` replaced with `self.config` lookups, 6 env var mappings added (0547dba)
 
 ### Removed
+- Vestigial ZAP + OpenJDK removed from Dockerfile.complete (8f5f8e5)
 - 28 dead/unreachable modules deleted from codebase (0547dba)
 - 3 dead config toggles removed (0547dba)
 - 6 test files moved from `scripts/` to `tests/` (0547dba)
