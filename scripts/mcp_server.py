@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 try:
     from mcp.server import Server
-    from mcp.types import TextContent, Tool
+    from mcp.types import TextContent, Tool  # noqa: F401
 
     MCP_AVAILABLE = True
 except ImportError:

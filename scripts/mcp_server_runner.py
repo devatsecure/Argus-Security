@@ -16,7 +16,7 @@ scripts_dir = Path(__file__).resolve().parent
 if str(scripts_dir) not in sys.path:
     sys.path.insert(0, str(scripts_dir))
 
-from mcp_server import MCP_AVAILABLE, create_argus_mcp_server
+from mcp_server import MCP_AVAILABLE, create_argus_mcp_server  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

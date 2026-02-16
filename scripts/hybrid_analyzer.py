@@ -61,9 +61,12 @@ Architecture:
 Cost Optimization: Deterministic tools first, AI only when needed
 """
 
+import atexit
 import contextlib
 import logging
+import os
 import sys
+import threading
 import time
 from dataclasses import asdict
 from pathlib import Path
@@ -154,6 +157,16 @@ try:
     _DEEP_ANALYSIS_OK = True
 except ImportError:
     _DEEP_ANALYSIS_OK = False
+
+# MCP server (optional, Phase 0)
+try:
+    from mcp_server import MCP_AVAILABLE as _MCP_LIB_OK
+    from mcp_server import create_argus_mcp_server
+
+    _MCP_IMPORT_OK = True
+except ImportError:
+    _MCP_IMPORT_OK = False
+    _MCP_LIB_OK = False
 
 
 class HybridSecurityAnalyzer:
@@ -430,14 +443,26 @@ class HybridSecurityAnalyzer:
 
         if self.enable_dast:
             try:
-                from dast_scanner import DASTScanner
+                from dast_orchestrator import DASTOrchestrator, OrchestratorConfig
 
-                self.dast_scanner = DASTScanner(
-                    target_url=self.dast_target_url, openapi_spec=self.config.get("openapi_spec")
+                orch_config = OrchestratorConfig(
+                    project_path=self.config.get("project_path"),
+                    dast_auth_config_path=self.config.get("dast_auth_config_path", ""),
+                    enable_nuclei=self.config.get("dast_enable_nuclei", True),
+                    enable_zap=self.config.get("dast_enable_zap", True),
+                    max_duration=self.config.get("dast_max_duration", 900),
+                    parallel_agents=self.config.get("dast_parallel_agents", True),
                 )
-                logger.info("✅ DAST scanner initialized")
+                self.dast_scanner = DASTOrchestrator(config=orch_config)
+                logger.info(
+                    "DAST orchestrator initialized (nuclei=%s, zap=%s, parallel=%s, max_duration=%ds)",
+                    orch_config.enable_nuclei,
+                    orch_config.enable_zap,
+                    orch_config.parallel_agents,
+                    orch_config.max_duration,
+                )
             except (ImportError, RuntimeError) as e:
-                logger.warning(f"⚠️  DAST scanner not available: {e}")
+                logger.warning("DAST orchestrator not available: %s", e)
                 self.enable_dast = False
 
         if self.enable_supply_chain:
@@ -522,6 +547,37 @@ class HybridSecurityAnalyzer:
             except Exception as e:
                 logger.warning("Scanner registry init failed (non-fatal): %s", e)
 
+        # -- Phase 0: MCP Server (optional background service) --
+        self._mcp_server = None
+        self._mcp_thread = None
+        self._mcp_started = False
+        enable_mcp = self.config.get("enable_mcp_server", False)
+        if enable_mcp and _MCP_IMPORT_OK and _MCP_LIB_OK:
+            try:
+                repo_path = self.config.get("repo_path", os.getcwd())
+                self._mcp_server = create_argus_mcp_server(repo_path, config=self.config)
+                if self._mcp_server is not None:
+                    self._mcp_thread = threading.Thread(
+                        target=self._run_mcp_server,
+                        name="argus-mcp-server",
+                        daemon=True,
+                    )
+                    self._mcp_thread.start()
+                    self._mcp_started = True
+                    atexit.register(self.stop_mcp_server)
+                    logger.info("Phase 0: MCP server started in background thread")
+                else:
+                    logger.warning("Phase 0: MCP server creation returned None (MCP library may be missing)")
+            except Exception as e:
+                logger.warning("Phase 0: MCP server failed to start (non-fatal): %s", e)
+                self._mcp_server = None
+                self._mcp_thread = None
+                self._mcp_started = False
+        elif enable_mcp and not _MCP_IMPORT_OK:
+            logger.warning("Phase 0: MCP server module not importable — skipping")
+        elif enable_mcp and not _MCP_LIB_OK:
+            logger.warning("Phase 0: MCP library not installed (pip install 'mcp>=1.0.0') — skipping")
+
         # Validation: At least one scanner or AI enrichment must be enabled
         active_features = [
             name for name in (
@@ -572,6 +628,12 @@ class HybridSecurityAnalyzer:
         logger.info("Target: %s", target_path)
         logger.info("Tools: %s", self._get_enabled_tools())
         logger.info("")
+
+        # -- PHASE 0: MCP Server Status --
+        if self._mcp_started:
+            logger.info("Phase 0: MCP server is running (background thread: %s)", self._mcp_thread.name if self._mcp_thread else "unknown")
+        elif self.config.get("enable_mcp_server", False):
+            logger.info("Phase 0: MCP server enabled but not running (startup may have failed)")
 
         # Detect project context for context-aware AI triage
         if PROJECT_CONTEXT_AVAILABLE and self.enable_ai_enrichment:
@@ -745,6 +807,10 @@ class HybridSecurityAnalyzer:
         # Attach scanner health so reports can distinguish "0 findings" vs "scanner failed"
         result.__dict__["scanner_health"] = scanner_health
 
+        # -- Phase 0 cleanup: stop MCP server --
+        if self._mcp_started:
+            self.stop_mcp_server()
+
         return result
 
     # ------------------------------------------------------------------
@@ -848,6 +914,40 @@ class HybridSecurityAnalyzer:
             gate.validate(phase_name, phase_output)
         except Exception as e:
             logger.warning("Phase gate validation failed for %s (non-fatal): %s", phase_name, e)
+
+    # ------------------------------------------------------------------
+    # MCP server lifecycle
+    # ------------------------------------------------------------------
+
+    def _run_mcp_server(self) -> None:
+        """Run MCP server in background thread (blocking call wrapped).
+
+        Creates a new asyncio event loop for the thread since server.run()
+        is a blocking call that drives an async event loop internally.
+        The finally block ensures _mcp_started is reset on any exit.
+        """
+        import asyncio
+
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            if self._mcp_server is not None:
+                self._mcp_server.run()
+        except Exception as e:
+            logger.warning("MCP server thread exited with error: %s", e)
+        finally:
+            self._mcp_started = False
+
+    def stop_mcp_server(self) -> None:
+        """Stop the MCP server if running. Safe to call multiple times."""
+        if not self._mcp_started:
+            return
+        self._mcp_started = False
+        logger.info("Phase 0: Stopping MCP server")
+        # The MCP server runs as a daemon thread, so it will be terminated
+        # when the main process exits. We clear references for clean state.
+        self._mcp_server = None
+        self._mcp_thread = None
 
     # ------------------------------------------------------------------
     # Delegations to phase modules (kept for backward compat with callers
