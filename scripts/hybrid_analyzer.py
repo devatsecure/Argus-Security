@@ -61,8 +61,8 @@ Architecture:
 Cost Optimization: Deterministic tools first, AI only when needed
 """
 
+import contextlib
 import logging
-import os
 import sys
 import time
 from dataclasses import asdict
@@ -76,7 +76,7 @@ if str(SCRIPT_DIR) not in sys.path:
 
 # Import project context detector for context-aware AI triage
 try:
-    from project_context_detector import detect_project_context, ProjectContext
+    from project_context_detector import ProjectContext, detect_project_context
 
     PROJECT_CONTEXT_AVAILABLE = True
 except ImportError:
@@ -85,7 +85,7 @@ except ImportError:
 
 # Import IRIS analyzer for semantic vulnerability analysis
 try:
-    from iris_analyzer import IRISAnalyzer, IRISFinding, load_code_context
+    from iris_analyzer import IRISAnalyzer
 
     IRIS_AVAILABLE = True
 except ImportError:
@@ -149,7 +149,7 @@ except ImportError:
     _PHASE_GATE_OK = False
 
 try:
-    from argus_deep_analysis import DeepAnalysisEngine, DeepAnalysisConfig, DeepAnalysisMode
+    from argus_deep_analysis import DeepAnalysisConfig, DeepAnalysisEngine, DeepAnalysisMode
 
     _DEEP_ANALYSIS_OK = True
 except ImportError:
@@ -335,11 +335,11 @@ class HybridSecurityAnalyzer:
             try:
                 from collaborative_reasoning import (
                     CollaborativeReasoning,
-                    SecretHunterAgent,
-                    FalsePositiveFilterAgent,
-                    ExploitAssessorAgent,
                     ComplianceAgent,
                     ContextExpertAgent,
+                    ExploitAssessorAgent,
+                    FalsePositiveFilterAgent,
+                    SecretHunterAgent,
                 )
 
                 agents = [
@@ -616,13 +616,11 @@ class HybridSecurityAnalyzer:
                 # scan_codebase expects list of {"path": ..., "content": ...} dicts
                 _heuristic_files = []
                 _target = Path(target_path)
-                _HEURISTIC_EXTS = {".py", ".js", ".ts", ".tsx", ".jsx", ".java", ".go", ".rb", ".yml", ".yaml", ".json", ".tf"}
+                _heuristic_exts = {".py", ".js", ".ts", ".tsx", ".jsx", ".java", ".go", ".rb", ".yml", ".yaml", ".json", ".tf"}
                 for fp in _target.rglob("*"):
-                    if fp.is_file() and fp.suffix in _HEURISTIC_EXTS and ".git" not in fp.parts and "node_modules" not in fp.parts:
-                        try:
+                    if fp.is_file() and fp.suffix in _heuristic_exts and ".git" not in fp.parts and "node_modules" not in fp.parts:
+                        with contextlib.suppress(Exception):
                             _heuristic_files.append({"path": str(fp), "content": fp.read_text(errors="ignore")})
-                        except Exception:
-                            pass
                         if len(_heuristic_files) >= 500:
                             break
                 heuristic_findings = scanner.scan_codebase(_heuristic_files) if _heuristic_files else {}

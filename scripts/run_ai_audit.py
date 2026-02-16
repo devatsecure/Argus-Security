@@ -20,7 +20,6 @@ FACADE PATTERN:
     ``from run_ai_audit import X`` continue to work without changes.
 """
 
-import ast
 import glob
 import json
 import logging
@@ -28,7 +27,6 @@ import os
 import re
 import subprocess
 import sys
-import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -62,9 +60,6 @@ except ImportError:
         THREAT_MODELING_AVAILABLE = False
         logger.warning("No threat modeling available (install pytm: pip install pytm)")
 
-# Import AST deduplicator for enhanced consensus grouping
-from ast_deduplicator import ASTDeduplicator
-
 # Import deep analysis engine
 try:
     from argus_deep_analysis import DeepAnalysisConfig, DeepAnalysisEngine, DeepAnalysisMode
@@ -75,41 +70,21 @@ except ImportError:
     logger.warning("Deep Analysis Engine not available")
 
 # Import refactored modules (extracted from this file for maintainability)
-from heuristic_scanner import HeuristicScanner
-from consensus_builder import ConsensusBuilder
-from analysis_helpers import (
+# Re-exported for backward compatibility (used by tests and external consumers)
+from analysis_helpers import (  # noqa: E402
+    AgentOutputValidator,  # noqa: F401
+    CodebaseChunker,  # noqa: F401
+    ContextCleanup,  # noqa: F401
     ContextTracker,
+    CostLimitExceeded,  # noqa: F401
+    CostLimitExceededError,  # noqa: F401
     FindingSummarizer,
-    AgentOutputValidator,
-    TimeoutManager,
-    CodebaseChunker,
-    ContextCleanup,
     ReviewMetrics,
-    CostLimitExceededError,
-    CostLimitExceeded,
+    TimeoutManager,  # noqa: F401
 )
-
-
-# CostCircuitBreaker class is defined below after the removed inline classes
-# The HeuristicScanner, ConsensusBuilder, and helper classes are now imported from:
-# - heuristic_scanner.py
-# - consensus_builder.py
-# - analysis_helpers.py
-
-# --- START OF REMOVED INLINE CLASSES (now imported) ---
-# The following classes were moved to separate modules:
-# - HeuristicScanner -> heuristic_scanner.py
-# - ConsensusBuilder -> consensus_builder.py
-# - ContextTracker, FindingSummarizer, AgentOutputValidator,
-#   TimeoutManager, CodebaseChunker, ContextCleanup, ReviewMetrics,
-#   CostLimitExceededError -> analysis_helpers.py
-# --- END OF REMOVED INLINE CLASSES ---
-
-
-# CostCircuitBreaker consolidated into orchestrator/cost_tracker.py
+from consensus_builder import ConsensusBuilder  # noqa: E402, F401
+from heuristic_scanner import HeuristicScanner  # noqa: E402
 from orchestrator.cost_tracker import CostCircuitBreaker  # noqa: E402
-
-# Phase gating for output validation between pipeline phases
 from phase_gate import PhaseGate  # noqa: E402
 
 # Vulnerability enrichment & compliance modules (v2.0 features)
@@ -128,26 +103,21 @@ except ImportError:
 # Consumers that do ``from run_ai_audit import load_config_from_env`` (etc.)
 # will continue to work.
 # ---------------------------------------------------------------------------
-from orchestrator.config import (  # noqa: E402
-    load_config_from_env,
-    validate_config,
-    estimate_cost,
-    estimate_review_cost,
-    estimate_tokens,
-    read_file_safe,
-    classify_finding_category,
-    should_review_file,
-    parse_args,
-    build_config,
-)
-
 from orchestrator.agent_runner import (  # noqa: E402
     parse_findings_from_report,
-    load_agent_prompt,
-    build_enhanced_agent_prompt,
     run_multi_agent_sequential,
 )
-
+from orchestrator.config import (  # noqa: E402
+    build_config,
+    classify_finding_category,  # noqa: F401
+    estimate_cost,
+    estimate_tokens,  # noqa: F401
+    load_config_from_env,  # noqa: F401
+    parse_args,
+    read_file_safe,  # noqa: F401
+    should_review_file,
+    validate_config,  # noqa: F401
+)
 
 # Available agents for multi-agent mode
 AVAILABLE_AGENTS = [
@@ -886,7 +856,7 @@ def _run_license_scoring(config, repo_path):
         scorer = LicenseRiskScorer()
         risks = scorer.score_components(components)
         violations = LicenseRiskScorer.generate_policy_violations(risks)
-        summary = LicenseRiskScorer.get_summary(risks)
+        _summary = LicenseRiskScorer.get_summary(risks)
 
         logger.info(
             "License scoring: %d components, %d risks, %d violations",
@@ -1874,10 +1844,7 @@ def run_audit(repo_path, config, review_type="audit"):
         findings, enrichment_meta = _run_enrichment_pipeline(
             findings, config, repo_path, ctx.metrics
         )
-        if enrichment_meta:
-            json_output_meta = {"enrichment": enrichment_meta}
-        else:
-            json_output_meta = {}
+        json_output_meta = {"enrichment": enrichment_meta} if enrichment_meta else {}
 
         # Generate SARIF with metrics
         sarif = generate_sarif(findings, repo_path, ctx.metrics)
@@ -1952,7 +1919,7 @@ def run_audit(repo_path, config, review_type="audit"):
             timeout_summary = {}
 
         if validation_summary.get("total_validations", 0) > 0:
-            print(f"\n📋 Output Validation:")
+            print("\n📋 Output Validation:")
             print(f"   Valid outputs: {validation_summary['valid_outputs']}/{validation_summary['total_validations']}")
             if validation_summary.get('total_warnings', 0) > 0:
                 print(f"   ⚠️  Warnings: {validation_summary['total_warnings']}")
@@ -1960,7 +1927,7 @@ def run_audit(repo_path, config, review_type="audit"):
                 print(f"   ❌ Invalid: {validation_summary['invalid_outputs']}")
 
         if timeout_summary.get("total_executions", 0) > 0:
-            print(f"\n⏱️  Timeout Management:")
+            print("\n⏱️  Timeout Management:")
             print(f"   Completed: {timeout_summary['completed']}/{timeout_summary['total_executions']}")
             print(f"   Avg duration: {timeout_summary['avg_duration']:.1f}s")
             if timeout_summary.get('timeout_exceeded', 0) > 0:

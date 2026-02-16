@@ -298,12 +298,14 @@ class TestMultiAgentMode:
     @patch("run_ai_audit.call_llm_api")
     def test_load_agent_prompts(self, mock_llm):
         """Test that agent prompts are loaded correctly"""
+        from orchestrator.agent_runner import load_agent_prompt
+
         # Test each agent prompt can be loaded
         agents = ["security", "performance", "testing", "quality", "orchestrator"]
 
         for agent in agents:
             try:
-                prompt = audit_module.load_agent_prompt(agent)
+                prompt = load_agent_prompt(agent)
                 assert len(prompt) > 0
                 assert agent in prompt.lower() or "review" in prompt.lower()
             except FileNotFoundError:

@@ -17,7 +17,7 @@
 ## Wave 3: Infrastructure
 
 - **Falco in Dockerfile.complete**: Add Falco installation OR add clear skip/warning message in `runtime_security_monitor.py` when Falco is not found.
-- **Remove vestigial ZAP** from `Dockerfile.complete`: Installed (~200MB) but never called by `hybrid_analyzer.py`.
+- **ZAP is active** (corrected): ZAP IS wired in `phase1_scanning.py:305-331` via `scan_source()` and defaults enabled (`enable_zap_baseline=True`). Keep ZAP in Dockerfile.complete. No action needed.
 
 ## Wave 4: Test Coverage
 

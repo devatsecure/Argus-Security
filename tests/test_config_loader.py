@@ -177,3 +177,14 @@ class TestBuildUnifiedConfig:
         with patch.dict(os.environ, {"ENABLE_SEMGREP": "false"}, clear=False):
             config = config_loader.build_unified_config()
         assert config["enable_semgrep"] is False
+
+
+def test_max_files_default_matches_across_modules():
+    """max_files default should be consistent between config_loader and orchestrator/config."""
+    from config_loader import get_default_config
+    from orchestrator.config import load_config_from_env
+
+    cl_config = get_default_config()
+    orch_config = load_config_from_env()
+
+    assert int(cl_config.get("max_files", 0)) == int(orch_config.get("max_files", 0))
