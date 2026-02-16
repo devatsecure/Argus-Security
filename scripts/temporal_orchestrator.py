@@ -8,6 +8,7 @@ Usage:
 
 Requires: temporalio>=1.7.0 (optional dependency)
 """
+
 from __future__ import annotations
 
 import logging
@@ -254,9 +255,7 @@ class AuditWorkflowRunner:
         retry_mode: str = "production",
     ):
         self._activities = activities or PipelineActivities()
-        self._retry_policy = RETRY_POLICIES.get(
-            retry_mode, RETRY_POLICIES["production"]
-        )
+        self._retry_policy = RETRY_POLICIES.get(retry_mode, RETRY_POLICIES["production"])
         self._phase_results: dict[str, PhaseResult] = {}
 
     @property
@@ -264,9 +263,7 @@ class AuditWorkflowRunner:
         """Return results from all completed phases."""
         return dict(self._phase_results)
 
-    def run(
-        self, repo_path: str, config: dict[str, Any] | None = None
-    ) -> dict[str, PhaseResult]:
+    def run(self, repo_path: str, config: dict[str, Any] | None = None) -> dict[str, PhaseResult]:
         """Execute all 6 phases sequentially.
 
         Each phase receives the output of the previous phase.
@@ -303,9 +300,7 @@ class AuditWorkflowRunner:
                 self._phase_results[phase_name] = result
 
                 if result.status == "failed":
-                    logger.error(
-                        "Phase %s failed: %s", phase_name, result.error
-                    )
+                    logger.error("Phase %s failed: %s", phase_name, result.error)
                     # In strict mode, halt on any failure
                     if config.get("phase_gate_strict", False):
                         break
@@ -342,16 +337,8 @@ class AuditWorkflowRunner:
         """
         return {
             "total_phases": len(PIPELINE_PHASES),
-            "completed_phases": sum(
-                1
-                for r in self._phase_results.values()
-                if r.status == "success"
-            ),
-            "failed_phases": sum(
-                1
-                for r in self._phase_results.values()
-                if r.status == "failed"
-            ),
+            "completed_phases": sum(1 for r in self._phase_results.values() if r.status == "success"),
+            "failed_phases": sum(1 for r in self._phase_results.values() if r.status == "failed"),
             "phases": {
                 name: {
                     "status": result.status,
@@ -386,10 +373,7 @@ async def create_temporal_client(server: str = "localhost:7233") -> Any:
         If ``temporalio`` is not installed.
     """
     if not TEMPORAL_AVAILABLE:
-        raise RuntimeError(
-            "temporalio package not installed. "
-            "Install with: pip install temporalio>=1.7.0"
-        )
+        raise RuntimeError("temporalio package not installed. Install with: pip install temporalio>=1.7.0")
     return await Client.connect(server)
 
 
@@ -415,10 +399,7 @@ async def start_temporal_worker(
         If ``temporalio`` is not installed.
     """
     if not TEMPORAL_AVAILABLE:
-        raise RuntimeError(
-            "temporalio package not installed. "
-            "Install with: pip install temporalio>=1.7.0"
-        )
+        raise RuntimeError("temporalio package not installed. Install with: pip install temporalio>=1.7.0")
     activities_instance = PipelineActivities()
     return Worker(
         client,

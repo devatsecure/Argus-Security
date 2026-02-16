@@ -168,6 +168,18 @@ except ImportError:
     _MCP_IMPORT_OK = False
     _MCP_LIB_OK = False
 
+# Temporal orchestrator (optional execution backend)
+try:
+    from temporal_orchestrator import (
+        AuditWorkflowRunner,
+        PipelineActivities,
+    )
+
+    _TEMPORAL_IMPORT_OK = True
+except ImportError:
+    _TEMPORAL_IMPORT_OK = False
+    _TEMPORAL_LIB_OK = False
+
 
 class HybridSecurityAnalyzer:
     """
@@ -580,19 +592,27 @@ class HybridSecurityAnalyzer:
 
         # Validation: At least one scanner or AI enrichment must be enabled
         active_features = [
-            name for name in (
-                "semgrep", "trivy", "checkov", "api_security", "dast",
-                "supply_chain", "fuzzing", "threat_intel", "remediation",
-                "runtime_security", "regression_testing", "ai_enrichment",
-                "nuclei_templates", "zap_baseline",
+            name
+            for name in (
+                "semgrep",
+                "trivy",
+                "checkov",
+                "api_security",
+                "dast",
+                "supply_chain",
+                "fuzzing",
+                "threat_intel",
+                "remediation",
+                "runtime_security",
+                "regression_testing",
+                "ai_enrichment",
+                "nuclei_templates",
+                "zap_baseline",
             )
             if getattr(self, f"enable_{name}", False)
         ]
         if not active_features:
-            raise ValueError(
-                "At least one tool must be enabled! "
-                "Use --help to see available scanner flags."
-            )
+            raise ValueError("At least one tool must be enabled! Use --help to see available scanner flags.")
 
     def analyze(
         self, target_path: str, output_dir: Optional[str] = None, severity_filter: Optional[list[str]] = None
@@ -629,9 +649,24 @@ class HybridSecurityAnalyzer:
         logger.info("Tools: %s", self._get_enabled_tools())
         logger.info("")
 
+        # -- Temporal execution backend (optional) --
+        if self.config.get("enable_temporal", False):
+            temporal_result = self._try_temporal_execution(
+                target_path=target_path,
+                output_dir=output_dir,
+                severity_filter=severity_filter,
+            )
+            if temporal_result is not None:
+                return temporal_result
+            # Fall-through: Temporal was requested but unavailable/failed.
+            # The warning was already logged inside _try_temporal_execution.
+
         # -- PHASE 0: MCP Server Status --
         if self._mcp_started:
-            logger.info("Phase 0: MCP server is running (background thread: %s)", self._mcp_thread.name if self._mcp_thread else "unknown")
+            logger.info(
+                "Phase 0: MCP server is running (background thread: %s)",
+                self._mcp_thread.name if self._mcp_thread else "unknown",
+            )
         elif self.config.get("enable_mcp_server", False):
             logger.info("Phase 0: MCP server enabled but not running (startup may have failed)")
 
@@ -678,9 +713,27 @@ class HybridSecurityAnalyzer:
                 # scan_codebase expects list of {"path": ..., "content": ...} dicts
                 _heuristic_files = []
                 _target = Path(target_path)
-                _heuristic_exts = {".py", ".js", ".ts", ".tsx", ".jsx", ".java", ".go", ".rb", ".yml", ".yaml", ".json", ".tf"}
+                _heuristic_exts = {
+                    ".py",
+                    ".js",
+                    ".ts",
+                    ".tsx",
+                    ".jsx",
+                    ".java",
+                    ".go",
+                    ".rb",
+                    ".yml",
+                    ".yaml",
+                    ".json",
+                    ".tf",
+                }
                 for fp in _target.rglob("*"):
-                    if fp.is_file() and fp.suffix in _heuristic_exts and ".git" not in fp.parts and "node_modules" not in fp.parts:
+                    if (
+                        fp.is_file()
+                        and fp.suffix in _heuristic_exts
+                        and ".git" not in fp.parts
+                        and "node_modules" not in fp.parts
+                    ):
                         with contextlib.suppress(Exception):
                             _heuristic_files.append({"path": str(fp), "content": fp.read_text(errors="ignore")})
                         if len(_heuristic_files) >= 500:
@@ -814,6 +867,95 @@ class HybridSecurityAnalyzer:
         return result
 
     # ------------------------------------------------------------------
+    # Temporal execution backend
+    # ------------------------------------------------------------------
+
+    def _try_temporal_execution(
+        self,
+        target_path: str,
+        output_dir: Optional[str],
+        severity_filter: Optional[list[str]],
+    ) -> Optional[HybridScanResult]:
+        """Attempt to run the pipeline via the Temporal orchestrator.
+
+        Returns a ``HybridScanResult`` if Temporal execution succeeds, or
+        ``None`` if Temporal is unavailable / fails so the caller should
+        fall back to direct execution.
+
+        Graceful degradation hierarchy:
+        1. ``temporal_orchestrator`` module not importable -> warn, return None
+        2. ``temporalio`` library not installed -> warn, return None
+        3. Workflow execution raises any exception -> warn, return None
+        """
+        if not _TEMPORAL_IMPORT_OK:
+            logger.warning(
+                "Temporal enabled in config but temporal_orchestrator module "
+                "could not be imported. Falling back to direct execution."
+            )
+            return None
+
+        retry_mode = self.config.get("temporal_retry_mode", "production")
+
+        try:
+            runner = AuditWorkflowRunner(
+                activities=PipelineActivities(config=self.config),
+                retry_mode=retry_mode,
+            )
+            logger.info("Running pipeline via Temporal orchestrator (mode=%s)", retry_mode)
+            runner.run(repo_path=target_path, config=self.config)
+
+            # Log summary from Temporal execution
+            summary = runner.get_summary()
+            logger.info(
+                "Temporal workflow completed: %d/%d phases succeeded",
+                summary.get("completed_phases", 0),
+                summary.get("total_phases", 0),
+            )
+            for pname, pdetail in summary.get("phases", {}).items():
+                status = pdetail.get("status", "unknown")
+                duration = pdetail.get("duration_seconds", 0.0)
+                if status == "failed":
+                    logger.warning(
+                        "  Phase %s: %s (%.1fs) — %s",
+                        pname,
+                        status,
+                        duration,
+                        pdetail.get("error", ""),
+                    )
+                else:
+                    logger.info("  Phase %s: %s (%.1fs)", pname, status, duration)
+
+            # After Temporal execution, run the normal analyze() path for the
+            # full result assembly.  Temporal adds crash-recovery and retry
+            # semantics around the same phase logic; the final reporting still
+            # goes through the standard code path.
+            #
+            # Re-invoke analyze() with Temporal disabled to avoid recursion
+            # and get the full HybridScanResult with SARIF/JSON/Markdown.
+            original_toggle = self.config.get("enable_temporal", False)
+            self.config["enable_temporal"] = False
+            try:
+                result = self.analyze(
+                    target_path=target_path,
+                    output_dir=output_dir,
+                    severity_filter=severity_filter,
+                )
+            finally:
+                self.config["enable_temporal"] = original_toggle
+
+            # Attach Temporal workflow metadata to the result
+            result.__dict__["temporal_summary"] = summary
+
+            return result
+
+        except Exception as exc:
+            logger.warning(
+                "Temporal execution failed: %s. Falling back to direct execution.",
+                exc,
+            )
+            return None
+
+    # ------------------------------------------------------------------
     # Vulnerability enrichment pipeline (v2.0)
     # ------------------------------------------------------------------
 
@@ -835,7 +977,9 @@ class HybridSecurityAnalyzer:
         from enrichment_pipeline import run_enrichment_pipeline
 
         finding_dicts, _enrichment_meta = run_enrichment_pipeline(
-            finding_dicts, self.config, target_path,
+            finding_dicts,
+            self.config,
+            target_path,
         )
 
         # -- License risk scoring (hybrid_analyzer-specific, SBOM-based) --
@@ -847,10 +991,12 @@ class HybridSecurityAnalyzer:
                     pkg = fd.get("cve_id") and fd.get("title", "")
                     if pkg and " in " in pkg:
                         pkg_name = pkg.split(" in ")[-1].strip()
-                        components.append({
-                            "name": pkg_name,
-                            "version": fd.get("installed_version", "unknown"),
-                        })
+                        components.append(
+                            {
+                                "name": pkg_name,
+                                "version": fd.get("installed_version", "unknown"),
+                            }
+                        )
                 if components:
                     risks = license_scorer.score_components(components)
                     if risks:
