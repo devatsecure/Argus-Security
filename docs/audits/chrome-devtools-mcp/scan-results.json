@@ -1,0 +1,63 @@
+{
+  "target_path": "/tmp/chrome-devtools-mcp",
+  "scan_timestamp": "2026-02-16T10:36:00.423415",
+  "total_findings": 1,
+  "findings_by_severity": {
+    "critical": 0,
+    "high": 0,
+    "medium": 1,
+    "low": 0
+  },
+  "findings_by_source": {
+    "nuclei-template": 1
+  },
+  "findings": [
+    {
+      "finding_id": "nuclei-src-1076e858bc7c04a7",
+      "source_tool": "nuclei-template",
+      "severity": "medium",
+      "category": "security",
+      "title": "Missing Security Headers: Content-Security-Policy, Strict-Transport-Security, X-Frame-Options",
+      "description": "This file defines HTTP response handling but does not set the following security headers: Content-Security-Policy, Strict-Transport-Security, X-Frame-Options, X-Content-Type-Options, X-XSS-Protection, Referrer-Policy, Permissions-Policy.  Missing headers can expose the application to clickjacking, MIME-sniffing, and XSS attacks.",
+      "file_path": "/tmp/chrome-devtools-mcp/tests/server.ts",
+      "line_number": 56,
+      "cwe_id": "CWE-693",
+      "cve_id": null,
+      "cvss_score": null,
+      "exploitability": null,
+      "recommendation": null,
+      "references": [
+        "Testing: ['Manual security testing required', 'Consult OWASP guidelines']"
+      ],
+      "confidence": 1.0,
+      "llm_enriched": false,
+      "sandbox_validated": false,
+      "iris_verified": false,
+      "iris_confidence": null,
+      "iris_verdict": null
+    }
+  ],
+  "scan_duration_seconds": 73.40601587295532,
+  "cost_usd": 0.0,
+  "phase_timings": {
+    "phase1_static_analysis": 72.6584541797638,
+    "phase2_5_remediation": 0.0008318424224853516,
+    "phase4_sandbox_validation": 3.409385681152344e-05,
+    "phase5_policy_gate": 0.09684395790100098,
+    "phase5.5_vulnerability_chaining": 0.14713191986083984
+  },
+  "tools_used": [
+    "Semgrep",
+    "Trivy",
+    "Checkov",
+    "API-Security",
+    "Supply-Chain",
+    "Threat-Intel",
+    "Remediation",
+    "Regression-Testing",
+    "Nuclei-Templates",
+    "ZAP-Baseline",
+    "Sandbox-Validator"
+  ],
+  "llm_enrichment_enabled": false
+}
