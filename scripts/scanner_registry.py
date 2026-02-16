@@ -137,18 +137,26 @@ class ScannerRegistry:
             logger.debug(f"Plugin directory does not exist: {self.plugin_dir}")
             return
 
+        # Resolve plugin directory to prevent symlink-based path traversal
+        resolved_plugin_dir = self.plugin_dir.resolve()
         plugin_count = 0
 
-        for plugin_file in self.plugin_dir.glob("*.py"):
+        for plugin_file in resolved_plugin_dir.glob("*.py"):
             try:
                 # Skip __init__.py and hidden files
                 if plugin_file.name.startswith("_"):
                     continue
 
+                # Ensure resolved path is within plugin directory (prevent symlink escapes)
+                resolved_file = plugin_file.resolve()
+                if not str(resolved_file).startswith(str(resolved_plugin_dir)):
+                    logger.warning(f"Skipping plugin outside plugin dir (symlink escape): {plugin_file}")
+                    continue
+
                 # Load module from file
                 spec = importlib.util.spec_from_file_location(
                     plugin_file.stem,
-                    plugin_file
+                    resolved_file
                 )
                 module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(module)

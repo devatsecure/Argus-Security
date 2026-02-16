@@ -29,9 +29,17 @@ from pathlib import Path
 from typing import Optional
 
 try:
-    import xml.etree.ElementTree as ET
+    import defusedxml.ElementTree as ET  # Prefer defusedxml to prevent XXE attacks
 except ImportError:
-    ET = None
+    try:
+        import xml.etree.ElementTree as ET
+
+        logging.getLogger(__name__).warning(
+            "defusedxml not available - XML parsing may be vulnerable to XXE attacks. "
+            "Install defusedxml: pip install defusedxml"
+        )
+    except ImportError:
+        ET = None
 
 __all__ = ["ZAPBaselineScanner"]
 

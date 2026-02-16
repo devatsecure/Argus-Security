@@ -297,6 +297,11 @@ class ThreatIntelEnricher:
         Returns:
             ThreatContext with enrichment data, or None if no data available
         """
+        # Validate CVE ID format to prevent URL injection/SSRF
+        if not self.CVE_PATTERN.fullmatch(cve_id):
+            logger.warning(f"Invalid CVE ID format, skipping: {cve_id!r}")
+            return None
+
         logger.debug(f"Enriching {cve_id}")
 
         context = ThreatContext(cve_id=cve_id)

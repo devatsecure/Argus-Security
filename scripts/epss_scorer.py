@@ -27,6 +27,7 @@ import logging
 import os
 import threading
 import urllib.parse
+import re
 import urllib.request
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -35,6 +36,9 @@ from typing import Any
 __all__ = ["EPSSScore", "EPSSCache", "EPSSScorer"]
 
 logger = logging.getLogger(__name__)
+
+# Compiled pattern for CVE ID validation (defense-in-depth against URL injection)
+_CVE_PATTERN = re.compile(r"CVE-\d{4}-\d{4,}")
 
 
 @dataclass
@@ -307,11 +311,19 @@ class EPSSScorer:
         if not cve_ids:
             return {}
 
+        # Validate CVE IDs to prevent URL injection (defense-in-depth)
+        validated_ids = [cid for cid in cve_ids if _CVE_PATTERN.fullmatch(cid)]
+        if len(validated_ids) != len(cve_ids):
+            skipped = set(cve_ids) - set(validated_ids)
+            logger.warning("Skipping invalid CVE IDs: %s", skipped)
+        if not validated_ids:
+            return {}
+
         results: dict[str, EPSSScore] = {}
 
         try:
             # Build query parameters
-            params = urllib.parse.urlencode({"cve": ",".join(cve_ids)})
+            params = urllib.parse.urlencode({"cve": ",".join(validated_ids)})
             url = f"{self.API_URL}?{params}"
 
             logger.debug("Fetching EPSS scores for %d CVEs", len(cve_ids))

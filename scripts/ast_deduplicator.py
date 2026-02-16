@@ -466,8 +466,8 @@ class ASTDeduplicator:
         if use_code_hash:
             code_snippet = finding.get("code_snippet", finding.get("evidence", {}).get("snippet", ""))
             if code_snippet:
-                # Use MD5 for speed (not cryptographic use)
-                code_hash = hashlib.md5(code_snippet.encode()).hexdigest()[:8]
+                # Use SHA-256 truncated for content-based dedup key (not cryptographic use)
+                code_hash = hashlib.sha256(code_snippet.encode()).hexdigest()[:8]
                 key = f"{key}:hash:{code_hash}"
 
         return key
