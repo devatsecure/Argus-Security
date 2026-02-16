@@ -13,7 +13,7 @@ Features:
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal, Optional
 
@@ -43,7 +43,7 @@ class FeedbackCollector:
         feedback: Literal["tp", "fp"],
         reason: str,
         finding_details: Optional[dict[str, Any]] = None,
-        user: str = "user"
+        user: str = "user",
     ) -> bool:
         """
         Store feedback for future model improvement
@@ -69,7 +69,7 @@ class FeedbackCollector:
                 "feedback_label": "true_positive" if feedback == "tp" else "false_positive",
                 "reason": reason,
                 "user": user,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(tz=timezone.utc).isoformat(),
             }
 
             # Include finding details if provided
@@ -86,10 +86,7 @@ class FeedbackCollector:
             with open(self.feedback_file, "a") as f:
                 f.write(json.dumps(feedback_entry) + "\n")
 
-            logger.info(
-                f"Recorded feedback: finding={finding_id}, "
-                f"feedback={feedback}, reason='{reason[:50]}...'"
-            )
+            logger.info(f"Recorded feedback: finding={finding_id}, feedback={feedback}, reason='{reason[:50]}...'")
 
             return True
 
@@ -97,10 +94,7 @@ class FeedbackCollector:
             logger.error(f"Failed to record feedback: {e}")
             return False
 
-    def get_all_feedback(
-        self,
-        feedback_type: Optional[Literal["tp", "fp"]] = None
-    ) -> list[dict[str, Any]]:
+    def get_all_feedback(self, feedback_type: Optional[Literal["tp", "fp"]] = None) -> list[dict[str, Any]]:
         """
         Retrieve all feedback entries
 
@@ -157,12 +151,7 @@ class FeedbackCollector:
 
         return None
 
-    def get_similar_findings(
-        self,
-        finding_type: str,
-        scanner: str,
-        limit: int = 5
-    ) -> list[dict[str, Any]]:
+    def get_similar_findings(self, finding_type: str, scanner: str, limit: int = 5) -> list[dict[str, Any]]:
         """
         Retrieve past feedback for similar findings (for few-shot prompting)
 
@@ -185,24 +174,15 @@ class FeedbackCollector:
         similar = []
         for entry in all_feedback:
             finding = entry.get("finding", {})
-            if (finding.get("scanner") == scanner and
-                finding.get("finding_type") == finding_type):
+            if finding.get("scanner") == scanner and finding.get("finding_type") == finding_type:
                 similar.append(entry)
 
         # Sort by timestamp (most recent first)
-        similar.sort(
-            key=lambda x: x.get("timestamp", ""),
-            reverse=True
-        )
+        similar.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
 
         return similar[:limit]
 
-    def generate_few_shot_examples(
-        self,
-        finding_type: str,
-        scanner: str,
-        max_examples: int = 3
-    ) -> str:
+    def generate_few_shot_examples(self, finding_type: str, scanner: str, max_examples: int = 3) -> str:
         """
         Generate few-shot prompt examples from historical feedback
 
@@ -229,9 +209,9 @@ class FeedbackCollector:
 
             example = f"""
 Example {i}:
-Finding Type: {finding.get('finding_type', 'unknown')}
-Scanner: {finding.get('scanner', 'unknown')}
-Description: {finding.get('description', '')[:150]}
+Finding Type: {finding.get("finding_type", "unknown")}
+Scanner: {finding.get("scanner", "unknown")}
+Description: {finding.get("description", "")[:150]}
 User Feedback: {feedback_label.upper()}
 Reason: {reason}
 """
@@ -344,19 +324,16 @@ Reason: {reason}
                         "messages": [
                             {
                                 "role": "system",
-                                "content": "You are a security analysis expert. Evaluate if findings are true positives or false positives."
+                                "content": "You are a security analysis expert. Evaluate if findings are true positives or false positives.",
                             },
                             {
                                 "role": "user",
                                 "content": f"Finding Type: {finding.get('finding_type')}\n"
-                                          f"Scanner: {finding.get('scanner')}\n"
-                                          f"Description: {finding.get('description')}\n"
-                                          f"Is this a true positive or false positive?"
+                                f"Scanner: {finding.get('scanner')}\n"
+                                f"Description: {finding.get('description')}\n"
+                                f"Is this a true positive or false positive?",
                             },
-                            {
-                                "role": "assistant",
-                                "content": f"{feedback_label.upper()}: {reason}"
-                            }
+                            {"role": "assistant", "content": f"{feedback_label.upper()}: {reason}"},
                         ]
                     }
 
@@ -392,14 +369,8 @@ def main():
     """CLI interface for feedback management"""
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Manage user feedback on security findings"
-    )
-    parser.add_argument(
-        "--feedback-dir",
-        default=".argus/feedback",
-        help="Feedback directory path"
-    )
+    parser = argparse.ArgumentParser(description="Manage user feedback on security findings")
+    parser.add_argument("--feedback-dir", default=".argus/feedback", help="Feedback directory path")
 
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
 
@@ -407,10 +378,7 @@ def main():
     record_parser = subparsers.add_parser("record", help="Record feedback for a finding")
     record_parser.add_argument("finding_id", help="Finding ID")
     record_parser.add_argument(
-        "--mark",
-        choices=["tp", "fp"],
-        required=True,
-        help="Mark as true positive (tp) or false positive (fp)"
+        "--mark", choices=["tp", "fp"], required=True, help="Mark as true positive (tp) or false positive (fp)"
     )
     record_parser.add_argument("--reason", required=True, help="Reason for feedback")
 
@@ -423,11 +391,7 @@ def main():
 
     # List feedback
     list_parser = subparsers.add_parser("list", help="List all feedback")
-    list_parser.add_argument(
-        "--type",
-        choices=["tp", "fp"],
-        help="Filter by feedback type"
-    )
+    list_parser.add_argument("--type", choices=["tp", "fp"], help="Filter by feedback type")
 
     args = parser.parse_args()
 
@@ -438,11 +402,7 @@ def main():
     collector = FeedbackCollector(args.feedback_dir)
 
     if args.command == "record":
-        success = collector.record_feedback(
-            finding_id=args.finding_id,
-            feedback=args.mark,
-            reason=args.reason
-        )
+        success = collector.record_feedback(finding_id=args.finding_id, feedback=args.mark, reason=args.reason)
         if success:
             print(f"✅ Recorded feedback: {args.mark.upper()} for finding {args.finding_id}")
         else:
@@ -463,8 +423,9 @@ def main():
             print("\nBy Scanner:")
             for scanner, scanner_stats in stats["by_scanner"].items():
                 fp_rate = (scanner_stats["fp"] / scanner_stats["total"] * 100) if scanner_stats["total"] > 0 else 0
-                print(f"  {scanner:20s}: {scanner_stats['total']:3d} total, "
-                      f"{scanner_stats['fp']:3d} FP ({fp_rate:.0f}%)")
+                print(
+                    f"  {scanner:20s}: {scanner_stats['total']:3d} total, {scanner_stats['fp']:3d} FP ({fp_rate:.0f}%)"
+                )
 
         if stats.get("recent_feedback"):
             print("\nRecent Feedback:")
@@ -484,7 +445,7 @@ def main():
     elif args.command == "list":
         feedback_list = collector.get_all_feedback(feedback_type=args.type)
 
-        print(f"\n{'='*80}")
+        print(f"\n{'=' * 80}")
         print(f"FEEDBACK LIST ({len(feedback_list)} entries)")
         print("=" * 80)
 

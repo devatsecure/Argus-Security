@@ -146,24 +146,28 @@ class LLMManager:
                 provider=self.config.get("ai_provider", ""),
             )(self.call_llm_api)
             logger.debug(
-                "Smart retry enabled (max_attempts=%d)", max_attempts,
+                "Smart retry enabled (max_attempts=%d)",
+                max_attempts,
             )
         else:
             # Legacy tenacity retry for backward compatibility
             self.call_llm_api = retry(
                 stop=stop_after_attempt(max_attempts),
                 wait=wait_exponential(multiplier=1, min=4, max=10),
-                retry=retry_if_exception_type((
-                    ConnectionError,
-                    TimeoutError,
-                    OSError,
-                    Exception,
-                )),
+                retry=retry_if_exception_type(
+                    (
+                        ConnectionError,
+                        TimeoutError,
+                        OSError,
+                        Exception,
+                    )
+                ),
                 before_sleep=before_sleep_log(logger, logging.WARNING),
                 reraise=True,
             )(self.call_llm_api)
             logger.debug(
-                "Legacy tenacity retry enabled (max_attempts=%d)", max_attempts,
+                "Legacy tenacity retry enabled (max_attempts=%d)",
+                max_attempts,
             )
 
     def detect_provider(self) -> str:
@@ -190,7 +194,9 @@ class LLMManager:
             return "claude-cli"
         else:
             logger.warning("No AI provider configured")
-            logger.info("Set one of: ANTHROPIC_API_KEY, OPENAI_API_KEY, OLLAMA_ENDPOINT, or use --ai-provider claude-cli")
+            logger.info(
+                "Set one of: ANTHROPIC_API_KEY, OPENAI_API_KEY, OLLAMA_ENDPOINT, or use --ai-provider claude-cli"
+            )
             return None
 
     def initialize(self, provider: str = None) -> bool:
@@ -271,7 +277,9 @@ class LLMManager:
                 endpoint = self.config.get("ollama_endpoint", "http://localhost:11434")
                 # Sanitize endpoint URL for logging
                 safe_endpoint = (
-                    str(endpoint).split("@")[-1] if "@" in str(endpoint) else str(endpoint).split("//")[-1].split("/")[0]
+                    str(endpoint).split("@")[-1]
+                    if "@" in str(endpoint)
+                    else str(endpoint).split("//")[-1].split("/")[0]
                 )
                 logger.info(f"Using Ollama endpoint: {safe_endpoint}")
                 return OpenAI(base_url=f"{endpoint}/v1", api_key="ollama"), "ollama"
@@ -347,9 +355,7 @@ class LLMManager:
                 # Quick test with minimal tokens
                 safe_model_name = str(model_id).split("/")[-1] if model_id else "unknown"
                 logger.debug(f"Testing model: {safe_model_name}")
-                client.messages.create(
-                    model=model_id, max_tokens=10, messages=[{"role": "user", "content": "test"}]
-                )
+                client.messages.create(model=model_id, max_tokens=10, messages=[{"role": "user", "content": "test"}])
                 logger.info(f"Found working model: {safe_model_name}")
                 return model_id
             except Exception as e:
@@ -415,12 +421,7 @@ class LLMManager:
 
         return input_cost + output_cost
 
-    def generate_few_shot_examples(
-        self,
-        finding_type: str,
-        scanner: str,
-        max_examples: int = 3
-    ) -> str:
+    def generate_few_shot_examples(self, finding_type: str, scanner: str, max_examples: int = 3) -> str:
         """
         Generate few-shot examples from historical feedback
 
@@ -437,9 +438,7 @@ class LLMManager:
 
         try:
             return self.feedback_collector.generate_few_shot_examples(
-                finding_type=finding_type,
-                scanner=scanner,
-                max_examples=max_examples
+                finding_type=finding_type, scanner=scanner, max_examples=max_examples
             )
         except Exception as e:
             logger.debug(f"Could not generate few-shot examples: {e}")
@@ -453,7 +452,7 @@ class LLMManager:
         decision: str,
         reasoning: str,
         confidence: float,
-        noise_score: float = 0.0
+        noise_score: float = 0.0,
     ) -> bool:
         """
         Log AI triage decision for analysis
@@ -474,7 +473,7 @@ class LLMManager:
             return False
 
         try:
-            from datetime import datetime
+            from datetime import datetime, timezone
 
             decision_entry = {
                 "finding_id": finding_id,
@@ -485,7 +484,7 @@ class LLMManager:
                 "confidence": confidence,
                 "noise_score": noise_score,
                 "model": self.model,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(tz=timezone.utc).isoformat(),
             }
 
             return self.cache_manager.log_decision(decision_entry)
@@ -500,7 +499,7 @@ class LLMManager:
         max_tokens: int,
         circuit_breaker: "CostCircuitBreaker" = None,
         operation: str = "LLM call",
-        few_shot_prefix: str = ""
+        few_shot_prefix: str = "",
     ) -> tuple:
         """Call LLM API with retry logic, cost enforcement, and few-shot learning
 
@@ -563,11 +562,14 @@ class LLMManager:
                     [
                         self.client,  # path to claude binary
                         "--print",
-                        "--model", self.model,
-                        "--output-format", "json",
+                        "--model",
+                        self.model,
+                        "--output-format",
+                        "json",
                         "--no-session-persistence",
                         "--dangerously-skip-permissions",
-                        "--max-turns", "1",
+                        "--max-turns",
+                        "1",
                     ],
                     input=full_prompt,
                     capture_output=True,
@@ -635,6 +637,7 @@ class LLMManager:
 
 class _Usage:
     """Minimal usage object matching Anthropic/OpenAI response.usage."""
+
     __slots__ = ("input_tokens", "output_tokens")
 
     def __init__(self, input_tokens: int, output_tokens: int):
@@ -644,6 +647,7 @@ class _Usage:
 
 class LLMResponse:
     """Lightweight response wrapper compatible with IRISAnalyzer._parse_llm_response."""
+
     __slots__ = ("content", "usage")
 
     def __init__(self, text: str, input_tokens: int = 0, output_tokens: int = 0):
@@ -741,7 +745,9 @@ def calculate_actual_cost(input_tokens: int, output_tokens: int, provider: str) 
     return LLMManager.calculate_actual_cost(input_tokens, output_tokens, provider)
 
 
-def call_llm_api(client, provider: str, model: str, prompt: str, max_tokens: int, circuit_breaker=None, operation: str = "LLM call") -> tuple:
+def call_llm_api(
+    client, provider: str, model: str, prompt: str, max_tokens: int, circuit_breaker=None, operation: str = "LLM call"
+) -> tuple:
     """Call LLM API with retry logic and cost enforcement
 
     Args:

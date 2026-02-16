@@ -26,7 +26,7 @@ import logging
 import subprocess
 import sys
 from dataclasses import asdict, dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -108,9 +108,7 @@ class RegressionTester:
         expected_behavior = self._get_expected_behavior(vuln_type)
 
         # Generate test code
-        test_code = self._generate_test_code(
-            language, vuln_type, file_path, function_name, exploit_payload
-        )
+        test_code = self._generate_test_code(language, vuln_type, file_path, function_name, exploit_payload)
 
         test = RegressionTest(
             test_id=test_id,
@@ -119,7 +117,7 @@ class RegressionTester:
             cwe_id=cwe_id,
             file_path=file_path,
             function_name=function_name,
-            date_fixed=datetime.utcnow().isoformat(),
+            date_fixed=datetime.now(tz=timezone.utc).isoformat(),
             test_code=test_code,
             language=language,
             description=description,
@@ -199,23 +197,15 @@ class RegressionTester:
     ) -> str:
         """Generate test code for vulnerability"""
         if language == "python":
-            return self._generate_python_test(
-                vuln_type, file_path, function_name, exploit_payload
-            )
+            return self._generate_python_test(vuln_type, file_path, function_name, exploit_payload)
         elif language in ["javascript", "typescript"]:
-            return self._generate_javascript_test(
-                vuln_type, file_path, function_name, exploit_payload
-            )
+            return self._generate_javascript_test(vuln_type, file_path, function_name, exploit_payload)
         elif language == "go":
-            return self._generate_go_test(
-                vuln_type, file_path, function_name, exploit_payload
-            )
+            return self._generate_go_test(vuln_type, file_path, function_name, exploit_payload)
         else:
             return self._generate_generic_test(vuln_type, file_path, function_name)
 
-    def _generate_python_test(
-        self, vuln_type: str, file_path: str, function_name: str, exploit_payload: str
-    ) -> str:
+    def _generate_python_test(self, vuln_type: str, file_path: str, function_name: str, exploit_payload: str) -> str:
         """Generate Python pytest test"""
         module_path = file_path.replace("/", ".").replace(".py", "")
         vuln_snake = vuln_type.lower().replace("-", "_")
@@ -390,7 +380,7 @@ def test_{vuln_snake}_normal_input():
         """Generate JavaScript/TypeScript Jest test"""
         import_path = file_path.replace(".js", "").replace(".ts", "")
 
-        template = f'''
+        template = f"""
 const {{ {function_name} }} = require('{import_path}');
 
 describe('Security Regression: {vuln_type}', () => {{
@@ -427,12 +417,10 @@ describe('Security Regression: {vuln_type}', () => {{
         }});
     }});
 }});
-'''
+"""
         return template
 
-    def _generate_go_test(
-        self, vuln_type: str, file_path: str, function_name: str, exploit_payload: str
-    ) -> str:
+    def _generate_go_test(self, vuln_type: str, file_path: str, function_name: str, exploit_payload: str) -> str:
         """Generate Go test"""
         package_name = Path(file_path).parent.name or "main"
 
@@ -474,18 +462,16 @@ func TestNormalInput{function_name.title()}(t *testing.T) {{
 '''
         return template
 
-    def _generate_generic_test(
-        self, vuln_type: str, file_path: str, function_name: str
-    ) -> str:
+    def _generate_generic_test(self, vuln_type: str, file_path: str, function_name: str) -> str:
         """Generate generic test template"""
-        return f'''
+        return f"""
 # Regression test for {vuln_type}
 # File: {file_path}
 # Function: {function_name}
 
 # TODO: Implement test for {vuln_type}
 # This test should verify that the vulnerability is still fixed
-'''
+"""
 
     def _save_test(self, test: RegressionTest):
         """Save test to disk"""
@@ -568,7 +554,7 @@ func TestNormalInput{function_name.title()}(t *testing.T) {{
             "errors": 0,
             "skipped": 0,
             "failures": [],
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(tz=timezone.utc).isoformat(),
         }
 
         for test in tests_to_run:
@@ -616,11 +602,7 @@ func TestNormalInput{function_name.title()}(t *testing.T) {{
 
     def _run_pytest(self, test: RegressionTest) -> tuple[bool, str]:
         """Run Python pytest"""
-        test_file = (
-            self.test_dir
-            / test.vulnerability_type.lower().replace("-", "_")
-            / f"test_{test.test_id}.py"
-        )
+        test_file = self.test_dir / test.vulnerability_type.lower().replace("-", "_") / f"test_{test.test_id}.py"
 
         if not test_file.exists():
             logger.error(f"Test file not found: {test_file}")
@@ -647,11 +629,7 @@ func TestNormalInput{function_name.title()}(t *testing.T) {{
     def _run_jest(self, test: RegressionTest) -> tuple[bool, str]:
         """Run JavaScript/TypeScript Jest"""
         ext = ".js" if test.language == "javascript" else ".ts"
-        test_file = (
-            self.test_dir
-            / test.vulnerability_type.lower().replace("-", "_")
-            / f"test_{test.test_id}{ext}"
-        )
+        test_file = self.test_dir / test.vulnerability_type.lower().replace("-", "_") / f"test_{test.test_id}{ext}"
 
         if not test_file.exists():
             return False, "Test file not found"
@@ -675,11 +653,7 @@ func TestNormalInput{function_name.title()}(t *testing.T) {{
 
     def _run_go_test(self, test: RegressionTest) -> tuple[bool, str]:
         """Run Go test"""
-        test_file = (
-            self.test_dir
-            / test.vulnerability_type.lower().replace("-", "_")
-            / f"test_{test.test_id}_test.go"
-        )
+        test_file = self.test_dir / test.vulnerability_type.lower().replace("-", "_") / f"test_{test.test_id}_test.go"
 
         if not test_file.exists():
             return False, "Test file not found"
@@ -713,9 +687,9 @@ func TestNormalInput{function_name.title()}(t *testing.T) {{
         print(f"⏭️  Skipped: {results['skipped']}")
 
         if results["failures"]:
-            print(f"\n{'='*80}")
+            print(f"\n{'=' * 80}")
             print("❌ FAILED TESTS - VULNERABILITIES MAY HAVE RETURNED:")
-            print(f"{'='*80}")
+            print(f"{'=' * 80}")
             for failure in results["failures"]:
                 print(f"\n  🚨 {failure['vulnerability'].upper()} [{failure['severity']}]")
                 print(f"     File: {failure['file']}")
@@ -723,12 +697,10 @@ func TestNormalInput{function_name.title()}(t *testing.T) {{
                 if failure.get("output"):
                     print(f"     Output: {failure['output'][:200]}")
 
-        success_rate = (
-            (results["passed"] / results["total"] * 100) if results["total"] > 0 else 0
-        )
-        print(f"\n{'='*80}")
+        success_rate = (results["passed"] / results["total"] * 100) if results["total"] > 0 else 0
+        print(f"\n{'=' * 80}")
         print(f"Success Rate: {success_rate:.1f}%")
-        print(f"{'='*80}\n")
+        print(f"{'=' * 80}\n")
 
     def _save_results(self, results: dict[str, Any]):
         """Save test results to JSON"""
@@ -763,9 +735,7 @@ func TestNormalInput{function_name.title()}(t *testing.T) {{
 
         for test in self.tests:
             # Count by language
-            stats["by_language"][test.language] = (
-                stats["by_language"].get(test.language, 0) + 1
-            )
+            stats["by_language"][test.language] = stats["by_language"].get(test.language, 0) + 1
 
             # Count by vulnerability type
             stats["by_vulnerability"][test.vulnerability_type] = (
@@ -816,9 +786,7 @@ Examples:
 
     # Configure logging
     log_level = logging.DEBUG if args.debug else logging.INFO
-    logging.basicConfig(
-        level=log_level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
+    logging.basicConfig(level=log_level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
     # Initialize tester
     tester = RegressionTester(Path(args.test_dir) if args.test_dir else None)
@@ -877,9 +845,7 @@ Examples:
 
         if stats["by_vulnerability"]:
             print("\nBy Vulnerability Type:")
-            for vuln, count in sorted(
-                stats["by_vulnerability"].items(), key=lambda x: x[1], reverse=True
-            ):
+            for vuln, count in sorted(stats["by_vulnerability"].items(), key=lambda x: x[1], reverse=True):
                 print(f"  {vuln}: {count}")
 
         if stats["by_severity"]:

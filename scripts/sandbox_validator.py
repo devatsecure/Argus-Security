@@ -15,7 +15,7 @@ import logging
 import re
 import time
 from dataclasses import asdict, dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any, Optional
@@ -166,7 +166,7 @@ class SandboxValidator:
                 indicators_found=[],
                 indicators_missing=exploit.expected_indicators,
                 container_id="",
-                timestamp=datetime.utcnow().isoformat(),
+                timestamp=datetime.now(tz=timezone.utc).isoformat(),
                 error_message=safety_check["reason"],
                 metadata=exploit.metadata,
             )
@@ -258,7 +258,7 @@ class SandboxValidator:
                 indicators_found=indicators_found,
                 indicators_missing=indicators_missing,
                 container_id=container_id,
-                timestamp=datetime.utcnow().isoformat(),
+                timestamp=datetime.now(tz=timezone.utc).isoformat(),
                 metadata=exploit.metadata,
             )
 
@@ -288,7 +288,7 @@ class SandboxValidator:
                 indicators_found=[],
                 indicators_missing=exploit.expected_indicators,
                 container_id=container_id or "",
-                timestamp=datetime.utcnow().isoformat(),
+                timestamp=datetime.now(tz=timezone.utc).isoformat(),
                 error_message=str(e),
                 metadata=exploit.metadata,
             )

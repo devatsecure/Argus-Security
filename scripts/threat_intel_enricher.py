@@ -24,7 +24,7 @@ import urllib.parse
 import urllib.request
 from collections import defaultdict
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -110,11 +110,15 @@ class ThreatIntelEnricher:
             use_progress: Whether to show progress bars (requires rich)
         """
         # Try default cache location, then fallback locations for Docker
-        candidates = [cache_dir] if cache_dir else [
-            Path(".argus-cache/threat-intel"),
-            Path("/tmp/argus-cache/threat-intel"),
-            Path("/cache/threat-intel"),
-        ]
+        candidates = (
+            [cache_dir]
+            if cache_dir
+            else [
+                Path(".argus-cache/threat-intel"),
+                Path("/tmp/argus-cache/threat-intel"),
+                Path("/cache/threat-intel"),
+            ]
+        )
         self.cache_dir = None
         for candidate in candidates:
             try:
@@ -212,9 +216,7 @@ class ThreatIntelEnricher:
                 TaskProgressColumn(),
                 TimeRemainingColumn(),
             ) as progress:
-                task = progress.add_task(
-                    "[cyan]Enriching findings...", total=len(findings)
-                )
+                task = progress.add_task("[cyan]Enriching findings...", total=len(findings))
 
                 for finding in findings:
                     enriched_finding = self._enrich_single_finding(finding)
@@ -255,12 +257,8 @@ class ThreatIntelEnricher:
             return None
 
         # Adjust priority based on threat intel
-        original_priority = self._normalize_priority(
-            finding.get("severity", "MEDIUM")
-        )
-        adjusted_priority, boost_reasons, downgrade_reasons = self._adjust_priority(
-            original_priority, context
-        )
+        original_priority = self._normalize_priority(finding.get("severity", "MEDIUM"))
+        adjusted_priority, boost_reasons, downgrade_reasons = self._adjust_priority(original_priority, context)
 
         # Calculate risk score
         risk_score = self._calculate_risk_score(context, adjusted_priority)
@@ -361,9 +359,7 @@ class ThreatIntelEnricher:
             # Extract additional references
             for entry in osv_data:
                 if entry.get("references"):
-                    context.references.extend(
-                        [ref.get("url") for ref in entry["references"] if ref.get("url")]
-                    )
+                    context.references.extend([ref.get("url") for ref in entry["references"] if ref.get("url")])
 
         # 6. Check for public exploits in references
         exploit_indicators = ["exploit-db", "exploitdb", "exploit", "poc", "proof-of-concept"]
@@ -383,7 +379,7 @@ class ThreatIntelEnricher:
         # Calculate confidence based on data sources
         context.confidence = min(1.0, data_sources_successful / 5.0)
 
-        context.last_updated = datetime.utcnow().isoformat()
+        context.last_updated = datetime.now(tz=timezone.utc).isoformat()
 
         # Return None if we couldn't get any meaningful data
         if data_sources_successful == 0:
@@ -421,9 +417,7 @@ class ThreatIntelEnricher:
                 try:
                     with open(cache_file) as f:
                         data = json.load(f)
-                    logger.info(
-                        f"Loaded KEV catalog from cache ({len(data.get('vulnerabilities', []))} entries)"
-                    )
+                    logger.info(f"Loaded KEV catalog from cache ({len(data.get('vulnerabilities', []))} entries)")
                     self.stats["cache_hits"] += 1
                     return data
                 except Exception as e:
@@ -667,9 +661,7 @@ class ThreatIntelEnricher:
                     "html_url": advisory.get("html_url"),
                     "published_at": advisory.get("published_at"),
                     "updated_at": advisory.get("updated_at"),
-                    "patched_versions": advisory.get("vulnerabilities", [{}])[0].get(
-                        "patched_versions"
-                    ),
+                    "patched_versions": advisory.get("vulnerabilities", [{}])[0].get("patched_versions"),
                 }
             )
 
@@ -801,7 +793,7 @@ class ThreatIntelEnricher:
         if context.in_kev_catalog and context.kev_date_added:
             try:
                 kev_date = datetime.fromisoformat(context.kev_date_added)
-                days_since_kev = (datetime.utcnow() - kev_date).days
+                days_since_kev = (datetime.now(tz=timezone.utc).replace(tzinfo=None) - kev_date).days
                 if days_since_kev <= 30:
                     return True
             except Exception:
@@ -810,9 +802,7 @@ class ThreatIntelEnricher:
         # High EPSS with multiple exploits suggests active exploitation
         return bool(context.epss_score and context.epss_score > 0.7 and context.exploit_count >= 2)
 
-    def _adjust_priority(
-        self, original: str, context: ThreatContext
-    ) -> tuple[str, list[str], list[str]]:
+    def _adjust_priority(self, original: str, context: ThreatContext) -> tuple[str, list[str], list[str]]:
         """
         Adjust priority based on threat intelligence.
 
@@ -846,11 +836,7 @@ class ThreatIntelEnricher:
             )
 
         # Critical boost: Very high EPSS + public exploit
-        if (
-            context.epss_score
-            and context.epss_score > 0.8
-            and context.public_exploit_available
-        ):
+        if context.epss_score and context.epss_score > 0.8 and context.public_exploit_available:
             upgrade_to(
                 "CRITICAL",
                 f"EPSS score {context.epss_score:.3f} with public exploits available",
@@ -858,20 +844,12 @@ class ThreatIntelEnricher:
 
         # High boost: High EPSS score (>50% exploitation probability)
         if context.epss_score and context.epss_score > 0.5:
-            percentile = (
-                f" (top {100-context.epss_percentile:.1f}%)"
-                if context.epss_percentile
-                else ""
-            )
-            upgrade_to(
-                "HIGH", f"EPSS score {context.epss_score:.3f}{percentile} - high exploitation risk"
-            )
+            percentile = f" (top {100 - context.epss_percentile:.1f}%)" if context.epss_percentile else ""
+            upgrade_to("HIGH", f"EPSS score {context.epss_score:.3f}{percentile} - high exploitation risk")
 
         # High boost: Multiple public exploits
         if context.exploit_count >= 2:
-            upgrade_to(
-                "HIGH", f"{context.exploit_count} public exploits available"
-            )
+            upgrade_to("HIGH", f"{context.exploit_count} public exploits available")
 
         # Medium boost: Single public exploit
         if context.public_exploit_available and context.exploit_count == 1:
@@ -898,15 +876,11 @@ class ThreatIntelEnricher:
             and not context.public_exploit_available
             and not context.in_kev_catalog
         ):
-            downgrade_to(
-                "LOW", f"Low exploitation probability (EPSS {context.epss_score:.3f}, no public exploits)"
-            )
+            downgrade_to("LOW", f"Low exploitation probability (EPSS {context.epss_score:.3f}, no public exploits)")
 
         # Downgrade if patch available (but still keep some priority)
         if context.vendor_patch_available and priority not in ["CRITICAL"]:
-            downgrade_reasons.append(
-                f"Vendor patch available at {context.patch_url or 'upstream'}"
-            )
+            downgrade_reasons.append(f"Vendor patch available at {context.patch_url or 'upstream'}")
 
         return priority, boost_reasons, downgrade_reasons
 
@@ -961,16 +935,14 @@ class ThreatIntelEnricher:
         # Clamp to 0.0-10.0
         return max(0.0, min(10.0, score))
 
-    def _recommend_action(
-        self, context: ThreatContext, priority: str
-    ) -> tuple[str, Optional[str]]:
+    def _recommend_action(self, context: ThreatContext, priority: str) -> tuple[str, Optional[str]]:
         """
         Recommend remediation action and deadline.
 
         Returns:
             Tuple of (action_description, deadline_iso_string)
         """
-        now = datetime.utcnow()
+        now = datetime.now(tz=timezone.utc)
 
         if context.in_kev_catalog:
             # KEV catalog has specific due dates
@@ -999,10 +971,7 @@ class ThreatIntelEnricher:
 
     def _has_cve(self, finding: dict) -> bool:
         """Check if finding has a CVE identifier"""
-        text = " ".join(
-            str(finding.get(field, ""))
-            for field in ["cve", "description", "title", "id", "message"]
-        )
+        text = " ".join(str(finding.get(field, "")) for field in ["cve", "description", "title", "id", "message"])
         return bool(self.CVE_PATTERN.search(text))
 
     def _extract_cve(self, finding: dict) -> Optional[str]:
@@ -1038,9 +1007,7 @@ class ThreatIntelEnricher:
         downgraded = self.stats["priority_downgraded"]
 
         # Calculate average risk score
-        avg_risk = (
-            sum(e.risk_score for e in enriched) / total if total > 0 else 0.0
-        )
+        avg_risk = sum(e.risk_score for e in enriched) / total if total > 0 else 0.0
 
         logger.info("\n" + "=" * 70)
         logger.info("📊 Threat Intelligence Enrichment Summary")
@@ -1060,9 +1027,7 @@ class ThreatIntelEnricher:
         logger.info(f"  API errors:                {self.stats['api_errors']}")
         logger.info("=" * 70 + "\n")
 
-    def export_enriched_findings(
-        self, enriched: list[EnrichedFinding], output_file: Path
-    ):
+    def export_enriched_findings(self, enriched: list[EnrichedFinding], output_file: Path):
         """Export enriched findings to JSON file"""
         output_data = []
 
@@ -1109,9 +1074,7 @@ Examples:
   %(prog)s --findings findings.json --debug
         """,
     )
-    parser.add_argument(
-        "--findings", required=True, help="Input findings JSON file"
-    )
+    parser.add_argument("--findings", required=True, help="Input findings JSON file")
     parser.add_argument(
         "--output",
         help="Output file (default: findings_enriched.json)",
@@ -1122,9 +1085,7 @@ Examples:
         help="Cache directory (default: .argus-cache/threat-intel)",
         type=Path,
     )
-    parser.add_argument(
-        "--progress", action="store_true", help="Show progress bar (requires rich)"
-    )
+    parser.add_argument("--progress", action="store_true", help="Show progress bar (requires rich)")
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
 
     args = parser.parse_args()
@@ -1147,9 +1108,7 @@ Examples:
 
     # Enrich
     try:
-        enricher = ThreatIntelEnricher(
-            cache_dir=args.cache_dir, use_progress=args.progress
-        )
+        enricher = ThreatIntelEnricher(cache_dir=args.cache_dir, use_progress=args.progress)
         enriched = enricher.enrich_findings(findings)
 
         # Export

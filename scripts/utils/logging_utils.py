@@ -12,40 +12,39 @@ import logging
 import re
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Optional
 
 # Patterns for sensitive data that should be redacted
 SENSITIVE_PATTERNS = [
     # API Keys and tokens
-    (re.compile(r'(api[_-]?key\s*[=:]\s*["\']?)([a-zA-Z0-9_\-]{20,})(["\']?)', re.IGNORECASE), r'\1***REDACTED***\3'),
-    (re.compile(r'(token\s*[=:]\s*["\']?)([a-zA-Z0-9_\-]{20,})(["\']?)', re.IGNORECASE), r'\1***REDACTED***\3'),
-    (re.compile(r'(bearer\s+)([a-zA-Z0-9_\-\.]{20,})', re.IGNORECASE), r'\1***REDACTED***'),
-
+    (re.compile(r'(api[_-]?key\s*[=:]\s*["\']?)([a-zA-Z0-9_\-]{20,})(["\']?)', re.IGNORECASE), r"\1***REDACTED***\3"),
+    (re.compile(r'(token\s*[=:]\s*["\']?)([a-zA-Z0-9_\-]{20,})(["\']?)', re.IGNORECASE), r"\1***REDACTED***\3"),
+    (re.compile(r"(bearer\s+)([a-zA-Z0-9_\-\.]{20,})", re.IGNORECASE), r"\1***REDACTED***"),
     # Authorization headers
-    (re.compile(r'(Authorization:\s*Bearer\s+)([a-zA-Z0-9_\-\.]+)', re.IGNORECASE), r'\1***REDACTED***'),
-    (re.compile(r'(Authorization:\s*Basic\s+)([a-zA-Z0-9+/=]+)', re.IGNORECASE), r'\1***REDACTED***'),
-
+    (re.compile(r"(Authorization:\s*Bearer\s+)([a-zA-Z0-9_\-\.]+)", re.IGNORECASE), r"\1***REDACTED***"),
+    (re.compile(r"(Authorization:\s*Basic\s+)([a-zA-Z0-9+/=]+)", re.IGNORECASE), r"\1***REDACTED***"),
     # AWS credentials
-    (re.compile(r'(AKIA[0-9A-Z]{16})', re.IGNORECASE), r'***REDACTED_AWS_KEY***'),
-    (re.compile(r'(aws[_-]?secret[_-]?access[_-]?key\s*[=:]\s*["\']?)([a-zA-Z0-9/+=]{40})(["\']?)', re.IGNORECASE), r'\1***REDACTED***\3'),
-
+    (re.compile(r"(AKIA[0-9A-Z]{16})", re.IGNORECASE), r"***REDACTED_AWS_KEY***"),
+    (
+        re.compile(r'(aws[_-]?secret[_-]?access[_-]?key\s*[=:]\s*["\']?)([a-zA-Z0-9/+=]{40})(["\']?)', re.IGNORECASE),
+        r"\1***REDACTED***\3",
+    ),
     # GitHub tokens
-    (re.compile(r'(gh[pousr]_[a-zA-Z0-9]{36,})', re.IGNORECASE), r'***REDACTED_GITHUB_TOKEN***'),
-
+    (re.compile(r"(gh[pousr]_[a-zA-Z0-9]{36,})", re.IGNORECASE), r"***REDACTED_GITHUB_TOKEN***"),
     # Passwords
-    (re.compile(r'(password\s*[=:]\s*["\']?)([^"\']{8,})(["\']?)', re.IGNORECASE), r'\1***REDACTED***\3'),
-    (re.compile(r'(passwd\s*[=:]\s*["\']?)([^"\']{8,})(["\']?)', re.IGNORECASE), r'\1***REDACTED***\3'),
-
+    (re.compile(r'(password\s*[=:]\s*["\']?)([^"\']{8,})(["\']?)', re.IGNORECASE), r"\1***REDACTED***\3"),
+    (re.compile(r'(passwd\s*[=:]\s*["\']?)([^"\']{8,})(["\']?)', re.IGNORECASE), r"\1***REDACTED***\3"),
     # Private keys (SSH, PGP, etc.)
-    (re.compile(r'(-----BEGIN [A-Z ]+PRIVATE KEY-----[\s\S]+?-----END [A-Z ]+PRIVATE KEY-----)', re.IGNORECASE), r'***REDACTED_PRIVATE_KEY***'),
-
+    (
+        re.compile(r"(-----BEGIN [A-Z ]+PRIVATE KEY-----[\s\S]+?-----END [A-Z ]+PRIVATE KEY-----)", re.IGNORECASE),
+        r"***REDACTED_PRIVATE_KEY***",
+    ),
     # Credit card numbers (basic pattern)
-    (re.compile(r'\b\d{4}[\s\-]?\d{4}[\s\-]?\d{4}[\s\-]?\d{4}\b'), r'***REDACTED_CC***'),
-
+    (re.compile(r"\b\d{4}[\s\-]?\d{4}[\s\-]?\d{4}[\s\-]?\d{4}\b"), r"***REDACTED_CC***"),
     # Generic secrets
-    (re.compile(r'(secret\s*[=:]\s*["\']?)([a-zA-Z0-9_\-]{16,})(["\']?)', re.IGNORECASE), r'\1***REDACTED***\3'),
+    (re.compile(r'(secret\s*[=:]\s*["\']?)([a-zA-Z0-9_\-]{16,})(["\']?)', re.IGNORECASE), r"\1***REDACTED***\3"),
 ]
 
 
@@ -80,10 +79,7 @@ class SanitizingFormatter(logging.Formatter):
 
 
 def setup_logging(
-    level: int = logging.INFO,
-    log_file: Optional[Path] = None,
-    json_format: bool = False,
-    sanitize: bool = True
+    level: int = logging.INFO, log_file: Optional[Path] = None, json_format: bool = False, sanitize: bool = True
 ) -> None:
     """
     Setup standardized logging configuration
@@ -116,13 +112,9 @@ def setup_logging(
     if json_format:
         formatter = StructuredJsonFormatter()
     elif sanitize:
-        formatter = SanitizingFormatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
+        formatter = SanitizingFormatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     else:
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        )
+        formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
     # Apply formatter to all handlers
     for handler in handlers:
@@ -161,18 +153,18 @@ class StructuredJsonFormatter(logging.Formatter):
         import json
 
         log_data = {
-            'timestamp': datetime.utcnow().isoformat() + 'Z',
-            'level': record.levelname,
-            'logger': record.name,
-            'message': record.getMessage(),
-            'module': record.module,
-            'function': record.funcName,
-            'line': record.lineno
+            "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+            "module": record.module,
+            "function": record.funcName,
+            "line": record.lineno,
         }
 
         # Add exception info if present
         if record.exc_info:
-            log_data['exception'] = self.formatException(record.exc_info)
+            log_data["exception"] = self.formatException(record.exc_info)
 
         # Sanitize before JSON encoding
         message_str = json.dumps(log_data)
@@ -202,6 +194,7 @@ def timed(func: Optional[Callable] = None, *, log_level: int = logging.INFO) -> 
         def fast_function():
             pass
     """
+
     def decorator(f: Callable) -> Callable:
         @functools.wraps(f)
         def wrapper(*args, **kwargs):
@@ -213,17 +206,12 @@ def timed(func: Optional[Callable] = None, *, log_level: int = logging.INFO) -> 
             try:
                 result = f(*args, **kwargs)
                 elapsed = time.time() - start_time
-                logger.log(
-                    log_level,
-                    f"Completed {f.__name__} in {elapsed:.3f}s"
-                )
+                logger.log(log_level, f"Completed {f.__name__} in {elapsed:.3f}s")
                 return result
 
             except Exception as e:
                 elapsed = time.time() - start_time
-                logger.error(
-                    f"Failed {f.__name__} after {elapsed:.3f}s: {type(e).__name__}: {e}"
-                )
+                logger.error(f"Failed {f.__name__} after {elapsed:.3f}s: {type(e).__name__}: {e}")
                 raise
 
         return wrapper
@@ -268,15 +256,9 @@ class PerformanceTimer:
             elapsed = time.time() - self.start_time
 
             if exc_type is None:
-                self.logger.log(
-                    self.log_level,
-                    f"Completed {self.name} in {elapsed:.3f}s"
-                )
+                self.logger.log(self.log_level, f"Completed {self.name} in {elapsed:.3f}s")
             else:
-                self.logger.error(
-                    f"Failed {self.name} after {elapsed:.3f}s: "
-                    f"{exc_type.__name__}: {exc_val}"
-                )
+                self.logger.error(f"Failed {self.name} after {elapsed:.3f}s: {exc_type.__name__}: {exc_val}")
 
         return False  # Don't suppress exceptions
 
@@ -301,10 +283,7 @@ def sanitize_message(message: str) -> str:
 
 
 def log_function_call(
-    logger: logging.Logger,
-    level: int = logging.DEBUG,
-    log_args: bool = True,
-    log_result: bool = False
+    logger: logging.Logger, level: int = logging.DEBUG, log_args: bool = True, log_result: bool = False
 ) -> Callable:
     """
     Decorator to log function calls with arguments and results
@@ -323,6 +302,7 @@ def log_function_call(
         def process_data(data):
             return data.upper()
     """
+
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(*args, **kwargs):

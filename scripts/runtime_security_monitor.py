@@ -19,7 +19,7 @@ import subprocess
 import sys
 import time
 from dataclasses import asdict, dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any, Optional
@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 class ThreatSeverity(Enum):
     """Security threat severity levels"""
+
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
@@ -38,6 +39,7 @@ class ThreatSeverity(Enum):
 
 class ThreatType(Enum):
     """Types of runtime threats"""
+
     SHELL_IN_CONTAINER = "shell_in_container"
     CRYPTO_MINING = "cryptocurrency_mining"
     SENSITIVE_FILE_ACCESS = "sensitive_file_access"
@@ -52,6 +54,7 @@ class ThreatType(Enum):
 @dataclass
 class RuntimeEvent:
     """Runtime security event from Falco"""
+
     event_id: str
     timestamp: str
     severity: ThreatSeverity
@@ -70,13 +73,14 @@ class RuntimeEvent:
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
         data = asdict(self)
-        data['severity'] = self.severity.value
+        data["severity"] = self.severity.value
         return data
 
 
 @dataclass
 class ThreatAlert:
     """Security threat alert"""
+
     alert_id: str
     timestamp: str
     severity: ThreatSeverity
@@ -90,15 +94,15 @@ class ThreatAlert:
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
         return {
-            'alert_id': self.alert_id,
-            'timestamp': self.timestamp,
-            'severity': self.severity.value,
-            'threat_type': self.threat_type.value,
-            'description': self.description,
-            'indicators': self.indicators,
-            'remediation': self.remediation,
-            'confidence': self.confidence,
-            'event_count': len(self.related_events)
+            "alert_id": self.alert_id,
+            "timestamp": self.timestamp,
+            "severity": self.severity.value,
+            "threat_type": self.threat_type.value,
+            "description": self.description,
+            "indicators": self.indicators,
+            "remediation": self.remediation,
+            "confidence": self.confidence,
+            "event_count": len(self.related_events),
         }
 
 
@@ -108,49 +112,92 @@ class RuntimeSecurityMonitor:
     # Suspicious command patterns
     SUSPICIOUS_PATTERNS = {
         "shell_in_container": [
-            r"/bin/bash", r"/bin/sh", r"/bin/zsh", r"/bin/dash",
-            r"/bin/csh", r"/bin/tcsh", r"/bin/ksh"
+            r"/bin/bash",
+            r"/bin/sh",
+            r"/bin/zsh",
+            r"/bin/dash",
+            r"/bin/csh",
+            r"/bin/tcsh",
+            r"/bin/ksh",
         ],
         "crypto_mining": [
-            r"xmrig", r"minerd", r"ccminer", r"ethminer", r"cgminer",
-            r"stratum\+tcp", r"pool\..*\.com", r"cryptonight",
-            r"monero", r"xmr-stak", r"claymore"
+            r"xmrig",
+            r"minerd",
+            r"ccminer",
+            r"ethminer",
+            r"cgminer",
+            r"stratum\+tcp",
+            r"pool\..*\.com",
+            r"cryptonight",
+            r"monero",
+            r"xmr-stak",
+            r"claymore",
         ],
         "suspicious_network": [
-            r"nc\s", r"netcat", r"ncat", r"socat", r"telnet",
-            r"wget.*\|\s*sh", r"curl.*\|\s*sh", r"curl.*\|\s*bash"
+            r"nc\s",
+            r"netcat",
+            r"ncat",
+            r"socat",
+            r"telnet",
+            r"wget.*\|\s*sh",
+            r"curl.*\|\s*sh",
+            r"curl.*\|\s*bash",
         ],
         "sensitive_files": [
-            r"/etc/shadow", r"/etc/passwd", r"\.ssh/id_rsa",
-            r"\.ssh/id_dsa", r"\.aws/credentials", r"/root/\.bash_history",
-            r"\.kube/config", r"\.docker/config\.json", r"\.npmrc",
-            r"\.pypirc", r"\.gem/credentials"
+            r"/etc/shadow",
+            r"/etc/passwd",
+            r"\.ssh/id_rsa",
+            r"\.ssh/id_dsa",
+            r"\.aws/credentials",
+            r"/root/\.bash_history",
+            r"\.kube/config",
+            r"\.docker/config\.json",
+            r"\.npmrc",
+            r"\.pypirc",
+            r"\.gem/credentials",
         ],
         "reverse_shell": [
-            r"bash\s+-i", r"sh\s+-i", r"/dev/tcp/", r"/dev/udp/",
-            r"0<&\d+", r"exec\s+\d+<>", r"python.*socket\.socket"
+            r"bash\s+-i",
+            r"sh\s+-i",
+            r"/dev/tcp/",
+            r"/dev/udp/",
+            r"0<&\d+",
+            r"exec\s+\d+<>",
+            r"python.*socket\.socket",
         ],
-        "privilege_escalation": [
-            r"sudo\s", r"su\s+-", r"pkexec", r"doas\s",
-            r"setuid", r"setgid", r"chmod\s+[u+]s"
-        ],
+        "privilege_escalation": [r"sudo\s", r"su\s+-", r"pkexec", r"doas\s", r"setuid", r"setgid", r"chmod\s+[u+]s"],
         "data_exfiltration": [
-            r"scp\s.*@", r"rsync\s.*@", r"curl.*-T", r"wget.*--post-file",
-            r"base64.*\|.*curl", r"tar.*\|.*nc", r"dd.*of=/dev/tcp"
+            r"scp\s.*@",
+            r"rsync\s.*@",
+            r"curl.*-T",
+            r"wget.*--post-file",
+            r"base64.*\|.*curl",
+            r"tar.*\|.*nc",
+            r"dd.*of=/dev/tcp",
         ],
         "malicious_binary": [
-            r"masscan", r"nmap", r"nikto", r"sqlmap", r"metasploit",
-            r"msfvenom", r"msfconsole", r"mimikatz"
-        ]
+            r"masscan",
+            r"nmap",
+            r"nikto",
+            r"sqlmap",
+            r"metasploit",
+            r"msfvenom",
+            r"msfconsole",
+            r"mimikatz",
+        ],
     }
 
     # Suspicious ports
     SUSPICIOUS_PORTS = [
         4444,  # Metasploit default
         5555,  # Android Debug Bridge
-        6666, 6667, 6668,  # IRC
-        1337, 31337,  # Leet ports
-        8080, 8888,  # Common proxy ports
+        6666,
+        6667,
+        6668,  # IRC
+        1337,
+        31337,  # Leet ports
+        8080,
+        8888,  # Common proxy ports
         3389,  # RDP
         22,  # SSH (suspicious from container)
         23,  # Telnet
@@ -176,12 +223,12 @@ class RuntimeSecurityMonitor:
         self.events: list[RuntimeEvent] = []
         self.alerts: list[ThreatAlert] = []
         self.stats = {
-            'total_events': 0,
-            'events_by_severity': {},
-            'events_by_container': {},
-            'threats_detected': 0,
-            'monitoring_start': None,
-            'monitoring_end': None
+            "total_events": 0,
+            "events_by_severity": {},
+            "events_by_container": {},
+            "threats_detected": 0,
+            "monitoring_start": None,
+            "monitoring_end": None,
         }
 
         # Check if Falco is available
@@ -191,12 +238,7 @@ class RuntimeSecurityMonitor:
     def _check_falco_installed(self) -> bool:
         """Check if Falco is installed and accessible"""
         try:
-            result = subprocess.run(
-                [self.falco_path, "--version"],
-                capture_output=True,
-                timeout=5,
-                check=False
-            )
+            result = subprocess.run([self.falco_path, "--version"], capture_output=True, timeout=5, check=False)
             if result.returncode == 0:
                 version = result.stdout.decode().strip()
                 logger.info(f"Falco detected: {version}")
@@ -207,10 +249,7 @@ class RuntimeSecurityMonitor:
             return False
 
     def monitor_realtime(
-        self,
-        duration_seconds: int = 60,
-        container_filter: Optional[str] = None,
-        output_file: Optional[str] = None
+        self, duration_seconds: int = 60, container_filter: Optional[str] = None, output_file: Optional[str] = None
     ) -> list[ThreatAlert]:
         """
         Monitor runtime events in real-time
@@ -224,7 +263,7 @@ class RuntimeSecurityMonitor:
             List of threat alerts detected
         """
         logger.info(f"Starting runtime monitoring for {duration_seconds} seconds")
-        self.stats['monitoring_start'] = datetime.utcnow().isoformat()
+        self.stats["monitoring_start"] = datetime.now(tz=timezone.utc).isoformat()
 
         if not self._check_falco_installed():
             logger.warning(
@@ -237,9 +276,12 @@ class RuntimeSecurityMonitor:
         # Build Falco command
         cmd = [
             self.falco_path,
-            "-o", "json_output=true",
-            "-o", "json_include_output_property=true",
-            "-o", "file_output.enabled=false"
+            "-o",
+            "json_output=true",
+            "-o",
+            "json_include_output_property=true",
+            "-o",
+            "file_output.enabled=false",
         ]
 
         # Add custom rules file if provided
@@ -251,13 +293,7 @@ class RuntimeSecurityMonitor:
             cmd.extend(["-k", f"container.name={container_filter}"])
 
         try:
-            process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                bufsize=1
-            )
+            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1)
 
             start_time = time.time()
             event_count = 0
@@ -286,14 +322,12 @@ class RuntimeSecurityMonitor:
 
                         # Write to output file if specified
                         if output_file:
-                            with open(output_file, 'a') as f:
-                                f.write(json.dumps(event.to_dict()) + '\n')
+                            with open(output_file, "a") as f:
+                                f.write(json.dumps(event.to_dict()) + "\n")
 
                         # Log high-severity events immediately
                         if event.severity in [ThreatSeverity.CRITICAL, ThreatSeverity.HIGH]:
-                            logger.warning(
-                                f"High-severity event: {event.rule_name} - {event.description}"
-                            )
+                            logger.warning(f"High-severity event: {event.rule_name} - {event.description}")
 
                 except json.JSONDecodeError as e:
                     logger.debug(f"Failed to parse Falco output: {e}")
@@ -314,13 +348,10 @@ class RuntimeSecurityMonitor:
             logger.error(f"Runtime monitoring failed: {e}")
             return []
 
-        self.stats['monitoring_end'] = datetime.utcnow().isoformat()
-        self.stats['total_events'] = len(self.events)
+        self.stats["monitoring_end"] = datetime.now(tz=timezone.utc).isoformat()
+        self.stats["total_events"] = len(self.events)
 
-        logger.info(
-            f"Monitoring complete: {len(self.events)} events, "
-            f"{len(self.alerts)} threats detected"
-        )
+        logger.info(f"Monitoring complete: {len(self.events)} events, {len(self.alerts)} threats detected")
 
         return self.alerts
 
@@ -335,7 +366,7 @@ class RuntimeSecurityMonitor:
             List of threat alerts detected
         """
         logger.info(f"Analyzing Falco log: {log_file}")
-        self.stats['monitoring_start'] = datetime.utcnow().isoformat()
+        self.stats["monitoring_start"] = datetime.now(tz=timezone.utc).isoformat()
 
         if not Path(log_file).exists():
             logger.error(f"Log file not found: {log_file}")
@@ -361,13 +392,10 @@ class RuntimeSecurityMonitor:
                     logger.error(f"Error processing line {line_num}: {e}")
                     continue
 
-        self.stats['monitoring_end'] = datetime.utcnow().isoformat()
-        self.stats['total_events'] = len(self.events)
+        self.stats["monitoring_end"] = datetime.now(tz=timezone.utc).isoformat()
+        self.stats["total_events"] = len(self.events)
 
-        logger.info(
-            f"Analysis complete: {len(self.events)} events, "
-            f"{len(self.alerts)} threats detected"
-        )
+        logger.info(f"Analysis complete: {len(self.events)} events, {len(self.alerts)} threats detected")
 
         return self.alerts
 
@@ -385,7 +413,7 @@ class RuntimeSecurityMonitor:
             "Warning": ThreatSeverity.LOW,
             "Notice": ThreatSeverity.INFO,
             "Informational": ThreatSeverity.INFO,
-            "Debug": ThreatSeverity.INFO
+            "Debug": ThreatSeverity.INFO,
         }
 
         severity = priority_map.get(data.get("priority", ""), ThreatSeverity.INFO)
@@ -401,12 +429,12 @@ class RuntimeSecurityMonitor:
                 "destination_port": output_fields.get("fd.rport"),
                 "source_ip": output_fields.get("fd.lip"),
                 "source_port": output_fields.get("fd.lport"),
-                "protocol": output_fields.get("fd.l4proto")
+                "protocol": output_fields.get("fd.l4proto"),
             }
 
         return RuntimeEvent(
             event_id=f"evt_{int(time.time() * 1000000)}_{len(self.events)}",
-            timestamp=data.get("time", datetime.utcnow().isoformat()),
+            timestamp=data.get("time", datetime.now(tz=timezone.utc).isoformat()),
             severity=severity,
             rule_name=data.get("rule", "unknown"),
             description=data.get("output", ""),
@@ -418,20 +446,20 @@ class RuntimeSecurityMonitor:
             network_connection=network_conn,
             user=output_fields.get("user.name"),
             syscall=output_fields.get("evt.type"),
-            raw_event=data
+            raw_event=data,
         )
 
     def _update_stats(self, event: RuntimeEvent):
         """Update statistics with new event"""
         # Count by severity
         sev_key = event.severity.value
-        self.stats['events_by_severity'][sev_key] = \
-            self.stats['events_by_severity'].get(sev_key, 0) + 1
+        self.stats["events_by_severity"][sev_key] = self.stats["events_by_severity"].get(sev_key, 0) + 1
 
         # Count by container
         if event.container_name:
-            self.stats['events_by_container'][event.container_name] = \
-                self.stats['events_by_container'].get(event.container_name, 0) + 1
+            self.stats["events_by_container"][event.container_name] = (
+                self.stats["events_by_container"].get(event.container_name, 0) + 1
+            )
 
     def _check_for_threats(self, event: RuntimeEvent):
         """Analyze event for security threats"""
@@ -460,14 +488,14 @@ class RuntimeSecurityMonitor:
                     indicators=[
                         f"Command: {event.command}",
                         f"Process: {event.process}",
-                        f"User: {event.user or 'unknown'}"
+                        f"User: {event.user or 'unknown'}",
                     ],
                     remediation=(
                         "Investigate why shell was spawned. Containers should not run "
                         "interactive shells in production. Consider using exec for "
                         "debugging instead of embedding shells in images."
                     ),
-                    confidence=0.85
+                    confidence=0.85,
                 )
                 return
 
@@ -485,7 +513,7 @@ class RuntimeSecurityMonitor:
                     indicators=[
                         f"Process: {event.process}",
                         f"Command: {event.command}",
-                        f"Pattern matched: {pattern}"
+                        f"Pattern matched: {pattern}",
                     ],
                     remediation=(
                         "IMMEDIATE ACTION REQUIRED: Terminate container immediately. "
@@ -493,7 +521,7 @@ class RuntimeSecurityMonitor:
                         "Rotate all credentials and secrets. "
                         "Review image build pipeline for compromise."
                     ),
-                    confidence=0.95
+                    confidence=0.95,
                 )
                 return
 
@@ -513,7 +541,7 @@ class RuntimeSecurityMonitor:
                         f"File: {event.file_path}",
                         f"Process: {event.process}",
                         f"User: {event.user or 'unknown'}",
-                        f"Container: {event.container_name or 'unknown'}"
+                        f"Container: {event.container_name or 'unknown'}",
                     ],
                     remediation=(
                         "Verify if file access is legitimate for application function. "
@@ -521,7 +549,7 @@ class RuntimeSecurityMonitor:
                         "Consider using secrets management instead of file-based credentials. "
                         "Implement principle of least privilege."
                     ),
-                    confidence=0.80
+                    confidence=0.80,
                 )
                 return
 
@@ -540,7 +568,7 @@ class RuntimeSecurityMonitor:
                     indicators=[
                         f"Command: {event.command}",
                         f"User: {event.user or 'unknown'}",
-                        f"Process: {event.process}"
+                        f"Process: {event.process}",
                     ],
                     remediation=(
                         "Investigate privilege escalation attempt immediately. "
@@ -548,7 +576,7 @@ class RuntimeSecurityMonitor:
                         "Review container capabilities and security context. "
                         "Run containers as non-root user when possible."
                     ),
-                    confidence=0.90
+                    confidence=0.90,
                 )
                 return
 
@@ -563,17 +591,14 @@ class RuntimeSecurityMonitor:
                         threat_type=ThreatType.SUSPICIOUS_NETWORK,
                         severity=ThreatSeverity.HIGH,
                         description="Suspicious network tool usage detected",
-                        indicators=[
-                            f"Command: {event.command}",
-                            f"Process: {event.process}"
-                        ],
+                        indicators=[f"Command: {event.command}", f"Process: {event.process}"],
                         remediation=(
                             "Investigate network tool usage. These tools are commonly "
                             "used for reconnaissance or establishing backdoors. "
                             "Verify if tools are required for legitimate function. "
                             "Consider network policies to restrict outbound connections."
                         ),
-                        confidence=0.85
+                        confidence=0.85,
                     )
                     return
 
@@ -589,14 +614,14 @@ class RuntimeSecurityMonitor:
                     indicators=[
                         f"Destination: {event.network_connection.get('destination_ip')}:{dest_port}",
                         f"Process: {event.process}",
-                        f"Protocol: {event.network_connection.get('protocol')}"
+                        f"Protocol: {event.network_connection.get('protocol')}",
                     ],
                     remediation=(
                         f"Verify if connection to port {dest_port} is expected. "
                         "This port is commonly associated with malicious activity. "
                         "Review network policies and egress filtering."
                     ),
-                    confidence=0.70
+                    confidence=0.70,
                 )
 
     def _check_data_exfiltration(self, event: RuntimeEvent):
@@ -611,18 +636,14 @@ class RuntimeSecurityMonitor:
                     threat_type=ThreatType.DATA_EXFILTRATION,
                     severity=ThreatSeverity.CRITICAL,
                     description="Potential data exfiltration detected",
-                    indicators=[
-                        f"Command: {event.command}",
-                        f"Process: {event.process}",
-                        f"Pattern: {pattern}"
-                    ],
+                    indicators=[f"Command: {event.command}", f"Process: {event.process}", f"Pattern: {pattern}"],
                     remediation=(
                         "IMMEDIATE INVESTIGATION REQUIRED: Command pattern suggests "
                         "data exfiltration attempt. Review what data may have been accessed. "
                         "Check network logs for unusual outbound transfers. "
                         "Implement DLP controls and egress filtering."
                     ),
-                    confidence=0.90
+                    confidence=0.90,
                 )
                 return
 
@@ -638,17 +659,14 @@ class RuntimeSecurityMonitor:
                     threat_type=ThreatType.REVERSE_SHELL,
                     severity=ThreatSeverity.CRITICAL,
                     description="Reverse shell detected",
-                    indicators=[
-                        f"Command: {event.command}",
-                        f"Process: {event.process}"
-                    ],
+                    indicators=[f"Command: {event.command}", f"Process: {event.process}"],
                     remediation=(
                         "CRITICAL: Reverse shell detected - indicates active compromise. "
                         "Terminate container immediately. Isolate affected systems. "
                         "Begin incident response procedures. "
                         "Rotate all credentials and investigate breach timeline."
                     ),
-                    confidence=0.95
+                    confidence=0.95,
                 )
                 return
 
@@ -663,18 +681,14 @@ class RuntimeSecurityMonitor:
                     threat_type=ThreatType.MALICIOUS_BINARY,
                     severity=ThreatSeverity.CRITICAL,
                     description=f"Known attack tool detected: {pattern}",
-                    indicators=[
-                        f"Process: {event.process}",
-                        f"Command: {event.command}",
-                        f"Tool: {pattern}"
-                    ],
+                    indicators=[f"Process: {event.process}", f"Command: {event.command}", f"Tool: {pattern}"],
                     remediation=(
                         "CRITICAL: Known attack tool detected in container. "
                         "Terminate container immediately and preserve for forensics. "
                         "Investigate how tool was introduced. "
                         "Review image build and supply chain security."
                     ),
-                    confidence=0.98
+                    confidence=0.98,
                 )
                 return
 
@@ -686,7 +700,7 @@ class RuntimeSecurityMonitor:
         description: str,
         indicators: list[str],
         remediation: str,
-        confidence: float = 1.0
+        confidence: float = 1.0,
     ):
         """Create a new threat alert"""
         alert = ThreatAlert(
@@ -698,25 +712,25 @@ class RuntimeSecurityMonitor:
             indicators=indicators,
             remediation=remediation,
             confidence=confidence,
-            related_events=[event]
+            related_events=[event],
         )
 
         self.alerts.append(alert)
-        self.stats['threats_detected'] += 1
+        self.stats["threats_detected"] += 1
 
         # Log alert based on severity
         emoji = {
             ThreatSeverity.CRITICAL: "🚨",
             ThreatSeverity.HIGH: "⚠️",
             ThreatSeverity.MEDIUM: "⚡",
-            ThreatSeverity.LOW: "ℹ️"
+            ThreatSeverity.LOW: "ℹ️",
         }.get(severity, "•")
 
         log_func = {
             ThreatSeverity.CRITICAL: logger.error,
             ThreatSeverity.HIGH: logger.warning,
             ThreatSeverity.MEDIUM: logger.info,
-            ThreatSeverity.LOW: logger.info
+            ThreatSeverity.LOW: logger.info,
         }.get(severity, logger.info)
 
         log_func(f"{emoji} {severity.value.upper()}: {description}")
@@ -727,27 +741,23 @@ class RuntimeSecurityMonitor:
             "metadata": {
                 "tool": "Argus Runtime Security Monitor",
                 "version": "1.0.0",
-                "timestamp": datetime.utcnow().isoformat(),
-                "monitoring_start": self.stats.get('monitoring_start'),
-                "monitoring_end": self.stats.get('monitoring_end')
+                "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+                "monitoring_start": self.stats.get("monitoring_start"),
+                "monitoring_end": self.stats.get("monitoring_end"),
             },
             "statistics": {
                 "total_events": len(self.events),
                 "total_alerts": len(self.alerts),
-                "events_by_severity": self.stats.get('events_by_severity', {}),
-                "events_by_container": self.stats.get('events_by_container', {}),
-                "critical_alerts": sum(
-                    1 for a in self.alerts if a.severity == ThreatSeverity.CRITICAL
-                ),
-                "high_alerts": sum(
-                    1 for a in self.alerts if a.severity == ThreatSeverity.HIGH
-                )
+                "events_by_severity": self.stats.get("events_by_severity", {}),
+                "events_by_container": self.stats.get("events_by_container", {}),
+                "critical_alerts": sum(1 for a in self.alerts if a.severity == ThreatSeverity.CRITICAL),
+                "high_alerts": sum(1 for a in self.alerts if a.severity == ThreatSeverity.HIGH),
             },
             "alerts": [alert.to_dict() for alert in self.alerts],
-            "events": [event.to_dict() for event in self.events[:200]]  # Limit events
+            "events": [event.to_dict() for event in self.events[:200]],  # Limit events
         }
 
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             json.dump(output, f, indent=2)
 
         logger.info(f"Exported runtime security report to {output_file}")
@@ -757,17 +767,19 @@ class RuntimeSecurityMonitor:
         sarif = {
             "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
             "version": "2.1.0",
-            "runs": [{
-                "tool": {
-                    "driver": {
-                        "name": "Argus Runtime Security Monitor",
-                        "version": "1.0.0",
-                        "informationUri": "https://github.com/devatsecure/Argus-Security",
-                        "rules": []
-                    }
-                },
-                "results": []
-            }]
+            "runs": [
+                {
+                    "tool": {
+                        "driver": {
+                            "name": "Argus Runtime Security Monitor",
+                            "version": "1.0.0",
+                            "informationUri": "https://github.com/devatsecure/Argus-Security",
+                            "rules": [],
+                        }
+                    },
+                    "results": [],
+                }
+            ],
         }
 
         # Add rules
@@ -775,19 +787,15 @@ class RuntimeSecurityMonitor:
         for alert in self.alerts:
             rule_id = alert.threat_type.value
             if rule_id not in rules_added:
-                sarif["runs"][0]["tool"]["driver"]["rules"].append({
-                    "id": rule_id,
-                    "name": alert.threat_type.value.replace('_', ' ').title(),
-                    "shortDescription": {
-                        "text": alert.description
-                    },
-                    "help": {
-                        "text": alert.remediation
-                    },
-                    "defaultConfiguration": {
-                        "level": self._severity_to_sarif_level(alert.severity)
+                sarif["runs"][0]["tool"]["driver"]["rules"].append(
+                    {
+                        "id": rule_id,
+                        "name": alert.threat_type.value.replace("_", " ").title(),
+                        "shortDescription": {"text": alert.description},
+                        "help": {"text": alert.remediation},
+                        "defaultConfiguration": {"level": self._severity_to_sarif_level(alert.severity)},
                     }
-                })
+                )
                 rules_added.add(rule_id)
 
         # Add results
@@ -796,28 +804,21 @@ class RuntimeSecurityMonitor:
                 "ruleId": alert.threat_type.value,
                 "level": self._severity_to_sarif_level(alert.severity),
                 "message": {
-                    "text": f"{alert.description}\n\nIndicators:\n" +
-                           "\n".join(f"- {ind}" for ind in alert.indicators)
+                    "text": f"{alert.description}\n\nIndicators:\n" + "\n".join(f"- {ind}" for ind in alert.indicators)
                 },
-                "properties": {
-                    "confidence": alert.confidence,
-                    "timestamp": alert.timestamp
-                }
+                "properties": {"confidence": alert.confidence, "timestamp": alert.timestamp},
             }
 
             # Add location if we have container info
             if alert.related_events and alert.related_events[0].container_name:
                 event = alert.related_events[0]
-                result["locations"] = [{
-                    "logicalLocations": [{
-                        "name": event.container_name or "unknown",
-                        "kind": "container"
-                    }]
-                }]
+                result["locations"] = [
+                    {"logicalLocations": [{"name": event.container_name or "unknown", "kind": "container"}]}
+                ]
 
             sarif["runs"][0]["results"].append(result)
 
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             json.dump(sarif, f, indent=2)
 
         logger.info(f"Exported SARIF report to {output_file}")
@@ -829,7 +830,7 @@ class RuntimeSecurityMonitor:
             ThreatSeverity.HIGH: "error",
             ThreatSeverity.MEDIUM: "warning",
             ThreatSeverity.LOW: "note",
-            ThreatSeverity.INFO: "note"
+            ThreatSeverity.INFO: "note",
         }
         return mapping.get(severity, "warning")
 
@@ -844,14 +845,16 @@ class RuntimeSecurityMonitor:
         print(f"   Total Events: {len(self.events)}")
         print(f"   Security Alerts: {len(self.alerts)}")
 
-        if self.stats.get('monitoring_start'):
-            print(f"   Monitoring Period: {self.stats['monitoring_start']} to {self.stats.get('monitoring_end', 'ongoing')}")
+        if self.stats.get("monitoring_start"):
+            print(
+                f"   Monitoring Period: {self.stats['monitoring_start']} to {self.stats.get('monitoring_end', 'ongoing')}"
+            )
 
         # Events by severity
-        if self.stats.get('events_by_severity'):
+        if self.stats.get("events_by_severity"):
             print("\n📈 Events by Severity:")
-            for severity in ['critical', 'high', 'medium', 'low']:
-                count = self.stats['events_by_severity'].get(severity, 0)
+            for severity in ["critical", "high", "medium", "low"]:
+                count = self.stats["events_by_severity"].get(severity, 0)
                 if count > 0:
                     print(f"   {severity.upper()}: {count}")
 
@@ -862,19 +865,23 @@ class RuntimeSecurityMonitor:
             for alert in self.alerts:
                 by_severity[alert.severity] = by_severity.get(alert.severity, 0) + 1
 
-            for severity in [ThreatSeverity.CRITICAL, ThreatSeverity.HIGH,
-                            ThreatSeverity.MEDIUM, ThreatSeverity.LOW]:
+            for severity in [ThreatSeverity.CRITICAL, ThreatSeverity.HIGH, ThreatSeverity.MEDIUM, ThreatSeverity.LOW]:
                 count = by_severity.get(severity, 0)
                 if count > 0:
-                    emoji = "🔴" if severity == ThreatSeverity.CRITICAL else \
-                            "🟠" if severity == ThreatSeverity.HIGH else \
-                            "🟡" if severity == ThreatSeverity.MEDIUM else "🟢"
+                    emoji = (
+                        "🔴"
+                        if severity == ThreatSeverity.CRITICAL
+                        else "🟠"
+                        if severity == ThreatSeverity.HIGH
+                        else "🟡"
+                        if severity == ThreatSeverity.MEDIUM
+                        else "🟢"
+                    )
                     print(f"   {emoji} {severity.value.upper()}: {count}")
 
             # Show top alerts
             print("\n🚨 Top Alerts:")
-            critical_high = [a for a in self.alerts
-                           if a.severity in [ThreatSeverity.CRITICAL, ThreatSeverity.HIGH]]
+            critical_high = [a for a in self.alerts if a.severity in [ThreatSeverity.CRITICAL, ThreatSeverity.HIGH]]
             for i, alert in enumerate(critical_high[:5], 1):
                 print(f"\n   {i}. [{alert.severity.value.upper()}] {alert.threat_type.value}")
                 print(f"      {alert.description}")
@@ -882,13 +889,9 @@ class RuntimeSecurityMonitor:
                 print(f"      Remediation: {alert.remediation[:100]}...")
 
         # Container breakdown
-        if self.stats.get('events_by_container'):
+        if self.stats.get("events_by_container"):
             print("\n📦 Events by Container:")
-            sorted_containers = sorted(
-                self.stats['events_by_container'].items(),
-                key=lambda x: x[1],
-                reverse=True
-            )
+            sorted_containers = sorted(self.stats["events_by_container"].items(), key=lambda x: x[1], reverse=True)
             for container, count in sorted_containers[:5]:
                 print(f"   {container}: {count} events")
 
@@ -931,75 +934,32 @@ Examples:
 
   # Export to SARIF for GitHub
   %(prog)s --mode analyze --log-file events.json --sarif output.sarif
-        """
+        """,
     )
 
-    parser.add_argument(
-        "--mode",
-        choices=["realtime", "analyze"],
-        default="realtime",
-        help="Monitoring mode"
-    )
-    parser.add_argument(
-        "--duration",
-        type=int,
-        default=60,
-        help="Monitoring duration in seconds (realtime mode)"
-    )
-    parser.add_argument(
-        "--log-file",
-        help="Falco log file to analyze (analyze mode)"
-    )
-    parser.add_argument(
-        "--container",
-        help="Container name filter (realtime mode)"
-    )
-    parser.add_argument(
-        "--falco-path",
-        default="falco",
-        help="Path to Falco binary"
-    )
-    parser.add_argument(
-        "--rules-file",
-        help="Custom Falco rules file"
-    )
-    parser.add_argument(
-        "--output",
-        default="runtime_security.json",
-        help="Output JSON file"
-    )
-    parser.add_argument(
-        "--sarif",
-        help="Output SARIF file for GitHub integration"
-    )
-    parser.add_argument(
-        "--debug",
-        action="store_true",
-        help="Enable debug logging"
-    )
+    parser.add_argument("--mode", choices=["realtime", "analyze"], default="realtime", help="Monitoring mode")
+    parser.add_argument("--duration", type=int, default=60, help="Monitoring duration in seconds (realtime mode)")
+    parser.add_argument("--log-file", help="Falco log file to analyze (analyze mode)")
+    parser.add_argument("--container", help="Container name filter (realtime mode)")
+    parser.add_argument("--falco-path", default="falco", help="Path to Falco binary")
+    parser.add_argument("--rules-file", help="Custom Falco rules file")
+    parser.add_argument("--output", default="runtime_security.json", help="Output JSON file")
+    parser.add_argument("--sarif", help="Output SARIF file for GitHub integration")
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
 
     args = parser.parse_args()
 
     # Configure logging
     log_level = logging.DEBUG if args.debug else logging.INFO
-    logging.basicConfig(
-        level=log_level,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
+    logging.basicConfig(level=log_level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
     # Create monitor
-    monitor = RuntimeSecurityMonitor(
-        falco_path=args.falco_path,
-        rules_file=args.rules_file
-    )
+    monitor = RuntimeSecurityMonitor(falco_path=args.falco_path, rules_file=args.rules_file)
 
     # Run monitoring
     try:
         if args.mode == "realtime":
-            monitor.monitor_realtime(
-                duration_seconds=args.duration,
-                container_filter=args.container
-            )
+            monitor.monitor_realtime(duration_seconds=args.duration, container_filter=args.container)
         else:
             if not args.log_file:
                 print("Error: --log-file required for analyze mode")
@@ -1016,12 +976,8 @@ Examples:
             monitor.export_to_sarif(args.sarif)
 
         # Exit code based on alerts
-        critical_count = sum(
-            1 for a in monitor.alerts if a.severity == ThreatSeverity.CRITICAL
-        )
-        high_count = sum(
-            1 for a in monitor.alerts if a.severity == ThreatSeverity.HIGH
-        )
+        critical_count = sum(1 for a in monitor.alerts if a.severity == ThreatSeverity.CRITICAL)
+        high_count = sum(1 for a in monitor.alerts if a.severity == ThreatSeverity.HIGH)
 
         if critical_count > 0:
             sys.exit(2)  # Critical threats found

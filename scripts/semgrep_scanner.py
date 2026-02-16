@@ -15,7 +15,7 @@ import logging
 import shutil
 import subprocess
 from dataclasses import asdict, dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -145,7 +145,7 @@ class SemgrepScanner:
             return {
                 "tool": "semgrep",
                 "version": self._get_semgrep_version(),
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(tz=timezone.utc).isoformat(),
                 "target": str(target_path),
                 "findings_count": len(findings),
                 "findings": [f.to_dict() for f in findings],

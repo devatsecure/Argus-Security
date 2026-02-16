@@ -46,6 +46,7 @@ class ProjectContextStage(BaseStage):
     def _execute(self, ctx: PipelineContext) -> dict[str, Any]:
         try:
             from project_context_detector import detect_project_context
+
             ctx.project_context = detect_project_context(ctx.target_path)
             project_type = getattr(ctx.project_context, "project_type", "unknown")
             logger.info("Detected project type: %s", project_type)
@@ -106,6 +107,7 @@ class ScannerOrchestrationStage(BaseStage):
         """Run Semgrep and return findings."""
         try:
             from semgrep_scanner import SemgrepScanner
+
             scanner = SemgrepScanner()
             return scanner.scan(target_path)
         except (ImportError, Exception) as exc:
@@ -116,6 +118,7 @@ class ScannerOrchestrationStage(BaseStage):
         """Run Trivy and return findings."""
         try:
             from trivy_scanner import TrivyScanner
+
             scanner = TrivyScanner()
             return scanner.scan(target_path)
         except (ImportError, Exception) as exc:
@@ -126,6 +129,7 @@ class ScannerOrchestrationStage(BaseStage):
         """Run Checkov and return findings as list of dicts."""
         try:
             from checkov_scanner import CheckovScanner
+
             scanner = CheckovScanner()
             result = scanner.scan(target_path)
             # CheckovScanner.scan() returns a CheckovScanResult dataclass,
@@ -157,11 +161,7 @@ class AIEnrichmentStage(BaseStage):
     required_stages = ["phase1_scanner_orchestration"]
 
     def should_run(self, ctx: PipelineContext) -> bool:
-        return (
-            ctx.config.get("enable_ai_enrichment", True)
-            and len(ctx.findings) > 0
-            and ctx.ai_client is not None
-        )
+        return ctx.config.get("enable_ai_enrichment", True) and len(ctx.findings) > 0 and ctx.ai_client is not None
 
     def _execute(self, ctx: PipelineContext) -> dict[str, Any]:
         enriched_count = 0
@@ -186,14 +186,12 @@ class RemediationStage(BaseStage):
     required_stages = ["phase1_scanner_orchestration"]
 
     def should_run(self, ctx: PipelineContext) -> bool:
-        return (
-            ctx.config.get("enable_remediation", True)
-            and len(ctx.findings) > 0
-        )
+        return ctx.config.get("enable_remediation", True) and len(ctx.findings) > 0
 
     def _execute(self, ctx: PipelineContext) -> dict[str, Any]:
         try:
             from remediation_engine import RemediationEngine
+
             engine = RemediationEngine()
             fixes = engine.generate_fixes(ctx.findings, ctx.target_path)
             return {"fixes_generated": len(fixes) if fixes else 0}
@@ -216,14 +214,12 @@ class SpontaneousDiscoveryStage(BaseStage):
     required_stages = ["phase1_scanner_orchestration"]
 
     def should_run(self, ctx: PipelineContext) -> bool:
-        return (
-            ctx.config.get("enable_spontaneous_discovery", True)
-            and ctx.ai_client is not None
-        )
+        return ctx.config.get("enable_spontaneous_discovery", True) and ctx.ai_client is not None
 
     def _execute(self, ctx: PipelineContext) -> dict[str, Any]:
         try:
             from spontaneous_discovery import SpontaneousDiscoveryEngine
+
             engine = SpontaneousDiscoveryEngine()
             new_findings = engine.discover(ctx.target_path)
             if new_findings:
@@ -253,10 +249,7 @@ class MultiAgentReviewStage(BaseStage):
     required_stages = ["phase1_scanner_orchestration"]
 
     def should_run(self, ctx: PipelineContext) -> bool:
-        return (
-            ctx.config.get("enable_multi_agent", True)
-            and len(ctx.findings) > 0
-        )
+        return ctx.config.get("enable_multi_agent", True) and len(ctx.findings) > 0
 
     def _execute(self, ctx: PipelineContext) -> dict[str, Any]:
         try:
@@ -267,6 +260,7 @@ class MultiAgentReviewStage(BaseStage):
                 SecretHunter,
                 ThreatModeler,
             )
+
             personas = [
                 SecretHunter(),
                 ArchitectureReviewer(),
@@ -295,14 +289,12 @@ class SandboxValidationStage(BaseStage):
     required_stages = ["phase1_scanner_orchestration"]
 
     def should_run(self, ctx: PipelineContext) -> bool:
-        return (
-            ctx.config.get("enable_sandbox_validation", True)
-            and len(ctx.findings) > 0
-        )
+        return ctx.config.get("enable_sandbox_validation", True) and len(ctx.findings) > 0
 
     def _execute(self, ctx: PipelineContext) -> dict[str, Any]:
         try:
             from sandbox_validator import SandboxValidator
+
             SandboxValidator()
             validated = 0
             exploitable = 0
@@ -343,33 +335,22 @@ class PolicyGateStage(BaseStage):
                 findings_dicts.append(f.to_dict())
             elif hasattr(f, "__dataclass_fields__"):
                 from dataclasses import asdict
+
                 findings_dicts.append(asdict(f))
             elif isinstance(f, dict):
                 findings_dicts.append(f)
 
         # Attempt OPA evaluation, fall back to Python
-        ctx.policy_gate_result = self._evaluate_policy(
-            findings_dicts, ctx.config
-        )
+        ctx.policy_gate_result = self._evaluate_policy(findings_dicts, ctx.config)
 
         decision = ctx.policy_gate_result.get("decision", "unknown")
         return {"decision": decision, "findings_evaluated": len(findings_dicts)}
 
-    def _evaluate_policy(
-        self, findings: list, config: dict
-    ) -> dict[str, Any]:
+    def _evaluate_policy(self, findings: list, config: dict) -> dict[str, Any]:
         """Evaluate findings against policy rules."""
         # Count critical/high findings
-        sum(
-            1
-            for f in findings
-            if f.get("severity") in ("critical",)
-        )
-        sum(
-            1
-            for f in findings
-            if f.get("severity") in ("high",)
-        )
+        sum(1 for f in findings if f.get("severity") in ("critical",))
+        sum(1 for f in findings if f.get("severity") in ("high",))
 
         blocks = []
         warnings = []
@@ -386,11 +367,7 @@ class PolicyGateStage(BaseStage):
 
         return {
             "decision": decision,
-            "reasons": (
-                [f"{len(blocks)} critical finding(s) block this gate"]
-                if blocks
-                else ["No blocking findings"]
-            ),
+            "reasons": ([f"{len(blocks)} critical finding(s) block this gate"] if blocks else ["No blocking findings"]),
             "blocks": blocks,
             "warnings": warnings,
         }
@@ -417,13 +394,13 @@ class ReportingStage(BaseStage):
 
     def _execute(self, ctx: PipelineContext) -> dict[str, Any]:
         import json
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         formats_generated = []
 
         # JSON report
         json_report = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(tz=timezone.utc).isoformat(),
             "target": ctx.target_path,
             "total_findings": len(ctx.findings),
             "phase_timings": ctx.phase_timings,
@@ -436,6 +413,7 @@ class ReportingStage(BaseStage):
                 json_report["findings"].append(f.to_dict())
             elif hasattr(f, "__dataclass_fields__"):
                 from dataclasses import asdict
+
                 json_report["findings"].append(asdict(f))
             elif isinstance(f, dict):
                 json_report["findings"].append(f)

@@ -121,7 +121,7 @@ class RemediationEngine:
                     "after": 'cursor.execute("SELECT * FROM users WHERE id=?", (user_id,))',
                 },
                 "javascript": {
-                    "before": 'db.query(`SELECT * FROM users WHERE id=${userId}`)',
+                    "before": "db.query(`SELECT * FROM users WHERE id=${userId}`)",
                     "after": "db.query('SELECT * FROM users WHERE id=?', [userId])",
                 },
             },
@@ -614,10 +614,11 @@ Generate ONLY the JSON response, no markdown code blocks or additional text.
 
         if not template:
             # Generic fallback template
-            fixed_code = f"# TODO: Fix {vuln_type} vulnerability\n# Review and apply security best practices\n{code_snippet}"
+            fixed_code = (
+                f"# TODO: Fix {vuln_type} vulnerability\n# Review and apply security best practices\n{code_snippet}"
+            )
             explanation = (
-                f"Manual review required for {vuln_type}. "
-                "Consult security documentation and apply appropriate fixes."
+                f"Manual review required for {vuln_type}. Consult security documentation and apply appropriate fixes."
             )
             testing = ["Manual security testing required", "Consult OWASP guidelines"]
             confidence = "low"
@@ -665,7 +666,9 @@ Generate ONLY the JSON response, no markdown code blocks or additional text.
                     else:
                         first_lang = next(iter(examples.keys()))
                         fixed_code = examples[first_lang]["after"]
-                        explanation = template["template"] + f" (Note: Example is in {first_lang}, adapt for {language})"
+                        explanation = (
+                            template["template"] + f" (Note: Example is in {first_lang}, adapt for {language})"
+                        )
 
                     explanation += f" Context: {output_dest}"
                     confidence = "medium"
@@ -760,7 +763,7 @@ Generate ONLY the JSON response, no markdown code blocks or additional text.
         """
         with open(output_file, "w") as f:
             f.write("# Security Remediation Recommendations\n\n")
-            f.write(f"**Generated:** {datetime.datetime.utcnow().isoformat()}Z\n\n")
+            f.write(f"**Generated:** {datetime.datetime.now(tz=datetime.timezone.utc).isoformat()}\n\n")
             f.write(f"**Total Vulnerabilities:** {len(suggestions)}\n\n")
 
             # Summary by confidence
@@ -819,7 +822,7 @@ Generate ONLY the JSON response, no markdown code blocks or additional text.
             output_file: Path to output JSON file
         """
         data = {
-            "generated_at": datetime.datetime.utcnow().isoformat() + "Z",
+            "generated_at": datetime.datetime.now(tz=datetime.timezone.utc).isoformat(),
             "total_suggestions": len(suggestions),
             "suggestions": [s.to_dict() for s in suggestions],
         }
@@ -896,7 +899,10 @@ Generate ONLY the JSON response, no markdown code blocks or additional text.
             if any(indicator in path_lower for indicator in ["cli", "cmd", "console", "terminal", "bin/"]):
                 return "terminal"
             # Web apps often have these patterns
-            if any(indicator in path_lower for indicator in ["web", "http", "server", "api", "routes", "controllers", "views"]):
+            if any(
+                indicator in path_lower
+                for indicator in ["web", "http", "server", "api", "routes", "controllers", "views"]
+            ):
                 return "http-response"
 
         return "unknown"
@@ -975,7 +981,9 @@ Examples:
     )
 
     parser.add_argument("--findings", required=True, help="Path to findings JSON file")
-    parser.add_argument("--output", default="remediation_report.md", help="Output file path (default: remediation_report.md)")
+    parser.add_argument(
+        "--output", default="remediation_report.md", help="Output file path (default: remediation_report.md)"
+    )
     parser.add_argument(
         "--format",
         choices=["markdown", "json"],

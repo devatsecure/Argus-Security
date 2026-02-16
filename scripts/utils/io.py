@@ -9,7 +9,7 @@ JSON/SARIF reading/writing code across scripts.
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional, Union
 
@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 class IOError(Exception):
     """Custom exception for I/O operations"""
+
     pass
 
 
@@ -25,10 +26,7 @@ class SafeIO:
     """Safe I/O operations with validation and error handling"""
 
     @staticmethod
-    def read_json(
-        file_path: Union[str, Path],
-        validate_schema: Optional[callable] = None
-    ) -> dict[str, Any]:
+    def read_json(file_path: Union[str, Path], validate_schema: Optional[callable] = None) -> dict[str, Any]:
         """
         Read and validate JSON file
 
@@ -54,7 +52,7 @@ class SafeIO:
             raise FileNotFoundError(f"File not found: {file_path}")
 
         try:
-            with open(file_path, encoding='utf-8') as f:
+            with open(file_path, encoding="utf-8") as f:
                 data = json.load(f)
 
             # Validate against schema if provided
@@ -81,7 +79,7 @@ class SafeIO:
         data: Union[dict, list],
         indent: int = 2,
         sort_keys: bool = True,
-        ensure_ascii: bool = False
+        ensure_ascii: bool = False,
     ) -> None:
         """
         Write JSON file with formatting
@@ -105,14 +103,8 @@ class SafeIO:
             # Create parent directory if it doesn't exist
             file_path.parent.mkdir(parents=True, exist_ok=True)
 
-            with open(file_path, 'w', encoding='utf-8') as f:
-                json.dump(
-                    data,
-                    f,
-                    indent=indent,
-                    sort_keys=sort_keys,
-                    ensure_ascii=ensure_ascii
-                )
+            with open(file_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=indent, sort_keys=sort_keys, ensure_ascii=ensure_ascii)
 
             logger.debug(f"Successfully wrote JSON to {file_path}")
 
@@ -154,10 +146,7 @@ class SafeIO:
 
     @staticmethod
     def write_sarif(
-        file_path: Union[str, Path],
-        runs: list[dict],
-        tool_name: str = "argus",
-        tool_version: str = "1.0.0"
+        file_path: Union[str, Path], runs: list[dict], tool_name: str = "argus", tool_version: str = "1.0.0"
     ) -> None:
         """
         Write SARIF file with proper structure
@@ -174,7 +163,7 @@ class SafeIO:
         sarif_data = {
             "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
             "version": "2.1.0",
-            "runs": runs
+            "runs": runs,
         }
 
         SafeIO.write_json(file_path, sarif_data, sort_keys=False)
@@ -182,8 +171,7 @@ class SafeIO:
 
     @staticmethod
     def merge_sarif_files(
-        sarif_files: list[Union[str, Path]],
-        output_file: Optional[Union[str, Path]] = None
+        sarif_files: list[Union[str, Path]], output_file: Optional[Union[str, Path]] = None
     ) -> dict[str, Any]:
         """
         Merge multiple SARIF files into one
@@ -204,7 +192,7 @@ class SafeIO:
         merged = {
             "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
             "version": "2.1.0",
-            "runs": []
+            "runs": [],
         }
 
         for file_path in sarif_files:
@@ -215,9 +203,7 @@ class SafeIO:
             except Exception as e:
                 logger.warning(f"Failed to merge {file_path}: {e}")
 
-        logger.info(
-            f"Merged {len(sarif_files)} SARIF files into {len(merged['runs'])} runs"
-        )
+        logger.info(f"Merged {len(sarif_files)} SARIF files into {len(merged['runs'])} runs")
 
         if output_file:
             SafeIO.write_json(output_file, merged, sort_keys=False)
@@ -225,11 +211,7 @@ class SafeIO:
         return merged
 
     @staticmethod
-    def read_lines(
-        file_path: Union[str, Path],
-        strip: bool = True,
-        skip_empty: bool = False
-    ) -> list[str]:
+    def read_lines(file_path: Union[str, Path], strip: bool = True, skip_empty: bool = False) -> list[str]:
         """
         Read file as list of lines
 
@@ -250,7 +232,7 @@ class SafeIO:
             raise FileNotFoundError(f"File not found: {file_path}")
 
         try:
-            with open(file_path, encoding='utf-8') as f:
+            with open(file_path, encoding="utf-8") as f:
                 lines = f.readlines()
 
             if strip:
@@ -266,11 +248,7 @@ class SafeIO:
             raise IOError(f"Failed to read {file_path}: {e}") from e
 
     @staticmethod
-    def write_lines(
-        file_path: Union[str, Path],
-        lines: list[str],
-        append: bool = False
-    ) -> None:
+    def write_lines(file_path: Union[str, Path], lines: list[str], append: bool = False) -> None:
         """
         Write list of lines to file
 
@@ -283,12 +261,12 @@ class SafeIO:
             SafeIO.write_lines("output.txt", ["line 1", "line 2"])
         """
         file_path = Path(file_path)
-        mode = 'a' if append else 'w'
+        mode = "a" if append else "w"
 
         try:
             file_path.parent.mkdir(parents=True, exist_ok=True)
 
-            with open(file_path, mode, encoding='utf-8') as f:
+            with open(file_path, mode, encoding="utf-8") as f:
                 for line in lines:
                     f.write(f"{line}\n")
 
@@ -387,7 +365,7 @@ class MarkdownGenerator:
             Formatted Markdown string
         """
         output = [f"# {self.title}\n\n"]
-        output.append(f"*Generated: {datetime.utcnow().isoformat()}Z*\n\n")
+        output.append(f"*Generated: {datetime.now(tz=timezone.utc).isoformat()}*\n\n")
         output.extend(self.sections)
         return "".join(output)
 
@@ -426,8 +404,6 @@ def validate_path_safe(file_path: Union[str, Path], base_dir: Optional[Path] = N
     if base_dir:
         base_dir = base_dir.resolve()
         if not str(file_path).startswith(str(base_dir)):
-            raise ValueError(
-                f"Path {file_path} is outside base directory {base_dir}"
-            )
+            raise ValueError(f"Path {file_path} is outside base directory {base_dir}")
 
     return file_path
