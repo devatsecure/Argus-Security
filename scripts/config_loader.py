@@ -68,6 +68,7 @@ def get_default_config() -> dict[str, Any]:
         "enable_remediation": True,
         "enable_runtime_security": False,
         "enable_regression_testing": True,
+        "enable_gitleaks": True,
         # -- MCP Server --
         "enable_mcp_server": False,
         # -- DAST auth --
@@ -387,6 +388,7 @@ _ENV_MAPPINGS: list[tuple] = [
     (("ENABLE_REMEDIATION",), "enable_remediation", "bool"),
     (("ENABLE_RUNTIME_SECURITY",), "enable_runtime_security", "bool"),
     (("ENABLE_REGRESSION_TESTING",), "enable_regression_testing", "bool"),
+    (("ENABLE_GITLEAKS",), "enable_gitleaks", "bool"),
     # MCP Server
     (("ENABLE_MCP_SERVER",), "enable_mcp_server", "bool"),
     # Feature toggles

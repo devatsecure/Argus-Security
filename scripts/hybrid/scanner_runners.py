@@ -26,6 +26,7 @@ Functions:
     run_remediation: Generate AI-powered remediation suggestions
     run_runtime_security: Run Container Runtime Security Monitoring
     run_regression_testing: Run Security Regression Testing
+    run_gitleaks: Run Gitleaks pattern-based secret scanner
 """
 
 import logging
@@ -573,6 +574,69 @@ def run_regression_testing(tester: Any, target_path: str, current_findings: list
     return findings
 
 
+def run_gitleaks(scanner: Any, target_path: str, logger: logging.Logger) -> list[HybridFinding]:
+    """Run Gitleaks secret scanner and convert to HybridFinding format.
+
+    Gitleaks performs pattern-based secret detection, complementing TruffleHog's
+    verified-secret approach.  The scanner wraps the ``gitleaks`` CLI binary and
+    returns results as ``HybridFinding`` objects with ``source_tool="gitleaks"``
+    and ``category="secrets"``.
+
+    Args:
+        scanner: A ``GitleaksScanner`` instance with a ``.scan()`` method.
+        target_path: Filesystem path to scan.
+        logger: Logger for status messages.
+
+    Returns:
+        List of ``HybridFinding`` objects (empty list on error or no findings).
+    """
+    findings: list[HybridFinding] = []
+
+    try:
+        gitleaks_result = scanner.scan(str(target_path), scan_type="filesystem")
+
+        # Gracefully handle error results (e.g. gitleaks not installed)
+        if gitleaks_result.get("error"):
+            error_msg = gitleaks_result.get("error", "unknown")
+            if error_msg == "gitleaks_not_installed":
+                logger.warning("⚠️  Gitleaks binary not installed -- skipping")
+            else:
+                logger.warning(f"⚠️  Gitleaks returned error: {error_msg}")
+            return findings
+
+        raw_findings = gitleaks_result.get("findings", [])
+
+        for idx, f in enumerate(raw_findings):
+            file_path = f.get("file_path", "")
+            if not file_path or file_path.strip() in ("", "."):
+                continue
+
+            rule_id = f.get("rule_id", "unknown")
+            description = f.get("description", "Secret detected")
+
+            finding = HybridFinding(
+                finding_id=f"gitleaks-{rule_id}-{idx}",
+                source_tool="gitleaks",
+                severity="high",  # Secrets are high severity by default
+                category="secrets",
+                title=f"Secret detected: {description}",
+                description=(
+                    f"Gitleaks detected a potential {description} secret "
+                    f"in {file_path}"
+                    + (f" (commit {f.get('commit', '')[:8]})" if f.get("commit") else "")
+                ),
+                file_path=file_path,
+                line_number=f.get("start_line"),
+                confidence=0.7,  # Pattern-based detection (not API-verified)
+            )
+            findings.append(finding)
+
+    except Exception as e:
+        logger.error(f"❌ Gitleaks scan failed: {e}")
+
+    return findings
+
+
 __all__ = [
     "normalize_severity",
     "count_by_severity",
@@ -588,4 +652,5 @@ __all__ = [
     "run_remediation",
     "run_runtime_security",
     "run_regression_testing",
+    "run_gitleaks",
 ]

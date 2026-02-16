@@ -5,7 +5,7 @@ Runs all enabled deterministic security scanners in sequence and collects
 their findings into a unified list of ``HybridFinding`` objects.
 
 Scanners covered:
-    Semgrep, TruffleHog, Trivy, Checkov, API-Security, DAST,
+    Semgrep, TruffleHog, Gitleaks, Trivy, Checkov, API-Security, DAST,
     Supply-Chain, Fuzzing, Threat-Intel, Runtime-Security,
     Regression-Testing, Nuclei-Templates, ZAP-Baseline.
 
@@ -60,6 +60,11 @@ def run_phase1_scanning(
             "TruffleHog",
             getattr(analyzer, "enable_trufflehog", False),
             getattr(analyzer, "trufflehog_scanner", None) is not None,
+        ),
+        (
+            "Gitleaks",
+            getattr(analyzer, "enable_gitleaks", False),
+            getattr(analyzer, "gitleaks_scanner", None) is not None,
         ),
         ("Trivy", getattr(analyzer, "enable_trivy", False), getattr(analyzer, "trivy_scanner", None) is not None),
         ("Checkov", getattr(analyzer, "enable_checkov", False), getattr(analyzer, "checkov_scanner", None) is not None),
@@ -150,6 +155,23 @@ def run_phase1_scanning(
             logger.error("   TruffleHog scan failed: %s", e)
             logger.info("   Continuing with other scanners...")
             scanner_health["TruffleHog"] = "failed"
+
+    # --- Gitleaks ---
+    if getattr(analyzer, "enable_gitleaks", False) and getattr(analyzer, "gitleaks_scanner", None):
+        try:
+            logger.info("   Running Gitleaks secret scanner...")
+            from hybrid.scanner_runners import run_gitleaks
+
+            gitleaks_findings = run_gitleaks(
+                analyzer.gitleaks_scanner, str(target_path), logger
+            )
+            all_findings.extend(gitleaks_findings)
+            logger.info("   Gitleaks: %d secrets detected", len(gitleaks_findings))
+            scanner_health["Gitleaks"] = f"ran({len(gitleaks_findings)})" if gitleaks_findings else "clean"
+        except Exception as e:
+            logger.error("   Gitleaks scan failed: %s", e)
+            logger.info("   Continuing with other scanners...")
+            scanner_health["Gitleaks"] = "failed"
 
     # --- Trivy ---
     if analyzer.enable_trivy and analyzer.trivy_scanner:
