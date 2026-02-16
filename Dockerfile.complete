@@ -69,8 +69,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     openjdk-17-jre-headless \
     && rm -rf /var/lib/apt/lists/*
 
-RUN ZAP_VERSION="2.15.0" && \
-    ZAP_SHA256="6410e196baab458a9204e29aafb5745fca003a2a6c0386f2c6e5c04b67621fa7" && \
+RUN ZAP_VERSION="2.16.0" && \
+    ZAP_SHA256="a0779509e702ec53d41074eaa0ce41f2a964a822aa5be0380255a482e2e7fe8d" && \
     wget -q "https://github.com/zaproxy/zaproxy/releases/download/v${ZAP_VERSION}/ZAP_${ZAP_VERSION}_Linux.tar.gz" -O /tmp/zap.tar.gz && \
     echo "${ZAP_SHA256}  /tmp/zap.tar.gz" | sha256sum --check && \
     mkdir -p /opt/zap && \
