@@ -24,6 +24,12 @@ RUN go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest && \
 # Verify Nuclei installation
 RUN nuclei -version
 
+# Install Gitleaks (secret scanner)
+RUN GITLEAKS_VERSION="8.18.4" && \
+    curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_amd64.tar.gz" | \
+    tar xz -C /usr/local/bin gitleaks && \
+    chmod +x /usr/local/bin/gitleaks
+
 # Install ZAP (will use Docker-in-Docker)
 # ZAP will be pulled at runtime via Docker
 

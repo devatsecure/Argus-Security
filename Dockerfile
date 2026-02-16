@@ -29,6 +29,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Gitleaks (secret scanner)
+RUN GITLEAKS_VERSION="8.18.4" && \
+    curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_amd64.tar.gz" | \
+    tar xz -C /usr/local/bin gitleaks && \
+    chmod +x /usr/local/bin/gitleaks
+
 # Create non-root user for security
 RUN groupadd -r agentuser && useradd -r -g agentuser -u 1000 agentuser
 

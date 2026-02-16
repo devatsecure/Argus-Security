@@ -24,6 +24,12 @@ RUN wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --
 # Install TruffleHog
 RUN curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh -s -- -b /usr/local/bin
 
+# Install Gitleaks (secret scanner)
+RUN GITLEAKS_VERSION="8.18.4" && \
+    curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_amd64.tar.gz" | \
+    tar xz -C /usr/local/bin gitleaks && \
+    chmod +x /usr/local/bin/gitleaks
+
 # Install unzip (required for Nuclei)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     unzip \
