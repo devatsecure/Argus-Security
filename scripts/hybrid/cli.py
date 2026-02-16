@@ -122,6 +122,18 @@ def main():
         help="Enable Security Regression Testing",
     )
     parser.add_argument(
+        "--enable-nuclei-templates",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Enable Nuclei source-aware DAST template analysis",
+    )
+    parser.add_argument(
+        "--enable-zap-baseline",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Enable ZAP baseline passive security checks (requires ZAP binary or Docker)",
+    )
+    parser.add_argument(
         "--enable-ai-enrichment",
         action=argparse.BooleanOptionalAction,
         default=None,
@@ -220,6 +232,10 @@ def main():
     enable_regression_testing = _resolve_flag(
         args.enable_regression_testing, "ENABLE_REGRESSION_TESTING", "enable_regression_testing"
     )
+    enable_nuclei_templates = _resolve_flag(
+        args.enable_nuclei_templates, "ENABLE_NUCLEI_TEMPLATES", "enable_nuclei_templates"
+    )
+    enable_zap_baseline = _resolve_flag(args.enable_zap_baseline, "ENABLE_ZAP_BASELINE", "enable_zap_baseline")
     enable_ai_enrichment = _resolve_flag(args.enable_ai_enrichment, "ENABLE_AI_ENRICHMENT", "enable_ai_enrichment")
     enable_iris = _resolve_flag(args.enable_iris, "ENABLE_IRIS", "enable_iris")
     enable_multi_agent = _resolve_flag(args.enable_multi_agent, "ENABLE_MULTI_AGENT", "enable_multi_agent")
@@ -239,7 +255,9 @@ def main():
         if args.disclosure_repo.startswith(("https://", "http://")):
             os.environ["DISCLOSURE_REPO_URL"] = args.disclosure_repo
         else:
-            print(f"WARNING: --disclosure-repo must start with https:// or http://, got: {args.disclosure_repo!r}. Skipping.")
+            print(
+                f"WARNING: --disclosure-repo must start with https:// or http://, got: {args.disclosure_repo!r}. Skipping."
+            )
     if args.disclosure_reporter:
         if re.fullmatch(r"[A-Za-z0-9@._-]+", args.disclosure_reporter):
             os.environ["DISCLOSURE_REPORTER"] = args.disclosure_reporter
@@ -271,6 +289,8 @@ def main():
         enable_spontaneous_discovery=enable_spontaneous_discovery,
         enable_collaborative_reasoning=enable_collaborative_reasoning,
         enable_iris=enable_iris,
+        enable_nuclei_templates=enable_nuclei_templates,
+        enable_zap_baseline=enable_zap_baseline,
         ai_provider=args.ai_provider,
         dast_target_url=dast_target_url,
         fuzzing_duration=fuzzing_duration,

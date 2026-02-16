@@ -69,6 +69,8 @@ def get_default_config() -> dict[str, Any]:
         "enable_runtime_security": False,
         "enable_regression_testing": True,
         "enable_gitleaks": True,
+        "enable_nuclei_templates": True,
+        "enable_zap_baseline": False,  # opt-in: requires ZAP binary or Docker image
         # -- MCP Server --
         "enable_mcp_server": False,
         # -- DAST (orchestrator) --
@@ -394,6 +396,8 @@ _ENV_MAPPINGS: list[tuple[tuple[str, ...], str, str]] = [
     (("ENABLE_RUNTIME_SECURITY",), "enable_runtime_security", "bool"),
     (("ENABLE_REGRESSION_TESTING",), "enable_regression_testing", "bool"),
     (("ENABLE_GITLEAKS",), "enable_gitleaks", "bool"),
+    (("ENABLE_NUCLEI_TEMPLATES",), "enable_nuclei_templates", "bool"),
+    (("ENABLE_ZAP_BASELINE",), "enable_zap_baseline", "bool"),
     # MCP Server
     (("ENABLE_MCP_SERVER",), "enable_mcp_server", "bool"),
     # Feature toggles
@@ -537,6 +541,8 @@ _CLI_ATTR_MAP: dict[str, str] = {
     "enable_remediation": "enable_remediation",
     "enable_runtime_security": "enable_runtime_security",
     "enable_regression_testing": "enable_regression_testing",
+    "enable_nuclei_templates": "enable_nuclei_templates",
+    "enable_zap_baseline": "enable_zap_baseline",
     "enable_mcp_server": "enable_mcp_server",
     "enable_multi_agent": "enable_multi_agent",
     "enable_spontaneous_discovery": "enable_spontaneous_discovery",

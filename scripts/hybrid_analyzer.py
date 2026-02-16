@@ -200,7 +200,7 @@ class HybridSecurityAnalyzer:
         enable_fuzzing: bool = True,
         enable_threat_intel: bool = True,
         enable_remediation: bool = True,
-        enable_runtime_security: bool = True,
+        enable_runtime_security: bool = False,  # opt-in: requires Falco binary
         enable_regression_testing: bool = True,
         enable_ai_enrichment: bool = True,
         enable_argus: bool = False,  # Use existing argus if needed
@@ -211,7 +211,7 @@ class HybridSecurityAnalyzer:
         enable_trufflehog: bool = True,  # TruffleHog verified secret detection
         enable_iris: bool = True,  # IRIS-style semantic analysis (arXiv 2405.17238)
         enable_nuclei_templates: bool = True,  # Nuclei source-aware DAST analysis
-        enable_zap_baseline: bool = True,  # ZAP passive security checks
+        enable_zap_baseline: bool = False,  # opt-in: requires ZAP binary or Docker image
         ai_provider: Optional[str] = None,
         dast_target_url: Optional[str] = None,
         fuzzing_duration: int = 300,  # 5 minutes default

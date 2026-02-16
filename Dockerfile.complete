@@ -21,13 +21,24 @@ RUN wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --
     apt-get install -y trivy && \
     rm -rf /var/lib/apt/lists/*
 
-# Install TruffleHog
-RUN curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh -s -- -b /usr/local/bin
+# Install TruffleHog — pinned with SHA256 verification
+RUN TRUFFLEHOG_VERSION="3.88.0" && \
+    TRUFFLEHOG_SHA256="92764b90a07a947b5f0a4b8c06c37e9485dcdd7c4f456b35e3a5ee48e9b66efa" && \
+    curl -sSfL "https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VERSION}/trufflehog_${TRUFFLEHOG_VERSION}_linux_amd64.tar.gz" \
+        -o /tmp/trufflehog.tar.gz && \
+    echo "${TRUFFLEHOG_SHA256}  /tmp/trufflehog.tar.gz" | sha256sum --check && \
+    tar xz -C /usr/local/bin trufflehog -f /tmp/trufflehog.tar.gz && \
+    rm /tmp/trufflehog.tar.gz && \
+    chmod +x /usr/local/bin/trufflehog
 
-# Install Gitleaks (secret scanner)
+# Install Gitleaks (secret scanner) — pinned with SHA256 verification
 RUN GITLEAKS_VERSION="8.18.4" && \
-    curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_amd64.tar.gz" | \
-    tar xz -C /usr/local/bin gitleaks && \
+    GITLEAKS_SHA256="ba6dbb656933921c775ee5a2d1c13a91046e7952e9d919f9bac4cec61d628e7d" && \
+    curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+        -o /tmp/gitleaks.tar.gz && \
+    echo "${GITLEAKS_SHA256}  /tmp/gitleaks.tar.gz" | sha256sum --check && \
+    tar xz -C /usr/local/bin gitleaks -f /tmp/gitleaks.tar.gz && \
+    rm /tmp/gitleaks.tar.gz && \
     chmod +x /usr/local/bin/gitleaks
 
 # Install unzip (required for Nuclei)
@@ -35,16 +46,52 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     unzip \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Nuclei (for DAST)
-RUN wget -q https://github.com/projectdiscovery/nuclei/releases/download/v3.1.0/nuclei_3.1.0_linux_amd64.zip -O /tmp/nuclei.zip && \
+# Install Nuclei (for DAST) — pinned with SHA256 verification
+RUN NUCLEI_VERSION="3.1.0" && \
+    NUCLEI_SHA256="0a8b27f6302e41b9daf9ebc7892f0c8fe6a893987d1fcb5313879dbc3e145d3c" && \
+    wget -q "https://github.com/projectdiscovery/nuclei/releases/download/v${NUCLEI_VERSION}/nuclei_${NUCLEI_VERSION}_linux_amd64.zip" -O /tmp/nuclei.zip && \
+    echo "${NUCLEI_SHA256}  /tmp/nuclei.zip" | sha256sum --check && \
     unzip /tmp/nuclei.zip -d /usr/local/bin && \
     rm /tmp/nuclei.zip && \
     chmod +x /usr/local/bin/nuclei && \
     nuclei -update-templates || true
 
-# Install OPA (for policy gates)
-RUN wget -q https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static -O /usr/local/bin/opa && \
+# Install OPA (for policy gates) — pinned with SHA256 verification
+RUN OPA_VERSION="1.13.1" && \
+    OPA_SHA256="b6c96dbcaf9c1c03e95c326b9cdffc4f931bf6ac0ec93b3b98c1bac9deba93de" && \
+    wget -q "https://github.com/open-policy-agent/opa/releases/download/v${OPA_VERSION}/opa_linux_amd64_static" -O /tmp/opa && \
+    echo "${OPA_SHA256}  /tmp/opa" | sha256sum --check && \
+    mv /tmp/opa /usr/local/bin/opa && \
     chmod +x /usr/local/bin/opa
+
+# ZAP (OWASP Zed Attack Proxy) for DAST scanning
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    openjdk-17-jre-headless \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN ZAP_VERSION="2.15.0" && \
+    ZAP_SHA256="6410e196baab458a9204e29aafb5745fca003a2a6c0386f2c6e5c04b67621fa7" && \
+    wget -q "https://github.com/zaproxy/zaproxy/releases/download/v${ZAP_VERSION}/ZAP_${ZAP_VERSION}_Linux.tar.gz" -O /tmp/zap.tar.gz && \
+    echo "${ZAP_SHA256}  /tmp/zap.tar.gz" | sha256sum --check && \
+    mkdir -p /opt/zap && \
+    tar -xzf /tmp/zap.tar.gz -C /opt/zap --strip-components=1 && \
+    rm /tmp/zap.tar.gz && \
+    ln -s /opt/zap/zap.sh /usr/local/bin/zap-cli
+
+# Falco for runtime security monitoring (opt-in via build arg)
+ARG INSTALL_FALCO=true
+RUN if [ "$INSTALL_FALCO" = "true" ]; then \
+        curl -fsSL https://falco.org/repo/falcosecurity-packages.asc \
+            | gpg --dearmor -o /usr/share/keyrings/falco-archive-keyring.gpg \
+        && echo "deb [signed-by=/usr/share/keyrings/falco-archive-keyring.gpg] https://download.falco.org/packages/deb stable main" \
+            | tee /etc/apt/sources.list.d/falcosecurity.list \
+        && apt-get update \
+        && apt-get install -y --no-install-recommends falco \
+        && rm -rf /var/lib/apt/lists/* \
+        || echo "WARNING: Falco installation failed (non-fatal) — runtime monitoring will be unavailable"; \
+    else \
+        echo "Skipping Falco installation (INSTALL_FALCO=$INSTALL_FALCO)"; \
+    fi
 
 # Set Python environment variables + use /var/tmp for large temp files (Trivy DB, Checkov)
 # /tmp in containers is often a small overlay; /var/tmp persists and has more space
@@ -82,8 +129,13 @@ COPY config/ ./config/
 
 # Install Docker CLI for Phase 4 sandbox validation (Docker-in-Docker via socket mount).
 # Only the CLI is needed — the Docker daemon runs on the host.
-RUN curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-27.4.1.tgz \
-    | tar -xz --strip-components=1 -C /usr/local/bin docker/docker
+RUN DOCKER_VERSION="27.4.1" && \
+    DOCKER_SHA256="9dc39fa726db525f22bd6861308a09f6c31a14de3e512ba1576a329b833798f5" && \
+    curl -fsSL "https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_VERSION}.tgz" \
+        -o /tmp/docker.tgz && \
+    echo "${DOCKER_SHA256}  /tmp/docker.tgz" | sha256sum --check && \
+    tar -xz --strip-components=1 -C /usr/local/bin docker/docker -f /tmp/docker.tgz && \
+    rm /tmp/docker.tgz
 
 # Create non-root user with docker group access for sandbox validation.
 # The GID 999 is a placeholder — at runtime the actual host Docker socket GID
