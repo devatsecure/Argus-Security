@@ -243,42 +243,42 @@ def parse_args():
     parser.add_argument(
         "--enable-deep-analysis",
         action="store_true",
-        help="Enable Deep Analysis Engine (Phase 2.7) with conservative mode. Shorthand for --deep-analysis-mode=conservative"
+        help="Enable Deep Analysis Engine (Phase 2.7) with conservative mode. Shorthand for --deep-analysis-mode=conservative",
     )
     parser.add_argument(
         "--deep-analysis-mode",
         choices=["off", "semantic-only", "conservative", "full"],
         default=None,  # None means use env var or default to "off"
         help="Deep analysis mode: off (skip Phase 2.7), semantic-only (code twin only), "
-             "conservative (semantic + proactive), full (all modules). Default: off"
+        "conservative (semantic + proactive), full (all modules). Default: off",
     )
     parser.add_argument(
         "--max-files-deep-analysis",
         type=int,
         default=None,
-        help="Maximum files for deep analysis (default: 50, respects DEEP_ANALYSIS_MAX_FILES env)"
+        help="Maximum files for deep analysis (default: 50, respects DEEP_ANALYSIS_MAX_FILES env)",
     )
     parser.add_argument(
         "--deep-analysis-timeout",
         type=int,
         default=None,
-        help="Timeout for deep analysis in seconds (default: 300 = 5 min, respects DEEP_ANALYSIS_TIMEOUT env)"
+        help="Timeout for deep analysis in seconds (default: 300 = 5 min, respects DEEP_ANALYSIS_TIMEOUT env)",
     )
     parser.add_argument(
         "--deep-analysis-cost-ceiling",
         type=float,
         default=None,
-        help="Cost ceiling for deep analysis in USD (default: 5.0, respects DEEP_ANALYSIS_COST_CEILING env)"
+        help="Cost ceiling for deep analysis in USD (default: 5.0, respects DEEP_ANALYSIS_COST_CEILING env)",
     )
     parser.add_argument(
         "--deep-analysis-dry-run",
         action="store_true",
-        help="Estimate deep analysis cost/time without running LLM calls"
+        help="Estimate deep analysis cost/time without running LLM calls",
     )
     parser.add_argument(
         "--benchmark",
         action="store_true",
-        help="Enable detailed benchmark reporting for Deep Analysis Engine (Phase 2.7)"
+        help="Enable detailed benchmark reporting for Deep Analysis Engine (Phase 2.7)",
     )
 
     return parser.parse_args()

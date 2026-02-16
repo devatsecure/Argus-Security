@@ -380,7 +380,7 @@ def get_codebase_context(repo_path, config):
     include_patterns = [p.strip() for p in config.get("include_paths", "").split(",") if p.strip()]
     exclude_patterns = [p.strip() for p in config.get("exclude_paths", "").split(",") if p.strip()]
     max_file_size = int(config.get("max_file_size", 50000))
-    max_files = int(config.get("max_files", 100))  # Increased for large codebases
+    max_files = int(config.get("max_files", 50))
 
     # Get changed files if in PR mode
     changed_files = []
@@ -735,7 +735,7 @@ def calculate_actual_cost(input_tokens: int, output_tokens: int, provider: str) 
 
 def select_files_for_review(repo_path, config):
     """Select files for review based on configuration"""
-    max_files = int(config.get("max_files", "100"))
+    max_files = int(config.get("max_files", "50"))
     max_file_size = int(config.get("max_file_size", "50000"))
     include_patterns = config.get("include_paths", "").split(",") if config.get("include_paths") else []
     exclude_patterns = config.get("exclude_paths", "").split(",") if config.get("exclude_paths") else []

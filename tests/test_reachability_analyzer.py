@@ -557,16 +557,36 @@ class TestAnalyzeFindings(unittest.TestCase):
             results = analyzer.analyze_findings(findings)
             self.assertEqual(len(results), 2)
 
-    def test_no_vuln_findings_causes_zero_division(self):
-        """Documents the ZeroDivisionError bug when no VULN findings exist"""
+    def test_no_vuln_findings_returns_empty_without_error(self):
+        """No VULN findings should return empty list, not ZeroDivisionError"""
         with tempfile.TemporaryDirectory() as tmpdir:
             (Path(tmpdir) / "requirements.txt").touch()
             analyzer = ReachabilityAnalyzer(tmpdir)
             findings = [
                 {"id": "no_cat", "category": "SAST", "title": "something", "rule_id": "R1", "description": ""},
             ]
-            with self.assertRaises(ZeroDivisionError):
-                analyzer.analyze_findings(findings)
+            results = analyzer.analyze_findings(findings)
+            self.assertEqual(results, [])
+
+    def test_empty_findings_list_returns_empty(self):
+        """Empty input list should return empty results without ZeroDivisionError"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            (Path(tmpdir) / "requirements.txt").touch()
+            analyzer = ReachabilityAnalyzer(tmpdir)
+            results = analyzer.analyze_findings([])
+            self.assertEqual(results, [])
+
+    def test_no_vuln_findings_percentage_is_zero(self, capsys=None):
+        """When no VULN findings, reachable percentage should be 0.0%"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            (Path(tmpdir) / "requirements.txt").touch()
+            analyzer = ReachabilityAnalyzer(tmpdir)
+            findings = [
+                {"id": "1", "category": "SECRET", "title": "leak", "rule_id": "S1", "description": ""},
+            ]
+            # Should not raise ZeroDivisionError
+            results = analyzer.analyze_findings(findings)
+            self.assertEqual(len(results), 0)
 
     def test_all_vuln_findings_analyzed(self):
         with tempfile.TemporaryDirectory() as tmpdir:

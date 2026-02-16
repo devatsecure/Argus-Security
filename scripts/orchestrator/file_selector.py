@@ -92,7 +92,7 @@ class FileSelector:
         extensions: Optional[set[str]] = None,
         skip_dirs: Optional[set[str]] = None,
         max_file_size: int = 50000,
-        max_files: int = 100,
+        max_files: int = 50,
     ):
         """Initialize FileSelector.
 
@@ -100,7 +100,7 @@ class FileSelector:
             extensions: Set of file extensions to include. Defaults to DEFAULT_EXTENSIONS.
             skip_dirs: Set of directories to skip. Defaults to DEFAULT_SKIP_DIRS.
             max_file_size: Maximum file size in bytes to include (default: 50000).
-            max_files: Maximum number of files to select (default: 100).
+            max_files: Maximum number of files to select (default: 50).
         """
         self.extensions = extensions or self.DEFAULT_EXTENSIONS
         self.skip_dirs = skip_dirs or self.DEFAULT_SKIP_DIRS

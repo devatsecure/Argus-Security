@@ -57,8 +57,8 @@ class NoiseScorer:
             # 2. Pattern-based noise score
             pattern_noise = self._calculate_pattern_noise(finding)
 
-            # 3. Foundation-Sec ML prediction
-            ml_noise = self._calculate_ml_noise(finding) if self.foundation_sec else 0.0
+            # 3. LLM-based ML prediction
+            ml_noise = self._calculate_ml_noise(finding) if self.llm else 0.0
 
             # Combined noise score (weighted average)
             finding.noise_score = 0.4 * pattern_noise + 0.4 * ml_noise + 0.2 * (1.0 - finding.historical_fix_rate)
@@ -144,16 +144,16 @@ class NoiseScorer:
 
     def _calculate_ml_noise(self, finding: Finding) -> float:
         """
-        Use Foundation-Sec-8B to predict false positive probability
+        Use LLM provider to predict false positive probability
 
         Sends finding context to model and gets FP prediction
         """
         try:
-            # Prepare prompt for Foundation-Sec
+            # Prepare prompt for LLM
             prompt = self._build_fp_prediction_prompt(finding)
 
-            # Get prediction from Foundation-Sec
-            response = self.foundation_sec.analyze_code(
+            # Get prediction from LLM provider
+            response = self.llm.analyze_code(
                 code=finding.evidence.get("snippet", ""), context=prompt, focus="false_positive_analysis"
             )
 
@@ -162,7 +162,7 @@ class NoiseScorer:
             return fp_prob
 
         except Exception as e:
-            print(f"⚠️  Foundation-Sec ML prediction failed: {e}")
+            print(f"⚠️  LLM ML prediction failed: {e}")
             return 0.0
 
     def _build_fp_prediction_prompt(self, finding: Finding) -> str:

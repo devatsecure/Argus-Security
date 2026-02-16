@@ -20,7 +20,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 # We need to mock imports before importing the module under test
 # because noise_scorer.py imports from normalizer.base and providers.anthropic_provider
@@ -519,9 +519,9 @@ class TestCalculateMlNoise(TestNoiseScorer):
         from noise_scorer import NoiseScorer
 
         scorer = NoiseScorer(history_file="/tmp/nonexistent.jsonl")
-        # Set foundation_sec to a mock that will fail
-        scorer.foundation_sec = MagicMock()
-        scorer.foundation_sec.analyze_code.side_effect = Exception("API Error")
+        # Set llm to a mock that will fail
+        scorer.llm = MagicMock()
+        scorer.llm.analyze_code.side_effect = Exception("API Error")
         finding = self._make_finding()
         result = scorer._calculate_ml_noise(finding)
         self.assertEqual(result, 0.0)
@@ -532,8 +532,8 @@ class TestCalculateMlNoise(TestNoiseScorer):
         from noise_scorer import NoiseScorer
 
         scorer = NoiseScorer(history_file="/tmp/nonexistent.jsonl")
-        scorer.foundation_sec = MagicMock()
-        scorer.foundation_sec.analyze_code.return_value = (
+        scorer.llm = MagicMock()
+        scorer.llm.analyze_code.return_value = (
             '{"false_positive_probability": 0.65, "reasoning": "test"}'
         )
         finding = self._make_finding()
@@ -634,27 +634,17 @@ class TestUpdateHistory(TestNoiseScorer):
 
 
 class TestScoreFindings(TestNoiseScorer):
-    """Tests for score_findings -- note: score_findings uses self.foundation_sec which is not set in __init__"""
+    """Tests for score_findings"""
 
     @patch("noise_scorer.AnthropicProvider")
-    def test_score_findings_without_foundation_sec_raises(self, mock_provider):
-        """score_findings references self.foundation_sec but __init__ sets self.llm.
-        This documents the AttributeError bug in the source code."""
+    def test_score_findings_without_llm(self, mock_provider):
+        """score_findings should work when self.llm is None (no LLM available).
+        Previously this raised AttributeError because the code referenced
+        self.foundation_sec instead of self.llm."""
         from noise_scorer import NoiseScorer
 
         scorer = NoiseScorer(history_file="/tmp/nonexistent.jsonl")
-        finding = self._make_finding()
-        # This should raise AttributeError because self.foundation_sec is not defined
-        with self.assertRaises(AttributeError):
-            scorer.score_findings([finding])
-
-    @patch("noise_scorer.AnthropicProvider")
-    def test_score_findings_with_foundation_sec_set(self, mock_provider):
-        """If foundation_sec is manually set, score_findings should work"""
-        from noise_scorer import NoiseScorer
-
-        scorer = NoiseScorer(history_file="/tmp/nonexistent.jsonl")
-        scorer.foundation_sec = None  # No ML, pattern_noise + historical only
+        scorer.llm = None  # No LLM, pattern_noise + historical only
         finding = self._make_finding(path="src/main.py", severity="high", confidence=0.9)
         results = scorer.score_findings([finding])
         self.assertEqual(len(results), 1)
@@ -662,16 +652,34 @@ class TestScoreFindings(TestNoiseScorer):
         self.assertIsNotNone(results[0].noise_score)
 
     @patch("noise_scorer.AnthropicProvider")
-    def test_score_findings_high_noise_suppressed(self, mock_provider):
-        """Findings with noise_score > 0.7 should be suppressed.
-        Without ML (foundation_sec=None), max noise is 0.4*1.0 + 0.4*0.0 + 0.2*0.5 = 0.5,
-        so we need to provide a mock foundation_sec that returns high FP probability."""
+    def test_score_findings_with_llm_set(self, mock_provider):
+        """score_findings should use self.llm for ML noise prediction"""
         from noise_scorer import NoiseScorer
 
         scorer = NoiseScorer(history_file="/tmp/nonexistent.jsonl")
-        mock_fs = MagicMock()
-        mock_fs.analyze_code.return_value = '{"false_positive_probability": 0.95, "reasoning": "test"}'
-        scorer.foundation_sec = mock_fs
+        mock_llm = MagicMock()
+        mock_llm.analyze_code.return_value = '{"false_positive_probability": 0.3, "reasoning": "moderate risk"}'
+        scorer.llm = mock_llm
+        finding = self._make_finding(path="src/main.py", severity="high", confidence=0.9)
+        finding.historical_fix_rate = 0.5
+        results = scorer.score_findings([finding])
+        self.assertEqual(len(results), 1)
+        # LLM should have been called
+        mock_llm.analyze_code.assert_called_once()
+        # false_positive_probability should be set from LLM response
+        self.assertAlmostEqual(results[0].false_positive_probability, 0.3)
+
+    @patch("noise_scorer.AnthropicProvider")
+    def test_score_findings_high_noise_suppressed(self, mock_provider):
+        """Findings with noise_score > 0.7 should be suppressed.
+        Without ML (llm=None), max noise is 0.4*1.0 + 0.4*0.0 + 0.2*0.5 = 0.5,
+        so we need to provide a mock llm that returns high FP probability."""
+        from noise_scorer import NoiseScorer
+
+        scorer = NoiseScorer(history_file="/tmp/nonexistent.jsonl")
+        mock_llm = MagicMock()
+        mock_llm.analyze_code.return_value = '{"false_positive_probability": 0.95, "reasoning": "test"}'
+        scorer.llm = mock_llm
         finding = self._make_finding(
             path="test/test_app.py",
             severity="info",
@@ -693,7 +701,7 @@ class TestScoreFindings(TestNoiseScorer):
         from noise_scorer import NoiseScorer
 
         scorer = NoiseScorer(history_file="/tmp/nonexistent.jsonl")
-        scorer.foundation_sec = None
+        scorer.llm = None
         finding = self._make_finding(
             path="src/app.py",
             severity="high",
@@ -703,6 +711,52 @@ class TestScoreFindings(TestNoiseScorer):
         )
         results = scorer.score_findings([finding])
         self.assertNotEqual(results[0].status, "suppressed")
+
+    @patch("noise_scorer.AnthropicProvider")
+    def test_score_findings_llm_failure_graceful_degradation(self, mock_provider):
+        """If LLM call fails, score_findings should still complete using heuristics only"""
+        from noise_scorer import NoiseScorer
+
+        scorer = NoiseScorer(history_file="/tmp/nonexistent.jsonl")
+        mock_llm = MagicMock()
+        mock_llm.analyze_code.side_effect = Exception("API Error")
+        scorer.llm = mock_llm
+        finding = self._make_finding(path="src/main.py", severity="high", confidence=0.9)
+        # Should not raise -- _calculate_ml_noise catches the exception and returns 0.0
+        results = scorer.score_findings([finding])
+        self.assertEqual(len(results), 1)
+        # ml_noise was 0.0 due to failure, so false_positive_probability = 0.0
+        self.assertEqual(results[0].false_positive_probability, 0.0)
+
+    @patch("noise_scorer.AnthropicProvider")
+    def test_score_findings_multiple_findings(self, mock_provider):
+        """score_findings should process all findings in the list"""
+        from noise_scorer import NoiseScorer
+
+        scorer = NoiseScorer(history_file="/tmp/nonexistent.jsonl")
+        scorer.llm = None
+        findings = [
+            self._make_finding(id="f1", path="src/a.py"),
+            self._make_finding(id="f2", path="test/b.py"),
+            self._make_finding(id="f3", path="src/c.py", severity="info", cve=None),
+        ]
+        results = scorer.score_findings(findings)
+        self.assertEqual(len(results), 3)
+        # All should have noise_score set
+        for r in results:
+            self.assertIsNotNone(r.noise_score)
+            self.assertGreaterEqual(r.noise_score, 0.0)
+            self.assertLessEqual(r.noise_score, 1.0)
+
+    @patch("noise_scorer.AnthropicProvider")
+    def test_score_findings_empty_list(self, mock_provider):
+        """score_findings should handle empty list gracefully"""
+        from noise_scorer import NoiseScorer
+
+        scorer = NoiseScorer(history_file="/tmp/nonexistent.jsonl")
+        scorer.llm = None
+        results = scorer.score_findings([])
+        self.assertEqual(results, [])
 
 
 if __name__ == "__main__":
