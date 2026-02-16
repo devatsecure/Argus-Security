@@ -14,10 +14,11 @@ import json
 import logging
 import shutil
 import subprocess
+import sys
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -63,30 +64,76 @@ class SemgrepScanner:
             ["*/test/*", "*/tests/*", "*/.git/*", "*/node_modules/*", "*/.venv/*", "*/venv/*", "*/build/*", "*/dist/*"],
         )
 
-        # Resolve semgrep binary path (shutil.which + common fallbacks)
-        self._semgrep_bin = self._resolve_semgrep_path()
+        # Resolve semgrep binary path (shutil.which + common fallbacks + python -m)
+        # _semgrep_bin is either a str (binary path) or list[str] (e.g. ["python", "-m", "semgrep"])
+        self._semgrep_bin: Optional[Union[str, list[str]]] = self._resolve_semgrep_path()
         if not self._semgrep_bin:
             logger.warning("Semgrep not installed. Install with: pip install semgrep")
 
-    def _resolve_semgrep_path(self) -> Optional[str]:
-        """Resolve the full path to the semgrep binary."""
+    def _resolve_semgrep_path(self) -> Optional[Union[str, list[str]]]:
+        """Resolve the semgrep binary path or fall back to ``python -m semgrep``.
+
+        Returns:
+            A string path to the semgrep binary, a list of args for the
+            ``python -m semgrep`` invocation, or ``None`` if semgrep is not
+            available at all.
+        """
+        # 1. Try PATH lookup first (fastest)
         bin_path = shutil.which("semgrep")
         if bin_path:
             return bin_path
-        # Fallback: common install locations not always on PATH in subprocesses
-        for candidate in ["/opt/homebrew/bin/semgrep", "/usr/local/bin/semgrep", "/usr/bin/semgrep"]:
+
+        # 2. Fallback: common install locations not always on PATH in containers
+        for candidate in [
+            "/usr/local/bin/semgrep",
+            "/usr/bin/semgrep",
+            "/opt/homebrew/bin/semgrep",
+            "/home/agentuser/.local/bin/semgrep",
+            "/root/.local/bin/semgrep",
+            str(Path.home() / ".local" / "bin" / "semgrep"),
+        ]:
             if Path(candidate).is_file():
                 return candidate
+
+        # 3. Last resort: try python -m semgrep (works when pip-installed but
+        #    the binary is not on PATH, e.g. Docker USER switch)
+        try:
+            result = subprocess.run(
+                [sys.executable, "-m", "semgrep", "--version"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            if result.returncode == 0:
+                logger.info(
+                    "Semgrep binary not on PATH; using '%s -m semgrep' fallback",
+                    sys.executable,
+                )
+                return [sys.executable, "-m", "semgrep"]
+        except (subprocess.SubprocessError, FileNotFoundError, OSError):
+            pass
+
         return None
+
+    def _semgrep_cmd_prefix(self) -> list[str]:
+        """Return the command prefix for invoking semgrep as a list.
+
+        Handles both the binary-path (str) and module-invocation (list) forms
+        stored in ``self._semgrep_bin``.
+        """
+        if isinstance(self._semgrep_bin, list):
+            return list(self._semgrep_bin)
+        return [self._semgrep_bin]
 
     def _check_semgrep_installed(self) -> bool:
         """Check if semgrep is available"""
         if not self._semgrep_bin:
             return False
         try:
-            result = subprocess.run([self._semgrep_bin, "--version"], capture_output=True, text=True, timeout=5)
+            cmd = self._semgrep_cmd_prefix() + ["--version"]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
             return result.returncode == 0
-        except (subprocess.SubprocessError, FileNotFoundError):
+        except (FileNotFoundError, subprocess.SubprocessError, OSError):
             return False
 
     def scan(self, target_path: str, output_format: str = "json") -> dict[str, Any]:
@@ -112,8 +159,7 @@ class SemgrepScanner:
             return {"error": "path_not_found", "findings": []}
 
         # Build semgrep command
-        cmd = [
-            self._semgrep_bin,
+        cmd = self._semgrep_cmd_prefix() + [
             "--config",
             self.semgrep_rules if self.semgrep_rules != "auto" else "p/security-audit",
             "--json",
@@ -218,8 +264,11 @@ class SemgrepScanner:
 
     def _get_semgrep_version(self) -> str:
         """Get Semgrep version"""
+        if not self._semgrep_bin:
+            return "unknown"
         try:
-            result = subprocess.run(["semgrep", "--version"], capture_output=True, text=True, timeout=5)
+            cmd = self._semgrep_cmd_prefix() + ["--version"]
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
             return result.stdout.strip()
         except Exception:
             return "unknown"
