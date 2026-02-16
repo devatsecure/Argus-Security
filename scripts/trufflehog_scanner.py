@@ -187,8 +187,9 @@ class TruffleHogScanner:
         else:
             cmd.extend(["filesystem", str(target_path)])
 
-        # Add JSON output flag
+        # Add JSON output flag and suppress update checks
         cmd.append("--json")
+        cmd.append("--no-update")
 
         # Add verification options
         if self.verified_only:
@@ -215,17 +216,28 @@ class TruffleHogScanner:
                 check=False,  # Don't raise on non-zero exit (findings cause exit code 1)
             )
 
+            # Filter update-available noise from stderr
+            stderr_lines = result.stderr.splitlines() if result.stderr else []
+            filtered_stderr = "\n".join(
+                line
+                for line in stderr_lines
+                if not any(
+                    kw in line.lower()
+                    for kw in ["new version", "update available", "upgrade"]
+                )
+            ).strip()
+
             # TruffleHog returns exit code 183 if secrets are found
             # Exit code 0 means no secrets found
             if result.returncode not in [0, 183]:
-                logger.error(f"❌ TruffleHog scan failed: {result.stderr}")
+                logger.error(f"❌ TruffleHog scan failed: {filtered_stderr}")
                 return {
                     "tool": "trufflehog",
                     "scan_type": scan_type,
                     "findings_count": 0,
                     "error": "trufflehog_failed",
                     "findings": [],
-                    "stderr": result.stderr,
+                    "stderr": filtered_stderr,
                     "exit_code": result.returncode,
                 }
 
