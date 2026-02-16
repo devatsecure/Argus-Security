@@ -475,10 +475,11 @@ class ZAPBaselineScanner:
                 "CWE-209",
             ),
             # PHP: catch with echo/print of exception message
+            # echo is a language construct — parens are optional: echo $e->getMessage()
             (
                 re.compile(
                     r"catch\s*\([^)]+\$\w+\)\s*\{[^}]*"
-                    r"(echo|print|die)\s*\([^)]*\$\w+->getMessage",
+                    r"(echo|print|die)\s*\(?[^;]*\$\w+->getMessage",
                     re.IGNORECASE | re.DOTALL,
                 ),
                 "PHP catch block exposes exception message to users",

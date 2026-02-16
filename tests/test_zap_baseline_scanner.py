@@ -560,7 +560,6 @@ class TestVerboseErrors:
         assert len(findings) >= 1
         assert any("CWE-209" in f["cwe_id"] for f in findings)
 
-    @pytest.mark.xfail(reason="PHP regex expects echo(...) parens but PHP echo omits them")
     def test_detect_php_catch_echo(self, scanner):
         code = (
             "try {\n"
@@ -570,6 +569,43 @@ class TestVerboseErrors:
             "}\n"
         )
         findings = scanner._detect_verbose_errors("handler.php", code)
+        assert len(findings) >= 1
+
+    def test_detect_php_catch_echo_variable(self, scanner):
+        """PHP echo without parens: echo $error;-style via getMessage."""
+        code = (
+            "try {\n"
+            "    riskyOperation();\n"
+            "} catch (Exception $error) {\n"
+            "    echo $error->getMessage();\n"
+            "}\n"
+        )
+        findings = scanner._detect_verbose_errors("error.php", code)
+        assert len(findings) >= 1
+        assert any("CWE-209" in f["cwe_id"] for f in findings)
+
+    def test_detect_php_catch_echo_with_parens(self, scanner):
+        """PHP echo with parens: echo($error) is also valid."""
+        code = (
+            "try {\n"
+            "    doWork();\n"
+            "} catch (RuntimeException $error) {\n"
+            "    echo($error->getMessage());\n"
+            "}\n"
+        )
+        findings = scanner._detect_verbose_errors("runtime.php", code)
+        assert len(findings) >= 1
+
+    def test_detect_php_catch_echo_concat(self, scanner):
+        """PHP echo with string concatenation: echo 'Error: ' . $e->getMessage();"""
+        code = (
+            "try {\n"
+            "    query($sql);\n"
+            '} catch (PDOException $e) {\n'
+            '    echo "Error: " . $e->getMessage();\n'
+            "}\n"
+        )
+        findings = scanner._detect_verbose_errors("db.php", code)
         assert len(findings) >= 1
 
     def test_detect_java_printStackTrace(self, scanner):
