@@ -197,13 +197,15 @@ class TestDenyAutoFixCriticalHigh:
         block = auto_fix_match.group(0)
         assert 'not f.severity in ["critical", "high"]' in block
 
-    def test_hardened_decision_checks_bypass_ids(self, pr_rego_content):
-        """The auto-fixable pass decision must check attempted_auto_fix_bypass_ids."""
-        assert "count(attempted_auto_fix_bypass_ids) == 0" in pr_rego_content
+    def test_hardened_decision_includes_bypass_info(self, pr_rego_content):
+        """The fail decision must include denied_auto_fix_bypass as informational field."""
+        assert "denied_auto_fix_bypass" in pr_rego_content
+        assert "attempted_auto_fix_bypass_ids" in pr_rego_content
 
-    def test_hardened_block_decision_for_bypass(self, pr_rego_content):
-        """A decision rule must block when bypass IDs are present."""
-        assert "count(attempted_auto_fix_bypass_ids) > 0" in pr_rego_content
+    def test_hardened_block_decision_uses_block_ids(self, pr_rego_content):
+        """The fail decision must use block_ids directly (no auto_fixable filtering)."""
+        # The decision must block on block_ids directly, never filtering by auto_fixable
+        assert '"blocks": block_ids' in pr_rego_content
         assert "denied_auto_fix_bypass" in pr_rego_content
 
 
