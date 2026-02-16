@@ -574,8 +574,8 @@ class HybridSecurityAnalyzer:
                         name="argus-mcp-server",
                         daemon=True,
                     )
+                    self._mcp_started = True  # Set before start() to avoid race with finally block
                     self._mcp_thread.start()
-                    self._mcp_started = True
                     atexit.register(self.stop_mcp_server)
                     logger.info("Phase 0: MCP server started in background thread")
                 else:

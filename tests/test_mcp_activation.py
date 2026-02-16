@@ -248,9 +248,10 @@ class TestMCPFailureGraceful:
 
         # Wait for the thread to finish (it should fail quickly)
         analyzer._mcp_thread.join(timeout=5.0)
+        assert not analyzer._mcp_thread.is_alive(), "MCP thread did not exit in time"
 
         # _mcp_started should be False because _run_mcp_server sets it
-        # to False in the finally block
+        # to False in the finally block (join guarantees finally completed)
         assert analyzer._mcp_started is False
 
         # Cleanup
