@@ -679,6 +679,9 @@ class TestOrchestratorE2E:
             analyzer.fuzzing_duration = 300
             analyzer.runtime_monitoring_duration = 60
             analyzer.scanner_registry = None
+            analyzer._mcp_started = False
+            analyzer._mcp_server = None
+            analyzer._mcp_thread = None
 
             result = analyzer.analyze(str(tmp_path))
 

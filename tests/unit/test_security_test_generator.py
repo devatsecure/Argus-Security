@@ -319,6 +319,9 @@ class TestSecurityTestGenerator:
 class TestSecurityTestGeneratorCLI:
     """Test CLI functionality"""
 
+    # Repo root: tests/unit/ -> tests/ -> repo root
+    REPO_ROOT = str(Path(__file__).resolve().parent.parent.parent)
+
     def test_cli_with_invalid_input_file(self, tmp_path):
         """Test CLI with non-existent input file"""
         import subprocess
@@ -327,6 +330,7 @@ class TestSecurityTestGeneratorCLI:
             ["python3", "scripts/security_test_generator.py", "--input", "nonexistent.json"],
             capture_output=True,
             text=True,
+            cwd=self.REPO_ROOT,
         )
 
         assert result.returncode == 1
@@ -360,6 +364,7 @@ class TestSecurityTestGeneratorCLI:
             ["python3", "scripts/security_test_generator.py", "--input", str(input_file), "--output-dir", str(output_dir)],
             capture_output=True,
             text=True,
+            cwd=self.REPO_ROOT,
         )
 
         assert result.returncode == 0

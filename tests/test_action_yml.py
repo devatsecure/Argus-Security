@@ -1,17 +1,22 @@
 """Test action.yml has all required inputs."""
 import yaml
 import pytest
+from pathlib import Path
+
+# Compute repo root: tests/ -> repo root
+REPO_ROOT = Path(__file__).resolve().parent.parent
+ACTION_YML = REPO_ROOT / "action.yml"
 
 
 def test_action_yml_valid():
-    with open("action.yml") as f:
+    with open(ACTION_YML) as f:
         action = yaml.safe_load(f)
     assert "inputs" in action
     assert "runs" in action
 
 
 def test_all_feature_inputs_exist():
-    with open("action.yml") as f:
+    with open(ACTION_YML) as f:
         action = yaml.safe_load(f)
     inputs = action["inputs"]
     required_inputs = [
@@ -27,14 +32,14 @@ def test_all_feature_inputs_exist():
 
 
 def test_inputs_have_descriptions():
-    with open("action.yml") as f:
+    with open(ACTION_YML) as f:
         action = yaml.safe_load(f)
     for name, config in action["inputs"].items():
         assert "description" in config, f"Input '{name}' missing description"
 
 
 def test_feature_inputs_have_defaults():
-    with open("action.yml") as f:
+    with open(ACTION_YML) as f:
         action = yaml.safe_load(f)
     for name, config in action["inputs"].items():
         if name.startswith("enable-"):
