@@ -33,7 +33,6 @@ RUN GITLEAKS_VERSION="8.18.4" && \
 # Install unzip (required for Nuclei)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     unzip \
-    openjdk-17-jre-headless \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Nuclei (for DAST)
@@ -42,12 +41,6 @@ RUN wget -q https://github.com/projectdiscovery/nuclei/releases/download/v3.1.0/
     rm /tmp/nuclei.zip && \
     chmod +x /usr/local/bin/nuclei && \
     nuclei -update-templates || true
-
-# Install OWASP ZAP (for DAST)
-RUN wget -q https://github.com/zaproxy/zaproxy/releases/download/v2.14.0/ZAP_2.14.0_Linux.tar.gz -O /tmp/zap.tar.gz && \
-    tar -xzf /tmp/zap.tar.gz -C /opt && \
-    rm /tmp/zap.tar.gz && \
-    ln -s /opt/ZAP_2.14.0/zap.sh /usr/local/bin/zap.sh || true
 
 # Install OPA (for policy gates)
 RUN wget -q https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static -O /usr/local/bin/opa && \
