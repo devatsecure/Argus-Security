@@ -499,7 +499,13 @@ runs:
           pip install -q semgrep || true
 
           echo "Installing Trivy..."
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin || echo "Warning: Trivy installation failed"
+          TRIVY_VERSION="0.58.2"
+          TRIVY_SHA256="aa2c0ed6932ae70171b4f0f3fdb0403e29d9ce7e6fddad0ea08d440fdd695742"
+          curl -sSfL "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" -o /tmp/trivy.tar.gz \
+            && echo "${TRIVY_SHA256}  /tmp/trivy.tar.gz" | sha256sum --check \
+            && tar -xzf /tmp/trivy.tar.gz -C /usr/local/bin trivy \
+            && rm /tmp/trivy.tar.gz \
+            || echo "Warning: Trivy installation failed"
         fi
 
         # Install Checkov (IaC scanning)

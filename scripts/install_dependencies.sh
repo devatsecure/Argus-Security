@@ -31,6 +31,17 @@ SKIP_TOOLS=false
 SKIP_OPTIONAL=false
 DRY_RUN=false
 
+# Pinned tool versions and SHA256 checksums (linux/amd64)
+# Update these when upgrading tool versions — verify against official checksums files
+GITLEAKS_VERSION="8.18.0"
+GITLEAKS_SHA256="6e19050a3ee0688265ed3be4c46a0362487d20456ecd547e8c7328eaed3980cb"
+NUCLEI_VERSION="3.6.0"
+NUCLEI_SHA256="79c43b65124e80a1df59b6d8db11ec465fa597d30f968d60a1f22a11f8e65fff"
+OPA_VERSION="1.13.1"
+OPA_SHA256="b6c96dbcaf9c1c03e95c326b9cdffc4f931bf6ac0ec93b3b98c1bac9deba93de"
+TRIVY_VERSION="0.48.0"
+TRIVY_SHA256="7ee49480f19afd6a704bb35b87df64f650a7b09300601dc8bb3537d6d0ca18ff"
+
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -93,6 +104,29 @@ run_cmd() {
     else
         "$@"
     fi
+}
+
+# Verify SHA256 checksum of a downloaded file
+verify_checksum() {
+    local file="$1"
+    local expected="$2"
+    if [ "$DRY_RUN" = true ]; then
+        echo -e "${YELLOW}[DRY RUN]${NC} Would verify checksum of $file"
+        return 0
+    fi
+    local actual
+    actual=$(sha256sum "$file" 2>/dev/null | awk '{print $1}')
+    if [ -z "$actual" ]; then
+        actual=$(shasum -a 256 "$file" 2>/dev/null | awk '{print $1}')
+    fi
+    if [ "$actual" != "$expected" ]; then
+        error "Checksum verification FAILED for $file"
+        error "  Expected: $expected"
+        error "  Got:      $actual"
+        rm -f "$file"
+        return 1
+    fi
+    info "Checksum verified: $file"
 }
 
 # Detect OS
@@ -298,11 +332,11 @@ install_tools_ubuntu() {
     # Gitleaks
     if ! command_exists gitleaks; then
         info "Installing gitleaks..."
-        GITLEAKS_VERSION="8.18.0"
-        run_cmd wget "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
-        run_cmd tar -xzf "gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
-        run_cmd sudo mv gitleaks /usr/local/bin/
-        run_cmd rm "gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+        run_cmd wget -q "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" -O "/tmp/gitleaks_${GITLEAKS_VERSION}.tar.gz"
+        verify_checksum "/tmp/gitleaks_${GITLEAKS_VERSION}.tar.gz" "$GITLEAKS_SHA256"
+        run_cmd tar -xzf "/tmp/gitleaks_${GITLEAKS_VERSION}.tar.gz" -C /tmp gitleaks
+        run_cmd sudo mv /tmp/gitleaks /usr/local/bin/
+        run_cmd rm "/tmp/gitleaks_${GITLEAKS_VERSION}.tar.gz"
     else
         info "gitleaks already installed"
     fi
@@ -334,11 +368,11 @@ install_tools_ubuntu() {
         # Nuclei
         if ! command_exists nuclei; then
             info "Installing nuclei..."
-            NUCLEI_VERSION="3.6.0"
-            run_cmd wget "https://github.com/projectdiscovery/nuclei/releases/download/v${NUCLEI_VERSION}/nuclei_${NUCLEI_VERSION}_linux_amd64.zip"
-            run_cmd unzip "nuclei_${NUCLEI_VERSION}_linux_amd64.zip"
-            run_cmd sudo mv nuclei /usr/local/bin/
-            run_cmd rm "nuclei_${NUCLEI_VERSION}_linux_amd64.zip"
+            run_cmd wget -q "https://github.com/projectdiscovery/nuclei/releases/download/v${NUCLEI_VERSION}/nuclei_${NUCLEI_VERSION}_linux_amd64.zip" -O "/tmp/nuclei_${NUCLEI_VERSION}.zip"
+            verify_checksum "/tmp/nuclei_${NUCLEI_VERSION}.zip" "$NUCLEI_SHA256"
+            run_cmd unzip -o "/tmp/nuclei_${NUCLEI_VERSION}.zip" -d /tmp
+            run_cmd sudo mv /tmp/nuclei /usr/local/bin/
+            run_cmd rm "/tmp/nuclei_${NUCLEI_VERSION}.zip"
         else
             info "nuclei already installed"
         fi
@@ -346,9 +380,10 @@ install_tools_ubuntu() {
         # OPA
         if ! command_exists opa; then
             info "Installing OPA..."
-            run_cmd curl -L -o opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64
-            run_cmd chmod 755 ./opa
-            run_cmd sudo mv opa /usr/local/bin/
+            run_cmd curl -sSfL "https://github.com/open-policy-agent/opa/releases/download/v${OPA_VERSION}/opa_linux_amd64_static" -o /tmp/opa
+            verify_checksum /tmp/opa "$OPA_SHA256"
+            run_cmd chmod 755 /tmp/opa
+            run_cmd sudo mv /tmp/opa /usr/local/bin/
         else
             info "opa already installed"
         fi
@@ -392,11 +427,11 @@ install_tools_rhel() {
     # Trivy
     if ! command_exists trivy; then
         info "Installing trivy..."
-        TRIVY_VERSION="0.48.0"
-        run_cmd wget "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
-        run_cmd tar -xzf "trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
-        run_cmd sudo mv trivy /usr/local/bin/
-        run_cmd rm "trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+        run_cmd wget -q "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" -O "/tmp/trivy_${TRIVY_VERSION}.tar.gz"
+        verify_checksum "/tmp/trivy_${TRIVY_VERSION}.tar.gz" "$TRIVY_SHA256"
+        run_cmd tar -xzf "/tmp/trivy_${TRIVY_VERSION}.tar.gz" -C /tmp trivy
+        run_cmd sudo mv /tmp/trivy /usr/local/bin/
+        run_cmd rm "/tmp/trivy_${TRIVY_VERSION}.tar.gz"
     else
         info "trivy already installed"
     fi
@@ -412,11 +447,11 @@ install_tools_rhel() {
     # Gitleaks
     if ! command_exists gitleaks; then
         info "Installing gitleaks..."
-        GITLEAKS_VERSION="8.18.0"
-        run_cmd wget "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
-        run_cmd tar -xzf "gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
-        run_cmd sudo mv gitleaks /usr/local/bin/
-        run_cmd rm "gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+        run_cmd wget -q "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" -O "/tmp/gitleaks_${GITLEAKS_VERSION}.tar.gz"
+        verify_checksum "/tmp/gitleaks_${GITLEAKS_VERSION}.tar.gz" "$GITLEAKS_SHA256"
+        run_cmd tar -xzf "/tmp/gitleaks_${GITLEAKS_VERSION}.tar.gz" -C /tmp gitleaks
+        run_cmd sudo mv /tmp/gitleaks /usr/local/bin/
+        run_cmd rm "/tmp/gitleaks_${GITLEAKS_VERSION}.tar.gz"
     else
         info "gitleaks already installed"
     fi
@@ -448,11 +483,11 @@ install_tools_rhel() {
         # Nuclei
         if ! command_exists nuclei; then
             info "Installing nuclei..."
-            NUCLEI_VERSION="3.6.0"
-            run_cmd wget "https://github.com/projectdiscovery/nuclei/releases/download/v${NUCLEI_VERSION}/nuclei_${NUCLEI_VERSION}_linux_amd64.zip"
-            run_cmd unzip "nuclei_${NUCLEI_VERSION}_linux_amd64.zip"
-            run_cmd sudo mv nuclei /usr/local/bin/
-            run_cmd rm "nuclei_${NUCLEI_VERSION}_linux_amd64.zip"
+            run_cmd wget -q "https://github.com/projectdiscovery/nuclei/releases/download/v${NUCLEI_VERSION}/nuclei_${NUCLEI_VERSION}_linux_amd64.zip" -O "/tmp/nuclei_${NUCLEI_VERSION}.zip"
+            verify_checksum "/tmp/nuclei_${NUCLEI_VERSION}.zip" "$NUCLEI_SHA256"
+            run_cmd unzip -o "/tmp/nuclei_${NUCLEI_VERSION}.zip" -d /tmp
+            run_cmd sudo mv /tmp/nuclei /usr/local/bin/
+            run_cmd rm "/tmp/nuclei_${NUCLEI_VERSION}.zip"
         else
             info "nuclei already installed"
         fi
@@ -460,9 +495,10 @@ install_tools_rhel() {
         # OPA
         if ! command_exists opa; then
             info "Installing OPA..."
-            run_cmd curl -L -o opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64
-            run_cmd chmod 755 ./opa
-            run_cmd sudo mv opa /usr/local/bin/
+            run_cmd curl -sSfL "https://github.com/open-policy-agent/opa/releases/download/v${OPA_VERSION}/opa_linux_amd64_static" -o /tmp/opa
+            verify_checksum /tmp/opa "$OPA_SHA256"
+            run_cmd chmod 755 /tmp/opa
+            run_cmd sudo mv /tmp/opa /usr/local/bin/
         else
             info "opa already installed"
         fi

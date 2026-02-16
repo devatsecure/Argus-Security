@@ -21,6 +21,10 @@ INSTALL_FOUNDATION_SEC=false
 INSTALL_TRIVY=true
 INSTALL_SEMGREP=true
 
+# Pinned Trivy version and SHA256 checksum (linux/amd64)
+TRIVY_VERSION="0.58.2"
+TRIVY_SHA256="aa2c0ed6932ae70171b4f0f3fdb0403e29d9ce7e6fddad0ea08d440fdd695742"
+
 while [[ $# -gt 0 ]]; do
     case $1 in
         --foundation-sec)
@@ -81,6 +85,25 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+# Verify SHA256 checksum of a downloaded file
+verify_checksum() {
+    local file="$1"
+    local expected="$2"
+    local actual
+    actual=$(sha256sum "$file" 2>/dev/null | awk '{print $1}')
+    if [ -z "$actual" ]; then
+        actual=$(shasum -a 256 "$file" 2>/dev/null | awk '{print $1}')
+    fi
+    if [ "$actual" != "$expected" ]; then
+        echo -e "${RED}Checksum verification FAILED for $file${NC}"
+        echo -e "${RED}  Expected: $expected${NC}"
+        echo -e "${RED}  Got:      $actual${NC}"
+        rm -f "$file"
+        return 1
+    fi
+    echo -e "${GREEN}Checksum verified: $file${NC}"
+}
+
 # Function: Install Semgrep
 install_semgrep() {
     echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -135,7 +158,10 @@ install_trivy() {
     
     if [[ "$OS" == "linux" ]]; then
         # Linux installation
-        curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+        curl -sSfL "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" -o /tmp/trivy.tar.gz
+        verify_checksum /tmp/trivy.tar.gz "$TRIVY_SHA256"
+        tar -xzf /tmp/trivy.tar.gz -C /usr/local/bin trivy
+        rm /tmp/trivy.tar.gz
     elif [[ "$OS" == "macos" ]]; then
         # macOS installation
         if command_exists brew; then
@@ -143,11 +169,17 @@ install_trivy() {
             brew install trivy
         else
             echo "   Homebrew not found, using install script..."
-            curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+            curl -sSfL "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_macOS-64bit.tar.gz" -o /tmp/trivy.tar.gz
+            # Note: macOS uses a different binary; checksum verification skipped for macOS (use brew instead)
+            tar -xzf /tmp/trivy.tar.gz -C /usr/local/bin trivy
+            rm /tmp/trivy.tar.gz
         fi
     else
-        # Fallback: Use install script
-        curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+        # Fallback: Use direct download
+        curl -sSfL "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" -o /tmp/trivy.tar.gz
+        verify_checksum /tmp/trivy.tar.gz "$TRIVY_SHA256"
+        tar -xzf /tmp/trivy.tar.gz -C /usr/local/bin trivy
+        rm /tmp/trivy.tar.gz
     fi
     
     # Verify installation

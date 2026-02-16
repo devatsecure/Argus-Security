@@ -13,21 +13,30 @@ RUN apt-get update && apt-get install -y \
     wget \
     unzip \
     ca-certificates \
-    golang-go \
     docker.io \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Nuclei
-RUN go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest && \
-    cp /root/go/bin/nuclei /usr/local/bin/nuclei
+# Install Nuclei — pinned with SHA256 verification
+RUN NUCLEI_VERSION="3.1.0" && \
+    NUCLEI_SHA256="0a8b27f6302e41b9daf9ebc7892f0c8fe6a893987d1fcb5313879dbc3e145d3c" && \
+    curl -sSfL "https://github.com/projectdiscovery/nuclei/releases/download/v${NUCLEI_VERSION}/nuclei_${NUCLEI_VERSION}_linux_amd64.zip" \
+        -o /tmp/nuclei.zip && \
+    echo "${NUCLEI_SHA256}  /tmp/nuclei.zip" | sha256sum --check && \
+    unzip /tmp/nuclei.zip -d /usr/local/bin && \
+    rm /tmp/nuclei.zip && \
+    chmod +x /usr/local/bin/nuclei
 
 # Verify Nuclei installation
 RUN nuclei -version
 
-# Install Gitleaks (secret scanner)
+# Install Gitleaks (secret scanner) — pinned with SHA256 verification
 RUN GITLEAKS_VERSION="8.18.4" && \
-    curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_amd64.tar.gz" | \
-    tar xz -C /usr/local/bin gitleaks && \
+    GITLEAKS_SHA256="ba6dbb656933921c775ee5a2d1c13a91046e7952e9d919f9bac4cec61d628e7d" && \
+    curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+        -o /tmp/gitleaks.tar.gz && \
+    echo "${GITLEAKS_SHA256}  /tmp/gitleaks.tar.gz" | sha256sum --check && \
+    tar xz -C /usr/local/bin gitleaks -f /tmp/gitleaks.tar.gz && \
+    rm /tmp/gitleaks.tar.gz && \
     chmod +x /usr/local/bin/gitleaks
 
 # Install ZAP (will use Docker-in-Docker)
