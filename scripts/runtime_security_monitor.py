@@ -227,7 +227,11 @@ class RuntimeSecurityMonitor:
         self.stats['monitoring_start'] = datetime.utcnow().isoformat()
 
         if not self._check_falco_installed():
-            logger.error("Falco not available - cannot monitor")
+            logger.warning(
+                "Falco binary not found — runtime monitoring skipped. "
+                "Install Falco (https://falco.org/docs/install-operate/installation/) "
+                "to enable container runtime threat detection."
+            )
             return []
 
         # Build Falco command
