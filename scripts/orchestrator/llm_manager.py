@@ -72,10 +72,11 @@ class LLMManager:
 
     # Model fallback chain for Anthropic
     ANTHROPIC_FALLBACK_CHAIN = [
-        "claude-sonnet-4-5-20250929",  # Claude Sonnet 4.5
-        "claude-haiku-4-5-20251001",  # Claude Haiku 4.5 (fast, lightweight)
-        "claude-3-5-sonnet-20241022",  # Claude 3.5 Sonnet
-        "claude-3-5-haiku-20241022",  # Claude 3.5 Haiku
+        "claude-sonnet-4-5-20250929",  # Claude Sonnet 4.5 (default)
+        "claude-opus-4-6",  # Claude Opus 4.6 (most capable)
+        "claude-haiku-4-5-20251001",  # Claude Haiku 4.5 (fast)
+        "claude-3-5-sonnet-20241022",  # Claude 3.5 Sonnet (legacy)
+        "claude-3-5-haiku-20241022",  # Claude 3.5 Haiku (legacy)
         "claude-3-haiku-20240307",  # Claude 3 Haiku (legacy fallback)
     ]
 
