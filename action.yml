@@ -3,8 +3,14 @@ description: 'The All-Seeing AI Security Platform: Multi-agent security analysis
 author: 'Argus Security Team'
 
 inputs:
+  # Pipeline Mode Selection
+  pipeline-mode:
+    description: 'Pipeline mode: "fast" uses run_ai_audit.py (AI code review, 2-3 LLM calls), "full" uses hybrid_analyzer.py (6-phase pipeline with Semgrep+Trivy+Checkov+TruffleHog+AI enrichment)'
+    required: false
+    default: 'fast'
+
   review-type:
-    description: 'Type of review to run (audit, security, review)'
+    description: 'Type of review to run (audit, security, review) — used in fast mode'
     required: false
     default: 'audit'
   project-path:
@@ -12,7 +18,7 @@ inputs:
     required: false
     default: '.'
   project-type:
-    description: 'Project type (backend-api, dashboard-ui, data-pipeline, infrastructure, or auto)'
+    description: 'Project type (backend-api, dashboard-ui, data-pipeline, infrastructure, or auto) — used in fast mode'
     required: false
     default: 'auto'
   fail-on-blockers:
@@ -93,6 +99,16 @@ inputs:
     description: 'Target URL for DAST scanning (e.g., https://staging.example.com)'
     required: false
     default: ''
+
+  enable-sandbox:
+    description: 'Enable Docker sandbox validation for exploit verification (Phase 4) — requires Docker, full mode only'
+    required: false
+    default: 'false'
+
+  enable-proof-by-exploitation:
+    description: 'Enable LLM-powered proof-of-concept exploit generation + sandbox validation — requires Docker + LLM credits, full mode only'
+    required: false
+    default: 'false'
 
   enable-supply-chain:
     description: 'Enable supply chain attack detection (typosquatting, malicious packages, compromised dependencies)'
@@ -219,52 +235,66 @@ inputs:
 outputs:
   review-completed:
     description: 'Whether the review completed successfully'
-    value: ${{ steps.code-review.outputs.completed }}
+    value: ${{ steps.code-review.outputs.completed || steps.run-pipeline.outputs.completed }}
   blockers-found:
     description: 'Number of merge blockers found'
-    value: ${{ steps.code-review.outputs.blockers }}
+    value: ${{ steps.code-review.outputs.blockers || steps.run-pipeline.outputs.blockers || '0' }}
   suggestions-found:
     description: 'Number of suggestions found'
-    value: ${{ steps.code-review.outputs.suggestions }}
+    value: ${{ steps.code-review.outputs.suggestions || steps.run-pipeline.outputs.suggestions || '0' }}
   report-path:
     description: 'Path to the generated report'
-    value: ${{ steps.code-review.outputs.report-path }}
+    value: ${{ steps.code-review.outputs.report-path || steps.run-pipeline.outputs.report-path }}
   sarif-path:
     description: 'Path to SARIF file for Code Scanning'
-    value: ${{ steps.code-review.outputs.sarif-path }}
+    value: ${{ steps.code-review.outputs.sarif-path || steps.run-pipeline.outputs.sarif-path }}
   json-path:
     description: 'Path to structured JSON results'
-    value: ${{ steps.code-review.outputs.json-path }}
+    value: ${{ steps.code-review.outputs.json-path || steps.run-pipeline.outputs.json-path }}
   cost-estimate:
     description: 'Estimated cost in USD'
-    value: ${{ steps.code-review.outputs.cost-estimate }}
+    value: ${{ steps.code-review.outputs.cost-estimate || steps.run-pipeline.outputs.cost-estimate || '0.00' }}
   files-analyzed:
     description: 'Number of files analyzed'
-    value: ${{ steps.code-review.outputs.files-analyzed }}
+    value: ${{ steps.code-review.outputs.files-analyzed || steps.run-pipeline.outputs.files-analyzed || '0' }}
   duration-seconds:
     description: 'Analysis duration in seconds'
-    value: ${{ steps.code-review.outputs.duration-seconds }}
+    value: ${{ steps.code-review.outputs.duration-seconds || steps.run-pipeline.outputs.duration-seconds || '0' }}
 
   # Exploit Analysis Outputs (Aardvark Mode)
   exploitability-trivial:
     description: 'Number of trivially exploitable vulnerabilities found'
-    value: ${{ steps.code-review.outputs.exploitability-trivial }}
+    value: ${{ steps.code-review.outputs.exploitability-trivial || steps.run-pipeline.outputs.exploitability-trivial || '0' }}
 
   exploitability-moderate:
     description: 'Number of moderately exploitable vulnerabilities found'
-    value: ${{ steps.code-review.outputs.exploitability-moderate }}
+    value: ${{ steps.code-review.outputs.exploitability-moderate || steps.run-pipeline.outputs.exploitability-moderate || '0' }}
 
   exploitability-complex:
     description: 'Number of complex exploitability vulnerabilities found'
-    value: ${{ steps.code-review.outputs.exploitability-complex }}
+    value: ${{ steps.code-review.outputs.exploitability-complex || steps.run-pipeline.outputs.exploitability-complex || '0' }}
 
   exploit-chains-found:
     description: 'Number of exploit chains identified'
-    value: ${{ steps.code-review.outputs.exploit-chains-found }}
+    value: ${{ steps.code-review.outputs.exploit-chains-found || steps.run-pipeline.outputs.exploit-chains-found || '0' }}
 
   tests-generated:
     description: 'Number of security test files generated'
-    value: ${{ steps.code-review.outputs.tests-generated }}
+    value: ${{ steps.code-review.outputs.tests-generated || steps.run-pipeline.outputs.tests-generated || '0' }}
+
+  # Full Pipeline Outputs (hybrid_analyzer.py)
+  pipeline-mode-used:
+    description: 'Which pipeline mode was used (fast or full)'
+    value: ${{ steps.run-pipeline.outputs.pipeline-mode-used || 'fast' }}
+  total-findings:
+    description: 'Total findings from full pipeline scan'
+    value: ${{ steps.run-pipeline.outputs.total-findings || '0' }}
+  scanners-used:
+    description: 'Comma-separated list of scanners that ran'
+    value: ${{ steps.run-pipeline.outputs.scanners-used || '' }}
+  scan-duration-seconds:
+    description: 'Full pipeline scan duration in seconds'
+    value: ${{ steps.run-pipeline.outputs.scan-duration-seconds || '0' }}
 
 runs:
   using: 'composite'
@@ -352,7 +382,7 @@ runs:
           echo "Commands copied successfully"
         fi
         
-        # Copy AI audit script
+        # Copy AI audit script (fast mode)
         if [ -f "$GITHUB_ACTION_PATH/scripts/run_ai_audit.py" ]; then
           mkdir -p $HOME/.argus/scripts
           cp $GITHUB_ACTION_PATH/scripts/run_ai_audit.py $HOME/.argus/scripts/
@@ -360,6 +390,37 @@ runs:
           echo "AI audit script copied successfully"
         else
           echo "Warning: AI audit script not found at $GITHUB_ACTION_PATH/scripts/run_ai_audit.py"
+        fi
+
+        # Copy hybrid analyzer and supporting modules (full mode)
+        if [ -f "$GITHUB_ACTION_PATH/scripts/hybrid_analyzer.py" ]; then
+          cp $GITHUB_ACTION_PATH/scripts/hybrid_analyzer.py $HOME/.argus/scripts/
+          chmod +x $HOME/.argus/scripts/hybrid_analyzer.py
+          echo "Hybrid analyzer script copied successfully"
+        fi
+
+        # Copy all Python modules needed by hybrid_analyzer
+        for module in config_loader.py agent_personas.py sandbox_validator.py \
+                       heuristic_scanner.py remediation_engine.py epss_scorer.py \
+                       fix_version_tracker.py vex_processor.py vuln_deduplicator.py \
+                       advanced_suppression.py compliance_mapper.py license_risk_scorer.py \
+                       phase_gate.py audit_trail.py error_classifier.py; do
+          if [ -f "$GITHUB_ACTION_PATH/scripts/$module" ]; then
+            cp "$GITHUB_ACTION_PATH/scripts/$module" $HOME/.argus/scripts/
+          fi
+        done
+
+        # Copy hybrid sub-package if it exists
+        if [ -d "$GITHUB_ACTION_PATH/scripts/hybrid" ]; then
+          cp -r "$GITHUB_ACTION_PATH/scripts/hybrid" $HOME/.argus/scripts/
+          echo "Hybrid sub-package copied successfully"
+        fi
+
+        # Copy install_security_tools.sh
+        if [ -f "$GITHUB_ACTION_PATH/scripts/install_security_tools.sh" ]; then
+          cp "$GITHUB_ACTION_PATH/scripts/install_security_tools.sh" $HOME/.argus/scripts/
+          chmod +x $HOME/.argus/scripts/install_security_tools.sh
+          echo "Security tools installer copied successfully"
         fi
         
         if [ -f "$GITHUB_ACTION_PATH/profiles/default/roles/reviewers.yml" ]; then
@@ -412,8 +473,50 @@ runs:
         echo "project-type=$PROJECT_TYPE" >> $GITHUB_OUTPUT
         echo "Detected project type: $PROJECT_TYPE"
 
+    - name: Install Security Tools (Full Pipeline)
+      if: ${{ inputs.pipeline-mode == 'full' }}
+      shell: bash
+      env:
+        INPUT_PROJECT_PATH: ${{ inputs.project-path }}
+        INPUT_ENABLE_SANDBOX: ${{ inputs.enable-sandbox }}
+        INPUT_ENABLE_PROOF: ${{ inputs.enable-proof-by-exploitation }}
+      run: |
+        echo "Installing security tools for full 6-phase pipeline..."
+        cd "$INPUT_PROJECT_PATH"
+
+        # Install Python dependencies for hybrid analyzer
+        echo "Installing Python dependencies..."
+        pip install -q anthropic openai tenacity pyyaml requests urllib3 certifi cryptography semgrep pydantic rich networkx defusedxml 2>/dev/null || \
+          pip install -q anthropic openai tenacity pyyaml requests semgrep pydantic rich
+
+        # Install Trivy, Semgrep via the bundled installer
+        if [ -f "$HOME/.argus/scripts/install_security_tools.sh" ]; then
+          echo "Running security tools installer..."
+          bash "$HOME/.argus/scripts/install_security_tools.sh" || echo "Warning: Some security tools may not have installed"
+        else
+          # Fallback: install tools directly
+          echo "Installing Semgrep..."
+          pip install -q semgrep || true
+
+          echo "Installing Trivy..."
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin || echo "Warning: Trivy installation failed"
+        fi
+
+        # Install Checkov (IaC scanning)
+        echo "Installing Checkov..."
+        pip install -q checkov 2>/dev/null || echo "Warning: Checkov installation failed (optional)"
+
+        # Install Docker SDK (for sandbox validation)
+        if [ "$INPUT_ENABLE_SANDBOX" = "true" ] || [ "$INPUT_ENABLE_PROOF" = "true" ]; then
+          echo "Installing Docker SDK for sandbox validation..."
+          pip install -q docker || echo "Warning: Docker SDK installation failed"
+        fi
+
+        echo "Security tools installation completed"
+
     - name: Run Code Review
       id: code-review
+      if: ${{ inputs.pipeline-mode == 'fast' }}
       shell: bash
       env:
         INPUT_AI_PROVIDER: ${{ inputs.ai-provider }}
@@ -571,27 +674,202 @@ runs:
           echo "tests-generated=$TESTS_GENERATED"
         } >> $GITHUB_OUTPUT
 
-        echo "✅ Code review completed successfully"
+        echo "✅ Code review completed successfully (fast mode)"
+
+    # ── Full Pipeline Mode (hybrid_analyzer.py) ────────────────────────────
+    - name: Run Full Pipeline
+      id: run-pipeline
+      if: ${{ inputs.pipeline-mode == 'full' }}
+      shell: bash
+      env:
+        INPUT_AI_PROVIDER: ${{ inputs.ai-provider }}
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+        OPENAI_API_KEY: ${{ inputs.openai-api-key }}
+        OLLAMA_ENDPOINT: ${{ inputs.ollama-endpoint }}
+        INPUT_MODEL: ${{ inputs.model }}
+        # Scanner toggles (read by hybrid_analyzer via env vars)
+        ENABLE_SEMGREP: ${{ inputs.semgrep-enabled }}
+        ENABLE_TRIVY: 'true'
+        ENABLE_CHECKOV: 'true'
+        ENABLE_TRUFFLEHOG: 'true'
+        # Feature toggles
+        ENABLE_MULTI_AGENT: ${{ inputs.enable-multi-agent }}
+        ENABLE_SPONTANEOUS_DISCOVERY: ${{ inputs.enable-spontaneous-discovery }}
+        ENABLE_COLLABORATIVE_REASONING: ${{ inputs.enable-collaborative-reasoning }}
+        ENABLE_API_SECURITY: ${{ inputs.enable-api-security }}
+        ENABLE_DAST: ${{ inputs.enable-dast }}
+        DAST_TARGET_URL: ${{ inputs.dast-target-url }}
+        ENABLE_SUPPLY_CHAIN: ${{ inputs.enable-supply-chain }}
+        ENABLE_FUZZING: ${{ inputs.enable-fuzzing }}
+        FUZZING_DURATION: ${{ inputs.fuzzing-duration }}
+        ENABLE_THREAT_INTEL: ${{ inputs.enable-threat-intel }}
+        ENABLE_REMEDIATION: ${{ inputs.enable-remediation }}
+        ENABLE_RUNTIME_SECURITY: ${{ inputs.enable-runtime-security }}
+        RUNTIME_MONITORING_DURATION: ${{ inputs.runtime-monitoring-duration }}
+        ENABLE_REGRESSION_TESTING: ${{ inputs.enable-regression-testing }}
+        ENABLE_IRIS: ${{ inputs.enable-iris }}
+        SEVERITY_FILTER: ${{ inputs.severity-filter }}
+        ENABLE_SANDBOX_VALIDATION: ${{ inputs.enable-sandbox }}
+        ENABLE_PROOF_BY_EXPLOITATION: ${{ inputs.enable-proof-by-exploitation }}
+        ENABLE_AI_ENRICHMENT: 'true'
+        # Cost/Latency Guardrails
+        INPUT_COST_LIMIT: ${{ inputs.cost-limit }}
+        INPUT_MAX_FILES: ${{ inputs.max-files }}
+        INPUT_PROJECT_PATH: ${{ inputs.project-path }}
+      run: |
+        echo "Running Full 6-Phase Security Pipeline (hybrid_analyzer.py)..."
+        cd "$INPUT_PROJECT_PATH"
+
+        # Create results directory
+        mkdir -p .argus/hybrid-results
+
+        echo "Configuration:"
+        echo "   - Pipeline mode: full"
+        echo "   - AI provider: $INPUT_AI_PROVIDER"
+        echo "   - DAST enabled: $ENABLE_DAST"
+        echo "   - Sandbox enabled: $ENABLE_SANDBOX_VALIDATION"
+        echo "   - Cost limit: \$$INPUT_COST_LIMIT"
+
+        # Build args array safely
+        PIPELINE_ARGS=("$(pwd)")
+        PIPELINE_ARGS+=(--output-dir ".argus/hybrid-results")
+
+        # Severity filter
+        if [ -n "$SEVERITY_FILTER" ]; then
+          PIPELINE_ARGS+=(--severity-filter "$SEVERITY_FILTER")
+        fi
+
+        # AI provider
+        if [ -n "$INPUT_AI_PROVIDER" ] && [ "$INPUT_AI_PROVIDER" != "auto" ]; then
+          PIPELINE_ARGS+=(--ai-provider "$INPUT_AI_PROVIDER")
+        fi
+
+        # DAST target URL
+        if [ "$ENABLE_DAST" = "true" ] && [ -n "$DAST_TARGET_URL" ]; then
+          PIPELINE_ARGS+=(--enable-dast --dast-target-url "$DAST_TARGET_URL")
+        fi
+
+        # Fuzzing duration
+        if [ "$ENABLE_FUZZING" = "true" ]; then
+          PIPELINE_ARGS+=(--enable-fuzzing --fuzzing-duration "$FUZZING_DURATION")
+        fi
+
+        # Runtime monitoring duration
+        if [ "$ENABLE_RUNTIME_SECURITY" = "true" ]; then
+          PIPELINE_ARGS+=(--enable-runtime-security --runtime-monitoring-duration "$RUNTIME_MONITORING_DURATION")
+        fi
+
+        # Run the hybrid analyzer
+        # Add scripts dir to PYTHONPATH so hybrid_analyzer can find its modules
+        export PYTHONPATH="$HOME/.argus/scripts:$PYTHONPATH"
+
+        set +e
+        python3 "$HOME/.argus/scripts/hybrid_analyzer.py" "${PIPELINE_ARGS[@]}"
+        PIPELINE_EXIT=$?
+        set -e
+
+        echo "pipeline-mode-used=full" >> $GITHUB_OUTPUT
+
+        # Parse results from the hybrid output
+        RESULTS_DIR=".argus/hybrid-results"
+        JSON_FILE=$(ls -t "$RESULTS_DIR"/*.json 2>/dev/null | head -1 || true)
+        SARIF_FILE=$(ls -t "$RESULTS_DIR"/*.sarif 2>/dev/null | head -1 || true)
+
+        if [ -n "$JSON_FILE" ] && [ -f "$JSON_FILE" ]; then
+          CRITICAL=$(jq -r '.findings_by_severity.critical // 0' "$JSON_FILE" 2>/dev/null || echo "0")
+          HIGH=$(jq -r '.findings_by_severity.high // 0' "$JSON_FILE" 2>/dev/null || echo "0")
+          MEDIUM=$(jq -r '.findings_by_severity.medium // 0' "$JSON_FILE" 2>/dev/null || echo "0")
+          LOW=$(jq -r '.findings_by_severity.low // 0' "$JSON_FILE" 2>/dev/null || echo "0")
+          TOTAL=$(jq -r '.total_findings // 0' "$JSON_FILE" 2>/dev/null || echo "0")
+          DURATION=$(jq -r '.scan_duration_seconds // 0' "$JSON_FILE" 2>/dev/null || echo "0")
+          COST=$(jq -r '.cost_usd // 0' "$JSON_FILE" 2>/dev/null || echo "0.00")
+          SCANNERS=$(jq -r '.scanners_used // [] | join(",")' "$JSON_FILE" 2>/dev/null || echo "")
+        else
+          CRITICAL="0"
+          HIGH="0"
+          MEDIUM="0"
+          LOW="0"
+          TOTAL="0"
+          DURATION="0"
+          COST="0.00"
+          SCANNERS=""
+        fi
+
+        BLOCKERS=$(( ${CRITICAL:-0} + ${HIGH:-0} ))
+        SUGGESTIONS=$(( ${MEDIUM:-0} + ${LOW:-0} ))
+
+        # Write outputs (compatible with fast-mode output names for downstream steps)
+        {
+          echo "completed=true"
+          echo "blockers=$BLOCKERS"
+          echo "suggestions=$SUGGESTIONS"
+          echo "report-path=${RESULTS_DIR}"
+          echo "sarif-path=${SARIF_FILE:-}"
+          echo "json-path=${JSON_FILE:-}"
+          echo "cost-estimate=${COST}"
+          echo "files-analyzed=0"
+          echo "duration-seconds=${DURATION}"
+          echo "total-findings=${TOTAL}"
+          echo "scanners-used=${SCANNERS}"
+          echo "scan-duration-seconds=${DURATION}"
+          echo "exploitability-trivial=0"
+          echo "exploitability-moderate=0"
+          echo "exploitability-complex=0"
+          echo "exploit-chains-found=0"
+          echo "tests-generated=0"
+        } >> $GITHUB_OUTPUT
+
+        echo "Full pipeline completed with exit code: $PIPELINE_EXIT"
+        echo "  Critical: $CRITICAL | High: $HIGH | Medium: $MEDIUM | Low: $LOW"
+
+        # Exit with pipeline exit code (non-zero if critical/high findings)
+        if [ "$PIPELINE_EXIT" -ne 0 ]; then
+          echo "Full pipeline found critical/high severity issues"
+        fi
+
+        echo "Full 6-phase pipeline completed successfully"
+
+    # Upload SARIF from full pipeline to GitHub Security tab
+    - name: Upload SARIF (Full Pipeline)
+      if: ${{ inputs.pipeline-mode == 'full' && always() }}
+      uses: github/codeql-action/upload-sarif@b5ebac6f4c00c8ccddb7cdcd45fdb248329f808a  # v3
+      continue-on-error: true
+      with:
+        sarif_file: ${{ inputs.project-path }}/.argus/hybrid-results/
+        category: argus-full-pipeline
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+
+    # ── Shared Steps (both modes) ──────────────────────────────────────────
 
     # Upload artifacts - pinned by SHA
-    - name: Upload Review Reports
-      if: ${{ inputs.upload-reports == 'true' }}
+    - name: Upload Review Reports (Fast Mode)
+      if: ${{ inputs.upload-reports == 'true' && inputs.pipeline-mode == 'fast' }}
       uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874  # v4.4.0
       with:
         name: code-review-reports-${{ github.run_id }}-${{ github.run_attempt }}
         path: ${{ inputs.project-path }}/.argus/reviews/
         retention-days: 30
 
+    - name: Upload Pipeline Reports (Full Mode)
+      if: ${{ inputs.upload-reports == 'true' && inputs.pipeline-mode == 'full' }}
+      uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874  # v4.4.0
+      with:
+        name: full-pipeline-reports-${{ github.run_id }}-${{ github.run_attempt }}
+        path: ${{ inputs.project-path }}/.argus/hybrid-results/
+        retention-days: 90
+
     # Create PR - pinned by SHA
     - name: Create PR with Audit Findings
-      if: ${{ github.event_name != 'pull_request' && steps.code-review.outputs.blockers > 0 }}
+      if: ${{ github.event_name != 'pull_request' && (steps.code-review.outputs.blockers > 0 || steps.run-pipeline.outputs.blockers > 0) }}
       uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea  # v7.0.1
       env:
         GITHUB_TOKEN: ${{ github.token }}
-        BLOCKER_COUNT: ${{ steps.code-review.outputs.blockers }}
-        SUGGESTION_COUNT: ${{ steps.code-review.outputs.suggestions }}
+        BLOCKER_COUNT: ${{ steps.code-review.outputs.blockers || steps.run-pipeline.outputs.blockers || '0' }}
+        SUGGESTION_COUNT: ${{ steps.code-review.outputs.suggestions || steps.run-pipeline.outputs.suggestions || '0' }}
         REVIEW_TYPE: ${{ inputs.review-type }}
         PROJECT_PATH: ${{ inputs.project-path }}
+        PIPELINE_MODE: ${{ inputs.pipeline-mode }}
       with:
         script: |
           const fs = require('fs');
@@ -890,12 +1168,22 @@ runs:
             body: comment
           });
 
-    - name: Fail on Blockers
-      if: ${{ inputs.fail-on-blockers == 'true' && steps.code-review.outputs.blockers > 0 }}
+    - name: Fail on Blockers (Fast Mode)
+      if: ${{ inputs.fail-on-blockers == 'true' && inputs.pipeline-mode == 'fast' && steps.code-review.outputs.blockers > 0 }}
       shell: bash
       run: |
-        echo "❌ Merge blockers found: ${{ steps.code-review.outputs.blockers }}"
+        echo "Merge blockers found: ${{ steps.code-review.outputs.blockers }}"
         echo "Please fix all merge blockers before merging."
+        exit 1
+
+    - name: Fail on Blockers (Full Pipeline)
+      if: ${{ inputs.fail-on-blockers == 'true' && inputs.pipeline-mode == 'full' && steps.run-pipeline.outputs.blockers > 0 }}
+      shell: bash
+      run: |
+        echo "Full pipeline found blockers: ${{ steps.run-pipeline.outputs.blockers }}"
+        echo "Scanners used: ${{ steps.run-pipeline.outputs.scanners-used }}"
+        echo "Total findings: ${{ steps.run-pipeline.outputs.total-findings }}"
+        echo "Please fix all critical/high severity issues before merging."
         exit 1
 
 

@@ -1,0 +1,207 @@
+name: Full Security Pipeline
+
+# Reusable workflow that runs the full 6-phase hybrid security pipeline.
+# Uses hybrid_analyzer.py with Semgrep + Trivy + Checkov + TruffleHog + AI enrichment.
+#
+# Usage from another workflow:
+#   jobs:
+#     security:
+#       uses: devatsecure/Argus-Security/.github/workflows/full-pipeline.yml@main
+#       secrets:
+#         anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+
+on:
+  workflow_call:
+    inputs:
+      project-path:
+        description: 'Path to the project to scan'
+        required: false
+        type: string
+        default: '.'
+      severity-filter:
+        description: 'Comma-separated severity levels to report (e.g., critical,high,medium)'
+        required: false
+        type: string
+        default: ''
+      enable-dast:
+        description: 'Enable DAST scanning (requires dast-target-url)'
+        required: false
+        type: boolean
+        default: false
+      dast-target-url:
+        description: 'Target URL for DAST scanning'
+        required: false
+        type: string
+        default: ''
+      enable-sandbox:
+        description: 'Enable Docker sandbox validation (Phase 4)'
+        required: false
+        type: boolean
+        default: false
+      enable-proof-by-exploitation:
+        description: 'Enable LLM-powered PoC exploit generation + sandbox validation'
+        required: false
+        type: boolean
+        default: false
+      enable-fuzzing:
+        description: 'Enable AI-guided fuzzing'
+        required: false
+        type: boolean
+        default: false
+      enable-runtime-security:
+        description: 'Enable container runtime security monitoring'
+        required: false
+        type: boolean
+        default: false
+      fail-on-blockers:
+        description: 'Fail if critical/high findings are found'
+        required: false
+        type: boolean
+        default: true
+      ai-provider:
+        description: 'AI provider (anthropic, openai, ollama, auto)'
+        required: false
+        type: string
+        default: 'auto'
+      cost-limit:
+        description: 'Max cost in USD per run'
+        required: false
+        type: string
+        default: '5.0'
+    secrets:
+      anthropic-api-key:
+        description: 'Anthropic API key for Claude AI analysis'
+        required: false
+      openai-api-key:
+        description: 'OpenAI API key for GPT-4 analysis'
+        required: false
+    outputs:
+      blockers-found:
+        description: 'Number of critical/high findings'
+        value: ${{ jobs.full-pipeline.outputs.blockers }}
+      total-findings:
+        description: 'Total number of findings'
+        value: ${{ jobs.full-pipeline.outputs.total-findings }}
+      scanners-used:
+        description: 'Comma-separated list of scanners that ran'
+        value: ${{ jobs.full-pipeline.outputs.scanners-used }}
+
+  # Also allow direct invocation for testing
+  workflow_dispatch:
+    inputs:
+      severity-filter:
+        description: 'Severity levels to report'
+        required: false
+        default: ''
+      enable-dast:
+        description: 'Enable DAST scanning'
+        required: false
+        type: boolean
+        default: false
+      enable-sandbox:
+        description: 'Enable sandbox validation'
+        required: false
+        type: boolean
+        default: false
+      fail-on-blockers:
+        description: 'Fail on critical/high findings'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: full-pipeline-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  full-pipeline:
+    name: Full 6-Phase Security Pipeline
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    outputs:
+      blockers: ${{ steps.argus.outputs.blockers-found }}
+      total-findings: ${{ steps.argus.outputs.total-findings }}
+      scanners-used: ${{ steps.argus.outputs.scanners-used }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Run Argus Full Pipeline
+        id: argus
+        uses: devatsecure/Argus-Security@main
+        with:
+          # Select full pipeline mode (hybrid_analyzer.py)
+          pipeline-mode: 'full'
+
+          # AI Configuration
+          ai-provider: ${{ inputs.ai-provider || 'auto' }}
+          anthropic-api-key: ${{ secrets.anthropic-api-key || secrets.ANTHROPIC_API_KEY }}
+          openai-api-key: ${{ secrets.openai-api-key || secrets.OPENAI_API_KEY }}
+
+          # Project Configuration
+          project-path: ${{ inputs.project-path || '.' }}
+
+          # Scanner Features
+          semgrep-enabled: 'true'
+          enable-dast: ${{ inputs.enable-dast && 'true' || 'false' }}
+          dast-target-url: ${{ inputs.dast-target-url || '' }}
+          enable-sandbox: ${{ inputs.enable-sandbox && 'true' || 'false' }}
+          enable-proof-by-exploitation: ${{ inputs.enable-proof-by-exploitation && 'true' || 'false' }}
+          enable-fuzzing: ${{ inputs.enable-fuzzing && 'true' || 'false' }}
+          enable-runtime-security: ${{ inputs.enable-runtime-security && 'true' || 'false' }}
+
+          # Enrichment Features (enabled by default in full mode)
+          enable-multi-agent: 'true'
+          enable-spontaneous-discovery: 'true'
+          enable-iris: 'true'
+          enable-threat-intel: 'true'
+          enable-remediation: 'true'
+          enable-supply-chain: 'true'
+          enable-regression-testing: 'true'
+
+          # Reporting
+          severity-filter: ${{ inputs.severity-filter || '' }}
+          upload-reports: 'true'
+          comment-on-pr: 'true'
+          fail-on-blockers: ${{ inputs.fail-on-blockers && 'true' || 'false' }}
+
+          # Cost Controls
+          cost-limit: ${{ inputs.cost-limit || '5.0' }}
+
+      - name: Upload SARIF to Security Tab
+        if: always() && steps.argus.outputs.sarif-path != ''
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@b5ebac6f4c00c8ccddb7cdcd45fdb248329f808a  # v3
+        with:
+          sarif_file: ${{ steps.argus.outputs.sarif-path }}
+          category: argus-full-pipeline
+
+      - name: Pipeline Summary
+        if: always()
+        run: |
+          echo "## Full Security Pipeline Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Pipeline Mode**: full (hybrid_analyzer.py)" >> $GITHUB_STEP_SUMMARY
+          echo "**Blockers (critical+high)**: ${{ steps.argus.outputs.blockers-found }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Suggestions (medium+low)**: ${{ steps.argus.outputs.suggestions-found }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Total Findings**: ${{ steps.argus.outputs.total-findings }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Scanners Used**: ${{ steps.argus.outputs.scanners-used }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Duration**: ${{ steps.argus.outputs.duration-seconds }}s" >> $GITHUB_STEP_SUMMARY
+          echo "**Cost**: \$${{ steps.argus.outputs.cost-estimate }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "[View Security Tab](https://github.com/${{ github.repository }}/security/code-scanning)" >> $GITHUB_STEP_SUMMARY
