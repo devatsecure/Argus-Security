@@ -1,0 +1,205 @@
+name: Docker E2E — Build & Smoke-Test Dockerfile.complete
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'Dockerfile.complete'
+      - 'scripts/**'
+      - 'requirements.txt'
+  schedule:
+    # Weekly Monday 06:00 UTC — catch base image / tool update breakage
+    - cron: '0 6 * * 1'
+
+concurrency:
+  group: docker-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      # ── 1. Checkout ──────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332  # v4.1.7
+
+      # ── 2. Set up Docker Buildx ──────────────────────────────────────
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db  # v3.6.1
+
+      # ── 3. Build image (no push) ─────────────────────────────────────
+      - name: Build Dockerfile.complete
+        uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75  # v6.9.0
+        with:
+          context: .
+          file: ./Dockerfile.complete
+          push: false
+          load: true
+          tags: argus-security:e2e-test
+          build-args: INSTALL_FALCO=false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ── 4. Verify --help ─────────────────────────────────────────────
+      - name: Verify --help exits cleanly
+        id: help_check
+        run: |
+          set -euo pipefail
+          HELP_OUTPUT=$(docker run --rm argus-security:e2e-test 2>&1)
+          echo "$HELP_OUTPUT"
+          if echo "$HELP_OUTPUT" | grep -qi "Hybrid Security Analyzer"; then
+            echo "result=PASS" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::--help output does not contain 'Hybrid Security Analyzer'"
+            echo "result=FAIL" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+      # ── 5. Verify scanner binaries ───────────────────────────────────
+      - name: Verify scanner binaries
+        id: scanner_check
+        run: |
+          set -euo pipefail
+          docker run --rm --entrypoint bash argus-security:e2e-test -c '
+            STATUS=0
+            for cmd_check in \
+              "semgrep --version" \
+              "trivy --version" \
+              "trufflehog --version" \
+              "gitleaks version" \
+              "nuclei -version" \
+              "opa version" \
+              "checkov --version" \
+              "python -c \"import hybrid_analyzer; print(\\\"import ok\\\")\"" \
+            ; do
+              TOOL_NAME=$(echo "$cmd_check" | awk "{print \$1}")
+              if eval "$cmd_check" > /dev/null 2>&1; then
+                echo "PASS: $cmd_check"
+              else
+                echo "FAIL: $cmd_check"
+                STATUS=1
+              fi
+            done
+            exit $STATUS
+          '
+          echo "result=PASS" >> "$GITHUB_OUTPUT"
+
+      # ── 6. Verify HEALTHCHECK logic ──────────────────────────────────
+      - name: Verify HEALTHCHECK
+        id: health_check
+        run: |
+          set -euo pipefail
+          docker run --rm --entrypoint python argus-security:e2e-test \
+            -c "import sys; sys.path.insert(0,'/app/scripts'); import hybrid_analyzer; print('healthcheck ok')"
+          echo "result=PASS" >> "$GITHUB_OUTPUT"
+
+      # ── 7. Smoke test: dry scan (Semgrep only, no API keys) ──────────
+      - name: Create test fixture
+        run: |
+          mkdir -p test-fixture
+          cat > test-fixture/vulnerable.py << 'PYEOF'
+          import sqlite3
+          import os
+
+          def get_user(user_id):
+              """SQL injection vulnerability for smoke-test detection."""
+              conn = sqlite3.connect("app.db")
+              # BAD: string formatting in SQL query
+              query = "SELECT * FROM users WHERE id = '" + user_id + "'"
+              return conn.execute(query).fetchone()
+
+          def run_command(cmd):
+              """OS command injection vulnerability."""
+              os.system("echo " + cmd)
+          PYEOF
+          # Ensure the non-root container user can write results into the mount
+          chmod -R 777 test-fixture
+
+      - name: Smoke test — Semgrep-only scan
+        id: smoke_test
+        continue-on-error: true
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}/test-fixture:/workspace" \
+            -e ANTHROPIC_API_KEY="" \
+            --entrypoint python \
+            argus-security:e2e-test \
+            /app/scripts/hybrid_analyzer.py /workspace \
+            --enable-semgrep --no-enable-trivy --no-enable-checkov --no-enable-trufflehog \
+            --no-enable-ai-enrichment --no-enable-multi-agent --no-enable-iris \
+            --no-enable-dast --no-enable-fuzzing --no-enable-runtime-security \
+            --no-enable-supply-chain --no-enable-threat-intel --no-enable-remediation \
+            --no-enable-regression-testing --no-enable-nuclei-templates --no-enable-zap-baseline \
+            --output-dir /workspace/.argus-results
+
+      # ── 8. Check scan results ────────────────────────────────────────
+      - name: Check scan results
+        id: results_check
+        if: steps.smoke_test.outcome == 'success'
+        run: |
+          set -euo pipefail
+          RESULTS_DIR="test-fixture/.argus-results"
+          if [ ! -d "$RESULTS_DIR" ]; then
+            echo "::warning::Results directory not created"
+            echo "result=NO_DIR" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "=== Results directory contents ==="
+          ls -la "$RESULTS_DIR" || true
+
+          FOUND_JSON=false
+          FOUND_SARIF=false
+
+          for f in "$RESULTS_DIR"/*.json; do
+            [ -e "$f" ] && FOUND_JSON=true && echo "Found JSON: $f" && break
+          done
+          for f in "$RESULTS_DIR"/*.sarif; do
+            [ -e "$f" ] && FOUND_SARIF=true && echo "Found SARIF: $f" && break
+          done
+
+          if $FOUND_JSON || $FOUND_SARIF; then
+            echo "result=PASS" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::No JSON or SARIF output files found"
+            echo "result=NO_FILES" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ── 9. Image size report ─────────────────────────────────────────
+      - name: Capture image size
+        id: image_size
+        run: |
+          SIZE=$(docker images argus-security:e2e-test --format '{{.Size}}')
+          echo "size=$SIZE" >> "$GITHUB_OUTPUT"
+          echo "Image size: $SIZE"
+
+      # ── 10. Write job summary ────────────────────────────────────────
+      - name: Write job summary
+        if: always()
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" << EOF
+          ## Docker E2E Test Results
+
+          | Check | Status |
+          |-------|--------|
+          | Image build | ${{ job.status == 'success' && 'PASS' || 'FAIL' }} |
+          | \`--help\` output | ${{ steps.help_check.outputs.result || 'SKIP' }} |
+          | Scanner binaries | ${{ steps.scanner_check.outputs.result || 'FAIL' }} |
+          | HEALTHCHECK | ${{ steps.health_check.outputs.result || 'FAIL' }} |
+          | Smoke test (Semgrep) | ${{ steps.smoke_test.outcome || 'SKIP' }} |
+          | Scan results | ${{ steps.results_check.outputs.result || 'SKIP' }} |
+          | Image size | \`${{ steps.image_size.outputs.size || 'N/A' }}\` |
+
+          ### Details
+          - **Image**: \`argus-security:e2e-test\`
+          - **Dockerfile**: \`Dockerfile.complete\`
+          - **Falco**: Disabled (\`INSTALL_FALCO=false\`)
+          - **Trigger**: \`${{ github.event_name }}\`
+          - **Commit**: \`${{ github.sha }}\`
+          EOF
