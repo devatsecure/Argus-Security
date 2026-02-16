@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 class ScanProfile(Enum):
     """ZAP scan profiles"""
+
     FAST = "fast"  # Spider + passive scan (2-3 min)
     BALANCED = "balanced"  # Spider + limited active scan (5-10 min)
     COMPREHENSIVE = "comprehensive"  # Full active scan (15-30 min)
@@ -30,6 +31,7 @@ class ScanProfile(Enum):
 
 class AuthType(Enum):
     """Authentication types"""
+
     NONE = "none"
     BEARER = "bearer"
     BASIC = "basic"
@@ -224,19 +226,26 @@ class ZAPAgent:
 
         # Create temp output file
         import tempfile
+
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             output_file = f.name
 
         try:
             # Build Docker command
             cmd = [
-                "docker", "run", "--rm",
-                "-v", f"{Path(output_file).parent}:/zap/wrk:rw",
+                "docker",
+                "run",
+                "--rm",
+                "-v",
+                f"{Path(output_file).parent}:/zap/wrk:rw",
                 "ghcr.io/zaproxy/zaproxy:stable",
                 scan_script,
-                "-t", target_url,
-                "-J", Path(output_file).name,
-                "-T", str(self.config.spider_max_duration),
+                "-t",
+                target_url,
+                "-J",
+                Path(output_file).name,
+                "-T",
+                str(self.config.spider_max_duration),
             ]
 
             # Add OpenAPI spec if provided
@@ -401,7 +410,7 @@ def main():
         print(f"\n✅ Scan complete: {result['total_findings']} findings")
         print(f"Duration: {result['duration_seconds']:.1f}s")
         print("\nFindings by risk:")
-        for risk, count in result['risk_counts'].items():
+        for risk, count in result["risk_counts"].items():
             print(f"  {risk.upper()}: {count}")
     except Exception as e:
         print(f"\n❌ Scan failed: {e}")

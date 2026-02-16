@@ -479,7 +479,7 @@ def main():
         print(f"\n✅ Scan complete: {result['total_findings']} findings")
         print(f"Duration: {result['duration_seconds']:.1f}s")
         print("\nFindings by severity:")
-        for severity, count in result['severity_counts'].items():
+        for severity, count in result["severity_counts"].items():
             print(f"  {severity.upper()}: {count}")
     except Exception as e:
         print(f"\n❌ Scan failed: {e}")

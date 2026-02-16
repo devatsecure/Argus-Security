@@ -16,9 +16,24 @@ from typing import Optional
 # Add agents to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from agents.nuclei_agent import NucleiAgent, NucleiConfig
-from agents.zap_agent import ScanProfile, ZAPAgent, ZAPConfig
-from dast_auth_config import DASTAuthConfig, load_dast_auth_config
+try:
+    from agents.nuclei_agent import NucleiAgent, NucleiConfig
+except ImportError:
+    NucleiAgent = None  # type: ignore[assignment,misc]
+    NucleiConfig = None  # type: ignore[assignment,misc]
+
+try:
+    from agents.zap_agent import ScanProfile, ZAPAgent, ZAPConfig
+except ImportError:
+    ZAPAgent = None  # type: ignore[assignment,misc]
+    ZAPConfig = None  # type: ignore[assignment,misc]
+    ScanProfile = None  # type: ignore[assignment,misc]
+
+try:
+    from dast_auth_config import DASTAuthConfig, load_dast_auth_config
+except ImportError:
+    DASTAuthConfig = None  # type: ignore[assignment,misc]
+    load_dast_auth_config = None  # type: ignore[assignment,misc]
 
 logger = logging.getLogger(__name__)
 
@@ -91,14 +106,12 @@ class DASTOrchestrator:
             config: Orchestrator configuration
         """
         self.config = config or OrchestratorConfig()
-        self.dast_auth: Optional[DASTAuthConfig] = None
+        self.dast_auth = None
 
         # Load DAST auth config if path is specified
-        if self.config.dast_auth_config_path:
+        if self.config.dast_auth_config_path and load_dast_auth_config is not None:
             try:
-                self.dast_auth = load_dast_auth_config(
-                    self.config.dast_auth_config_path
-                )
+                self.dast_auth = load_dast_auth_config(self.config.dast_auth_config_path)
                 logger.info(
                     "Loaded DAST auth config: type=%s, url=%s",
                     self.dast_auth.login_type,
@@ -112,23 +125,35 @@ class DASTOrchestrator:
         self.zap_agent = None
 
         if self.config.enable_nuclei:
-            nuclei_cfg = self.config.nuclei_config or NucleiConfig()
-            if self.dast_auth:
-                nuclei_cfg.dast_auth_config = self.dast_auth
-                # Merge auth headers into Nuclei headers
-                nuclei_cfg.headers.update(self.dast_auth.headers)
-            self.nuclei_agent = NucleiAgent(
-                config=nuclei_cfg,
-                project_path=self.config.project_path,
-            )
+            if NucleiAgent is None or NucleiConfig is None:
+                logger.warning("Nuclei agent module not available (import failed)")
+            else:
+                try:
+                    nuclei_cfg = self.config.nuclei_config or NucleiConfig()
+                    if self.dast_auth:
+                        nuclei_cfg.dast_auth_config = self.dast_auth
+                        # Merge auth headers into Nuclei headers
+                        nuclei_cfg.headers.update(self.dast_auth.headers)
+                    self.nuclei_agent = NucleiAgent(
+                        config=nuclei_cfg,
+                        project_path=self.config.project_path,
+                    )
+                except Exception as exc:
+                    logger.warning("Nuclei agent initialization failed: %s", exc)
 
         if self.config.enable_zap:
-            zap_cfg = self.config.zap_config or ZAPConfig()
-            if self.dast_auth:
-                zap_cfg.dast_auth_config = self.dast_auth
-                # Merge auth headers into ZAP custom headers
-                zap_cfg.custom_headers.update(self.dast_auth.headers)
-            self.zap_agent = ZAPAgent(config=zap_cfg)
+            if ZAPAgent is None or ZAPConfig is None:
+                logger.warning("ZAP agent module not available (import failed)")
+            else:
+                try:
+                    zap_cfg = self.config.zap_config or ZAPConfig()
+                    if self.dast_auth:
+                        zap_cfg.dast_auth_config = self.dast_auth
+                        # Merge auth headers into ZAP custom headers
+                        zap_cfg.custom_headers.update(self.dast_auth.headers)
+                    self.zap_agent = ZAPAgent(config=zap_cfg)
+                except Exception as exc:
+                    logger.warning("ZAP agent initialization failed: %s", exc)
 
     def scan(
         self,
@@ -370,28 +395,32 @@ class DASTOrchestrator:
         # Add Nuclei findings
         if nuclei_results:
             for finding in nuclei_results.get("findings", []):
-                findings.append({
-                    "source": "nuclei",
-                    "severity": finding.get("severity", "medium"),
-                    "name": finding.get("name", "Unknown"),
-                    "url": finding.get("matched_at", ""),
-                    "description": finding.get("name", ""),
-                    "evidence": finding.get("extracted_results", []),
-                    "raw": finding,
-                })
+                findings.append(
+                    {
+                        "source": "nuclei",
+                        "severity": finding.get("severity", "medium"),
+                        "name": finding.get("name", "Unknown"),
+                        "url": finding.get("matched_at", ""),
+                        "description": finding.get("name", ""),
+                        "evidence": finding.get("extracted_results", []),
+                        "raw": finding,
+                    }
+                )
 
         # Add ZAP findings
         if zap_results:
             for finding in zap_results.get("findings", []):
-                findings.append({
-                    "source": "zap",
-                    "severity": finding.get("severity", "medium"),
-                    "name": finding.get("alert", "Unknown"),
-                    "url": finding.get("url", ""),
-                    "description": finding.get("description", ""),
-                    "evidence": finding.get("evidence", ""),
-                    "raw": finding,
-                })
+                findings.append(
+                    {
+                        "source": "zap",
+                        "severity": finding.get("severity", "medium"),
+                        "name": finding.get("alert", "Unknown"),
+                        "url": finding.get("url", ""),
+                        "description": finding.get("description", ""),
+                        "evidence": finding.get("evidence", ""),
+                        "raw": finding,
+                    }
+                )
 
         return findings
 
@@ -524,8 +553,10 @@ def main():
         enable_nuclei="nuclei" in enabled_agents,
         enable_zap="zap" in enabled_agents,
         project_path=args.project_path,
-        nuclei_config=NucleiConfig() if "nuclei" in enabled_agents else None,
-        zap_config=ZAPConfig(profile=ScanProfile(args.profile)) if "zap" in enabled_agents else None,
+        nuclei_config=NucleiConfig() if ("nuclei" in enabled_agents and NucleiConfig is not None) else None,
+        zap_config=ZAPConfig(profile=ScanProfile(args.profile))
+        if ("zap" in enabled_agents and ZAPConfig is not None and ScanProfile is not None)
+        else None,
         dast_auth_config_path=args.dast_auth_config or "",
     )
 
