@@ -13,9 +13,333 @@ import ast
 import logging
 import re
 
-__all__ = ["HeuristicScanner"]
+__all__ = ["HeuristicScanner", "get_finding_metadata"]
 
 logger = logging.getLogger(__name__)
+
+# Rich metadata for each heuristic flag, used by hybrid_analyzer to produce
+# actionable findings instead of raw flag strings.
+HEURISTIC_METADATA = {
+    "hardcoded-secrets": {
+        "title": "Hardcoded Secrets Detected",
+        "description": (
+            "Sensitive values (passwords, API keys, tokens) are hardcoded in source code. "
+            "These can be extracted by anyone with access to the codebase or compiled binaries."
+        ),
+        "cwe_id": "CWE-798",
+        "severity": "high",
+        "category": "security",
+        "recommendation": (
+            "Move secrets to environment variables or a secrets manager "
+            "(e.g. AWS Secrets Manager, HashiCorp Vault). Never commit secrets to version control."
+        ),
+    },
+    "dangerous-exec": {
+        "title": "Dangerous Code Execution",
+        "description": (
+            "Use of eval(), exec(), __import__(), or compile() allows arbitrary code execution. "
+            "An attacker who controls the input can run any code in the application context."
+        ),
+        "cwe_id": "CWE-95",
+        "severity": "high",
+        "category": "security",
+        "recommendation": (
+            "Avoid eval/exec on untrusted input. Use safer alternatives such as "
+            "ast.literal_eval() for data parsing or explicit dispatch tables."
+        ),
+    },
+    "sql-concatenation": {
+        "title": "SQL Injection via String Concatenation",
+        "description": (
+            "SQL queries are constructed using string concatenation or formatting, "
+            "which can allow an attacker to inject arbitrary SQL commands."
+        ),
+        "cwe_id": "CWE-89",
+        "severity": "high",
+        "category": "security",
+        "recommendation": ("Use parameterized queries or an ORM. Never build SQL strings from user input."),
+    },
+    "sql-parameterized-safe": {
+        "title": "SQL Parameterized Queries (Safe Pattern)",
+        "description": (
+            "SQL concatenation was detected but parameterized query patterns are also present, indicating safe usage."
+        ),
+        "cwe_id": None,
+        "severity": "info",
+        "category": "security",
+        "recommendation": None,
+    },
+    "cmd-injection-risk": {
+        "title": "Command Injection Risk",
+        "description": (
+            "Shell commands are executed with shell=True or via os.system/os.popen, "
+            "which can allow command injection if input is not properly sanitized."
+        ),
+        "cwe_id": "CWE-78",
+        "severity": "high",
+        "category": "security",
+        "recommendation": (
+            "Use subprocess with shell=False and pass arguments as a list. "
+            "Validate and sanitize all input used in command construction."
+        ),
+    },
+    "cmd-exec-safe-pattern": {
+        "title": "Command Execution (Safe Pattern)",
+        "description": (
+            "Command execution was detected but safe patterns (shell=False, hardcoded args) "
+            "are present, indicating mitigated risk."
+        ),
+        "cwe_id": None,
+        "severity": "info",
+        "category": "security",
+        "recommendation": None,
+    },
+    "regex-input-validated": {
+        "title": "Regex with Input Validation (Safe Pattern)",
+        "description": (
+            "Regex operations are present but input validation/bounding is applied beforehand, mitigating ReDoS risk."
+        ),
+        "cwe_id": None,
+        "severity": "info",
+        "category": "security",
+        "recommendation": None,
+    },
+    "xss-risk": {
+        "title": "Cross-Site Scripting (XSS) Risk",
+        "description": (
+            "Direct DOM manipulation via innerHTML, dangerouslySetInnerHTML, or document.write() "
+            "can allow an attacker to inject malicious scripts into the page."
+        ),
+        "cwe_id": "CWE-79",
+        "severity": "high",
+        "category": "security",
+        "recommendation": (
+            "Use safe DOM APIs (textContent, createElement) or framework-provided escaping. "
+            "Sanitize all user input before rendering."
+        ),
+    },
+    "nested-loops": {
+        "title": "Nested Loop Performance Concern",
+        "description": ("Nested iteration detected which may cause O(n^2) or worse performance on large data sets."),
+        "cwe_id": "CWE-407",
+        "severity": "low",
+        "category": "performance",
+        "recommendation": (
+            "Consider using hash-based lookups, indexing, or algorithmic optimizations to reduce iteration complexity."
+        ),
+    },
+    "n-plus-one-query-risk": {
+        "title": "N+1 Query Performance Risk",
+        "description": (
+            "Multiple SELECT statements detected which may indicate an N+1 query pattern, "
+            "causing excessive database round-trips."
+        ),
+        "cwe_id": "CWE-400",
+        "severity": "low",
+        "category": "performance",
+        "recommendation": (
+            "Use eager loading (JOIN, prefetch_related, include) to batch database queries "
+            "instead of querying inside loops."
+        ),
+    },
+    "high-complexity": {
+        "title": "High Cyclomatic Complexity",
+        "description": (
+            "Function has cyclomatic complexity above 15, making it difficult to test, "
+            "maintain, and reason about correctness."
+        ),
+        "cwe_id": "CWE-1120",
+        "severity": "medium",
+        "category": "quality",
+        "recommendation": (
+            "Refactor into smaller functions with single responsibilities. "
+            "Extract conditional logic into well-named helper methods."
+        ),
+    },
+    "unsafe-json-parse": {
+        "title": "Unsafe JSON.parse Without Error Handling",
+        "description": (
+            "JSON.parse() is called without a surrounding try/catch block, which will throw "
+            "on malformed input and may crash the application."
+        ),
+        "cwe_id": "CWE-20",
+        "severity": "medium",
+        "category": "security",
+        "recommendation": "Wrap JSON.parse() in a try/catch block and handle parse failures gracefully.",
+    },
+    "client-storage-usage": {
+        "title": "Client-Side Storage Usage",
+        "description": (
+            "localStorage or sessionStorage is used, which is accessible to any JavaScript "
+            "on the page and vulnerable to XSS-based data theft."
+        ),
+        "cwe_id": "CWE-922",
+        "severity": "low",
+        "category": "security",
+        "recommendation": (
+            "Avoid storing sensitive data in client-side storage. Use HttpOnly cookies "
+            "for session tokens and server-side storage for sensitive state."
+        ),
+    },
+    "backup-file-exposure": {
+        "title": "Backup File Exposure",
+        "description": (
+            "A backup or temporary file (e.g. .bak, .old, .swp) is present in the repository, "
+            "which may expose source code or credentials if served by a web server."
+        ),
+        "cwe_id": "CWE-530",
+        "severity": "medium",
+        "category": "security",
+        "recommendation": (
+            "Remove backup files from the repository and add their extensions to .gitignore. "
+            "Configure web servers to block access to backup file extensions."
+        ),
+    },
+    "creates-backup-files": {
+        "title": "Code Creates Backup Files",
+        "description": (
+            "The code programmatically creates backup files (.bak, .old, .backup) which "
+            "may be accessible via the web server and expose sensitive data."
+        ),
+        "cwe_id": "CWE-530",
+        "severity": "medium",
+        "category": "security",
+        "recommendation": (
+            "Store backups outside the web root or use a dedicated backup service. "
+            "Ensure backup files are not accessible via HTTP."
+        ),
+    },
+    "csrf-token-missing": {
+        "title": "CSRF Token Missing",
+        "description": (
+            "A form or state-changing endpoint was found without CSRF token protection. "
+            "An attacker can craft a malicious page that submits requests on behalf of "
+            "an authenticated user."
+        ),
+        "cwe_id": "CWE-352",
+        "severity": "high",
+        "category": "security",
+        "recommendation": (
+            "Add CSRF tokens to all state-changing forms and validate them server-side. "
+            "Use framework-provided CSRF middleware (e.g. Django csrf_token, Express csurf)."
+        ),
+    },
+    "state-change-via-get": {
+        "title": "State-Changing Operation via GET Request",
+        "description": (
+            "Sensitive state-changing operations (e.g. password change) are performed via GET "
+            "parameters, which are logged in browser history, server logs, and referrer headers."
+        ),
+        "cwe_id": "CWE-352",
+        "severity": "high",
+        "category": "security",
+        "recommendation": (
+            "Use POST/PUT/PATCH for state-changing operations. Never pass sensitive data in URL query parameters."
+        ),
+    },
+    "weak-session-id": {
+        "title": "Weak or Predictable Session ID Generation",
+        "description": (
+            "Session IDs are generated using predictable methods (sequential counters, "
+            "md5(time()), rand/mt_rand) which can be guessed or brute-forced by an attacker."
+        ),
+        "cwe_id": "CWE-330",
+        "severity": "high",
+        "category": "security",
+        "recommendation": (
+            "Use cryptographically secure random generators for session IDs "
+            "(e.g. secrets.token_urlsafe in Python, crypto.randomBytes in Node.js). "
+            "Use the framework's built-in session management."
+        ),
+    },
+    "insecure-cookie-flags": {
+        "title": "Insecure Cookie Flags",
+        "description": (
+            "Cookies are set without HttpOnly and/or Secure flags, making them accessible "
+            "to JavaScript (XSS theft) or transmittable over unencrypted connections."
+        ),
+        "cwe_id": "CWE-614",
+        "severity": "medium",
+        "category": "security",
+        "recommendation": (
+            "Set HttpOnly, Secure, and SameSite flags on all cookies. "
+            "Use session.cookie_httponly=true and session.cookie_secure=true in PHP."
+        ),
+    },
+    "dev-tool-context": {
+        "title": "Development Tool Context Detected",
+        "description": (
+            "This file appears to be part of a development-only tool or local server, "
+            "which may reduce the effective risk of certain findings."
+        ),
+        "cwe_id": None,
+        "severity": "info",
+        "category": "context",
+        "recommendation": None,
+    },
+}
+
+# Flags that represent safe patterns / positive signals, not issues.
+_SAFE_PATTERN_FLAGS = frozenset(
+    {
+        "sql-parameterized-safe",
+        "cmd-exec-safe-pattern",
+        "regex-input-validated",
+    }
+)
+
+
+def get_finding_metadata(flag: str) -> dict:
+    """Return rich metadata for a heuristic flag.
+
+    Lookup order:
+    1. Exact match in HEURISTIC_METADATA
+    2. Prefix match for "high-complexity-<func_name>"
+    3. Informational context tags (localhost-only-*, test-context-*, doc-context-*)
+    4. Generic fallback with the flag as title
+
+    Args:
+        flag: The heuristic flag string (e.g. "hardcoded-secrets", "high-complexity-parse_data")
+
+    Returns:
+        Dict with keys: title, description, cwe_id, severity, category, recommendation
+    """
+    # 1. Exact match
+    if flag in HEURISTIC_METADATA:
+        return dict(HEURISTIC_METADATA[flag])
+
+    # 2. high-complexity-<function_name> prefix match
+    if flag.startswith("high-complexity-"):
+        meta = dict(HEURISTIC_METADATA["high-complexity"])
+        func_name = flag[len("high-complexity-") :]
+        meta["title"] = f"High Cyclomatic Complexity in {func_name}()"
+        meta["description"] = (
+            f"Function '{func_name}' has cyclomatic complexity above 15, making it "
+            "difficult to test, maintain, and reason about correctness."
+        )
+        return meta
+
+    # 3. Informational context tags
+    if flag.startswith(("localhost-only-", "test-context-uncertain-", "doc-context-uncertain-")):
+        tag_type = flag.rsplit("-", 1)[0]  # strip the numeric suffix
+        return {
+            "title": f"Context: {tag_type}",
+            "description": f"Informational context tag '{flag}' for downstream analysis.",
+            "cwe_id": None,
+            "severity": "info",
+            "category": "context",
+            "recommendation": None,
+        }
+
+    # 4. Unknown flag — generic fallback
+    return {
+        "title": flag,
+        "description": flag,
+        "cwe_id": None,
+        "severity": "medium",
+        "category": "security",
+        "recommendation": None,
+    }
 
 
 class HeuristicScanner:
@@ -314,7 +638,13 @@ class HeuristicScanner:
                 # 2. The value starts with the dummy indicator (e.g., "test_password")
                 # 3. The dummy is 6+ chars and makes up 40%+ (e.g., "123456" in "test123456")
                 dummy_percentage = len(dummy) / len(value)
-                if value.startswith(dummy) or value.endswith(dummy) or dummy_percentage >= 0.5 or len(dummy) >= 6 and dummy_percentage >= 0.4:
+                if (
+                    value.startswith(dummy)
+                    or value.endswith(dummy)
+                    or dummy_percentage >= 0.5
+                    or len(dummy) >= 6
+                    and dummy_percentage >= 0.4
+                ):
                     return True
 
         # Check if value is just the word "password" or "secret" with simple additions

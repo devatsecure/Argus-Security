@@ -124,7 +124,13 @@ except ImportError:
     _LICENSE_OK = False
 
 try:
-    from heuristic_scanner import HeuristicScanner
+    from heuristic_scanner import (
+        _SAFE_PATTERN_FLAGS as _HEURISTIC_SAFE_FLAGS,
+    )
+    from heuristic_scanner import (
+        HeuristicScanner,
+        get_finding_metadata,
+    )
 
     _HEURISTIC_OK = True
 except ImportError:
@@ -744,16 +750,25 @@ class HybridSecurityAnalyzer:
                     _hcount = 0
                     for fpath, flags in heuristic_findings.items():
                         for flag in flags:
+                            # Skip safe-pattern flags — they are positive signals, not issues
+                            if flag in _HEURISTIC_SAFE_FLAGS:
+                                continue
                             _hcount += 1
+                            meta = get_finding_metadata(flag)
+                            # Skip info-level context tags from actual findings
+                            if meta.get("severity") == "info":
+                                continue
                             all_findings.append(
                                 HybridFinding(
                                     finding_id=f"heuristic-{_hcount}",
                                     source_tool="heuristic",
-                                    severity="medium",
-                                    category="security",
-                                    title=str(flag),
-                                    description=str(flag),
+                                    severity=meta.get("severity", "medium"),
+                                    category=meta.get("category", "security"),
+                                    title=meta.get("title", flag),
+                                    description=meta.get("description", flag),
                                     file_path=fpath,
+                                    cwe_id=meta.get("cwe_id"),
+                                    recommendation=meta.get("recommendation"),
                                 )
                             )
                     logger.info("Heuristic scanner: %d findings from pattern matching", _hcount)
