@@ -33,6 +33,7 @@ dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
     "pytest-mock>=3.10.0",
+    "pytest-xdist>=3.3.0",  # Parallel test execution: pytest -n auto
     "ruff>=0.8.0",  # Replaces black + pylint - 10x faster
     "mypy>=1.0.0",
     "types-requests",
@@ -132,6 +133,7 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
     "unit: marks tests as unit tests",
+    "serial: marks tests that must run sequentially (not compatible with xdist parallel execution)",
 ]
 
 [tool.coverage.run]
