@@ -15,6 +15,7 @@ Features:
 
 import json
 import logging
+import os
 import subprocess
 import sys
 from dataclasses import asdict, dataclass
@@ -411,6 +412,12 @@ class CheckovScanner:
         elif self.frameworks:
             for fw in self.frameworks:
                 cmd.extend(["--framework", fw])
+        else:
+            # Auto-detect frameworks from target directory to avoid scanning all 30+
+            detected = self._detect_target_frameworks(target_path)
+            if detected:
+                for fw in detected:
+                    cmd.extend(["--framework", fw])
 
         # Specific checks
         if self.checks:
@@ -434,6 +441,121 @@ class CheckovScanner:
             cmd.append("true")
 
         return cmd
+
+    def _detect_target_frameworks(self, target_path: str) -> list[str]:
+        """
+        Walk the target directory to detect which IaC frameworks are present.
+
+        Limits traversal to depth 3 and 500 files to stay fast.
+        Reads at most 200 bytes of YAML/JSON files for pattern matching.
+
+        Args:
+            target_path: Root directory to scan
+
+        Returns:
+            List of detected framework names, or empty list if none found.
+        """
+        target = Path(target_path)
+        if not target.is_dir():
+            return []
+
+        frameworks: set[str] = set()
+        files_checked = 0
+        max_files = 500
+        max_depth = 3
+        target_depth = len(target.parts)
+
+        for dirpath, dirnames, filenames in os.walk(target):
+            current = Path(dirpath)
+            depth = len(current.parts) - target_depth
+            if depth >= max_depth:
+                dirnames.clear()
+                continue
+
+            for filename in filenames:
+                if files_checked >= max_files:
+                    break
+
+                files_checked += 1
+                name_lower = filename.lower()
+                filepath = current / filename
+
+                # Terraform
+                if name_lower.endswith(".tf") or name_lower.endswith(".tf.json"):
+                    frameworks.add("terraform")
+                    continue
+
+                # Bicep
+                if name_lower.endswith(".bicep"):
+                    frameworks.add("bicep")
+                    continue
+
+                # Dockerfile
+                if name_lower.startswith("dockerfile") or name_lower == ".dockerignore":
+                    frameworks.add("dockerfile")
+                    continue
+
+                # Helm
+                if name_lower == "chart.yaml" or name_lower == "chart.yml":
+                    frameworks.add("helm")
+                    continue
+
+                # Serverless
+                if name_lower in ("serverless.yml", "serverless.yaml"):
+                    frameworks.add("serverless")
+                    continue
+
+                # Bitbucket Pipelines
+                if name_lower == "bitbucket-pipelines.yml":
+                    frameworks.add("bitbucket_pipelines")
+                    continue
+
+                # GitHub Actions
+                if name_lower.endswith((".yml", ".yaml")):
+                    rel = filepath.relative_to(target)
+                    rel_parts = rel.parts
+                    if len(rel_parts) >= 3 and rel_parts[0] == ".github" and rel_parts[1] == "workflows":
+                        frameworks.add("github_actions")
+                        continue
+
+                # YAML files - check for Kubernetes or CloudFormation patterns
+                if name_lower.endswith((".yml", ".yaml")):
+                    try:
+                        with open(filepath, "rb") as f:
+                            head = f.read(200)
+                        if b"apiVersion:" in head or b"kind:" in head:
+                            frameworks.add("kubernetes")
+                        if b"AWSTemplateFormatVersion" in head:
+                            frameworks.add("cloudformation")
+                    except OSError:
+                        pass
+                    continue
+
+                # JSON files - check for ARM or CloudFormation patterns
+                if name_lower.endswith(".json"):
+                    try:
+                        with open(filepath, "rb") as f:
+                            head = f.read(200)
+                        if b"$schema" in head and b"deploymentTemplate" in head:
+                            frameworks.add("arm")
+                        if b"AWSTemplateFormatVersion" in head:
+                            frameworks.add("cloudformation")
+                    except OSError:
+                        pass
+                    continue
+
+            if files_checked >= max_files:
+                break
+
+        # Check for Helm directory at top level
+        helm_dir = target / "helm"
+        if helm_dir.is_dir() and "helm" not in frameworks:
+            frameworks.add("helm")
+
+        detected = sorted(frameworks)
+        if detected:
+            logger.info(f"Auto-detected IaC frameworks: {', '.join(detected)}")
+        return detected
 
     def _detect_framework(self, file_path: Path) -> str:
         """
@@ -730,9 +852,7 @@ Supported Frameworks:
         )
 
         # Exit with error code if critical or high severity findings
-        critical_high = sum(
-            1 for f in result.findings if f.severity in ["CRITICAL", "HIGH"]
-        )
+        critical_high = sum(1 for f in result.findings if f.severity in ["CRITICAL", "HIGH"])
 
         if critical_high > 0:
             logger.warning(f"Found {critical_high} critical/high severity issues")
