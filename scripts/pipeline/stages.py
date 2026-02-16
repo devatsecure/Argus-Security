@@ -124,11 +124,14 @@ class ScannerOrchestrationStage(BaseStage):
             return []
 
     def _run_checkov(self, target_path: str) -> list:
-        """Run Checkov and return findings."""
+        """Run Checkov and return findings as list of dicts."""
         try:
             from checkov_scanner import CheckovScanner
             scanner = CheckovScanner()
-            return scanner.scan(target_path)
+            result = scanner.scan(target_path)
+            # CheckovScanner.scan() returns a CheckovScanResult dataclass,
+            # not a list.  Extract .findings and convert each to a dict.
+            return [f.to_dict() for f in result.findings]
         except (ImportError, Exception) as exc:
             logger.warning("Checkov scan failed: %s", exc)
             return []
