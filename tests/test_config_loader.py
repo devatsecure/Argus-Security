@@ -188,3 +188,66 @@ def test_max_files_default_matches_across_modules():
     orch_config = load_config_from_env()
 
     assert int(cl_config.get("max_files", 0)) == int(orch_config.get("max_files", 0))
+
+
+class TestConfigLoaderEnvOverrideTypes:
+    """Verify env var overrides are coerced to the correct Python types."""
+
+    def test_max_files_env_override_int(self, monkeypatch):
+        """MAX_FILES env var should be coerced to int, not remain a string."""
+        # Clean any pre-existing env vars that might interfere
+        monkeypatch.delenv("MAX_FILES", raising=False)
+        monkeypatch.delenv("INPUT_MAX_FILES", raising=False)
+        monkeypatch.delenv("ARGUS_PROFILE", raising=False)
+
+        monkeypatch.setenv("MAX_FILES", "200")
+        config = config_loader.build_unified_config()
+        assert config["max_files"] == 200
+        assert isinstance(config["max_files"], int)
+
+    def test_bool_env_true_parsing(self, monkeypatch):
+        """ENABLE_EPSS_SCORING=true should parse to Python True (bool)."""
+        monkeypatch.delenv("ENABLE_EPSS_SCORING", raising=False)
+        monkeypatch.delenv("ARGUS_PROFILE", raising=False)
+
+        monkeypatch.setenv("ENABLE_EPSS_SCORING", "true")
+        config = config_loader.build_unified_config()
+        assert config["enable_epss_scoring"] is True
+
+    def test_bool_env_false_parsing(self, monkeypatch):
+        """ENABLE_EPSS_SCORING=false should parse to Python False (bool)."""
+        monkeypatch.delenv("ENABLE_EPSS_SCORING", raising=False)
+        monkeypatch.delenv("ARGUS_PROFILE", raising=False)
+
+        monkeypatch.setenv("ENABLE_EPSS_SCORING", "false")
+        config = config_loader.build_unified_config()
+        assert config["enable_epss_scoring"] is False
+
+    def test_float_env_parsing(self, monkeypatch):
+        """COST_LIMIT=5.50 should parse to Python float 5.50."""
+        monkeypatch.delenv("COST_LIMIT", raising=False)
+        monkeypatch.delenv("INPUT_COST_LIMIT", raising=False)
+        monkeypatch.delenv("ARGUS_PROFILE", raising=False)
+
+        monkeypatch.setenv("COST_LIMIT", "5.50")
+        config = config_loader.build_unified_config()
+        assert config["cost_limit"] == 5.50
+        assert isinstance(config["cost_limit"], float)
+
+
+class TestConfigValidationEdgeCases:
+    """Edge-case validation: boundary values that should be flagged."""
+
+    def test_max_files_zero_is_invalid(self):
+        """max_files=0 should produce a validation error (must be >= 1)."""
+        issues = config_loader.validate_config({"max_files": 0})
+        assert any("max_files" in issue for issue in issues), (
+            f"Expected an error about max_files, got: {issues}"
+        )
+
+    def test_negative_cost_limit_is_invalid(self):
+        """cost_limit=-1 should produce a validation error (must be >= 0)."""
+        issues = config_loader.validate_config({"cost_limit": -1})
+        assert any("cost_limit" in issue for issue in issues), (
+            f"Expected an error about cost_limit, got: {issues}"
+        )
