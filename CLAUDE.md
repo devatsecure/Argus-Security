@@ -41,8 +41,8 @@ python scripts/run_ai_audit.py --project-type backend-api
 
 | File | Role |
 |------|------|
-| `scripts/run_ai_audit.py` | Main orchestrator (all 6 phases) |
-| `scripts/hybrid_analyzer.py` | Multi-scanner coordination |
+| `scripts/hybrid_analyzer.py` | Full 6-phase pipeline orchestrator (Docker entrypoint) |
+| `scripts/run_ai_audit.py` | Fast AI code review (Semgrep + 2-3 LLM calls, GitHub Action) |
 | `scripts/config_loader.py` | All configuration + env vars |
 | `scripts/agent_personas.py` | Phase 3: multi-agent review |
 | `scripts/sandbox_validator.py` | Phase 4: Docker validation |

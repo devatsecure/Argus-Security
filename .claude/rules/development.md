@@ -23,15 +23,16 @@ mypy scripts/*.py                              # Type check
 
 ## Docker
 ```bash
-docker build -t argus .
-docker run -v $(pwd):/workspace -e ANTHROPIC_API_KEY argus --project-type backend-api
+docker build -f Dockerfile.complete -t argus-complete .
+docker run -v $(pwd):/workspace -e ANTHROPIC_API_KEY argus-complete /workspace --enable-ai-enrichment
 ```
 
 ## Project Structure
 ```
 Argus-Security/
 ├── scripts/
-│   ├── run_ai_audit.py           # Main orchestrator (all 6 phases)
+│   ├── hybrid_analyzer.py        # Full 6-phase pipeline (Docker entrypoint)
+│   ├── run_ai_audit.py           # Fast AI code review (GitHub Action)
 │   ├── error_classifier.py       # Smart retry + error classification
 │   ├── audit_trail.py            # Per-agent metrics + audit logging
 │   ├── phase_gate.py             # Phase output validation
@@ -45,14 +46,13 @@ Argus-Security/
 │   ├── vuln_deduplicator.py      # Multi-level finding deduplication
 │   ├── advanced_suppression.py   # .argus-ignore.yml suppression engine
 │   ├── compliance_mapper.py      # Compliance framework mapping
-│   ├── heuristic_scanner.py      # Pre-LLM code scanning
-│   ├── hybrid_analyzer.py        # Multi-scanner coordination
+│   ├── heuristic_scanner.py      # Pre-LLM code scanning + finding metadata
 │   ├── agent_personas.py         # Phase 3: Multi-agent review
 │   ├── sandbox_validator.py      # Phase 4: Docker validation
 │   ├── remediation_engine.py     # Auto-fix generation
 │   └── argus                     # CLI entry point
 ├── policy/rego/                  # Phase 5: OPA policies
 ├── profiles/                     # Config profiles
-├── tests/                        # Test suite (2,200+ tests)
+├── tests/                        # Test suite (68 unit + integration tests)
 └── action.yml                    # GitHub Action definition
 ```
