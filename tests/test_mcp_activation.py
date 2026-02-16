@@ -12,8 +12,6 @@ import threading
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 # Ensure scripts/ is importable
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
@@ -34,30 +32,30 @@ def _build_analyzer(config: dict | None = None, **kwargs):
     # side-effects (scanner init, AI client, etc.).
     import hybrid_analyzer as mod
 
-    defaults = dict(
-        enable_semgrep=False,
-        enable_trivy=False,
-        enable_checkov=False,
-        enable_api_security=False,
-        enable_dast=False,
-        enable_supply_chain=False,
-        enable_fuzzing=False,
-        enable_threat_intel=False,
-        enable_remediation=False,
-        enable_runtime_security=False,
-        enable_regression_testing=False,
-        enable_ai_enrichment=True,  # at least one feature must be enabled
-        enable_argus=False,
-        enable_sandbox=False,
-        enable_multi_agent=False,
-        enable_spontaneous_discovery=False,
-        enable_collaborative_reasoning=False,
-        enable_trufflehog=False,
-        enable_iris=False,
-        enable_nuclei_templates=False,
-        enable_zap_baseline=False,
-        config=config or {},
-    )
+    defaults = {
+        "enable_semgrep": False,
+        "enable_trivy": False,
+        "enable_checkov": False,
+        "enable_api_security": False,
+        "enable_dast": False,
+        "enable_supply_chain": False,
+        "enable_fuzzing": False,
+        "enable_threat_intel": False,
+        "enable_remediation": False,
+        "enable_runtime_security": False,
+        "enable_regression_testing": False,
+        "enable_ai_enrichment": True,  # at least one feature must be enabled
+        "enable_argus": False,
+        "enable_sandbox": False,
+        "enable_multi_agent": False,
+        "enable_spontaneous_discovery": False,
+        "enable_collaborative_reasoning": False,
+        "enable_trufflehog": False,
+        "enable_iris": False,
+        "enable_nuclei_templates": False,
+        "enable_zap_baseline": False,
+        "config": config or {},
+    }
     defaults.update(kwargs)
     return mod.HybridSecurityAnalyzer(**defaults)
 
@@ -100,9 +98,13 @@ class TestMCPEnabled:
     @patch("hybrid_analyzer.create_argus_mcp_server")
     def test_mcp_server_starts_in_background(self, mock_create):
         """MCP server should be created and thread should start."""
+        # Use an event to keep mock_server.run() blocking so the daemon
+        # thread's finally-block does not reset _mcp_started before our
+        # assertions.  Without this, run() returns instantly and the
+        # thread races ahead of the test.
+        hold = threading.Event()
         mock_server = MagicMock()
-        # Make run() block briefly to simulate a real server
-        mock_server.run = MagicMock()
+        mock_server.run = MagicMock(side_effect=lambda: hold.wait())
         mock_create.return_value = mock_server
 
         analyzer = _build_analyzer(
@@ -122,6 +124,9 @@ class TestMCPEnabled:
         assert analyzer._mcp_thread.name == "argus-mcp-server"
         assert analyzer._mcp_server is mock_server
 
+        # Release the blocking run() so the thread can exit cleanly
+        hold.set()
+
         # Cleanup
         analyzer.stop_mcp_server()
         assert analyzer._mcp_started is False
@@ -133,8 +138,9 @@ class TestMCPEnabled:
     @patch("hybrid_analyzer.create_argus_mcp_server")
     def test_stop_mcp_server_is_idempotent(self, mock_create):
         """Calling stop_mcp_server multiple times should not raise."""
+        hold = threading.Event()
         mock_server = MagicMock()
-        mock_server.run = MagicMock()
+        mock_server.run = MagicMock(side_effect=lambda: hold.wait())
         mock_create.return_value = mock_server
 
         analyzer = _build_analyzer(
@@ -147,13 +153,17 @@ class TestMCPEnabled:
         analyzer.stop_mcp_server()
         assert analyzer._mcp_started is False
 
+        # Release blocking run() so thread exits cleanly
+        hold.set()
+
     @patch("hybrid_analyzer._MCP_LIB_OK", True)
     @patch("hybrid_analyzer._MCP_IMPORT_OK", True)
     @patch("hybrid_analyzer.create_argus_mcp_server")
     def test_mcp_uses_cwd_when_repo_path_missing(self, mock_create):
         """When repo_path is not in config, os.getcwd() is used."""
+        hold = threading.Event()
         mock_server = MagicMock()
-        mock_server.run = MagicMock()
+        mock_server.run = MagicMock(side_effect=lambda: hold.wait())
         mock_create.return_value = mock_server
 
         import os
@@ -167,6 +177,7 @@ class TestMCPEnabled:
         assert call_args[0][0] == os.getcwd()
 
         analyzer.stop_mcp_server()
+        hold.set()
 
 
 # ============================================================================

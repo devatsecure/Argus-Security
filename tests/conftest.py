@@ -105,6 +105,12 @@ def _fast_subprocess_run(cmd, *args, **kwargs):
 
 
 @pytest.fixture(autouse=True)
-def _fast_version_checks(monkeypatch):
-    """Auto-mock scanner version checks to avoid 5s timeouts per test."""
+def _fast_version_checks(request, monkeypatch):
+    """Auto-mock scanner version checks to avoid 5s timeouts per test.
+
+    Tests marked with ``@pytest.mark.real_scanners`` opt out of the mock so
+    that real scanner binaries (e.g. Semgrep) can be invoked via subprocess.
+    """
+    if request.node.get_closest_marker("real_scanners"):
+        return  # skip the monkeypatch — let real subprocess.run through
     monkeypatch.setattr(subprocess, "run", _fast_subprocess_run)
