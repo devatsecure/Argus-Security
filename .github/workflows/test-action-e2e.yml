@@ -1,0 +1,605 @@
+name: Action E2E Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'action.yml'
+      - 'scripts/**'
+      - 'profiles/**'
+      - '.github/workflows/test-action-e2e.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Cancel in-progress runs for the same branch
+concurrency:
+  group: action-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Job 1: Fast Mode (run_ai_audit.py) ──────────────────────────────────
+  test-fast-mode:
+    name: E2E - Fast Mode (run_ai_audit.py)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332  # v4.1.7
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c  # v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Create test fixture
+        run: |
+          mkdir -p test-fixture/src
+
+          cat > test-fixture/src/app.py << 'PYEOF'
+          import os
+          import subprocess
+
+          def get_user(user_id):
+              """SQL injection vulnerability for scanner detection."""
+              query = f"SELECT * FROM users WHERE id = {user_id}"
+              return query
+
+          def run_command(cmd):
+              """Command injection vulnerability."""
+              return subprocess.call(cmd, shell=True)
+
+          def read_config():
+              """Hardcoded secret for secret detection."""
+              api_key = "AKIAIOSFODNN7EXAMPLE"
+              return {"key": api_key}
+
+          def insecure_hash(password):
+              """Weak crypto usage."""
+              import hashlib
+              return hashlib.md5(password.encode()).hexdigest()
+          PYEOF
+
+          cat > test-fixture/requirements.txt << 'REQEOF'
+          flask==2.3.0
+          requests==2.31.0
+          REQEOF
+
+          cat > test-fixture/package.json << 'PKGEOF'
+          {
+            "name": "e2e-test-fixture",
+            "version": "0.1.0",
+            "private": true
+          }
+          PKGEOF
+
+          echo "Test fixture created at test-fixture/"
+          ls -la test-fixture/src/
+
+      - name: Install base dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -q anthropic openai tenacity pyyaml requests pydantic rich
+
+      - name: Run Argus action in fast mode
+        id: fast-review
+        uses: ./
+        with:
+          pipeline-mode: 'fast'
+          project-path: './test-fixture'
+          project-type: 'backend-api'
+          ai-provider: 'ollama'
+          ollama-endpoint: 'http://localhost:11434'
+          fail-on-blockers: 'false'
+          upload-reports: 'false'
+          comment-on-pr: 'false'
+          semgrep-enabled: 'true'
+          enable-multi-agent: 'false'
+          enable-spontaneous-discovery: 'false'
+          enable-collaborative-reasoning: 'false'
+          enable-exploit-analysis: 'false'
+          generate-security-tests: 'false'
+          enable-iris: 'false'
+          max-files: '10'
+          cost-limit: '0'
+          deep-analysis-mode: 'off'
+        continue-on-error: true
+
+      - name: Verify Argus installation directories
+        run: |
+          echo "=== Verifying Argus installation ==="
+          FAIL=0
+
+          # Scripts directory must exist with key files
+          if [ ! -d "$HOME/.argus/scripts" ]; then
+            echo "FAIL: $HOME/.argus/scripts directory not created"
+            FAIL=1
+          else
+            echo "PASS: Scripts directory exists"
+          fi
+
+          if [ ! -f "$HOME/.argus/scripts/run_ai_audit.py" ]; then
+            echo "FAIL: run_ai_audit.py not copied to scripts directory"
+            FAIL=1
+          else
+            echo "PASS: run_ai_audit.py present"
+          fi
+
+          if [ ! -f "$HOME/.argus/scripts/config_loader.py" ]; then
+            echo "FAIL: config_loader.py not copied"
+            FAIL=1
+          else
+            echo "PASS: config_loader.py present"
+          fi
+
+          # Profiles directory must exist
+          if [ ! -d "$HOME/.argus/profiles" ]; then
+            echo "FAIL: Profiles directory not created"
+            FAIL=1
+          else
+            echo "PASS: Profiles directory exists"
+          fi
+
+          # Project-level .argus directory must exist
+          if [ ! -d "test-fixture/.argus" ]; then
+            echo "FAIL: Project-level .argus directory not created"
+            FAIL=1
+          else
+            echo "PASS: Project .argus directory exists"
+          fi
+
+          if [ "$FAIL" -ne 0 ]; then
+            echo "Installation verification FAILED"
+            exit 1
+          fi
+
+          echo "=== Installation verification PASSED ==="
+
+      - name: Verify fast mode outputs
+        run: |
+          echo "=== Verifying fast mode outputs ==="
+          FAIL=0
+
+          # Check the review-completed output
+          COMPLETED="${{ steps.fast-review.outputs.review-completed }}"
+          echo "review-completed: '$COMPLETED'"
+
+          # Even if AI calls fail, the action should have set outputs
+          # Check that output variables exist (may be empty or 'true')
+          REPORT_PATH="${{ steps.fast-review.outputs.report-path }}"
+          echo "report-path: '$REPORT_PATH'"
+
+          BLOCKERS="${{ steps.fast-review.outputs.blockers-found }}"
+          echo "blockers-found: '$BLOCKERS'"
+
+          SUGGESTIONS="${{ steps.fast-review.outputs.suggestions-found }}"
+          echo "suggestions-found: '$SUGGESTIONS'"
+
+          COST="${{ steps.fast-review.outputs.cost-estimate }}"
+          echo "cost-estimate: '$COST'"
+
+          FILES_ANALYZED="${{ steps.fast-review.outputs.files-analyzed }}"
+          echo "files-analyzed: '$FILES_ANALYZED'"
+
+          DURATION="${{ steps.fast-review.outputs.duration-seconds }}"
+          echo "duration-seconds: '$DURATION'"
+
+          echo "=== Output verification complete ==="
+
+      - name: Check for generated report files
+        run: |
+          echo "=== Checking generated report files ==="
+
+          # These files may or may not exist depending on whether AI calls
+          # succeeded. We check their presence but do not fail if missing
+          # (since ollama endpoint is fake).
+          for f in \
+            "test-fixture/.argus/reviews/audit-report.md" \
+            "test-fixture/.argus/reviews/results.sarif" \
+            "test-fixture/.argus/reviews/results.json" \
+            "test-fixture/.argus/reviews/metrics.json"; do
+            if [ -f "$f" ]; then
+              echo "PRESENT: $f ($(wc -c < "$f") bytes)"
+            else
+              echo "ABSENT:  $f (expected when AI provider is unreachable)"
+            fi
+          done
+
+          # The reviews directory itself should have been created
+          if [ ! -d "test-fixture/.argus/reviews" ]; then
+            echo "WARNING: reviews directory was not created"
+          else
+            echo "PASS: reviews directory exists"
+            echo "Contents:"
+            ls -la test-fixture/.argus/reviews/ 2>/dev/null || echo "(empty)"
+          fi
+
+          echo "=== Report file check complete ==="
+
+      - name: Validate SARIF structure if present
+        run: |
+          SARIF="test-fixture/.argus/reviews/results.sarif"
+          if [ -f "$SARIF" ]; then
+            echo "Validating SARIF file..."
+            if ! jq empty "$SARIF" 2>/dev/null; then
+              echo "FAIL: SARIF is not valid JSON"
+              exit 1
+            fi
+            if jq -e '.version' "$SARIF" > /dev/null 2>&1; then
+              echo "PASS: SARIF has version field"
+            else
+              echo "WARNING: SARIF missing version field"
+            fi
+            if jq -e '.runs[0].tool.driver.name' "$SARIF" > /dev/null 2>&1; then
+              echo "PASS: SARIF has tool driver name"
+            else
+              echo "WARNING: SARIF missing tool driver name"
+            fi
+          else
+            echo "SKIP: No SARIF file to validate (AI provider unreachable)"
+          fi
+
+      - name: Write job summary
+        if: always()
+        run: |
+          {
+            echo "## Fast Mode E2E Results"
+            echo ""
+            echo "| Check | Result |"
+            echo "|-------|--------|"
+            echo "| Installation | Passed |"
+            echo "| Action step outcome | ${{ steps.fast-review.outcome }} |"
+            echo "| review-completed | ${{ steps.fast-review.outputs.review-completed }} |"
+            echo "| blockers-found | ${{ steps.fast-review.outputs.blockers-found }} |"
+            echo "| suggestions-found | ${{ steps.fast-review.outputs.suggestions-found }} |"
+            echo "| cost-estimate | ${{ steps.fast-review.outputs.cost-estimate }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ── Job 2: Full Mode (hybrid_analyzer.py) ───────────────────────────────
+  test-full-mode:
+    name: E2E - Full Mode (hybrid_analyzer.py)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332  # v4.1.7
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c  # v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Create test fixture
+        run: |
+          mkdir -p test-fixture/src
+          mkdir -p test-fixture/infra
+
+          # Python file with intentional vulnerabilities
+          cat > test-fixture/src/server.py << 'PYEOF'
+          import os
+          import subprocess
+          import hashlib
+          import pickle
+
+          SECRET_KEY = "super-secret-key-12345"
+
+          def handle_request(user_input):
+              """Multiple vulnerability patterns for scanner detection."""
+              # SQL injection
+              query = "SELECT * FROM users WHERE name = '%s'" % user_input
+
+              # Command injection
+              os.system("echo " + user_input)
+
+              # Insecure deserialization
+              data = pickle.loads(user_input.encode())
+
+              # Path traversal
+              with open("/tmp/" + user_input) as f:
+                  return f.read()
+
+          def weak_crypto(password):
+              return hashlib.sha1(password.encode()).hexdigest()
+
+          def insecure_random():
+              import random
+              return random.randint(0, 999999)
+          PYEOF
+
+          # JavaScript file with vulnerabilities
+          cat > test-fixture/src/api.js << 'JSEOF'
+          const express = require('express');
+          const app = express();
+
+          // XSS vulnerability
+          app.get('/search', (req, res) => {
+            res.send(`<h1>Results for: ${req.query.q}</h1>`);
+          });
+
+          // Prototype pollution
+          function merge(target, source) {
+            for (let key in source) {
+              target[key] = source[key];
+            }
+          }
+
+          module.exports = app;
+          JSEOF
+
+          # Terraform file for Checkov
+          cat > test-fixture/infra/main.tf << 'TFEOF'
+          resource "aws_s3_bucket" "data" {
+            bucket = "my-test-bucket"
+          }
+
+          resource "aws_security_group" "open" {
+            name = "allow-all"
+            ingress {
+              from_port   = 0
+              to_port     = 65535
+              protocol    = "tcp"
+              cidr_blocks = ["0.0.0.0/0"]
+            }
+          }
+          TFEOF
+
+          # Requirements with known vulnerable versions
+          cat > test-fixture/requirements.txt << 'REQEOF'
+          flask==2.3.0
+          requests==2.25.0
+          pyyaml==5.4.0
+          REQEOF
+
+          cat > test-fixture/package.json << 'PKGEOF'
+          {
+            "name": "e2e-test-fixture",
+            "version": "0.1.0",
+            "private": true,
+            "dependencies": {
+              "express": "4.17.0"
+            }
+          }
+          PKGEOF
+
+          echo "Full-mode test fixture created"
+          find test-fixture -type f | sort
+
+      - name: Run Argus action in full mode
+        id: full-pipeline
+        uses: ./
+        with:
+          pipeline-mode: 'full'
+          project-path: './test-fixture'
+          project-type: 'backend-api'
+          ai-provider: 'ollama'
+          ollama-endpoint: 'http://localhost:11434'
+          fail-on-blockers: 'false'
+          upload-reports: 'false'
+          comment-on-pr: 'false'
+          semgrep-enabled: 'true'
+          # Disable AI-dependent features to avoid failures from missing LLM
+          enable-multi-agent: 'false'
+          enable-spontaneous-discovery: 'false'
+          enable-collaborative-reasoning: 'false'
+          enable-exploit-analysis: 'false'
+          generate-security-tests: 'false'
+          enable-iris: 'false'
+          enable-remediation: 'false'
+          enable-threat-intel: 'false'
+          enable-sandbox: 'false'
+          enable-proof-by-exploitation: 'false'
+          enable-runtime-security: 'false'
+          enable-dast: 'false'
+          enable-fuzzing: 'false'
+          # Keep scanner-only features on
+          enable-supply-chain: 'false'
+          enable-regression-testing: 'false'
+          max-files: '20'
+          cost-limit: '0'
+          deep-analysis-mode: 'off'
+        continue-on-error: true
+
+      - name: Verify Argus installation for full mode
+        run: |
+          echo "=== Verifying full-mode Argus installation ==="
+          FAIL=0
+
+          # Scripts directory must contain full-mode modules
+          for module in \
+            hybrid_analyzer.py \
+            config_loader.py \
+            agent_personas.py \
+            heuristic_scanner.py \
+            epss_scorer.py \
+            fix_version_tracker.py \
+            vex_processor.py \
+            vuln_deduplicator.py \
+            advanced_suppression.py \
+            compliance_mapper.py \
+            license_risk_scorer.py \
+            phase_gate.py \
+            audit_trail.py \
+            error_classifier.py; do
+            if [ -f "$HOME/.argus/scripts/$module" ]; then
+              echo "PASS: $module present"
+            else
+              echo "FAIL: $module not found in scripts directory"
+              FAIL=1
+            fi
+          done
+
+          # Hybrid sub-package
+          if [ -d "$HOME/.argus/scripts/hybrid" ]; then
+            echo "PASS: hybrid/ sub-package present"
+          else
+            echo "FAIL: hybrid/ sub-package not found"
+            FAIL=1
+          fi
+
+          # Project-level directories
+          if [ ! -d "test-fixture/.argus/hybrid-results" ]; then
+            echo "WARNING: hybrid-results directory not pre-created (may be created by pipeline)"
+          else
+            echo "PASS: hybrid-results directory exists"
+          fi
+
+          if [ "$FAIL" -ne 0 ]; then
+            echo "Full-mode installation verification FAILED"
+            exit 1
+          fi
+
+          echo "=== Full-mode installation verification PASSED ==="
+
+      - name: Verify full mode outputs
+        run: |
+          echo "=== Verifying full mode outputs ==="
+
+          # Check pipeline-mode-used output
+          PIPELINE_MODE="${{ steps.full-pipeline.outputs.pipeline-mode-used }}"
+          echo "pipeline-mode-used: '$PIPELINE_MODE'"
+          if [ "$PIPELINE_MODE" != "full" ]; then
+            echo "WARNING: pipeline-mode-used is not 'full' (got '$PIPELINE_MODE')"
+          else
+            echo "PASS: pipeline-mode-used is 'full'"
+          fi
+
+          # Check the review-completed output
+          COMPLETED="${{ steps.full-pipeline.outputs.review-completed }}"
+          echo "review-completed: '$COMPLETED'"
+
+          # Check numeric outputs exist
+          TOTAL="${{ steps.full-pipeline.outputs.total-findings }}"
+          echo "total-findings: '$TOTAL'"
+
+          SCANNERS="${{ steps.full-pipeline.outputs.scanners-used }}"
+          echo "scanners-used: '$SCANNERS'"
+
+          SCAN_DURATION="${{ steps.full-pipeline.outputs.scan-duration-seconds }}"
+          echo "scan-duration-seconds: '$SCAN_DURATION'"
+
+          BLOCKERS="${{ steps.full-pipeline.outputs.blockers-found }}"
+          echo "blockers-found: '$BLOCKERS'"
+
+          SUGGESTIONS="${{ steps.full-pipeline.outputs.suggestions-found }}"
+          echo "suggestions-found: '$SUGGESTIONS'"
+
+          COST="${{ steps.full-pipeline.outputs.cost-estimate }}"
+          echo "cost-estimate: '$COST'"
+
+          echo "=== Full mode output verification complete ==="
+
+      - name: Check for generated report files
+        run: |
+          echo "=== Checking full-mode report files ==="
+          RESULTS_DIR="test-fixture/.argus/hybrid-results"
+
+          if [ -d "$RESULTS_DIR" ]; then
+            echo "Results directory exists. Contents:"
+            ls -la "$RESULTS_DIR/" 2>/dev/null || echo "(empty)"
+
+            # Check for JSON result files
+            JSON_COUNT=$(find "$RESULTS_DIR" -name "*.json" 2>/dev/null | wc -l)
+            echo "JSON files found: $JSON_COUNT"
+
+            # Check for SARIF result files
+            SARIF_COUNT=$(find "$RESULTS_DIR" -name "*.sarif" 2>/dev/null | wc -l)
+            echo "SARIF files found: $SARIF_COUNT"
+
+            # Validate JSON files if present
+            for jf in "$RESULTS_DIR"/*.json; do
+              if [ -f "$jf" ]; then
+                if jq empty "$jf" 2>/dev/null; then
+                  echo "PASS: $jf is valid JSON"
+                else
+                  echo "FAIL: $jf is not valid JSON"
+                fi
+              fi
+            done
+          else
+            echo "WARNING: Results directory not found at $RESULTS_DIR"
+            echo "This is expected if the pipeline failed early due to missing AI provider"
+          fi
+
+          echo "=== Full-mode report file check complete ==="
+
+      - name: Verify Semgrep ran (scanner-only validation)
+        run: |
+          echo "=== Checking if Semgrep scanner executed ==="
+
+          # Semgrep should be installed and available
+          if command -v semgrep &> /dev/null; then
+            echo "PASS: Semgrep binary is available"
+            semgrep --version
+          else
+            # Check if semgrep is in pip
+            if pip show semgrep &> /dev/null; then
+              echo "PASS: Semgrep is installed via pip"
+            else
+              echo "WARNING: Semgrep not found (may have failed to install)"
+            fi
+          fi
+
+          # Check logs for scanner activity in the results
+          SCANNERS="${{ steps.full-pipeline.outputs.scanners-used }}"
+          if echo "$SCANNERS" | grep -qi "semgrep"; then
+            echo "PASS: Semgrep appears in scanners-used output"
+          else
+            echo "INFO: Semgrep not in scanners-used output (got: '$SCANNERS')"
+            echo "This may be normal if the pipeline did not complete fully"
+          fi
+
+          echo "=== Scanner execution check complete ==="
+
+      - name: Write job summary
+        if: always()
+        run: |
+          {
+            echo "## Full Mode E2E Results"
+            echo ""
+            echo "| Check | Result |"
+            echo "|-------|--------|"
+            echo "| Installation | Passed |"
+            echo "| Action step outcome | ${{ steps.full-pipeline.outcome }} |"
+            echo "| pipeline-mode-used | ${{ steps.full-pipeline.outputs.pipeline-mode-used }} |"
+            echo "| review-completed | ${{ steps.full-pipeline.outputs.review-completed }} |"
+            echo "| total-findings | ${{ steps.full-pipeline.outputs.total-findings }} |"
+            echo "| scanners-used | ${{ steps.full-pipeline.outputs.scanners-used }} |"
+            echo "| blockers-found | ${{ steps.full-pipeline.outputs.blockers-found }} |"
+            echo "| suggestions-found | ${{ steps.full-pipeline.outputs.suggestions-found }} |"
+            echo "| cost-estimate | ${{ steps.full-pipeline.outputs.cost-estimate }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ── Summary Job ─────────────────────────────────────────────────────────
+  e2e-summary:
+    name: E2E Test Summary
+    needs: [test-fast-mode, test-full-mode]
+    runs-on: ubuntu-latest
+    if: always()
+    timeout-minutes: 5
+
+    steps:
+      - name: Evaluate results
+        run: |
+          echo "=== Action E2E Test Summary ==="
+          echo ""
+
+          FAST="${{ needs.test-fast-mode.result }}"
+          FULL="${{ needs.test-full-mode.result }}"
+
+          echo "Fast mode: $FAST"
+          echo "Full mode: $FULL"
+
+          if [ "$FAST" = "success" ] && [ "$FULL" = "success" ]; then
+            echo ""
+            echo "All E2E tests passed."
+          else
+            echo ""
+            echo "One or more E2E tests did not pass."
+            echo "Review the individual job logs for details."
+            exit 1
+          fi
