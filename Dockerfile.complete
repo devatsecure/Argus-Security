@@ -81,14 +81,22 @@ RUN ZAP_VERSION="2.16.0" && \
 # Falco for runtime security monitoring (opt-in via build arg)
 ARG INSTALL_FALCO=true
 RUN if [ "$INSTALL_FALCO" = "true" ]; then \
-        curl -fsSL https://falco.org/repo/falcosecurity-packages.asc \
+        echo "=== Installing Falco ===" \
+        && curl -fsSL https://falco.org/repo/falcosecurity-packages.asc \
             | gpg --dearmor -o /usr/share/keyrings/falco-archive-keyring.gpg \
         && echo "deb [signed-by=/usr/share/keyrings/falco-archive-keyring.gpg] https://download.falco.org/packages/deb stable main" \
             | tee /etc/apt/sources.list.d/falcosecurity.list \
         && apt-get update \
-        && apt-get install -y --no-install-recommends falco \
+        && FALCO_FRONTEND=noninteractive apt-get install -y --no-install-recommends falco \
         && rm -rf /var/lib/apt/lists/* \
-        || echo "WARNING: Falco installation failed (non-fatal) — runtime monitoring will be unavailable"; \
+        && falco --version \
+        && echo "=== Falco installed successfully ===" \
+        || { echo "ERROR: Falco installation failed (non-fatal) — runtime monitoring will be unavailable"; \
+             echo "  Diagnostics:"; \
+             echo "  - GPG keyring exists: $(test -f /usr/share/keyrings/falco-archive-keyring.gpg && echo yes || echo no)"; \
+             echo "  - Apt source exists: $(test -f /etc/apt/sources.list.d/falcosecurity.list && echo yes || echo no)"; \
+             echo "  - falco binary: $(which falco 2>/dev/null || echo 'not found')"; \
+             rm -rf /var/lib/apt/lists/*; }; \
     else \
         echo "Skipping Falco installation (INSTALL_FALCO=$INSTALL_FALCO)"; \
     fi

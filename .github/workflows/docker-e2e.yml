@@ -42,6 +42,9 @@ jobs:
           push: false
           load: true
           tags: argus-security:e2e-test
+          # Falco requires kernel headers and privileged access for driver loading,
+          # which are unavailable in GitHub Actions runners. Keep disabled to avoid
+          # flaky CI failures from apt repo or driver issues.
           build-args: INSTALL_FALCO=false
           cache-from: type=gha
           cache-to: type=gha,mode=max
