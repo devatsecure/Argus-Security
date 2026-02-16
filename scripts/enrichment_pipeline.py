@@ -18,7 +18,7 @@ components, not findings, and each orchestrator handles it differently.
 
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -85,12 +85,12 @@ def _parse_bool(value: Any) -> bool:
 # ---------------------------------------------------------------------------
 
 def run_enrichment_pipeline(
-    findings: list,
-    config: dict,
+    findings: list[dict[str, Any]],
+    config: dict[str, Any],
     target_path: str,
     *,
     as_dicts: bool = True,
-) -> tuple[list, dict]:
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Run the 6-step enrichment pipeline on findings.
 
     Args:
@@ -112,7 +112,7 @@ def run_enrichment_pipeline(
         return findings, {}
 
     metadata: dict[str, Any] = {}
-    remaining: list = list(findings)
+    remaining: list[dict[str, Any]] = list(findings)
 
     # -- Step 1: EPSS Scoring ------------------------------------------------
     remaining, step_meta = _step_epss(remaining, config, target_path)
@@ -154,8 +154,8 @@ def run_enrichment_pipeline(
 # ---------------------------------------------------------------------------
 
 def _step_epss(
-    findings: list, config: dict, target_path: str,
-) -> tuple[list, dict | None]:
+    findings: list[dict[str, Any]], config: dict[str, Any], target_path: str,
+) -> tuple[list[dict[str, Any]], Optional[dict[str, Any]]]:
     """Step 1: EPSS scoring."""
     if not _EPSS_OK or not _parse_bool(config.get("enable_epss_scoring", True)):
         return findings, None
@@ -186,8 +186,8 @@ def _step_epss(
 
 
 def _step_fix_versions(
-    findings: list, config: dict,
-) -> tuple[list, dict | None]:
+    findings: list[dict[str, Any]], config: dict[str, Any],
+) -> tuple[list[dict[str, Any]], Optional[dict[str, Any]]]:
     """Step 2: Fix version tracking."""
     if not _FIX_OK or not _parse_bool(config.get("enable_fix_version_tracking", True)):
         return findings, None
@@ -212,15 +212,15 @@ def _step_fix_versions(
 
 
 def _step_vex(
-    findings: list, config: dict, target_path: str,
-) -> tuple[list, list, dict | None]:
+    findings: list[dict[str, Any]], config: dict[str, Any], target_path: str,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], Optional[dict[str, Any]]]:
     """Step 3: VEX filtering.
 
     Returns ``(remaining, suppressed_by_vex, metadata)``.
     The *suppressed_by_vex* list is forwarded to Step 6 (suppression)
     so VEX-based auto-suppression rules can be generated.
     """
-    suppressed_by_vex: list = []
+    suppressed_by_vex: list[dict[str, Any]] = []
     if not _VEX_OK or not _parse_bool(config.get("enable_vex", True)):
         return findings, suppressed_by_vex, None
 

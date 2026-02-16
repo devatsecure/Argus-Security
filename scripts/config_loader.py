@@ -170,7 +170,7 @@ def _profile_search_paths(profile_name: str) -> list[Path]:
     ]
 
 
-def _load_raw_profile(profile_name: str, _chain: Optional[list[str]] = None) -> dict:
+def _load_raw_profile(profile_name: str, _chain: Optional[list[str]] = None) -> dict[str, Any]:
     """Load raw YAML dict for *profile_name*, resolving ``_extends``.
 
     Parameters
@@ -200,7 +200,7 @@ def _load_raw_profile(profile_name: str, _chain: Optional[list[str]] = None) -> 
     _chain.append(profile_name)
 
     # Search for the profile YAML
-    raw: Optional[dict] = None
+    raw: Optional[dict[str, Any]] = None
     loaded_path: Optional[Path] = None
     for candidate in _profile_search_paths(profile_name):
         if candidate.is_file():
@@ -226,7 +226,7 @@ def _load_raw_profile(profile_name: str, _chain: Optional[list[str]] = None) -> 
     return raw
 
 
-def _deep_merge_nested(base: dict, override: dict) -> dict:
+def _deep_merge_nested(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
     """Recursively merge *override* into *base* (nested dicts)."""
     merged = dict(base)
     for key, value in override.items():
@@ -247,7 +247,7 @@ _SECTION_PREFIX_MAP = {
 }
 
 
-def flatten_profile(nested: dict) -> dict[str, Any]:
+def flatten_profile(nested: dict[str, Any]) -> dict[str, Any]:
     """Convert a nested profile YAML dict to a flat config dict.
 
     Mapping rules:
@@ -362,7 +362,7 @@ def load_profile(profile_name: str) -> dict[str, Any]:
 
 # Mapping: (env_var_name, ...) -> (config_key, type)
 # Types: "str", "bool", "int", "float"
-_ENV_MAPPINGS: list[tuple] = [
+_ENV_MAPPINGS: list[tuple[tuple[str, ...], str, str]] = [
     # AI
     (("AI_PROVIDER", "INPUT_AI_PROVIDER"), "ai_provider", "str"),
     (("MODEL", "INPUT_MODEL"), "model", "str"),
@@ -626,7 +626,7 @@ def extract_cli_overrides(args: Any) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def deep_merge(base: dict, override: dict) -> dict:
+def deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
     """Merge *override* into *base*.  Only non-None override values win.
 
     This operates on **flat** dicts (no recursive descent).  ``None``
@@ -751,7 +751,7 @@ def list_available_profiles() -> list[str]:
     - ``~/.argus/profiles/*.yml``
     - ``.argus/profiles/*.yml``
     """
-    names: set = set()
+    names: set[str] = set()
 
     search_dirs = [
         PROJECT_ROOT / "profiles",
