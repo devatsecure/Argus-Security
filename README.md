@@ -1,42 +1,29 @@
 # Argus Security
 
-**Enterprise-grade AI Security Platform** — Orchestrate security scanners with intelligent triage and multi-agent analysis
+**Enterprise-grade AI Security Platform** -- Orchestrate security scanners with AI-powered triage and multi-agent analysis.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![AI-Powered](https://img.shields.io/badge/AI-Claude%20%7C%20OpenAI-blue.svg)](#ai-triage)
-[![Multi-Agent](https://img.shields.io/badge/Architecture-Multi--Agent-purple.svg)](#multi-agent-analysis)
+[![AI-Powered](https://img.shields.io/badge/AI-Claude%20%7C%20OpenAI%20%7C%20Ollama-blue.svg)](#ai-providers)
 [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](#docker)
 
 ---
 
 ## What is Argus?
 
-**Argus** is an AI-powered security platform that orchestrates multiple security scanners and uses specialized AI personas to analyze vulnerabilities with unprecedented accuracy.
-
-### 🎯 NEW: Context-Aware Security Analysis
-
-**70% False Positive Reduction** achieved through project context detection:
-- ✅ Auto-detects CLI tools vs web apps vs libraries
-- ✅ Context-specific vulnerability analysis (e.g., console.log in CLI ≠ XSS)
-- ✅ Smart remediation tailored to project type
-- ✅ Continuous learning from developer feedback
-
-See [IMPLEMENTATION_COMPLETE.md](IMPLEMENTATION_COMPLETE.md) for details.
-
-### Key Benefits
+Argus runs a **6-phase security pipeline** that combines traditional scanners with Claude AI-powered triage, achieving **60-70% false positive reduction** and **+15-20% more findings** via heuristic-based discovery.
 
 | Challenge | Argus Solution |
 |-----------|----------------|
-| Too many false positives | **70% reduction** via context-aware AI triage |
-| Scanners miss real issues | +15-20% more findings via spontaneous discovery |
-| Manual triage takes hours | Automated multi-agent analysis |
-| No learning over time | Self-improving from your feedback |
+| Too many false positives | 60-70% reduction via AI triage + noise scoring |
+| Scanners miss real issues | +15-20% findings via heuristic pattern matching |
+| Manual triage takes hours | Automated multi-agent analysis with 5 AI personas |
+| No actionable next steps | AI-generated fix suggestions + compliance mapping |
 
 ---
 
 ## Quick Start
 
-### Option 1: GitHub Action
+### GitHub Action (Recommended)
 
 ```yaml
 name: Argus Security
@@ -53,367 +40,202 @@ jobs:
       - uses: devatsecure/Argus-Security@v1
         with:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          pipeline-mode: fast   # or "full" for 6-phase pipeline
 ```
 
-### Option 2: Docker
+### Docker
 
 ```bash
-# Pull the image
-docker pull ghcr.io/devatsecure/argus-security:latest
-
-# Run security scan
+# Full 6-phase pipeline (Dockerfile.complete entrypoint: hybrid_analyzer.py)
+docker build -f Dockerfile.complete -t argus:complete .
 docker run -v $(pwd):/workspace \
   -e ANTHROPIC_API_KEY="your-key" \
-  ghcr.io/devatsecure/argus-security:latest \
-  --project-type backend-api
+  argus:complete /workspace
 
-# Run with custom options
+# With Docker-in-Docker for Phase 4 sandbox validation
 docker run -v $(pwd):/workspace \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  --group-add $(stat -c '%g' /var/run/docker.sock) \
   -e ANTHROPIC_API_KEY="your-key" \
-  ghcr.io/devatsecure/argus-security:latest \
-  --enable-multi-agent \
-  --enable-spontaneous-discovery \
-  --output-file /workspace/report.json
+  argus:complete /workspace
 ```
 
-**Docker Compose:**
-
-```yaml
-version: '3.8'
-services:
-  argus:
-    image: ghcr.io/devatsecure/argus-security:latest
-    volumes:
-      - .:/workspace
-    environment:
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-    command: ["--project-type", "backend-api", "--output-file", "/workspace/report.json"]
-```
-
-### Option 3: Local CLI
+### Local CLI
 
 ```bash
 git clone https://github.com/devatsecure/Argus-Security.git
-cd Argus-Security
-pip install -r requirements.txt
+cd Argus-Security && pip install -r requirements.txt
 export ANTHROPIC_API_KEY="your-key"
 
+# Fast AI code review (Semgrep + 2-3 LLM calls)
 python scripts/run_ai_audit.py --project-type backend-api
+
+# Full 6-phase pipeline (all scanners + AI enrichment)
+python scripts/hybrid_analyzer.py /path/to/project
 ```
 
 ---
 
-## Architecture
-
-### 6-Phase Pipeline + Enhanced Analysis
-
-> **Note:** Phases 2.5-2.7 were added after the original 6-phase design. They use decimal numbering to insert between Phase 2 and Phase 3 without breaking backward compatibility.
+## 6-Phase Pipeline
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  ARGUS SECURITY PLATFORM                                    │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  PHASE 1: Scanner Orchestration                             │
-│  ├─ TruffleHog (secrets with API verification)             │
-│  ├─ Semgrep (SAST - 2000+ rules)                           │
-│  ├─ Trivy (CVE scanning)                                   │
-│  ├─ Checkov (IaC security)                                 │
-│  └─ Gitleaks (pattern-based secrets)                       │
-│                                                             │
-│  PHASE 2: AI Enrichment (Base Analysis)                     │
-│  ├─ Claude/OpenAI/Ollama triage                            │
-│  ├─ Noise scoring & false positive prediction              │
-│  └─ Threat intelligence enrichment                         │
-│                                                             │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │ ENHANCED ANALYSIS MODULES (Phases 2.5-2.7)         │   │
-│  │ Added incrementally without renumbering             │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                                                             │
-│  PHASE 2.5: Remediation Engine                              │
-│  └─ AI-generated fix suggestions                           │
-│                                                             │
-│  PHASE 2.6: Spontaneous Discovery                           │
-│  └─ Find issues beyond scanner rules (+15-20% findings)    │
-│                                                             │
-│  PHASE 2.7: Deep Analysis (AISLE-inspired) 🆕               │
-│  ├─ Semantic Code Twin (AST-based intent analysis)         │
-│  ├─ Proactive AI Scanner (autonomous reasoning)            │
-│  ├─ Taint Analyzer (inter-procedural data flow)            │
-│  └─ Zero-Day Hypothesizer (novel vulnerability discovery)  │
-│                                                             │
-│  PHASE 3: Multi-Agent Persona Review                        │
-│  ├─ 🕵️ SecretHunter - credentials expert                    │
-│  ├─ 🏗️ ArchitectureReviewer - design flaws                  │
-│  ├─ ⚔️ ExploitAssessor - exploitability analysis            │
-│  ├─ 🎯 FalsePositiveFilter - noise elimination              │
-│  ├─ 🔍 ThreatModeler - attack chain mapping                 │
-│  └─ ⚡ Parallel execution for quality agents (NEW)          │
-│                                                             │
-│  PHASE 4: Sandbox Validation (Docker-based)                 │
-│  ├─ Isolated exploit verification                          │
-│  └─ Proof-by-Exploitation: LLM-generated PoCs (NEW)       │
-│                                                             │
-│  PHASE 5: Policy Gates (Rego/OPA)                           │
-│  └─ Pass/fail enforcement rules                            │
-│                                                             │
-│  PHASE 6: Reporting (SARIF/JSON/Markdown)                   │
-│  └─ GitHub code scanning integration                       │
-│                                                             │
-│  ═══════════════════════════════════════════════════════   │
-│  ADDITIONAL FEATURES (Standalone Tools)                     │
-│  ═══════════════════════════════════════════════════════   │
-│                                                             │
-│  🌐 DAST Integration (Runtime Security Testing)             │
-│  ├─ Nuclei Agent (template-based scanning)                 │
-│  ├─ ZAP Agent (spider + active scan)                       │
-│  ├─ SAST-DAST Correlation (30-40% FP reduction)            │
-│  ├─ Config-driven auth (form/SSO/TOTP) (NEW)              │
-│  └─ Intelligent orchestration & tech stack detection       │
-│                                                             │
-│  🔗 Vulnerability Chaining (Attack Path Discovery)          │
-│  ├─ Multi-step attack scenario discovery                   │
-│  ├─ Attack graph generation                                │
-│  ├─ Exploitability scoring                                 │
-│  └─ Attack complexity analysis                             │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+Phase 1: Scanner Orchestration (30-60s)
+  Semgrep (SAST, 2000+ rules) | Trivy (CVE/deps) | Checkov (IaC) | TruffleHog (verified secrets) | Gitleaks (pattern secrets)
+
+Phase 2: AI Enrichment (2-5 min)
+  Claude/OpenAI/Ollama triage | Noise scoring | CWE mapping | Heuristic discovery (regex)
+
+Phase 3: Multi-Agent Review
+  5 AI personas: SecretHunter, ArchitectureReviewer, ExploitAssessor, FalsePositiveFilter, ThreatModeler
+  Quality agents run in parallel via ThreadPoolExecutor
+
+Phase 4: Sandbox Validation
+  Docker-based exploit verification | LLM-generated PoC exploits (opt-in)
+
+Phase 5: Policy Gates
+  Rego/OPA enforcement | PR gates block verified secrets + critical CVEs
+
+Phase 6: Reporting
+  SARIF (GitHub code scanning) | JSON | Markdown
 ```
+
+### Two Orchestrators
+
+| Orchestrator | Use Case | Scanners |
+|-------------|----------|----------|
+| `run_ai_audit.py` | Fast AI code review (GitHub Action default) | Semgrep + 2-3 LLM calls |
+| `hybrid_analyzer.py` | Full 6-phase pipeline (Docker default) | All 5 scanners + full enrichment |
 
 ---
 
-## Advanced Features
+## Enrichment Features
 
-### Smart Retry & Error Classification
+All features are wired into both orchestrators and toggled via config/env vars.
 
-Replaces blanket retry with classified retry strategies (`scripts/error_classifier.py`). Each LLM API error is classified by type (billing, rate_limit, auth, transient, validation) with different backoff strategies. Non-retryable errors (auth, config) fail immediately instead of wasting retries.
+| Feature | Config Key | Default | Description |
+|---------|-----------|---------|-------------|
+| EPSS Scoring | `enable_epss_scoring` | `True` | FIRST.org exploit probability (24h cache, batch 100) |
+| Fix Version Tracking | `enable_fix_version_tracking` | `True` | Semver upgrade paths (PATCH/MINOR/MAJOR) |
+| VEX Support | `enable_vex` | `True` | OpenVEX, CycloneDX, CSAF document parsing |
+| Vuln Deduplication | `enable_vuln_deduplication` | `True` | Cross-scanner merge via {VulnID, Pkg, Version, Path} |
+| Advanced Suppression | `enable_advanced_suppression` | `True` | `.argus-ignore.yml` with time-based expiration |
+| Compliance Mapping | `enable_compliance_mapping` | `True` | NIST 800-53, PCI DSS 4.0, OWASP Top 10, SOC 2, ISO 27001 |
+| License Risk Scoring | `enable_license_risk_scoring` | `True` | 5-tier SPDX classification (32 identifiers) |
+| Heuristic Scanner | `enable_heuristics` | `True` | Pre-LLM regex pattern matching for extra findings |
+| Phase Gating | `enable_phase_gating` | `True` | Schema validation between pipeline phases |
+| Smart Retry | `enable_smart_retry` | `True` | Classified retry strategies per error type |
+| Audit Trail | `enable_audit_trail` | `True` | Per-agent cost/duration tracking, session.json |
+| Parallel Agents | `enable_parallel_agents` | `True` | Quality agents run concurrently (~60% faster Phase 3) |
+| Deep Analysis | `deep_analysis_mode` | `off` | AISLE-inspired semantic analysis (off/semantic-only/conservative/full) |
+| Proof-by-Exploitation | `enable_proof_by_exploitation` | `False` | LLM-generated PoCs in Docker sandbox (opt-in) |
+| MCP Server | `enable_mcp_server` | `False` | Expose Argus as MCP tools for Claude Code |
+| Temporal Orchestration | `enable_temporal` | `False` | Durable workflow wrapping for crash recovery |
 
-```python
-@smart_retry(max_attempts=3, provider="anthropic")
-def call_api(prompt):
-    ...
+---
+
+## Configuration
+
+### Layered Config Precedence
+
+```
+hardcoded defaults < profile YAML < .argus.yml < env vars < CLI args
 ```
 
-### Per-Agent Audit Trail
-
-Tracks per-agent cost, duration, and token usage with rendered prompt archival (`scripts/audit_trail.py`). Produces `session.json` with phase-level metrics and append-only agent logs for full reproducibility.
-
-### Parallel Agent Execution
-
-Quality agents (performance, testing, quality) run concurrently via `ThreadPoolExecutor` while security agents remain sequential. Reduces Phase 3 wall-clock time by ~60%. Toggle with `enable_parallel_agents=True`.
-
-### Phase Gating
-
-Validates phase output structure before pipeline progression (`scripts/phase_gate.py`). Catches empty findings, missing reports, and malformed outputs before they propagate to downstream phases.
-
-### MCP Server Integration
-
-Exposes Argus as MCP tools for Claude Code (`scripts/mcp_server.py`): `save_finding`, `get_scan_status`, `check_policy_gate`, `trigger_remediation`.
-
-### Proof-by-Exploitation
-
-LLM-generated exploit PoCs run in Docker sandbox to prove vulnerabilities, reducing false positives. Safety blocklist prevents dangerous operations in generated code.
-
-### Config-Driven DAST Auth
-
-YAML-based auth config for authenticated DAST scanning with RFC 6238 TOTP support (`scripts/dast_auth_config.py`). Supports form login, SSO, API keys, and custom login flows.
-
-### Temporal Orchestration (Optional)
-
-Durable workflow wrapping via Temporal for crash recovery and distributed execution (`scripts/temporal_orchestrator.py`). Requires `temporalio` package.
-
----
-
-## Multi-Agent Analysis
-
-Argus deploys **5 specialized AI personas**, each expert in a specific security domain:
-
-| Agent | Focus | What It Finds |
-|-------|-------|---------------|
-| **SecretHunter** | Credentials | API keys, tokens, passwords in code/configs |
-| **ArchitectureReviewer** | Design | Auth bypass, missing controls, IAM issues |
-| **ExploitAssessor** | Exploitability | Real-world attack viability |
-| **FalsePositiveFilter** | Noise | Test code, mocks, documentation |
-| **ThreatModeler** | Attack Chains | STRIDE threats, attack paths |
-
-### Spontaneous Discovery
-
-Beyond scanner rules, Argus **proactively finds hidden issues**:
-- Missing authentication on endpoints
-- Architectural vulnerabilities
-- Configuration mistakes
-- Supply chain risks
-
-**Result:** +15-20% more real issues discovered
-
----
-
-## DAST Integration (Runtime Security Testing)
-
-Argus includes **standalone DAST tools** for runtime application security testing:
-
-### Quick Start
+### Environment Variables
 
 ```bash
-# Basic DAST scan with Nuclei + ZAP
-python scripts/dast_orchestrator.py --target https://example.com
+# AI Providers (at least one required for AI features)
+export ANTHROPIC_API_KEY="your-key"         # Claude (recommended)
+export OPENAI_API_KEY="your-key"            # OpenAI (alternative)
+export OLLAMA_ENDPOINT="http://localhost:11434"  # Ollama (free, local)
 
-# With SAST-DAST correlation
-python scripts/dast_orchestrator.py \
-  --target https://example.com \
-  --sast-findings .argus/reviews/results.json \
-  --enable-correlation
+# Scanner toggles
+export ENABLE_SEMGREP=true
+export ENABLE_TRIVY=true
+export ENABLE_CHECKOV=true
+export ENABLE_GITLEAKS=true
+
+# Feature toggles (all boolean, set "true" or "false")
+export ENABLE_EPSS_SCORING=true
+export ENABLE_VEX=true
+export ENABLE_VULN_DEDUPLICATION=true
+export ENABLE_ADVANCED_SUPPRESSION=true
+export ENABLE_COMPLIANCE_MAPPING=true
+export ENABLE_LICENSE_RISK_SCORING=true
+
+# Limits
+export MAX_FILES=50
+export COST_LIMIT=1.0
+export MAX_TOKENS=8000
 ```
 
-### Features
+### Config Profiles
 
-- **Parallel Execution**: Nuclei + ZAP run concurrently
-- **Tech Stack Detection**: Auto-selects relevant templates
-- **SAST-DAST Correlation**: Confirms exploitability (30-40% FP reduction)
-- **Multi-Agent Orchestration**: Intelligent routing & failure handling
+8 built-in profiles in `profiles/`:
 
-### Example Workflow
+| Profile | Purpose |
+|---------|---------|
+| `standard` | Balanced defaults for most projects |
+| `backend-api` | Backend/API-focused scanning |
+| `frontend` | Frontend/UI-focused scanning |
+| `infrastructure` | IaC and cloud config scanning |
+| `deep` | Full deep analysis enabled |
+| `quick` | Minimal scanning for fast feedback |
+| `secrets-only` | Secret detection only (TruffleHog + Gitleaks) |
+| `dast-authenticated` | DAST with auth config |
+
+Usage: `python scripts/hybrid_analyzer.py /project --profile backend-api`
+
+---
+
+## GitHub Action
+
+The Action supports two pipeline modes:
+
+| Input | Default | Description |
+|-------|---------|-------------|
+| `pipeline-mode` | `fast` | `fast` (run_ai_audit.py) or `full` (hybrid_analyzer.py) |
+| `anthropic-api-key` | -- | Anthropic API key for Claude |
+| `openai-api-key` | -- | OpenAI API key (alternative) |
+| `ai-provider` | `auto` | `anthropic`, `openai`, `ollama`, or `auto` |
+| `review-type` | `audit` | `audit`, `security`, or `review` |
+| `project-type` | `auto` | `backend-api`, `dashboard-ui`, `data-pipeline`, `infrastructure`, `auto` |
+| `fail-on-blockers` | `true` | Fail workflow on critical/high findings |
+| `enable-multi-agent` | `true` | Enable 5 AI persona analysis |
+| `enable-spontaneous-discovery` | `true` | Heuristic pattern discovery |
+| `enable-sandbox` | `false` | Docker sandbox validation (full mode) |
+| `enable-proof-by-exploitation` | `false` | LLM PoC generation (full mode) |
+| `enable-dast` | `false` | DAST scanning (requires `dast-target-url`) |
+| `deep-analysis-mode` | `off` | `off`, `semantic-only`, `conservative`, `full` |
+| `only-changed` | `false` | Only analyze changed files (PR mode) |
+| `max-files` | `50` | Max files to analyze |
+| `cost-limit` | `1.0` | Max cost in USD per run |
+| `severity-filter` | -- | Comma-separated severity levels to include |
+
+### Full Pipeline Example
 
 ```yaml
-# .github/workflows/dast.yml
-- name: Run DAST Scan
-  run: |
-    python scripts/dast_orchestrator.py \
-      --target ${{ env.STAGING_URL }} \
-      --output dast-results.json
+- uses: devatsecure/Argus-Security@v1
+  with:
+    anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+    pipeline-mode: full
+    enable-multi-agent: 'true'
+    deep-analysis-mode: conservative
+    fail-on-blockers: 'true'
 ```
 
-**Documentation**: `DAST_MVP_DELIVERY_SUMMARY.md`, `docs/references/dast-scanner-reference.md`
+### Action Outputs
 
----
-
-## Vulnerability Chaining (Attack Path Discovery)
-
-Discover **multi-step attack scenarios** by chaining individual vulnerabilities:
-
-### Quick Start
-
-```bash
-# Analyze findings for attack chains
-python scripts/vulnerability_chaining_engine.py \
-  --findings .argus/reviews/results.json \
-  --output attack-chains.json
-
-# Generate attack graph visualization
-python scripts/chain_visualizer.py \
-  --chains attack-chains.json \
-  --output attack-graph.html
-```
-
-### Features
-
-- **Attack Graph Generation**: Visualize multi-step attack paths
-- **Exploitability Scoring**: CRITICAL, HIGH, MODERATE, LOW, UNLIKELY
-- **Attack Complexity Analysis**: TRIVIAL, LOW, MEDIUM, HIGH
-- **Chain Prioritization**: Focus on highest-impact attack scenarios
-
-### Example: SQL Injection → RCE Chain
-
-```json
-{
-  "chain_id": "chain_001",
-  "exploitability": "CRITICAL",
-  "complexity": "LOW",
-  "steps": [
-    {"vuln_id": "sql-001", "severity": "high", "type": "SQL Injection"},
-    {"vuln_id": "file-002", "severity": "medium", "type": "Arbitrary File Write"},
-    {"vuln_id": "exec-003", "severity": "critical", "type": "Remote Code Execution"}
-  ]
-}
-```
-
-**Documentation**: `CHAINING_QUICKSTART.md`
-
----
-
-## Docker
-
-### Build Locally
-
-```bash
-# Build the image
-docker build -t argus-security .
-
-# Build complete image with all scanners
-docker build -f Dockerfile.complete -t argus-security:complete .
-```
-
-### Run Scans
-
-```bash
-# Basic scan
-docker run -v $(pwd):/workspace argus-security
-
-# With AI triage
-docker run -v $(pwd):/workspace \
-  -e ANTHROPIC_API_KEY="your-key" \
-  argus-security --project-type backend-api
-
-# Full scan with all features
-docker run -v $(pwd):/workspace \
-  -e ANTHROPIC_API_KEY="your-key" \
-  argus-security:complete \
-  --enable-multi-agent \
-  --enable-spontaneous-discovery \
-  --enable-sandbox-validation
-```
-
-### Docker Compose (Production)
-
-```yaml
-version: '3.8'
-services:
-  argus:
-    image: ghcr.io/devatsecure/argus-security:latest
-    volumes:
-      - ./src:/workspace:ro
-      - ./reports:/reports
-    environment:
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - ARGUS_CACHE_DIR=/cache
-    command: 
-      - "--project-type"
-      - "backend-api"
-      - "--output-file"
-      - "/reports/security-report.json"
-      - "--enable-multi-agent"
-    
-  # Optional: Run dashboard
-  dashboard:
-    image: ghcr.io/devatsecure/argus-security:latest
-    ports:
-      - "8501:8501"
-    volumes:
-      - ./reports:/reports:ro
-    command: ["dashboard", "--report", "/reports/security-report.json"]
-```
-
----
-
-## Features
-
-| Feature | Description |
-|---------|-------------|
-| **Multi-Scanner** | TruffleHog, Semgrep, Trivy, Checkov, Gitleaks |
-| **AI Triage** | Claude/OpenAI/Ollama for intelligent analysis |
-| **Enhanced FP Detection** | OAuth2 public clients, file permissions, dev configs, mutex/locks |
-| **60-70% FP Reduction** | ML noise scoring + AI triage + pattern intelligence |
-| **Phase 2.7 Deep Analysis** | AISLE-inspired semantic analysis with 4 AI modules |
-| **Spontaneous Discovery** | Find issues beyond scanner rules |
-| **DAST Integration** | Nuclei + ZAP runtime testing with SAST correlation |
-| **Vulnerability Chaining** | Multi-step attack path discovery and visualization |
-| **Self-Improving** | Learns from your feedback |
-| **Threat Intelligence** | CVE, CISA KEV, EPSS enrichment |
-| **Auto-Remediation** | AI-generated fix suggestions |
-| **Policy Gates** | Rego-based enforcement |
-| **10-100x Caching** | Fast repeat scans |
-| **Docker Ready** | Full containerized deployment |
+| Output | Description |
+|--------|-------------|
+| `review-completed` | Whether review completed successfully |
+| `blockers-found` | Number of critical+high findings |
+| `suggestions-found` | Number of medium+low findings |
+| `report-path` | Path to generated report |
+| `sarif-path` | Path to SARIF file for Code Scanning |
+| `cost-estimate` | Estimated cost in USD |
+| `total-findings` | Total findings (full mode) |
+| `scanners-used` | Scanners that ran (full mode) |
 
 ---
 
@@ -421,90 +243,10 @@ services:
 
 | Command | Purpose |
 |---------|---------|
-| `python scripts/run_ai_audit.py` | Run full security audit (6-phase pipeline) |
-| `python scripts/run_ai_audit.py --deep-analysis-mode=conservative` | Run with Phase 2.7 Deep Analysis |
-| `python scripts/dast_orchestrator.py --target URL` | Run DAST scan (Nuclei + ZAP) |
-| `python scripts/vulnerability_chaining_engine.py --findings FILE` | Discover attack chains |
-| `./scripts/argus gate --stage pr` | Apply policy gate |
-| `./scripts/argus feedback record` | Mark findings as TP/FP |
-| `./scripts/argus dashboard` | Launch observability dashboard |
-
----
-
-## Configuration
-
-### Environment Variables
-
-```bash
-export ANTHROPIC_API_KEY="your-key"    # Claude (recommended)
-export OPENAI_API_KEY="your-key"       # OpenAI (alternative)
-export OLLAMA_ENDPOINT="http://localhost:11434"  # Ollama (free)
-```
-
-### GitHub Action Inputs
-
-```yaml
-- uses: devatsecure/Argus-Security@v1
-        with:
-          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
-
-    # Multi-Agent Features
-    enable-multi-agent: 'true'
-    enable-spontaneous-discovery: 'true'
-    enable-collaborative-reasoning: 'false'
-
-    # Phase 2.7: Deep Analysis (NEW)
-    deep-analysis-mode: 'conservative'  # off, semantic-only, conservative, full
-    max-files-deep-analysis: '50'
-    deep-analysis-cost-ceiling: '5.0'
-    deep-analysis-timeout: '300'
-    benchmark: 'true'
-
-    # Core Features
-          enable-threat-intel: 'true'
-          enable-remediation: 'true'
-
-    # Optional
-    fail-on-blockers: 'true'
-    only-changed: 'true'
-```
-
-#### Phase 2.7 Deep Analysis Examples
-
-**Basic with Phase 2.7:**
-```yaml
-- uses: devatsecure/Argus-Security@main
-  with:
-    anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
-    review-type: security
-    deep-analysis-mode: conservative
-    benchmark: true
-```
-
-**Semantic Analysis Only:**
-```yaml
-- uses: devatsecure/Argus-Security@main
-  with:
-    anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
-    review-type: security
-    deep-analysis-mode: semantic-only
-    max-files-deep-analysis: 100
-    deep-analysis-cost-ceiling: 3.0
-    deep-analysis-timeout: 180
-```
-
-**Full Deep Analysis:**
-```yaml
-- uses: devatsecure/Argus-Security@main
-  with:
-    anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
-    review-type: security
-    deep-analysis-mode: full
-    max-files-deep-analysis: 200
-    deep-analysis-cost-ceiling: 10.0
-    deep-analysis-timeout: 600
-    benchmark: true
-```
+| `python scripts/run_ai_audit.py [path] [type]` | Fast AI code review |
+| `python scripts/hybrid_analyzer.py [path]` | Full 6-phase pipeline |
+| `./scripts/argus gate --stage pr --input findings.json` | Apply policy gate |
+| `./scripts/argus feedback record <id> --mark fp` | Record false positive feedback |
 
 ---
 
@@ -512,67 +254,44 @@ export OLLAMA_ENDPOINT="http://localhost:11434"  # Ollama (free)
 
 | Metric | Value |
 |--------|-------|
-| **Scan Time** | 3-5 minutes (first run) |
-| **Cached Repeat** | 30-90 seconds |
-| **False Positive Reduction** | 60-70% |
-| **Additional Findings** | +15-20% |
-| **Cost per Scan** | ~$0.35 (Claude) |
+| Scan Time (first run) | 3-5 minutes |
+| Cached Repeat | 30-90 seconds |
+| False Positive Reduction | 60-70% |
+| Additional Findings | +15-20% |
+| Cost per Scan | ~$0.35 (Claude) |
+
+---
+
+## Development
+
+```bash
+pip install -r requirements.txt -r requirements-dev.txt
+pytest -v --cov=scripts          # Run tests
+ruff check scripts/ && ruff format scripts/   # Lint and format
+mypy scripts/*.py                # Type check
+```
 
 ---
 
 ## Documentation
 
-### 📊 Project Status & Roadmap
 | Doc | Description |
 |-----|-------------|
-| **[PROJECT_STATUS.md](PROJECT_STATUS.md)** | **Master status report, metrics, and roadmap** |
-| [IMPLEMENTATION_COMPLETE.md](IMPLEMENTATION_COMPLETE.md) | Context-aware security implementation (70% FP reduction) |
-| [PHASE_VERIFICATION_REPORT.md](PHASE_VERIFICATION_REPORT.md) | 6-phase pipeline verification report |
-| [STATE_OF_THE_ART_RECOMMENDATIONS.md](STATE_OF_THE_ART_RECOMMENDATIONS.md) | Research-backed feature roadmap (15 features) |
-
-### 📚 Guides & References
-| Doc | Description |
-|-----|-------------|
-| [CLAUDE.md](CLAUDE.md) | AI agent context file |
-| [docs/QUICKSTART.md](docs/QUICKSTART.md) | 5-minute guide |
-| [docs/MULTI_AGENT_GUIDE.md](docs/MULTI_AGENT_GUIDE.md) | Multi-agent details |
-| [docs/enhanced-fp-detection.md](docs/enhanced-fp-detection.md) | Enhanced false positive detection |
-| [docs/deep-analysis-migration.md](docs/deep-analysis-migration.md) | Phase 2.7 Deep Analysis rollout guide |
-| [DEEP_ANALYSIS_EXAMPLES.md](DEEP_ANALYSIS_EXAMPLES.md) | Phase 2.7 usage examples |
-| [DAST_MVP_DELIVERY_SUMMARY.md](DAST_MVP_DELIVERY_SUMMARY.md) | DAST integration guide |
-| [CHAINING_QUICKSTART.md](CHAINING_QUICKSTART.md) | Vulnerability chaining guide |
-| [docs/DOCKER_TESTING_GUIDE.md](docs/DOCKER_TESTING_GUIDE.md) | Docker deployment |
+| [CLAUDE.md](CLAUDE.md) | AI agent context and project overview |
+| [docs/QUICKSTART.md](docs/QUICKSTART.md) | 5-minute getting started guide |
+| [docs/MULTI_AGENT_GUIDE.md](docs/MULTI_AGENT_GUIDE.md) | Multi-agent analysis details |
+| [docs/PHASE_27_DEEP_ANALYSIS.md](docs/PHASE_27_DEEP_ANALYSIS.md) | Deep Analysis rollout guide |
 | [docs/FAQ.md](docs/FAQ.md) | Common questions |
-
----
-
-## Contributing
-
-```bash
-git clone https://github.com/devatsecure/Argus-Security.git
-cd Argus-Security
-pip install -r requirements.txt -r requirements-dev.txt
-pytest tests/
-```
+| [CHANGELOG.md](CHANGELOG.md) | Release history |
 
 ---
 
 ## License
 
-MIT License - see [LICENSE](LICENSE)
+MIT License -- see [LICENSE](LICENSE)
 
 ---
 
-## Acknowledgments
+**Argus Security** -- Enterprise-grade AI Security Platform
 
-Built on: TruffleHog, Semgrep, Trivy, Checkov, Claude (Anthropic), OpenAI, Ollama, OPA
-
----
-
-<div align="center">
-
-**Argus Security** — Enterprise-grade AI Security Platform
-
-[Quick Start](#quick-start) · [Docker](#docker) · [Documentation](docs/) · [Issues](https://github.com/devatsecure/Argus-Security/issues)
-
-</div>
+[Quick Start](#quick-start) | [Pipeline](#6-phase-pipeline) | [Configuration](#configuration) | [GitHub Action](#github-action) | [Documentation](#documentation)

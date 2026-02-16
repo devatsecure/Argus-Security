@@ -1,9 +1,61 @@
 # Changelog
 
-All notable changes to Argus Security will be documented in this file.
+All notable changes to Argus Security are documented in this file.
+Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+---
+
+## [Unreleased] - 2026-02-16
+
+### Added
+- Full 6-phase pipeline mode (`pipeline-mode: full`) in GitHub Action via `hybrid_analyzer.py` (47b4b82)
+- Gitleaks v8.18.4 binary in all Dockerfiles for pattern-based secret detection (bcfa09e)
+- Gitleaks secret scanner wired into pipeline with `enable_gitleaks` config toggle (d6f15e8)
+- MCP server activated with config toggle (`enable_mcp_server`) in hybrid_analyzer (d8f574d)
+- DAST orchestrator wired into hybrid_analyzer pipeline (b8a52c0)
+- DVWA-inspired scanner enhancements: backup detection, CSRF analysis, session ID checks (8a4df8d)
+- Phase 4 exploit validation, scanner health tracking, quality filter, DinD support (973e3ee)
+- Claude Code automations: 2 MCP servers, 4 skills, 4 hooks, 4 subagents (e99a5f3)
+- Enrichment pipeline and scanner registry wired into both orchestrators (d689705)
+- All phases enabled by default; TruffleHog scanner wired (69c370a)
+- P0/P1/P2 security hardening, decomposition, and feature additions (a9aec10)
+
+### Added (Tests)
+- 11 new test files covering 470+ tests for previously untested modules (15090e3)
+- Test coverage for phase_gate, threat_model_generator, remediation_engine (387401a)
+- Test coverage for pipeline stages, scanner runners, config loader (f084c70)
+- Audit Wave 3: tests for new modules, architecture diagrams (bce53ab)
+
+### Fixed
+- Resolved test failures from agent integration changes (876a629)
+- Resolved 38 ruff linting errors across codebase (26a6778)
+- Updated OPA policy hardening tests for block_ids-based decision format (1be3fcd)
+- Removed `auto_fixable` bypass from OPA policy gate (c6c52fc)
+- Downgraded Falco missing from error to warning with install guidance (2d71a10)
+- Extracted `.findings` from CheckovScanResult in pipeline/stages.py (a7105b9)
+- Updated test patch targets for enrichment pipeline extraction (b65465d)
+- Audit Wave 1: bare excepts, dead code, env var sanitization (e2e8085)
+- Resolved 6 integration bugs in pipeline enrichment features (3d99e99)
+- Resolved Semgrep PATH issue, quality check for CVE findings, added claude-cli provider (713561c)
+- Addressed 4 Cursor Bugbot findings from PR #34 (a175a56)
+- Patched 4 critical security issues: shell injection, config precedence, CLI toggles, CI gate (7feb19e)
+- Resolved 4 pipeline runtime issues for full phase execution (61dd491)
+- Fixed FuzzingEngine/RuntimeSecurityMonitor init args and cache fallback (6b645d5)
+- Resolved 161 test failures and 8 unnecessary skips (e70bf28)
+- Addressed 5 bugs from Cursor Bugbot code review (5197f3b)
+- Dockerfile.complete HEALTHCHECK and dast-mvp.dockerfile USER directive fixed (0547dba)
+
+### Changed
+- Audit Wave 2: extracted phase functions, shared enrichment pipeline, schema validation (dcf8e49)
+- Auto-fixed 1,690 ruff errors across codebase (676d91b)
+- Aligned max_files default and fixed ruff errors in both orchestrators (79c3dc9)
+- Wired 6 missing features into Docker pipeline, fixed config bugs (0547dba)
+- Config bypass fixed: `os.environ` replaced with `self.config` lookups, 6 env var mappings added (0547dba)
+
+### Removed
+- 28 dead/unreachable modules deleted from codebase (0547dba)
+- 3 dead config toggles removed (0547dba)
+- 6 test files moved from `scripts/` to `tests/` (0547dba)
 
 ---
 
