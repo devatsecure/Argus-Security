@@ -259,7 +259,7 @@ def main():
                 f"WARNING: --disclosure-repo must start with https:// or http://, got: {args.disclosure_repo!r}. Skipping."
             )
     if args.disclosure_reporter:
-        if re.fullmatch(r"[A-Za-z0-9@._-]+", args.disclosure_reporter):
+        if re.fullmatch(r"[A-Za-z0-9@._ -]+", args.disclosure_reporter):
             os.environ["DISCLOSURE_REPORTER"] = args.disclosure_reporter
         else:
             print(f"WARNING: --disclosure-reporter contains unsafe characters: {args.disclosure_reporter!r}. Skipping.")
