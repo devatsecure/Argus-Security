@@ -131,6 +131,27 @@ All features are wired into both orchestrators and toggled via config/env vars.
 | MCP Server | `enable_mcp_server` | `False` | Expose Argus as MCP tools for Claude Code |
 | Temporal Orchestration | `enable_temporal` | `False` | Durable workflow wrapping for crash recovery |
 
+### Continuous Security Testing (v3.0)
+
+| Feature | Config Key | Default | Description |
+|---------|-----------|---------|-------------|
+| Diff-Intelligent Scoping | `enable_diff_scoping` | `True` | Scope scanners to changed files + blast radius expansion |
+| Application Context | `enable_app_context` | `True` | Auto-detect framework, auth, cloud, IaC for context-aware scanning |
+| Persistent Findings Store | `enable_findings_store` | `True` | SQLite cross-scan intelligence with regression detection and trending |
+| Cross-Component Analysis | `enable_cross_component_analysis` | `True` | Detect dangerous vulnerability combinations across architectural boundaries |
+| Agent Chain Discovery | `enable_agent_chain_discovery` | `False` | LLM-powered multi-step attack chain reasoning (opt-in, uses AI credits) |
+| AutoFix PR Generation | `enable_autofix_pr` | `False` | Generate merge-ready fix PRs with closed-loop verification (opt-in) |
+| SAST-to-DAST Validation | `enable_live_validation` | `False` | Validate SAST findings against live staging targets (opt-in) |
+
+---
+
+### Deployment-Triggered Scanning
+
+Argus includes two GitHub Actions workflows for continuous security:
+
+- **Post-Deploy Scan** (`.github/workflows/post-deploy-scan.yml`) -- Triggers on successful deployments. Runs diff-scoped SAST + DAST against the deployment URL.
+- **Retest After Fix** (`.github/workflows/argus-retest.yml`) -- Triggers when `argus/fix-*` branches merge. Re-scans to verify fixes hold, updates FindingsStore, posts results as PR comments.
+
 ---
 
 ## Configuration
@@ -162,6 +183,16 @@ export ENABLE_VULN_DEDUPLICATION=true
 export ENABLE_ADVANCED_SUPPRESSION=true
 export ENABLE_COMPLIANCE_MAPPING=true
 export ENABLE_LICENSE_RISK_SCORING=true
+
+# Continuous security testing (v3.0)
+export ENABLE_DIFF_SCOPING=true
+export ENABLE_APP_CONTEXT=true
+export ENABLE_FINDINGS_STORE=true
+export ENABLE_CROSS_COMPONENT_ANALYSIS=true
+export ENABLE_AGENT_CHAIN_DISCOVERY=false    # opt-in, uses AI credits
+export ENABLE_AUTOFIX_PR=false               # opt-in
+export ENABLE_LIVE_VALIDATION=false           # opt-in, requires staging target
+export LIVE_VALIDATION_ENVIRONMENT=staging
 
 # Limits
 export MAX_FILES=50
@@ -282,6 +313,7 @@ mypy scripts/*.py                # Type check
 | [docs/MULTI_AGENT_GUIDE.md](docs/MULTI_AGENT_GUIDE.md) | Multi-agent analysis details |
 | [docs/PHASE_27_DEEP_ANALYSIS.md](docs/PHASE_27_DEEP_ANALYSIS.md) | Deep Analysis rollout guide |
 | [docs/FAQ.md](docs/FAQ.md) | Common questions |
+| [docs/CONTINUOUS_SECURITY_TESTING_GUIDE.md](docs/CONTINUOUS_SECURITY_TESTING_GUIDE.md) | Continuous security testing architecture |
 | [CHANGELOG.md](CHANGELOG.md) | Release history |
 
 ---

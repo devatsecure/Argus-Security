@@ -1,6 +1,6 @@
 # CLAUDE.md - Argus Security
 
-> Enterprise-grade AI Security Platform with 6-phase analysis pipeline.
+> Enterprise-grade AI Security Platform with 6-phase analysis pipeline and continuous autonomous security testing.
 
 ## What This Does
 
@@ -16,6 +16,15 @@ Phase 6: Reporting                → SARIF, JSON, Markdown outputs
 ```
 
 **Results:** 60-70% false positive reduction, +15-20% more findings via heuristic-based spontaneous discovery (regex pattern matching, not AI-powered).
+
+**v3.0 Continuous Security:**
+- Diff-intelligent scanner scoping with blast radius expansion
+- Persistent cross-scan findings store with regression detection
+- Application context auto-detection for context-aware scanning
+- LLM-powered attack chain discovery + cross-component analysis
+- AutoFix PR generation with closed-loop find-fix-verify
+- SAST-to-DAST live validation against staging targets
+- Deployment-triggered scanning via GitHub Actions workflows
 
 ## Quick Start
 
@@ -47,10 +56,17 @@ python scripts/run_ai_audit.py --project-type backend-api
 | `scripts/agent_personas.py` | Phase 3: multi-agent review |
 | `scripts/sandbox_validator.py` | Phase 4: Docker validation |
 | `policy/rego/` | Phase 5: OPA policies |
+| `scripts/diff_impact_analyzer.py` | v3.0: Diff-intelligent scanner scoping |
+| `scripts/findings_store.py` | v3.0: SQLite persistent findings store |
+| `scripts/app_context_builder.py` | v3.0: Application context auto-detection |
+| `scripts/agent_chain_discovery.py` | v3.0: LLM attack chain discovery |
+| `scripts/autofix_pr_generator.py` | v3.0: AutoFix PR generation + closed loop |
+| `scripts/sast_dast_validator.py` | v3.0: SAST-to-DAST live validation |
 
 ## Extended Documentation
 
 Details moved to scoped rule files (auto-loaded when editing relevant files):
 - `.claude/rules/pipeline.md` — 6-phase pipeline architecture
-- `.claude/rules/features.md` — Advanced feature modules + config toggles
+- `.claude/rules/features.md` — Advanced feature modules + config toggles (incl. v3.0)
 - `.claude/rules/development.md` — Docker, GitHub Action, project structure
+- `docs/CONTINUOUS_SECURITY_TESTING_GUIDE.md` — v3.0 architecture and gap analysis
