@@ -151,6 +151,26 @@ def get_default_config() -> dict[str, Any]:
         # -- Post-Phase-3 quality filter --
         "enable_quality_filter": True,
         "quality_filter_min_confidence": 0.30,
+        # -- Continuous security testing (v3.0) --
+        # Diff-intelligent scanner scoping
+        "enable_diff_scoping": True,
+        "diff_expand_impact_radius": True,
+        # AutoFix PR generation
+        "enable_autofix_pr": False,  # opt-in: generates branches/PRs with fixes
+        "autofix_confidence_threshold": "high",  # only auto-fix high-confidence suggestions
+        "autofix_max_prs_per_scan": 5,
+        # Persistent findings store
+        "enable_findings_store": True,
+        "findings_db_path": ".argus/findings.db",
+        "inject_historical_context": True,  # feed history into LLM prompts
+        # Agent-driven chain discovery
+        "enable_agent_chain_discovery": False,  # opt-in: uses LLM credits
+        "enable_cross_component_analysis": True,
+        # Application context model
+        "enable_app_context": True,
+        # Live target validation
+        "enable_live_validation": False,  # opt-in: requires dast_target_url
+        "live_validation_environment": "staging",
     }
 
 
@@ -461,6 +481,20 @@ _ENV_MAPPINGS: list[tuple[tuple[str, ...], str, str]] = [
     # Post-Phase-3 quality filter — removes low-quality findings before reporting
     (("ENABLE_QUALITY_FILTER",), "enable_quality_filter", "bool"),
     (("QUALITY_FILTER_MIN_CONFIDENCE",), "quality_filter_min_confidence", "float"),
+    # Continuous security testing (v3.0)
+    (("ENABLE_DIFF_SCOPING",), "enable_diff_scoping", "bool"),
+    (("DIFF_EXPAND_IMPACT_RADIUS",), "diff_expand_impact_radius", "bool"),
+    (("ENABLE_AUTOFIX_PR",), "enable_autofix_pr", "bool"),
+    (("AUTOFIX_CONFIDENCE_THRESHOLD",), "autofix_confidence_threshold", "str"),
+    (("AUTOFIX_MAX_PRS_PER_SCAN",), "autofix_max_prs_per_scan", "int"),
+    (("ENABLE_FINDINGS_STORE",), "enable_findings_store", "bool"),
+    (("FINDINGS_DB_PATH",), "findings_db_path", "str"),
+    (("INJECT_HISTORICAL_CONTEXT",), "inject_historical_context", "bool"),
+    (("ENABLE_AGENT_CHAIN_DISCOVERY",), "enable_agent_chain_discovery", "bool"),
+    (("ENABLE_CROSS_COMPONENT_ANALYSIS",), "enable_cross_component_analysis", "bool"),
+    (("ENABLE_APP_CONTEXT",), "enable_app_context", "bool"),
+    (("ENABLE_LIVE_VALIDATION",), "enable_live_validation", "bool"),
+    (("LIVE_VALIDATION_ENVIRONMENT",), "live_validation_environment", "str"),
 ]
 
 
@@ -590,6 +624,20 @@ _CLI_ATTR_MAP: dict[str, str] = {
     "suppression_auto_expire_days": "suppression_auto_expire_days",
     "enable_compliance_mapping": "enable_compliance_mapping",
     "compliance_frameworks": "compliance_frameworks",
+    # Continuous security testing (v3.0)
+    "enable_diff_scoping": "enable_diff_scoping",
+    "diff_expand_impact_radius": "diff_expand_impact_radius",
+    "enable_autofix_pr": "enable_autofix_pr",
+    "autofix_confidence_threshold": "autofix_confidence_threshold",
+    "autofix_max_prs_per_scan": "autofix_max_prs_per_scan",
+    "enable_findings_store": "enable_findings_store",
+    "findings_db_path": "findings_db_path",
+    "inject_historical_context": "inject_historical_context",
+    "enable_agent_chain_discovery": "enable_agent_chain_discovery",
+    "enable_cross_component_analysis": "enable_cross_component_analysis",
+    "enable_app_context": "enable_app_context",
+    "enable_live_validation": "enable_live_validation",
+    "live_validation_environment": "live_validation_environment",
 }
 
 

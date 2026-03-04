@@ -123,6 +123,49 @@ try:
 except ImportError:
     _LICENSE_OK = False
 
+# Continuous security testing modules (v3.0)
+try:
+    from diff_impact_analyzer import DiffScopeBuilder
+
+    _DIFF_SCOPE_OK = True
+except ImportError:
+    _DIFF_SCOPE_OK = False
+
+try:
+    from findings_store import FindingsStore
+
+    _FINDINGS_STORE_OK = True
+except ImportError:
+    _FINDINGS_STORE_OK = False
+
+try:
+    from app_context_builder import AppContextBuilder
+
+    _APP_CONTEXT_OK = True
+except ImportError:
+    _APP_CONTEXT_OK = False
+
+try:
+    from agent_chain_discovery import AgentChainDiscovery, CrossComponentAnalyzer
+
+    _AGENT_CHAIN_OK = True
+except ImportError:
+    _AGENT_CHAIN_OK = False
+
+try:
+    from autofix_pr_generator import AutoFixPRGenerator, ClosedLoopOrchestrator
+
+    _AUTOFIX_OK = True
+except ImportError:
+    _AUTOFIX_OK = False
+
+try:
+    from sast_dast_validator import SastDastValidator
+
+    _LIVE_VALIDATION_OK = True
+except ImportError:
+    _LIVE_VALIDATION_OK = False
+
 try:
     from heuristic_scanner import (
         _SAFE_PATTERN_FLAGS as _HEURISTIC_SAFE_FLAGS,
@@ -564,6 +607,80 @@ class HybridSecurityAnalyzer:
                 logger.info("Scanner registry: %d scanners discovered", len(builtin))
             except Exception as e:
                 logger.warning("Scanner registry init failed (non-fatal): %s", e)
+
+        # -- Continuous security testing modules (v3.0) --
+        self.diff_scope_builder = None
+        self.findings_store = None
+        self.app_context = None
+        self.agent_chain_discovery = None
+        self.cross_component_analyzer = None
+        self.autofix_generator = None
+        self.live_validator = None
+
+        if self.config.get("enable_diff_scoping", True) and _DIFF_SCOPE_OK:
+            try:
+                self.diff_scope_builder = DiffScopeBuilder()
+                logger.info("Diff-intelligent scanner scoping initialized")
+            except Exception as e:
+                logger.warning("Diff scope builder not available: %s", e)
+
+        if self.config.get("enable_findings_store", True) and _FINDINGS_STORE_OK:
+            try:
+                db_path = self.config.get("findings_db_path", ".argus/findings.db")
+                self.findings_store = FindingsStore(db_path=db_path)
+                logger.info("Persistent findings store initialized (%s)", db_path)
+            except Exception as e:
+                logger.warning("Findings store not available: %s", e)
+
+        if self.config.get("enable_app_context", True) and _APP_CONTEXT_OK:
+            try:
+                project_path = self.config.get("project_path", ".")
+                builder = AppContextBuilder(project_path)
+                self.app_context = builder.build()
+                logger.info("Application context: %s/%s", self.app_context.language, self.app_context.framework)
+            except Exception as e:
+                logger.warning("App context builder not available: %s", e)
+
+        if self.config.get("enable_agent_chain_discovery", False) and _AGENT_CHAIN_OK and self.ai_client:
+            try:
+                self.agent_chain_discovery = AgentChainDiscovery(
+                    llm_call=self.ai_client.call_llm_api
+                    if hasattr(self.ai_client, "call_llm_api")
+                    else None,
+                )
+                logger.info("Agent-driven chain discovery initialized")
+            except Exception as e:
+                logger.warning("Agent chain discovery not available: %s", e)
+
+        if self.config.get("enable_cross_component_analysis", True) and _AGENT_CHAIN_OK:
+            try:
+                project_path = self.config.get("project_path", ".")
+                self.cross_component_analyzer = CrossComponentAnalyzer(project_path=project_path)
+                logger.info("Cross-component analyzer initialized")
+            except Exception as e:
+                logger.warning("Cross-component analyzer not available: %s", e)
+
+        if self.config.get("enable_autofix_pr", False) and _AUTOFIX_OK:
+            try:
+                project_path = self.config.get("project_path", ".")
+                self.autofix_generator = AutoFixPRGenerator(project_path=project_path)
+                logger.info("AutoFix PR generator initialized")
+            except Exception as e:
+                logger.warning("AutoFix PR generator not available: %s", e)
+
+        if (
+            self.config.get("enable_live_validation", False)
+            and _LIVE_VALIDATION_OK
+            and self.dast_target_url
+        ):
+            try:
+                self.live_validator = SastDastValidator(
+                    target_url=self.dast_target_url,
+                    timeout=10,
+                )
+                logger.info("Live target validator initialized (%s)", self.dast_target_url)
+            except Exception as e:
+                logger.warning("Live target validator not available: %s", e)
 
         # -- Phase 0: MCP Server (optional background service) --
         self._mcp_server = None
