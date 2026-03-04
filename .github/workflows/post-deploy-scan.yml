@@ -39,13 +39,19 @@ jobs:
 
       - name: Determine deployment context
         id: context
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TARGET_URL: ${{ inputs.target_url }}
+          INPUT_ENVIRONMENT: ${{ inputs.environment }}
+          DEPLOY_WEB_URL: ${{ github.event.deployment.payload.web_url || '' }}
+          DEPLOY_ENVIRONMENT: ${{ github.event.deployment.environment }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "target_url=${{ inputs.target_url }}" >> $GITHUB_OUTPUT
-            echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "target_url=$INPUT_TARGET_URL" >> $GITHUB_OUTPUT
+            echo "environment=$INPUT_ENVIRONMENT" >> $GITHUB_OUTPUT
           else
-            echo "target_url=${{ github.event.deployment.payload.web_url || '' }}" >> $GITHUB_OUTPUT
-            echo "environment=${{ github.event.deployment.environment }}" >> $GITHUB_OUTPUT
+            echo "target_url=$DEPLOY_WEB_URL" >> $GITHUB_OUTPUT
+            echo "environment=$DEPLOY_ENVIRONMENT" >> $GITHUB_OUTPUT
           fi
           # Get diff since last successful scan
           PREV_SHA=$(git log --format='%H' -2 | tail -1)
@@ -72,7 +78,7 @@ jobs:
         run: |
           echo "Running DAST scan against $DAST_TARGET_URL"
           python -c "
-          import sys
+          import os, sys
           sys.path.insert(0, 'scripts')
           try:
               from dast_orchestrator import DASTOrchestrator, OrchestratorConfig
@@ -83,7 +89,8 @@ jobs:
                   max_duration=600,
               )
               orch = DASTOrchestrator(config=config)
-              results = orch.run('${{ steps.context.outputs.target_url }}')
+              target = os.environ['DAST_TARGET_URL']
+              results = orch.run(target)
               print(f'DAST scan complete: {len(results.get(\"findings\", []))} findings')
           except ImportError as e:
               print(f'DAST not available: {e}')

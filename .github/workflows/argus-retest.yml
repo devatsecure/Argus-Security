@@ -29,18 +29,19 @@ jobs:
 
       - name: Extract fix metadata
         id: meta
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          BRANCH="${{ github.event.pull_request.head.ref }}"
           # Extract vuln type and finding ID from branch name: argus/fix-{type}-{id}
-          VULN_TYPE=$(echo "$BRANCH" | sed 's|argus/fix-||' | sed 's|-[a-f0-9]*$||')
-          FINDING_ID=$(echo "$BRANCH" | grep -oP '[a-f0-9]{8}$' || echo "unknown")
+          VULN_TYPE=$(echo "$PR_BRANCH" | sed 's|argus/fix-||' | sed 's|-[a-f0-9]*$||')
+          FINDING_ID=$(echo "$PR_BRANCH" | grep -oP '[a-f0-9]{8}$' || echo "unknown")
           echo "vuln_type=$VULN_TYPE" >> $GITHUB_OUTPUT
           echo "finding_id=$FINDING_ID" >> $GITHUB_OUTPUT
           # Get changed files from the PR
-          CHANGED_FILES=$(gh pr view ${{ github.event.pull_request.number }} --json files -q '.files[].path' || echo "")
+          CHANGED_FILES=$(gh pr view "$PR_NUMBER" --json files -q '.files[].path' || echo "")
           echo "changed_files=$CHANGED_FILES" >> $GITHUB_OUTPUT
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run regression tests
         id: regression
@@ -75,16 +76,19 @@ jobs:
 
       - name: Update finding status
         if: steps.regression.outcome == 'success' && steps.rescan.outcome == 'success'
+        env:
+          FINDING_ID: ${{ steps.meta.outputs.finding_id }}
+          FIX_COMMIT: ${{ github.sha }}
         run: |
           python -c "
-          import sys
+          import os, sys
           sys.path.insert(0, 'scripts')
           try:
               from findings_store import FindingsStore
               store = FindingsStore()
               store.record_fix(
-                  finding_id='${{ steps.meta.outputs.finding_id }}',
-                  fix_commit='${{ github.sha }}',
+                  finding_id=os.environ['FINDING_ID'],
+                  fix_commit=os.environ['FIX_COMMIT'],
                   fix_method='autofix',
                   retest_passed=True,
               )
@@ -96,10 +100,17 @@ jobs:
       - name: Post retest results
         if: always()
         uses: actions/github-script@v7
+        env:
+          REGRESSION_OUTCOME: ${{ steps.regression.outcome }}
+          RESCAN_OUTCOME: ${{ steps.rescan.outcome }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         with:
           script: |
-            const regression = '${{ steps.regression.outcome }}';
-            const rescan = '${{ steps.rescan.outcome }}';
+            const regression = process.env.REGRESSION_OUTCOME;
+            const rescan = process.env.RESCAN_OUTCOME;
+            const prBranch = process.env.PR_BRANCH;
+            const prNumber = parseInt(process.env.PR_NUMBER, 10);
             const allPassed = regression === 'success' && rescan === 'success';
 
             const body = `## Argus Retest Results
@@ -113,12 +124,12 @@ jobs:
             ${allPassed ? 'The fix has been verified. The vulnerability is confirmed resolved.' : 'The retest found issues. Please review the scan results.'}
 
             ---
-            *Argus Security Retest — triggered by merge of \`${{ github.event.pull_request.head.ref }}\`*`;
+            *Argus Security Retest — triggered by merge of \`${prBranch}\`*`;
 
             // Comment on the merged PR
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: ${{ github.event.pull_request.number }},
+              issue_number: prNumber,
               body: body
             });

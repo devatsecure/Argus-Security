@@ -166,7 +166,7 @@ class FindingsStore:
 
     def __init__(self, db_path: str = ".argus/findings.db") -> None:
         self.db_path = db_path
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
 
         # Ensure parent directory exists
         parent = os.path.dirname(db_path)
@@ -540,23 +540,44 @@ class FindingsStore:
     def is_regression(self, fingerprint: str) -> bool:
         """Check whether a finding with this fingerprint was previously fixed.
 
-        A regression means the finding existed before with ``status='fixed'``
-        and has now reappeared.
+        A regression means the finding had a verified fix recorded in
+        ``fix_history`` but has since reappeared (status is no longer
+        ``'fixed'``).  This approach is resilient to the transient status
+        change that ``record_scan`` performs when it detects a regression
+        and resets the status to ``'open'``.
 
         Args:
             fingerprint: Content-based fingerprint of the finding.
 
         Returns:
-            ``True`` if a previously fixed finding matches this fingerprint.
+            ``True`` if the finding has a verified fix in history but is
+            currently not in ``'fixed'`` status (i.e., it regressed).
         """
         cur = self._conn.cursor()
         cur.execute(
-            "SELECT status FROM findings WHERE fingerprint = ?", (fingerprint,)
+            """
+            SELECT f.id, f.status FROM findings f
+            WHERE f.fingerprint = ?
+            """,
+            (fingerprint,),
         )
         row = cur.fetchone()
         if row is None:
             return False
-        return row["status"] == "fixed"
+
+        # A finding is a regression if it was previously fixed (has a
+        # verified fix record) but its current status is not 'fixed'.
+        finding_id = row["id"]
+        current_status = row["status"]
+        cur.execute(
+            """
+            SELECT COUNT(*) AS cnt FROM fix_history
+            WHERE finding_id = ? AND retest_passed = 1
+            """,
+            (finding_id,),
+        )
+        has_verified_fix = cur.fetchone()["cnt"] > 0
+        return has_verified_fix and current_status != "fixed"
 
     def trending(self, days: int = 90) -> dict[str, Any]:
         """Return severity counts per week for the last *days* days.
