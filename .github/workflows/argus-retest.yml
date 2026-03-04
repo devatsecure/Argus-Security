@@ -1,0 +1,124 @@
+name: Argus Retest After Fix
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  retest:
+    # Only run when an argus/fix- PR is merged
+    if: >
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.head.ref, 'argus/fix-')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Extract fix metadata
+        id: meta
+        run: |
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+          # Extract vuln type and finding ID from branch name: argus/fix-{type}-{id}
+          VULN_TYPE=$(echo "$BRANCH" | sed 's|argus/fix-||' | sed 's|-[a-f0-9]*$||')
+          FINDING_ID=$(echo "$BRANCH" | grep -oP '[a-f0-9]{8}$' || echo "unknown")
+          echo "vuln_type=$VULN_TYPE" >> $GITHUB_OUTPUT
+          echo "finding_id=$FINDING_ID" >> $GITHUB_OUTPUT
+          # Get changed files from the PR
+          CHANGED_FILES=$(gh pr view ${{ github.event.pull_request.number }} --json files -q '.files[].path' || echo "")
+          echo "changed_files=$CHANGED_FILES" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run regression tests
+        id: regression
+        continue-on-error: true
+        run: |
+          python -c "
+          import sys
+          sys.path.insert(0, 'scripts')
+          try:
+              from regression_tester import RegressionTester
+              tester = RegressionTester()
+              results = tester.run('tests/security_regression')
+              passed = results.get('passed', 0)
+              failed = results.get('failed', 0)
+              print(f'Regression tests: {passed} passed, {failed} failed')
+              sys.exit(1 if failed > 0 else 0)
+          except Exception as e:
+              print(f'Regression test error: {e}')
+              sys.exit(1)
+          "
+
+      - name: Run targeted SAST rescan
+        id: rescan
+        continue-on-error: true
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          python scripts/run_ai_audit.py \
+            --project-type auto \
+            --only-changed \
+            --review-type security
+
+      - name: Update finding status
+        if: steps.regression.outcome == 'success' && steps.rescan.outcome == 'success'
+        run: |
+          python -c "
+          import sys
+          sys.path.insert(0, 'scripts')
+          try:
+              from findings_store import FindingsStore
+              store = FindingsStore()
+              store.record_fix(
+                  finding_id='${{ steps.meta.outputs.finding_id }}',
+                  fix_commit='${{ github.sha }}',
+                  fix_method='autofix',
+                  retest_passed=True,
+              )
+              print('Finding marked as fix-verified')
+          except Exception as e:
+              print(f'Could not update findings store: {e}')
+          "
+
+      - name: Post retest results
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const regression = '${{ steps.regression.outcome }}';
+            const rescan = '${{ steps.rescan.outcome }}';
+            const allPassed = regression === 'success' && rescan === 'success';
+
+            const body = `## Argus Retest Results
+
+            | Check | Status |
+            |-------|--------|
+            | Regression Tests | ${regression === 'success' ? 'Passed' : 'Failed'} |
+            | SAST Rescan | ${rescan === 'success' ? 'Clean' : 'Issues found'} |
+            | **Overall** | **${allPassed ? 'Fix Verified' : 'Needs Review'}** |
+
+            ${allPassed ? 'The fix has been verified. The vulnerability is confirmed resolved.' : 'The retest found issues. Please review the scan results.'}
+
+            ---
+            *Argus Security Retest — triggered by merge of \`${{ github.event.pull_request.head.ref }}\`*`;
+
+            // Comment on the merged PR
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: ${{ github.event.pull_request.number }},
+              body: body
+            });

@@ -50,6 +50,12 @@ Argus-Security/
 │   ├── agent_personas.py         # Phase 3: Multi-agent review
 │   ├── sandbox_validator.py      # Phase 4: Docker validation
 │   ├── remediation_engine.py     # Auto-fix generation
+│   ├── diff_impact_analyzer.py   # Diff-intelligent scanner scoping
+│   ├── agent_chain_discovery.py  # LLM-powered attack chain discovery
+│   ├── autofix_pr_generator.py   # AutoFix PR generation + closed loop
+│   ├── findings_store.py         # SQLite cross-scan findings store
+│   ├── app_context_builder.py    # Unified application context model
+│   ├── sast_dast_validator.py    # SAST-to-DAST live validation
 │   └── argus                     # CLI entry point
 ├── policy/rego/                  # Phase 5: OPA policies
 ├── profiles/                     # Config profiles

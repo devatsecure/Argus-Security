@@ -9,6 +9,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [6.0.0] - 2026-03-04
+
+### Added — Continuous Security Testing (v3.0)
+- **Diff-Intelligent Scanner Scoping** (`scripts/diff_impact_analyzer.py`): Classifies changed files by security relevance, expands blast radius via reverse dependency lookup, generates Semgrep `--include` args for scoped scanning. Toggle: `enable_diff_scoping=True`, `diff_expand_impact_radius=True`
+- **Agent-Driven Chain Discovery** (`scripts/agent_chain_discovery.py`): LLM-powered multi-step attack chain discovery beyond rule-based patterns. Cross-component analyzer detects dangerous finding combinations across architectural boundaries (auth+api, models+api, middleware+routes). Toggle: `enable_agent_chain_discovery=False` (opt-in), `enable_cross_component_analysis=True`
+- **AutoFix PR Generator** (`scripts/autofix_pr_generator.py`): Generates git branches with applied fixes from RemediationEngine suggestions. Creates conventional-commit-style messages, formatted PR bodies with diff/CWE/testing sections. ClosedLoopOrchestrator wires find-fix-verify into a single flow. Toggle: `enable_autofix_pr=False` (opt-in), `autofix_confidence_threshold="high"`, `autofix_max_prs_per_scan=5`
+- **Persistent Findings Store** (`scripts/findings_store.py`): SQLite-backed cross-scan intelligence. Tracks findings across scans via content-based fingerprinting. Detects regressions (previously-fixed findings reappearing), computes MTTF, FP rates, severity trending. Injects historical context into LLM enrichment prompts. Toggle: `enable_findings_store=True`, `findings_db_path=".argus/findings.db"`, `inject_historical_context=True`
+- **Application Context Builder** (`scripts/app_context_builder.py`): Detects framework (Django/Flask/Express/Spring/etc.), language, auth mechanism (JWT/OAuth2/session), cloud provider, IaC files, middleware chain, entry points, and OpenAPI specs. Generates `to_prompt_context()` string for LLM prompt injection. Toggle: `enable_app_context=True`
+- **SAST-to-DAST Live Validation** (`scripts/sast_dast_validator.py`): Validates SAST findings against live deployment targets. Maps vuln types to HTTP test payloads (SQLi, XSS, SSRF, path traversal, command injection, IDOR). Safety: rejects production targets by default, only allows staging/preview/development. Toggle: `enable_live_validation=False` (opt-in), `live_validation_environment="staging"`
+- **Post-Deploy Scan workflow** (`.github/workflows/post-deploy-scan.yml`): Triggers on successful deployments, runs diff-scoped SAST + DAST against deployment URL
+- **Retest After Fix workflow** (`.github/workflows/argus-retest.yml`): Triggers when `argus/fix-*` PRs merge, runs regression tests + targeted SAST rescan, updates FindingsStore
+- **Continuous Security Testing Guide** (`docs/CONTINUOUS_SECURITY_TESTING_GUIDE.md`): Architecture guide mapping capabilities vs industry-standard autonomous testing
+- 13 new config keys added to `config_loader.py` with env var and CLI mappings
+- All 7 modules integrated into `hybrid_analyzer.py` with graceful degradation
+- 36 new tests (`tests/test_continuous_security.py`) covering all v3.0 modules
+
+### Changed
+- Updated README.md with v3.0 feature tables, env vars, and deployment scanning docs
+- Updated CLAUDE.md with v3.0 key files and extended documentation references
+- Updated `.claude/rules/features.md` and `.claude/rules/development.md` with v3.0 modules
+
+---
+
 ## [5.0.0] - 2026-02-16
 
 ### Added
