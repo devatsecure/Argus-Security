@@ -258,6 +258,7 @@ class HybridSecurityAnalyzer:
         enable_spontaneous_discovery: bool = True,  # Discover issues beyond scanner rules
         enable_collaborative_reasoning: bool = True,  # Multi-agent discussion
         enable_trufflehog: bool = True,  # TruffleHog verified secret detection
+        enable_gitleaks: bool = True,  # Gitleaks pattern-based secret detection
         enable_iris: bool = True,  # IRIS-style semantic analysis (arXiv 2405.17238)
         enable_nuclei_templates: bool = True,  # Nuclei source-aware DAST analysis
         enable_zap_baseline: bool = False,  # opt-in: requires ZAP binary or Docker image
@@ -313,6 +314,7 @@ class HybridSecurityAnalyzer:
         self.enable_spontaneous_discovery = enable_spontaneous_discovery
         self.enable_collaborative_reasoning = enable_collaborative_reasoning
         self.enable_trufflehog = enable_trufflehog
+        self.enable_gitleaks = enable_gitleaks
         self.enable_iris = enable_iris
         self.enable_nuclei_templates = enable_nuclei_templates
         self.enable_zap_baseline = enable_zap_baseline
@@ -335,6 +337,7 @@ class HybridSecurityAnalyzer:
         self.runtime_security_monitor = None
         self.regression_tester = None
         self.trufflehog_scanner = None
+        self.gitleaks_scanner = None
         self.nuclei_template_scanner = None
         self.zap_baseline_scanner = None
         self.sandbox_validator = None
@@ -449,6 +452,16 @@ class HybridSecurityAnalyzer:
             except (ImportError, RuntimeError) as e:
                 logger.warning(f"⚠️  TruffleHog scanner not available: {e}")
                 self.enable_trufflehog = False
+
+        if self.enable_gitleaks:
+            try:
+                from gitleaks_scanner import GitleaksScanner
+
+                self.gitleaks_scanner = GitleaksScanner()
+                logger.info("✅ Gitleaks scanner initialized (pattern-based secrets)")
+            except (ImportError, RuntimeError) as e:
+                logger.warning(f"⚠️  Gitleaks scanner not available: {e}")
+                self.enable_gitleaks = False
 
         if self.enable_nuclei_templates and _NUCLEI_TEMPLATE_OK:
             try:
@@ -1381,6 +1394,7 @@ class HybridSecurityAnalyzer:
                 "enable_runtime_security": self.enable_runtime_security,
                 "enable_regression_testing": self.enable_regression_testing,
                 "enable_ai_enrichment": self.enable_ai_enrichment,
+                "enable_gitleaks": self.enable_gitleaks,
                 "enable_nuclei_templates": self.enable_nuclei_templates,
                 "enable_zap_baseline": self.enable_zap_baseline,
                 "ai_client": self.ai_client,

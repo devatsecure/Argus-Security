@@ -77,6 +77,12 @@ def main():
         help="Enable TruffleHog secret scanning",
     )
     parser.add_argument(
+        "--enable-gitleaks",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Enable Gitleaks pattern-based secret scanning",
+    )
+    parser.add_argument(
         "--enable-api-security",
         action=argparse.BooleanOptionalAction,
         default=None,
@@ -220,6 +226,7 @@ def main():
     enable_trivy = _resolve_flag(args.enable_trivy, "ENABLE_TRIVY", "enable_trivy")
     enable_checkov = _resolve_flag(args.enable_checkov, "ENABLE_CHECKOV", "enable_checkov")
     enable_trufflehog = _resolve_flag(args.enable_trufflehog, "ENABLE_TRUFFLEHOG", "enable_trufflehog")
+    enable_gitleaks = _resolve_flag(args.enable_gitleaks, "ENABLE_GITLEAKS", "enable_gitleaks")
     enable_api_security = _resolve_flag(args.enable_api_security, "ENABLE_API_SECURITY", "enable_api_security")
     enable_dast = _resolve_flag(args.enable_dast, "ENABLE_DAST", "enable_dast")
     enable_supply_chain = _resolve_flag(args.enable_supply_chain, "ENABLE_SUPPLY_CHAIN", "enable_supply_chain")
@@ -274,6 +281,7 @@ def main():
     analyzer = HybridSecurityAnalyzer(
         enable_semgrep=enable_semgrep,
         enable_trufflehog=enable_trufflehog,
+        enable_gitleaks=enable_gitleaks,
         enable_trivy=enable_trivy,
         enable_checkov=enable_checkov,
         enable_api_security=enable_api_security,
