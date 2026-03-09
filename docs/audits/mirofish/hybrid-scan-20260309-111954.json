@@ -1,0 +1,60 @@
+{
+  "target_path": "/tmp/MiroFish",
+  "scan_timestamp": "2026-03-09T11:19:54.273859",
+  "total_findings": 1,
+  "findings_by_severity": {
+    "critical": 0,
+    "high": 0,
+    "medium": 1,
+    "low": 0
+  },
+  "findings_by_source": {
+    "nuclei-template": 1
+  },
+  "findings": [
+    {
+      "finding_id": "nuclei-src-0e3af2daffaad054",
+      "source_tool": "nuclei-template",
+      "severity": "medium",
+      "category": "security",
+      "title": "Missing Security Headers: Content-Security-Policy, Strict-Transport-Security, X-Frame-Options",
+      "description": "This file defines HTTP response handling but does not set the following security headers: Content-Security-Policy, Strict-Transport-Security, X-Frame-Options, X-Content-Type-Options, X-XSS-Protection, Referrer-Policy, Permissions-Policy.  Missing headers can expose the application to clickjacking, MIME-sniffing, and XSS attacks.",
+      "file_path": "/tmp/MiroFish/backend/app/__init__.py",
+      "line_number": 52,
+      "cwe_id": "CWE-693",
+      "cve_id": null,
+      "cvss_score": null,
+      "exploitability": null,
+      "recommendation": null,
+      "references": [
+        "Testing: ['Manual security testing required', 'Consult OWASP guidelines']"
+      ],
+      "confidence": 1.0,
+      "llm_enriched": false,
+      "sandbox_validated": false,
+      "iris_verified": false,
+      "iris_confidence": null,
+      "iris_verdict": null
+    }
+  ],
+  "scan_duration_seconds": 110.39556074142456,
+  "cost_usd": 0.0,
+  "phase_timings": {
+    "phase1_static_analysis": 106.98181796073914,
+    "phase2_5_remediation": 0.0016169548034667969,
+    "phase5_policy_gate": 0.3688650131225586,
+    "phase5.5_vulnerability_chaining": 0.6166591644287109
+  },
+  "tools_used": [
+    "Semgrep",
+    "Trivy",
+    "Checkov",
+    "API-Security",
+    "Supply-Chain",
+    "Threat-Intel",
+    "Remediation",
+    "Regression-Testing",
+    "Nuclei-Templates"
+  ],
+  "llm_enrichment_enabled": false
+}

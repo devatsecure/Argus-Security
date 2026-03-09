@@ -1,0 +1,53 @@
+{
+  "timestamp": "2026-03-09T06:19:54.282753+00:00",
+  "summary": {
+    "total_findings": 1,
+    "passed": 1,
+    "failed": 0,
+    "overall_passed": true
+  },
+  "critical_blockers": [],
+  "warnings": [],
+  "finding_reports": [
+    {
+      "finding_id": "finding-0",
+      "finding_title": "Missing Security Headers: Content-Security-Policy, Strict-Transport-Security, X-Frame-Options",
+      "total_score": 100,
+      "max_score": 100,
+      "passed": true,
+      "checks": [
+        {
+          "name": "file_path",
+          "passed": true,
+          "points": "25/25",
+          "message": "File path is present and valid"
+        },
+        {
+          "name": "line_number",
+          "passed": true,
+          "points": "25/25",
+          "message": "Line number is present and valid"
+        },
+        {
+          "name": "title",
+          "passed": true,
+          "points": "20/20",
+          "message": "Title is meaningful and descriptive"
+        },
+        {
+          "name": "description",
+          "passed": true,
+          "points": "15/15",
+          "message": "Description is detailed (330 chars)"
+        },
+        {
+          "name": "severity",
+          "passed": true,
+          "points": "15/15",
+          "message": "Severity is set to 'medium'"
+        }
+      ],
+      "issues": []
+    }
+  ]
+}
