@@ -145,7 +145,7 @@ jobs:
           name: sbom
       
       - name: Install Cosign (Apache 2.0)
-        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac  # v3
+        uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad  # v4.0.0
       
       - name: Generate SLSA L2 Provenance (Day 60)
         run: |
