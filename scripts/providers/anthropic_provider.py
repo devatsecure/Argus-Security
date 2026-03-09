@@ -46,8 +46,13 @@ class AnthropicProvider:
         try:
             import anthropic
 
-            self.client = anthropic.Anthropic(api_key=self.api_key)
-            logger.info(f"✅ Anthropic provider initialized with model {self.model}")
+            base_url = os.environ.get("ANTHROPIC_BASE_URL")
+            if base_url:
+                self.client = anthropic.Anthropic(api_key=self.api_key, base_url=base_url)
+                logger.info(f"✅ Anthropic provider initialized via proxy with model {self.model}")
+            else:
+                self.client = anthropic.Anthropic(api_key=self.api_key)
+                logger.info(f"✅ Anthropic provider initialized with model {self.model}")
         except ImportError:
             raise ImportError("anthropic package not installed. Run: pip install anthropic")
 

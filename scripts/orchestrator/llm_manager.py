@@ -18,6 +18,7 @@ Features:
 """
 
 import logging
+import os
 import shutil
 
 from error_classifier import (
@@ -221,8 +222,12 @@ class LLMManager:
             self.model = self.get_model_name(provider)
 
             # For Anthropic, test model accessibility and fallback if needed
-            if provider == "anthropic":
+            # Skip fallback chain if model is explicitly set (not "auto")
+            explicit_model = self.config.get("model", "auto")
+            if provider == "anthropic" and explicit_model == "auto":
                 self.model = self._get_working_model_with_fallback(self.client, self.model)
+            elif provider == "anthropic":
+                logger.info(f"Using explicitly configured model: {self.model} (skipping fallback chain)")
 
             logger.info(f"Successfully initialized LLM Manager with {self.provider} / {self.model}")
             return True
@@ -251,6 +256,10 @@ class LLMManager:
                 if not api_key:
                     raise ValueError("ANTHROPIC_API_KEY not set")
 
+                base_url = self.config.get("anthropic_base_url") or os.environ.get("ANTHROPIC_BASE_URL")
+                if base_url:
+                    logger.info(f"Using Anthropic API via proxy: {base_url}")
+                    return Anthropic(api_key=api_key, base_url=base_url), "anthropic"
                 logger.info("Using Anthropic API")
                 return Anthropic(api_key=api_key), "anthropic"
             except ImportError:

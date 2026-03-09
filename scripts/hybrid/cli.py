@@ -209,6 +209,8 @@ def main():
         "anthropic_api_key": os.getenv("ANTHROPIC_API_KEY"),
         "openai_api_key": os.getenv("OPENAI_API_KEY"),
         "ollama_endpoint": os.getenv("OLLAMA_ENDPOINT"),
+        "model": os.getenv("MODEL", "auto"),
+        "anthropic_base_url": os.getenv("ANTHROPIC_BASE_URL"),
     }
 
     # Resolve feature flags: CLI arg > env var > config_loader default
