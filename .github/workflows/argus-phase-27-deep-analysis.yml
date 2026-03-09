@@ -77,7 +77,7 @@ jobs:
           upload-reports: true
 
       - name: Upload Deep Analysis Report
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
         if: always()
         with:
           name: phase-27-conservative-report
@@ -114,7 +114,7 @@ jobs:
           enable-remediation: true
 
       - name: Upload Full Analysis Report
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
         if: always()
         with:
           name: phase-27-full-weekly-report-${{ github.run_number }}
@@ -169,7 +169,7 @@ jobs:
           upload-reports: true
 
       - name: Upload Manual Analysis Report
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
         if: always()
         with:
           name: phase-27-manual-analysis-${{ github.run_number }}
@@ -215,7 +215,7 @@ jobs:
           cp -r .argus/reviews/* benchmarks/conservative/
 
       - name: Upload Benchmark Comparison
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f  # v7.0.0
         with:
           name: phase-27-benchmark-comparison-${{ github.run_number }}
           path: benchmarks/
