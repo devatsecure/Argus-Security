@@ -59,7 +59,7 @@ jobs:
           cache: 'pip'
 
       - name: Cache external tools
-        uses: actions/cache@3624ceb22c1c5a301c8db4169662070a689d9ea8  # v4.1.1
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306  # v5.0.3
         id: cache-tools
         with:
           path: |
