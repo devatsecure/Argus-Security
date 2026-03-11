@@ -9,6 +9,7 @@ JSON/SARIF reading/writing code across scripts.
 
 import json
 import logging
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional, Union
@@ -383,7 +384,9 @@ class MarkdownGenerator:
 
 def validate_path_safe(file_path: Union[str, Path], base_dir: Optional[Path] = None) -> Path:
     """
-    Validate file path is safe (prevent path traversal)
+    Validate file path is safe (prevent path traversal).
+
+    Uses os.path.commonpath for portability (Windows case and path semantics).
 
     Args:
         file_path: Path to validate
@@ -403,7 +406,21 @@ def validate_path_safe(file_path: Union[str, Path], base_dir: Optional[Path] = N
 
     if base_dir:
         base_dir = base_dir.resolve()
-        if not str(file_path).startswith(str(base_dir)):
-            raise ValueError(f"Path {file_path} is outside base directory {base_dir}")
+        base_str = str(base_dir)
+        path_str = str(file_path)
+        # Use commonpath for Windows/cross-platform robustness (case and drives)
+        try:
+            common = os.path.commonpath([base_str, path_str])
+            if os.path.normpath(common) != os.path.normpath(base_str):
+                raise ValueError(
+                    f"Path {file_path} is outside base directory {base_dir}"
+                )
+        except ValueError as e:
+            if "path is outside base" in str(e):
+                raise
+            # commonpath raises if paths are on different drives (e.g. C: vs D:)
+            raise ValueError(
+                f"Path {file_path} is outside base directory {base_dir}"
+            ) from e
 
     return file_path

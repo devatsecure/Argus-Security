@@ -70,3 +70,6 @@ Details moved to scoped rule files (auto-loaded when editing relevant files):
 - `.claude/rules/features.md` — Advanced feature modules + config toggles (incl. v3.0)
 - `.claude/rules/development.md` — Docker, GitHub Action, project structure
 - `docs/CONTINUOUS_SECURITY_TESTING_GUIDE.md` — v3.0 architecture and gap analysis
+- `docs/V3_CONTINUOUS_SECURITY_MODULES.md` — v3 module summary (diff scope, findings store, app context, autofix)
+- `docs/adrs/0004-v3-continuous-security.md` — ADR for v3 findings store / continuous security
+- `docs/CONFIG_REFERENCE.md` — All 47+ config keys and env vars

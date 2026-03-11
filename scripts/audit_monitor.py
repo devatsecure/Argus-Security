@@ -27,6 +27,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
 
+from scripts.utils.db_connection import db_connection
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
@@ -136,13 +138,11 @@ class AuditMonitor:
 
     def _initialize_db(self) -> None:
         """Create database tables if they don't exist"""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-
-        # audit_runs table: Summary of each dual-audit execution
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS audit_runs (
+        with db_connection(self.db_path) as (conn, cursor):
+            # audit_runs table: Summary of each dual-audit execution
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS audit_runs (
                 id TEXT PRIMARY KEY,
                 timestamp TEXT NOT NULL,
                 repo TEXT NOT NULL,
@@ -158,14 +158,14 @@ class AuditMonitor:
                 metadata TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(repo, timestamp)
+                )
+                """
             )
-            """
-        )
 
-        # findings_comparison table: Detailed finding-by-finding comparison
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS findings_comparison (
+            # findings_comparison table: Detailed finding-by-finding comparison
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS findings_comparison (
                 id TEXT PRIMARY KEY,
                 audit_run_id TEXT NOT NULL,
                 finding_id TEXT NOT NULL,
@@ -181,14 +181,14 @@ class AuditMonitor:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (audit_run_id) REFERENCES audit_runs(id),
                 UNIQUE(audit_run_id, finding_id)
+                )
+                """
             )
-            """
-        )
 
-        # drift_events table: Detected changes in evaluation criteria
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS drift_events (
+            # drift_events table: Detected changes in evaluation criteria
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS drift_events (
                 id TEXT PRIMARY KEY,
                 timestamp TEXT NOT NULL,
                 audit_run_id TEXT NOT NULL,
@@ -202,14 +202,14 @@ class AuditMonitor:
                 description TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (audit_run_id) REFERENCES audit_runs(id)
+                )
+                """
             )
-            """
-        )
 
-        # alerts table: Generated alerts for anomalies
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS alerts (
+            # alerts table: Generated alerts for anomalies
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS alerts (
                 id TEXT PRIMARY KEY,
                 timestamp TEXT NOT NULL,
                 audit_run_id TEXT NOT NULL,
@@ -223,19 +223,16 @@ class AuditMonitor:
                 acknowledged INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (audit_run_id) REFERENCES audit_runs(id)
+                )
+                """
             )
-            """
-        )
 
-        # Indexes for performance
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_audit_runs_timestamp ON audit_runs(timestamp)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_audit_runs_repo ON audit_runs(repo)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_findings_comparison_audit ON findings_comparison(audit_run_id)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_drift_events_audit ON drift_events(audit_run_id)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_alerts_timestamp ON alerts(timestamp)")
-
-        conn.commit()
-        conn.close()
+            # Indexes for performance
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_audit_runs_timestamp ON audit_runs(timestamp)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_audit_runs_repo ON audit_runs(repo)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_findings_comparison_audit ON findings_comparison(audit_run_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_drift_events_audit ON drift_events(audit_run_id)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_alerts_timestamp ON alerts(timestamp)")
 
     def store_audit_run(
         self, audit_run: AuditRun, findings_comparisons: list[FindingComparison]
@@ -251,64 +248,59 @@ class AuditMonitor:
             Tuple of (success, error_message)
         """
         try:
-            conn = sqlite3.connect(str(self.db_path))
-            cursor = conn.cursor()
-
-            # Store audit run
-            cursor.execute(
-                """
-                INSERT INTO audit_runs (
-                    id, timestamp, repo, project_type,
-                    argus_findings_count, codex_findings_count, agreed_findings_count,
-                    argus_only_count, codex_only_count, agreement_rate,
-                    average_score_difference, severity_distribution, metadata
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    audit_run.id,
-                    audit_run.timestamp,
-                    audit_run.repo,
-                    audit_run.project_type,
-                    audit_run.argus_findings_count,
-                    audit_run.codex_findings_count,
-                    audit_run.agreed_findings_count,
-                    audit_run.argus_only_count,
-                    audit_run.codex_only_count,
-                    audit_run.agreement_rate,
-                    audit_run.average_score_difference,
-                    json.dumps(audit_run.severity_distribution),
-                    json.dumps(audit_run.metadata),
-                ),
-            )
-
-            # Store findings comparisons
-            for finding in findings_comparisons:
+            with db_connection(self.db_path) as (conn, cursor):
+                # Store audit run
                 cursor.execute(
                     """
-                    INSERT INTO findings_comparison (
-                        id, audit_run_id, finding_id, argus_score, codex_score,
-                        score_difference, agreed, argus_verdict, codex_verdict,
-                        severity, category, metadata
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO audit_runs (
+                        id, timestamp, repo, project_type,
+                        argus_findings_count, codex_findings_count, agreed_findings_count,
+                        argus_only_count, codex_only_count, agreement_rate,
+                        average_score_difference, severity_distribution, metadata
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
-                        finding.id,
-                        finding.audit_run_id,
-                        finding.finding_id,
-                        finding.argus_score,
-                        finding.codex_score,
-                        finding.score_difference,
-                        1 if finding.agreed else 0,
-                        finding.argus_verdict,
-                        finding.codex_verdict,
-                        finding.severity,
-                        finding.category,
-                        json.dumps(finding.metadata),
+                        audit_run.id,
+                        audit_run.timestamp,
+                        audit_run.repo,
+                        audit_run.project_type,
+                        audit_run.argus_findings_count,
+                        audit_run.codex_findings_count,
+                        audit_run.agreed_findings_count,
+                        audit_run.argus_only_count,
+                        audit_run.codex_only_count,
+                        audit_run.agreement_rate,
+                        audit_run.average_score_difference,
+                        json.dumps(audit_run.severity_distribution),
+                        json.dumps(audit_run.metadata),
                     ),
                 )
 
-            conn.commit()
-            conn.close()
+                # Store findings comparisons
+                for finding in findings_comparisons:
+                    cursor.execute(
+                        """
+                        INSERT INTO findings_comparison (
+                            id, audit_run_id, finding_id, argus_score, codex_score,
+                            score_difference, agreed, argus_verdict, codex_verdict,
+                            severity, category, metadata
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            finding.id,
+                            finding.audit_run_id,
+                            finding.finding_id,
+                            finding.argus_score,
+                            finding.codex_score,
+                            finding.score_difference,
+                            1 if finding.agreed else 0,
+                            finding.argus_verdict,
+                            finding.codex_verdict,
+                            finding.severity,
+                            finding.category,
+                            json.dumps(finding.metadata),
+                        ),
+                    )
 
             logger.info(f"Stored audit run {audit_run.id} with {len(findings_comparisons)} findings comparisons")
 
@@ -481,53 +473,50 @@ class AuditMonitor:
             List of outlier findings
         """
         try:
-            conn = sqlite3.connect(str(self.db_path))
-            cursor = conn.cursor()
+            with db_connection(self.db_path) as (conn, cursor):
+                # Get all score differences
+                cursor.execute("SELECT score_difference FROM findings_comparison WHERE audit_run_id = ?", (audit_run_id,))
+                score_diffs = [row[0] for row in cursor.fetchall()]
 
-            # Get all score differences
-            cursor.execute("SELECT score_difference FROM findings_comparison WHERE audit_run_id = ?", (audit_run_id,))
-            score_diffs = [row[0] for row in cursor.fetchall()]
+                if len(score_diffs) < 4:
+                    return []
 
-            if len(score_diffs) < 4:
-                return []
+                # Calculate quartiles
+                sorted_diffs = sorted(score_diffs)
+                q1_idx = len(sorted_diffs) // 4
+                q3_idx = (3 * len(sorted_diffs)) // 4
 
-            # Calculate quartiles
-            sorted_diffs = sorted(score_diffs)
-            q1_idx = len(sorted_diffs) // 4
-            q3_idx = (3 * len(sorted_diffs)) // 4
+                q1 = sorted_diffs[q1_idx]
+                q3 = sorted_diffs[q3_idx]
+                iqr = q3 - q1
 
-            q1 = sorted_diffs[q1_idx]
-            q3 = sorted_diffs[q3_idx]
-            iqr = q3 - q1
+                lower_bound = q1 - 1.5 * iqr
+                upper_bound = q3 + 1.5 * iqr
 
-            lower_bound = q1 - 1.5 * iqr
-            upper_bound = q3 + 1.5 * iqr
+                # Find outliers
+                cursor.execute(
+                    """
+                    SELECT id, finding_id, argus_score, codex_score, score_difference,
+                           severity, category FROM findings_comparison
+                    WHERE audit_run_id = ? AND (score_difference > ? OR score_difference < ?)
+                    """,
+                    (audit_run_id, upper_bound, lower_bound),
+                )
 
-            # Find outliers
-            cursor.execute(
-                """
-                SELECT id, finding_id, argus_score, codex_score, score_difference,
-                       severity, category FROM findings_comparison
-                WHERE audit_run_id = ? AND (score_difference > ? OR score_difference < ?)
-                """,
-                (audit_run_id, upper_bound, lower_bound),
-            )
+                outliers = [
+                    {
+                        "id": row[0],
+                        "finding_id": row[1],
+                        "argus_score": row[2],
+                        "codex_score": row[3],
+                        "score_difference": row[4],
+                        "severity": row[5],
+                        "category": row[6],
+                        "bound_exceeded": "upper" if row[4] > upper_bound else "lower",
+                    }
+                    for row in cursor.fetchall()
+                ]
 
-            outliers = [
-                {
-                    "id": row[0],
-                    "finding_id": row[1],
-                    "argus_score": row[2],
-                    "codex_score": row[3],
-                    "score_difference": row[4],
-                    "severity": row[5],
-                    "category": row[6],
-                    "bound_exceeded": "upper" if row[4] > upper_bound else "lower",
-                }
-                for row in cursor.fetchall()
-            ]
-
-            conn.close()
             return outliers
 
         except Exception as e:
@@ -599,35 +588,30 @@ class AuditMonitor:
     def _store_drift_events(self, drift_events: list[DriftEvent]) -> None:
         """Store detected drift events in database"""
         try:
-            conn = sqlite3.connect(str(self.db_path))
-            cursor = conn.cursor()
-
-            for event in drift_events:
-                cursor.execute(
-                    """
-                    INSERT INTO drift_events (
-                        id, timestamp, audit_run_id, metric_name, metric_type,
-                        old_value, new_value, change_magnitude, statistical_significance,
-                        confidence, description
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        event.id,
-                        event.timestamp,
-                        event.audit_run_id,
-                        event.metric_name,
-                        event.metric_type,
-                        event.old_value,
-                        event.new_value,
-                        event.change_magnitude,
-                        event.statistical_significance,
-                        event.confidence,
-                        event.description,
-                    ),
-                )
-
-            conn.commit()
-            conn.close()
+            with db_connection(self.db_path) as (conn, cursor):
+                for event in drift_events:
+                    cursor.execute(
+                        """
+                        INSERT INTO drift_events (
+                            id, timestamp, audit_run_id, metric_name, metric_type,
+                            old_value, new_value, change_magnitude, statistical_significance,
+                            confidence, description
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            event.id,
+                            event.timestamp,
+                            event.audit_run_id,
+                            event.metric_name,
+                            event.metric_type,
+                            event.old_value,
+                            event.new_value,
+                            event.change_magnitude,
+                            event.statistical_significance,
+                            event.confidence,
+                            event.description,
+                        ),
+                    )
 
             logger.info(f"Stored {len(drift_events)} drift events")
 
@@ -637,32 +621,27 @@ class AuditMonitor:
     def _store_alert(self, alert: Alert) -> None:
         """Store alert in database"""
         try:
-            conn = sqlite3.connect(str(self.db_path))
-            cursor = conn.cursor()
-
-            cursor.execute(
-                """
-                INSERT INTO alerts (
-                    id, timestamp, audit_run_id, alert_type, severity, message,
-                    metric_name, metric_value, threshold, metadata
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    alert.id,
-                    alert.timestamp,
-                    alert.audit_run_id,
-                    alert.alert_type,
-                    alert.severity,
-                    alert.message,
-                    alert.metric_name,
-                    alert.metric_value,
-                    alert.threshold,
-                    json.dumps(alert.metadata),
-                ),
-            )
-
-            conn.commit()
-            conn.close()
+            with db_connection(self.db_path) as (conn, cursor):
+                cursor.execute(
+                    """
+                    INSERT INTO alerts (
+                        id, timestamp, audit_run_id, alert_type, severity, message,
+                        metric_name, metric_value, threshold, metadata
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        alert.id,
+                        alert.timestamp,
+                        alert.audit_run_id,
+                        alert.alert_type,
+                        alert.severity,
+                        alert.message,
+                        alert.metric_name,
+                        alert.metric_value,
+                        alert.threshold,
+                        json.dumps(alert.metadata),
+                    ),
+                )
 
         except Exception as e:
             logger.error(f"Error storing alert: {e}")
@@ -670,17 +649,13 @@ class AuditMonitor:
     def get_audit_run(self, audit_run_id: str) -> Optional[AuditRun]:
         """Retrieve audit run by ID"""
         try:
-            conn = sqlite3.connect(str(self.db_path))
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-
-            cursor.execute("SELECT * FROM audit_runs WHERE id = ?", (audit_run_id,))
-            row = cursor.fetchone()
-            conn.close()
-
-            if not row:
-                return None
-
+            with db_connection(self.db_path) as (conn, cursor):
+                cursor.execute("SELECT * FROM audit_runs WHERE id = ?", (audit_run_id,))
+                row = cursor.fetchone()
+                if not row:
+                    return None
+                columns = [d[0] for d in cursor.description]
+                row = dict(zip(columns, row))
             return AuditRun(
                 id=row["id"],
                 timestamp=row["timestamp"],
@@ -714,51 +689,48 @@ class AuditMonitor:
             List of audit runs ordered by timestamp (newest first)
         """
         try:
-            conn = sqlite3.connect(str(self.db_path))
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
+            with db_connection(self.db_path) as (conn, cursor):
+                cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
 
-            cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+                if repo:
+                    cursor.execute(
+                        """
+                        SELECT * FROM audit_runs
+                        WHERE repo = ? AND timestamp >= ?
+                        ORDER BY timestamp DESC LIMIT ?
+                        """,
+                        (repo, cutoff_date, limit),
+                    )
+                else:
+                    cursor.execute(
+                        """
+                        SELECT * FROM audit_runs
+                        WHERE timestamp >= ?
+                        ORDER BY timestamp DESC LIMIT ?
+                        """,
+                        (cutoff_date, limit),
+                    )
 
-            if repo:
-                cursor.execute(
-                    """
-                    SELECT * FROM audit_runs
-                    WHERE repo = ? AND timestamp >= ?
-                    ORDER BY timestamp DESC LIMIT ?
-                    """,
-                    (repo, cutoff_date, limit),
-                )
-            else:
-                cursor.execute(
-                    """
-                    SELECT * FROM audit_runs
-                    WHERE timestamp >= ?
-                    ORDER BY timestamp DESC LIMIT ?
-                    """,
-                    (cutoff_date, limit),
-                )
-
-            rows = cursor.fetchall()
-            conn.close()
-
+                columns = [d[0] for d in cursor.description]
+                rows = cursor.fetchall()
+                rows_data = [dict(zip(columns, row)) for row in rows]
             return [
                 AuditRun(
-                    id=row["id"],
-                    timestamp=row["timestamp"],
-                    repo=row["repo"],
-                    project_type=row["project_type"],
-                    argus_findings_count=row["argus_findings_count"],
-                    codex_findings_count=row["codex_findings_count"],
-                    agreed_findings_count=row["agreed_findings_count"],
-                    argus_only_count=row["argus_only_count"],
-                    codex_only_count=row["codex_only_count"],
-                    agreement_rate=row["agreement_rate"],
-                    average_score_difference=row["average_score_difference"],
-                    severity_distribution=json.loads(row["severity_distribution"]),
-                    metadata=json.loads(row["metadata"]),
+                    id=r["id"],
+                    timestamp=r["timestamp"],
+                    repo=r["repo"],
+                    project_type=r["project_type"],
+                    argus_findings_count=r["argus_findings_count"],
+                    codex_findings_count=r["codex_findings_count"],
+                    agreed_findings_count=r["agreed_findings_count"],
+                    argus_only_count=r["argus_only_count"],
+                    codex_only_count=r["codex_only_count"],
+                    agreement_rate=r["agreement_rate"],
+                    average_score_difference=r["average_score_difference"],
+                    severity_distribution=json.loads(r["severity_distribution"]),
+                    metadata=json.loads(r["metadata"]),
                 )
-                for row in rows
+                for r in rows_data
             ]
 
         except Exception as e:
@@ -773,31 +745,29 @@ class AuditMonitor:
             List of [timestamp, agreement_rate] tuples for charting
         """
         try:
-            conn = sqlite3.connect(str(self.db_path))
-            cursor = conn.cursor()
+            with db_connection(self.db_path) as (conn, cursor):
+                cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
 
-            cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+                if repo:
+                    cursor.execute(
+                        """
+                        SELECT timestamp, agreement_rate FROM audit_runs
+                        WHERE repo = ? AND timestamp >= ?
+                        ORDER BY timestamp ASC
+                        """,
+                        (repo, cutoff_date),
+                    )
+                else:
+                    cursor.execute(
+                        """
+                        SELECT timestamp, agreement_rate FROM audit_runs
+                        WHERE timestamp >= ?
+                        ORDER BY timestamp ASC
+                        """,
+                        (cutoff_date,),
+                    )
 
-            if repo:
-                cursor.execute(
-                    """
-                    SELECT timestamp, agreement_rate FROM audit_runs
-                    WHERE repo = ? AND timestamp >= ?
-                    ORDER BY timestamp ASC
-                    """,
-                    (repo, cutoff_date),
-                )
-            else:
-                cursor.execute(
-                    """
-                    SELECT timestamp, agreement_rate FROM audit_runs
-                    WHERE timestamp >= ?
-                    ORDER BY timestamp ASC
-                    """,
-                    (cutoff_date,),
-                )
-
-            return [{"timestamp": row[0], "agreement_rate": row[1]} for row in cursor.fetchall()]
+                return [{"timestamp": row[0], "agreement_rate": row[1]} for row in cursor.fetchall()]
 
         except Exception as e:
             logger.error(f"Error retrieving agreement trend: {e}")
@@ -815,46 +785,43 @@ class AuditMonitor:
             List of active alerts ordered by timestamp (newest first)
         """
         try:
-            conn = sqlite3.connect(str(self.db_path))
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
+            with db_connection(self.db_path) as (conn, cursor):
+                if severity:
+                    cursor.execute(
+                        """
+                        SELECT * FROM alerts
+                        WHERE acknowledged = 0 AND severity = ?
+                        ORDER BY timestamp DESC LIMIT ?
+                        """,
+                        (severity, limit),
+                    )
+                else:
+                    cursor.execute(
+                        """
+                        SELECT * FROM alerts
+                        WHERE acknowledged = 0
+                        ORDER BY timestamp DESC LIMIT ?
+                        """,
+                        (limit,),
+                    )
 
-            if severity:
-                cursor.execute(
-                    """
-                    SELECT * FROM alerts
-                    WHERE acknowledged = 0 AND severity = ?
-                    ORDER BY timestamp DESC LIMIT ?
-                    """,
-                    (severity, limit),
-                )
-            else:
-                cursor.execute(
-                    """
-                    SELECT * FROM alerts
-                    WHERE acknowledged = 0
-                    ORDER BY timestamp DESC LIMIT ?
-                    """,
-                    (limit,),
-                )
-
-            rows = cursor.fetchall()
-            conn.close()
-
+                columns = [d[0] for d in cursor.description]
+                rows = cursor.fetchall()
+                rows_data = [dict(zip(columns, row)) for row in rows]
             return [
                 Alert(
-                    id=row["id"],
-                    timestamp=row["timestamp"],
-                    audit_run_id=row["audit_run_id"],
-                    alert_type=row["alert_type"],
-                    severity=row["severity"],
-                    message=row["message"],
-                    metric_name=row["metric_name"],
-                    metric_value=row["metric_value"],
-                    threshold=row["threshold"],
-                    metadata=json.loads(row["metadata"]),
+                    id=r["id"],
+                    timestamp=r["timestamp"],
+                    audit_run_id=r["audit_run_id"],
+                    alert_type=r["alert_type"],
+                    severity=r["severity"],
+                    message=r["message"],
+                    metric_name=r["metric_name"],
+                    metric_value=r["metric_value"],
+                    threshold=r["threshold"],
+                    metadata=json.loads(r["metadata"]),
                 )
-                for row in rows
+                for r in rows_data
             ]
 
         except Exception as e:
@@ -876,49 +843,46 @@ class AuditMonitor:
             List of drift events ordered by timestamp (newest first)
         """
         try:
-            conn = sqlite3.connect(str(self.db_path))
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
+            with db_connection(self.db_path) as (conn, cursor):
+                cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
 
-            cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+                if audit_run_id:
+                    cursor.execute(
+                        """
+                        SELECT * FROM drift_events
+                        WHERE audit_run_id = ? AND timestamp >= ?
+                        ORDER BY timestamp DESC LIMIT ?
+                        """,
+                        (audit_run_id, cutoff_date, limit),
+                    )
+                else:
+                    cursor.execute(
+                        """
+                        SELECT * FROM drift_events
+                        WHERE timestamp >= ?
+                        ORDER BY timestamp DESC LIMIT ?
+                        """,
+                        (cutoff_date, limit),
+                    )
 
-            if audit_run_id:
-                cursor.execute(
-                    """
-                    SELECT * FROM drift_events
-                    WHERE audit_run_id = ? AND timestamp >= ?
-                    ORDER BY timestamp DESC LIMIT ?
-                    """,
-                    (audit_run_id, cutoff_date, limit),
-                )
-            else:
-                cursor.execute(
-                    """
-                    SELECT * FROM drift_events
-                    WHERE timestamp >= ?
-                    ORDER BY timestamp DESC LIMIT ?
-                    """,
-                    (cutoff_date, limit),
-                )
-
-            rows = cursor.fetchall()
-            conn.close()
-
+                columns = [d[0] for d in cursor.description]
+                rows = cursor.fetchall()
+                rows_data = [dict(zip(columns, row)) for row in rows]
             return [
                 DriftEvent(
-                    id=row["id"],
-                    timestamp=row["timestamp"],
-                    audit_run_id=row["audit_run_id"],
-                    metric_name=row["metric_name"],
-                    metric_type=row["metric_type"],
-                    old_value=row["old_value"],
-                    new_value=row["new_value"],
-                    change_magnitude=row["change_magnitude"],
-                    statistical_significance=row["statistical_significance"],
-                    confidence=row["confidence"],
-                    description=row["description"],
+                    id=r["id"],
+                    timestamp=r["timestamp"],
+                    audit_run_id=r["audit_run_id"],
+                    metric_name=r["metric_name"],
+                    metric_type=r["metric_type"],
+                    old_value=r["old_value"],
+                    new_value=r["new_value"],
+                    change_magnitude=r["change_magnitude"],
+                    statistical_significance=r["statistical_significance"],
+                    confidence=r["confidence"],
+                    description=r["description"],
                 )
-                for row in rows
+                for r in rows_data
             ]
 
         except Exception as e:
@@ -1014,15 +978,10 @@ class AuditMonitor:
     def acknowledge_alert(self, alert_id: str) -> bool:
         """Mark alert as acknowledged"""
         try:
-            conn = sqlite3.connect(str(self.db_path))
-            cursor = conn.cursor()
-
-            cursor.execute("UPDATE alerts SET acknowledged = 1 WHERE id = ?", (alert_id,))
-
-            conn.commit()
-            conn.close()
-
-            return cursor.rowcount > 0
+            with db_connection(self.db_path) as (conn, cursor):
+                cursor.execute("UPDATE alerts SET acknowledged = 1 WHERE id = ?", (alert_id,))
+                rowcount = cursor.rowcount
+            return rowcount > 0
 
         except Exception as e:
             logger.error(f"Error acknowledging alert: {e}")
@@ -1039,27 +998,22 @@ class AuditMonitor:
             return 0
 
         try:
-            conn = sqlite3.connect(str(self.db_path))
-            cursor = conn.cursor()
+            with db_connection(self.db_path) as (conn, cursor):
+                cutoff_date = (datetime.now(timezone.utc) - timedelta(days=keep_days)).isoformat()
 
-            cutoff_date = (datetime.now(timezone.utc) - timedelta(days=keep_days)).isoformat()
+                # Get audit runs to delete
+                cursor.execute("SELECT id FROM audit_runs WHERE timestamp < ?", (cutoff_date,))
+                audit_ids = [row[0] for row in cursor.fetchall()]
 
-            # Get audit runs to delete
-            cursor.execute("SELECT id FROM audit_runs WHERE timestamp < ?", (cutoff_date,))
-            audit_ids = [row[0] for row in cursor.fetchall()]
+                if not audit_ids:
+                    return 0
 
-            if not audit_ids:
-                return 0
-
-            # Delete cascading records
-            for audit_id in audit_ids:
-                cursor.execute("DELETE FROM findings_comparison WHERE audit_run_id = ?", (audit_id,))
-                cursor.execute("DELETE FROM drift_events WHERE audit_run_id = ?", (audit_id,))
-                cursor.execute("DELETE FROM alerts WHERE audit_run_id = ?", (audit_id,))
-                cursor.execute("DELETE FROM audit_runs WHERE id = ?", (audit_id,))
-
-            conn.commit()
-            conn.close()
+                # Delete cascading records
+                for audit_id in audit_ids:
+                    cursor.execute("DELETE FROM findings_comparison WHERE audit_run_id = ?", (audit_id,))
+                    cursor.execute("DELETE FROM drift_events WHERE audit_run_id = ?", (audit_id,))
+                    cursor.execute("DELETE FROM alerts WHERE audit_run_id = ?", (audit_id,))
+                    cursor.execute("DELETE FROM audit_runs WHERE id = ?", (audit_id,))
 
             logger.info(f"Cleaned up {len(audit_ids)} old audit runs")
             return len(audit_ids)
@@ -1073,15 +1027,12 @@ class AuditMonitor:
     def _get_category_distribution(self, audit_run_id: str) -> dict[str, float]:
         """Get category distribution for audit run"""
         try:
-            conn = sqlite3.connect(str(self.db_path))
-            cursor = conn.cursor()
-
-            cursor.execute(
-                "SELECT category, COUNT(*) FROM findings_comparison WHERE audit_run_id = ? GROUP BY category",
-                (audit_run_id,),
-            )
-            counts = dict(cursor.fetchall())
-            conn.close()
+            with db_connection(self.db_path) as (conn, cursor):
+                cursor.execute(
+                    "SELECT category, COUNT(*) FROM findings_comparison WHERE audit_run_id = ? GROUP BY category",
+                    (audit_run_id,),
+                )
+                counts = dict(cursor.fetchall())
 
             total = sum(counts.values())
             return {cat: count / total for cat, count in counts.items()} if total > 0 else {}
@@ -1111,18 +1062,15 @@ class AuditMonitor:
     def _get_severity_agreement_correlation(self, audit_run_id: str) -> dict[str, float]:
         """Get agreement rate by severity level"""
         try:
-            conn = sqlite3.connect(str(self.db_path))
-            cursor = conn.cursor()
-
-            cursor.execute(
-                """
-                SELECT severity, AVG(agreed) FROM findings_comparison
-                WHERE audit_run_id = ? GROUP BY severity
-                """,
-                (audit_run_id,),
-            )
-
-            return dict(cursor.fetchall())
+            with db_connection(self.db_path) as (conn, cursor):
+                cursor.execute(
+                    """
+                    SELECT severity, AVG(agreed) FROM findings_comparison
+                    WHERE audit_run_id = ? GROUP BY severity
+                    """,
+                    (audit_run_id,),
+                )
+                return dict(cursor.fetchall())
 
         except Exception as e:
             logger.error(f"Error calculating severity agreement correlation: {e}")
@@ -1148,12 +1096,9 @@ class AuditMonitor:
     def _get_score_differences(self, audit_run_id: str) -> list[float]:
         """Get all score differences for audit run"""
         try:
-            conn = sqlite3.connect(str(self.db_path))
-            cursor = conn.cursor()
-
-            cursor.execute("SELECT score_difference FROM findings_comparison WHERE audit_run_id = ?", (audit_run_id,))
-
-            return [row[0] for row in cursor.fetchall()]
+            with db_connection(self.db_path) as (conn, cursor):
+                cursor.execute("SELECT score_difference FROM findings_comparison WHERE audit_run_id = ?", (audit_run_id,))
+                return [row[0] for row in cursor.fetchall()]
 
         except Exception as e:
             logger.error(f"Error getting score differences: {e}")

@@ -433,6 +433,10 @@ class HybridSecurityAnalyzer:
                 logger.info("   💡 Continuing without collaborative reasoning")
                 self.enable_collaborative_reasoning = False
 
+        self._load_scanners_and_features()
+
+    def _load_scanners_and_features(self) -> None:
+        """Load scanner instances and v3/MCP features. Called from __init__ after AI client and agents."""
         if self.enable_semgrep:
             try:
                 from semgrep_scanner import SemgrepScanner

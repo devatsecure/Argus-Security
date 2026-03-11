@@ -32,12 +32,22 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Optional
 
-from tenacity import (
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
+from tenacity import retry
+
+try:
+    from utils.retry_policies import (
+        SUBPROCESS_JSON_RETRY,
+        SUBPROCESS_RETRY,
+        SUBPROCESS_STOP,
+        SUBPROCESS_WAIT,
+    )
+except ModuleNotFoundError:
+    from scripts.utils.retry_policies import (
+        SUBPROCESS_JSON_RETRY,
+        SUBPROCESS_RETRY,
+        SUBPROCESS_STOP,
+        SUBPROCESS_WAIT,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -1541,11 +1551,7 @@ require {package_name} v0.0.0
         # Cap at 100
         return min(score, 100)
 
-    @retry(
-        wait=wait_exponential(multiplier=1, min=2, max=60),
-        stop=stop_after_attempt(3),
-        retry=retry_if_exception_type((subprocess.SubprocessError, OSError, json.JSONDecodeError)),
-    )
+    @retry(wait=SUBPROCESS_WAIT, stop=SUBPROCESS_STOP, retry=SUBPROCESS_JSON_RETRY)
     def _fetch_openssf_scorecard(self, api_url: str) -> dict[str, Any]:
         """Fetch OpenSSF Scorecard data with retry logic
 

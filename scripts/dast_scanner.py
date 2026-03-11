@@ -24,12 +24,12 @@ from pathlib import Path
 from typing import Optional
 
 import yaml
-from tenacity import (
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
+from tenacity import retry
+
+try:
+    from utils.retry_policies import SUBPROCESS_RETRY, SUBPROCESS_STOP, SUBPROCESS_WAIT
+except ModuleNotFoundError:
+    from scripts.utils.retry_policies import SUBPROCESS_RETRY, SUBPROCESS_STOP, SUBPROCESS_WAIT
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -419,11 +419,7 @@ class DASTScanner:
 
         return json.dumps(body_dict)
 
-    @retry(
-        wait=wait_exponential(multiplier=1, min=2, max=60),
-        stop=stop_after_attempt(3),
-        retry=retry_if_exception_type((subprocess.SubprocessError, OSError, RuntimeError)),
-    )
+    @retry(wait=SUBPROCESS_WAIT, stop=SUBPROCESS_STOP, retry=SUBPROCESS_RETRY)
     def _execute_nuclei_scan(self, cmd: list[str], target_count: int) -> str:
         """Execute Nuclei scan with retry logic
 

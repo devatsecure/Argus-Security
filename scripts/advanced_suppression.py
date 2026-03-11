@@ -23,6 +23,7 @@ import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
+from pathlib import Path
 from typing import Any
 
 try:
@@ -99,16 +100,42 @@ class AdvancedSuppressionManager:
         self,
         config_path: str = ".argus-ignore.yml",
         auto_expire_days: int = 90,
+        project_root: str | Path | None = None,
     ) -> None:
-        self.config_path = config_path
         self.auto_expire_days = auto_expire_days
         self.rules: list[SuppressionRule] = []
+        # Optionally validate config_path (e.g. when set from config) against project root
+        if project_root is not None:
+            try:
+                from utils.io import validate_path_safe
+            except ModuleNotFoundError:
+                from scripts.utils.io import validate_path_safe
+            resolved_config = (
+                Path(config_path).resolve()
+                if os.path.isabs(config_path)
+                else Path(project_root).resolve() / config_path
+            )
+            try:
+                validate_path_safe(resolved_config, base_dir=Path(project_root).resolve())
+                self.config_path = config_path
+            except ValueError:
+                logger.warning(
+                    "Suppression config_path outside project_root, using default under project: %s",
+                    config_path,
+                )
+                self.config_path = ".argus-ignore.yml"
+        else:
+            self.config_path = config_path
 
     # ------------------------------------------------------------------
     # Rule loading / saving
     # ------------------------------------------------------------------
 
-    def load_rules(self, path: str | None = None) -> list[SuppressionRule]:
+    def load_rules(
+        self,
+        path: str | None = None,
+        project_root: str | Path | None = None,
+    ) -> list[SuppressionRule]:
         """Load suppression rules from a YAML file.
 
         Expected YAML format::
@@ -124,6 +151,7 @@ class AdvancedSuppressionManager:
 
         Args:
             path: Path to YAML file. Falls back to ``self.config_path``.
+            project_root: If set, validate file_path is under this directory (path traversal safety).
 
         Returns:
             List of parsed ``SuppressionRule`` objects.
@@ -133,6 +161,18 @@ class AdvancedSuppressionManager:
             return []
 
         file_path = path or self.config_path
+        if project_root is not None:
+            try:
+                from utils.io import validate_path_safe
+                file_path = str(
+                    validate_path_safe(
+                        Path(file_path).resolve() if os.path.isabs(file_path) else Path.cwd() / file_path,
+                        base_dir=Path(project_root).resolve(),
+                    )
+                )
+            except ValueError:
+                logger.warning("Suppression config path outside project_root, skipping load: %s", file_path)
+                return []
 
         if not os.path.isfile(file_path):
             logger.warning("Suppression config not found: %s", file_path)
@@ -174,18 +214,36 @@ class AdvancedSuppressionManager:
         logger.info("Loaded %d suppression rules from %s", len(rules), file_path)
         return rules
 
-    def save_rules(self, rules: list[SuppressionRule], path: str | None = None) -> None:
+    def save_rules(
+        self,
+        rules: list[SuppressionRule],
+        path: str | None = None,
+        project_root: str | Path | None = None,
+    ) -> None:
         """Write suppression rules to a YAML file.
 
         Args:
             rules: Rules to persist.
             path: Destination path. Falls back to ``self.config_path``.
+            project_root: If set, validate file_path is under this directory (path traversal safety).
         """
         if yaml is None:
             logger.error("PyYAML is not installed. Install it with: pip install pyyaml")
             return
 
         file_path = path or self.config_path
+        if project_root is not None:
+            try:
+                from utils.io import validate_path_safe
+                file_path = str(
+                    validate_path_safe(
+                        Path(file_path).resolve() if os.path.isabs(file_path) else Path.cwd() / file_path,
+                        base_dir=Path(project_root).resolve(),
+                    )
+                )
+            except ValueError:
+                logger.warning("Suppression config path outside project_root, skipping save: %s", file_path)
+                return
 
         serialized: list[dict[str, Any]] = []
         for rule in rules:

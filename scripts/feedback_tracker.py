@@ -23,6 +23,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
 
+from scripts.utils.db_connection import db_connection
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -99,49 +101,44 @@ class FeedbackTracker:
             self.cache_dir.mkdir(parents=True, exist_ok=True)
 
             with self._lock:
-                conn = sqlite3.connect(str(self.db_path))
-                cursor = conn.cursor()
+                with db_connection(self.db_path) as (conn, cursor):
+                    # Create findings_feedback table
+                    cursor.execute("""
+                        CREATE TABLE IF NOT EXISTS findings_feedback (
+                            finding_id TEXT PRIMARY KEY,
+                            verdict TEXT NOT NULL,
+                            reason TEXT NOT NULL,
+                            timestamp TEXT NOT NULL,
+                            source TEXT NOT NULL,
+                            metadata TEXT,
+                            scanner TEXT,
+                            category TEXT,
+                            file_path TEXT
+                        )
+                    """)
 
-                # Create findings_feedback table
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS findings_feedback (
-                        finding_id TEXT PRIMARY KEY,
-                        verdict TEXT NOT NULL,
-                        reason TEXT NOT NULL,
-                        timestamp TEXT NOT NULL,
-                        source TEXT NOT NULL,
-                        metadata TEXT,
-                        scanner TEXT,
-                        category TEXT,
-                        file_path TEXT
-                    )
-                """)
+                    # Create indexes for common queries
+                    cursor.execute("""
+                        CREATE INDEX IF NOT EXISTS idx_verdict
+                        ON findings_feedback(verdict)
+                    """)
 
-                # Create indexes for common queries
-                cursor.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_verdict
-                    ON findings_feedback(verdict)
-                """)
+                    cursor.execute("""
+                        CREATE INDEX IF NOT EXISTS idx_scanner
+                        ON findings_feedback(scanner)
+                    """)
 
-                cursor.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_scanner
-                    ON findings_feedback(scanner)
-                """)
+                    cursor.execute("""
+                        CREATE INDEX IF NOT EXISTS idx_category
+                        ON findings_feedback(category)
+                    """)
 
-                cursor.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_category
-                    ON findings_feedback(category)
-                """)
+                    cursor.execute("""
+                        CREATE INDEX IF NOT EXISTS idx_timestamp
+                        ON findings_feedback(timestamp)
+                    """)
 
-                cursor.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_timestamp
-                    ON findings_feedback(timestamp)
-                """)
-
-                conn.commit()
-                conn.close()
-
-                logger.info(f"Feedback database initialized: {self.db_path}")
+            logger.info(f"Feedback database initialized: {self.db_path}")
 
         except Exception as e:
             logger.error(f"Failed to initialize feedback database: {e}")
@@ -180,31 +177,26 @@ class FeedbackTracker:
             file_path = metadata.get("file_path") if metadata else None
 
             with self._lock:
-                conn = sqlite3.connect(str(self.db_path))
-                cursor = conn.cursor()
-
-                # Insert or replace feedback
-                cursor.execute(
-                    """
-                    INSERT OR REPLACE INTO findings_feedback
-                    (finding_id, verdict, reason, timestamp, source, metadata, scanner, category, file_path)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                    (
-                        entry.finding_id,
-                        entry.verdict,
-                        entry.reason,
-                        entry.timestamp,
-                        entry.source,
-                        json.dumps(entry.metadata),
-                        scanner,
-                        category,
-                        file_path,
-                    ),
-                )
-
-                conn.commit()
-                conn.close()
+                with db_connection(self.db_path) as (conn, cursor):
+                    # Insert or replace feedback
+                    cursor.execute(
+                        """
+                        INSERT OR REPLACE INTO findings_feedback
+                        (finding_id, verdict, reason, timestamp, source, metadata, scanner, category, file_path)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            entry.finding_id,
+                            entry.verdict,
+                            entry.reason,
+                            entry.timestamp,
+                            entry.source,
+                            json.dumps(entry.metadata),
+                            scanner,
+                            category,
+                            file_path,
+                        ),
+                    )
 
             logger.info(f"Recorded feedback: {finding_id} -> {verdict} (source: {source}, reason: {reason[:50]}...)")
 
@@ -230,32 +222,28 @@ class FeedbackTracker:
         """
         try:
             with self._lock:
-                conn = sqlite3.connect(str(self.db_path))
-                cursor = conn.cursor()
+                with db_connection(self.db_path) as (conn, cursor):
+                    cursor.execute(
+                        """
+                        SELECT finding_id, verdict, reason, timestamp, source, metadata
+                        FROM findings_feedback
+                        WHERE finding_id = ?
+                        """,
+                        (finding_id,),
+                    )
+                    row = cursor.fetchone()
 
-                cursor.execute(
-                    """
-                    SELECT finding_id, verdict, reason, timestamp, source, metadata
-                    FROM findings_feedback
-                    WHERE finding_id = ?
-                """,
-                    (finding_id,),
-                )
+            if not row:
+                return None
 
-                row = cursor.fetchone()
-                conn.close()
-
-                if not row:
-                    return None
-
-                return FeedbackEntry(
-                    finding_id=row[0],
-                    verdict=row[1],
-                    reason=row[2],
-                    timestamp=row[3],
-                    source=row[4],
-                    metadata=json.loads(row[5]) if row[5] else {},
-                )
+            return FeedbackEntry(
+                finding_id=row[0],
+                verdict=row[1],
+                reason=row[2],
+                timestamp=row[3],
+                source=row[4],
+                metadata=json.loads(row[5]) if row[5] else {},
+            )
 
         except Exception as e:
             logger.error(f"Failed to retrieve feedback: {e}")
@@ -277,43 +265,40 @@ class FeedbackTracker:
         """
         try:
             with self._lock:
-                conn = sqlite3.connect(str(self.db_path))
-                cursor = conn.cursor()
+                with db_connection(self.db_path) as (conn, cursor):
+                    # Build query dynamically based on filters
+                    query = """
+                        SELECT
+                            COUNT(*) FILTER (WHERE verdict = 'false_positive') as fp_count,
+                            COUNT(*) as total_count
+                        FROM findings_feedback
+                        WHERE 1=1
+                    """
+                    params = []
 
-                # Build query dynamically based on filters
-                query = """
-                    SELECT
-                        COUNT(*) FILTER (WHERE verdict = 'false_positive') as fp_count,
-                        COUNT(*) as total_count
-                    FROM findings_feedback
-                    WHERE 1=1
-                """
-                params = []
+                    if scanner:
+                        query += " AND scanner = ?"
+                        params.append(scanner)
 
-                if scanner:
-                    query += " AND scanner = ?"
-                    params.append(scanner)
+                    if category:
+                        query += " AND category = ?"
+                        params.append(category)
 
-                if category:
-                    query += " AND category = ?"
-                    params.append(category)
+                    if days:
+                        cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+                        query += " AND timestamp >= ?"
+                        params.append(cutoff_date)
 
-                if days:
-                    cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
-                    query += " AND timestamp >= ?"
-                    params.append(cutoff_date)
+                    cursor.execute(query, params)
+                    row = cursor.fetchone()
 
-                cursor.execute(query, params)
-                row = cursor.fetchone()
-                conn.close()
+            fp_count = row[0] or 0
+            total_count = row[1] or 0
 
-                fp_count = row[0] or 0
-                total_count = row[1] or 0
+            if total_count == 0:
+                return 0.0
 
-                if total_count == 0:
-                    return 0.0
-
-                return fp_count / total_count
+            return fp_count / total_count
 
         except Exception as e:
             logger.error(f"Failed to calculate FP rate: {e}")
@@ -332,28 +317,25 @@ class FeedbackTracker:
         """
         try:
             with self._lock:
-                conn = sqlite3.connect(str(self.db_path))
-                cursor = conn.cursor()
+                with db_connection(self.db_path) as (conn, cursor):
+                    query = """
+                        SELECT finding_id, verdict, reason, timestamp, source, metadata
+                        FROM findings_feedback
+                    """
 
-                query = """
-                    SELECT finding_id, verdict, reason, timestamp, source, metadata
-                    FROM findings_feedback
-                """
+                    params = []
+                    if verdict:
+                        query += " WHERE verdict = ?"
+                        params.append(verdict)
 
-                params = []
-                if verdict:
-                    query += " WHERE verdict = ?"
-                    params.append(verdict)
+                    query += " ORDER BY timestamp DESC"
 
-                query += " ORDER BY timestamp DESC"
+                    if limit:
+                        query += " LIMIT ?"
+                        params.append(limit)
 
-                if limit:
-                    query += " LIMIT ?"
-                    params.append(limit)
-
-                cursor.execute(query, params)
-                rows = cursor.fetchall()
-                conn.close()
+                    cursor.execute(query, params)
+                    rows = cursor.fetchall()
 
                 return [
                     FeedbackEntry(
@@ -601,17 +583,13 @@ class FeedbackTracker:
 
             # Get per-scanner metrics
             with self._lock:
-                conn = sqlite3.connect(str(self.db_path))
-                cursor = conn.cursor()
-
-                cursor.execute("""
-                    SELECT DISTINCT scanner
-                    FROM findings_feedback
-                    WHERE scanner IS NOT NULL
-                """)
-
-                scanners = [row[0] for row in cursor.fetchall()]
-                conn.close()
+                with db_connection(self.db_path) as (conn, cursor):
+                    cursor.execute("""
+                        SELECT DISTINCT scanner
+                        FROM findings_feedback
+                        WHERE scanner IS NOT NULL
+                    """)
+                    scanners = [row[0] for row in cursor.fetchall()]
 
             by_scanner = {}
             for scanner in scanners:
@@ -799,67 +777,63 @@ class FeedbackTracker:
         """
         try:
             with self._lock:
-                conn = sqlite3.connect(str(self.db_path))
-                cursor = conn.cursor()
+                with db_connection(self.db_path) as (conn, cursor):
+                    # Total feedback count
+                    cursor.execute("SELECT COUNT(*) FROM findings_feedback")
+                    total_count = cursor.fetchone()[0]
 
-                # Total feedback count
-                cursor.execute("SELECT COUNT(*) FROM findings_feedback")
-                total_count = cursor.fetchone()[0]
+                    # Verdict breakdown
+                    cursor.execute("""
+                        SELECT verdict, COUNT(*) as count
+                        FROM findings_feedback
+                        GROUP BY verdict
+                        ORDER BY count DESC
+                    """)
+                    verdict_counts = {row[0]: row[1] for row in cursor.fetchall()}
 
-                # Verdict breakdown
-                cursor.execute("""
-                    SELECT verdict, COUNT(*) as count
-                    FROM findings_feedback
-                    GROUP BY verdict
-                    ORDER BY count DESC
-                """)
-                verdict_counts = {row[0]: row[1] for row in cursor.fetchall()}
+                    # Scanner breakdown
+                    cursor.execute("""
+                        SELECT scanner, COUNT(*) as count
+                        FROM findings_feedback
+                        WHERE scanner IS NOT NULL
+                        GROUP BY scanner
+                        ORDER BY count DESC
+                    """)
+                    scanner_counts = {row[0]: row[1] for row in cursor.fetchall()}
 
-                # Scanner breakdown
-                cursor.execute("""
-                    SELECT scanner, COUNT(*) as count
-                    FROM findings_feedback
-                    WHERE scanner IS NOT NULL
-                    GROUP BY scanner
-                    ORDER BY count DESC
-                """)
-                scanner_counts = {row[0]: row[1] for row in cursor.fetchall()}
+                    # Source breakdown
+                    cursor.execute("""
+                        SELECT source, COUNT(*) as count
+                        FROM findings_feedback
+                        GROUP BY source
+                        ORDER BY count DESC
+                    """)
+                    source_counts = {row[0]: row[1] for row in cursor.fetchall()}
 
-                # Source breakdown
-                cursor.execute("""
-                    SELECT source, COUNT(*) as count
-                    FROM findings_feedback
-                    GROUP BY source
-                    ORDER BY count DESC
-                """)
-                source_counts = {row[0]: row[1] for row in cursor.fetchall()}
+                    # Recent feedback (last 7 days)
+                    cutoff_date = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
 
-                # Recent feedback (last 7 days)
-                cutoff_date = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+                    cursor.execute(
+                        """
+                        SELECT COUNT(*)
+                        FROM findings_feedback
+                        WHERE timestamp >= ?
+                    """,
+                        (cutoff_date,),
+                    )
+                    recent_count = cursor.fetchone()[0]
 
-                cursor.execute(
-                    """
-                    SELECT COUNT(*)
-                    FROM findings_feedback
-                    WHERE timestamp >= ?
-                """,
-                    (cutoff_date,),
-                )
-                recent_count = cursor.fetchone()[0]
+            # Calculate FP rate (opens its own connection)
+            fp_rate = self.get_false_positive_rate()
 
-                conn.close()
-
-                # Calculate FP rate
-                fp_rate = self.get_false_positive_rate()
-
-                return {
-                    "total_feedback": total_count,
-                    "verdict_counts": verdict_counts,
-                    "scanner_counts": scanner_counts,
-                    "source_counts": source_counts,
-                    "recent_7_days": recent_count,
-                    "overall_fp_rate": round(fp_rate, 3),
-                }
+            return {
+                "total_feedback": total_count,
+                "verdict_counts": verdict_counts,
+                "scanner_counts": scanner_counts,
+                "source_counts": source_counts,
+                "recent_7_days": recent_count,
+                "overall_fp_rate": round(fp_rate, 3),
+            }
 
         except Exception as e:
             logger.error(f"Failed to get stats: {e}")
@@ -878,20 +852,15 @@ class FeedbackTracker:
         """
         try:
             with self._lock:
-                conn = sqlite3.connect(str(self.db_path))
-                cursor = conn.cursor()
+                with db_connection(self.db_path) as (conn, cursor):
+                    if finding_id:
+                        cursor.execute("DELETE FROM findings_feedback WHERE finding_id = ?", (finding_id,))
+                    else:
+                        cursor.execute("DELETE FROM findings_feedback")
+                    deleted_count = cursor.rowcount
 
-                if finding_id:
-                    cursor.execute("DELETE FROM findings_feedback WHERE finding_id = ?", (finding_id,))
-                else:
-                    cursor.execute("DELETE FROM findings_feedback")
-
-                deleted_count = cursor.rowcount
-                conn.commit()
-                conn.close()
-
-                logger.info(f"Cleared {deleted_count} feedback entries")
-                return deleted_count
+            logger.info(f"Cleared {deleted_count} feedback entries")
+            return deleted_count
 
         except Exception as e:
             logger.error(f"Failed to clear feedback: {e}")

@@ -1,6 +1,13 @@
 """
 Integration tests for automated remediation engine
-Tests that generated fixes actually work and don't break code
+Tests that generated fixes actually work and don't break code.
+
+NOTE: vulnerable_code_samples and any in-test code strings are FIXTURE DATA ONLY
+for AST/string assertions. They are intentionally vulnerable patterns and must
+never be executed with untrusted input. The subprocess.run(cmd, shell=True) in
+this file appears only inside these strings (fixture/file content); the test
+runner never executes subprocess with shell=True. Prefer list-args if adding
+new test code that runs subprocess.
 """
 import ast
 import json

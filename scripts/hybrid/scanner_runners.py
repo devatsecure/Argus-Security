@@ -31,9 +31,25 @@ Functions:
 
 import logging
 import os
-from typing import Any
+from typing import Any, Callable
 
 from hybrid.models import HybridFinding
+
+
+def run_scanner_guarded(
+    name: str,
+    get_findings: Callable[[], list[HybridFinding]],
+    logger: logging.Logger,
+) -> list[HybridFinding]:
+    """
+    Shared harness: run a scanner callable and return findings, or [] on any exception.
+    Use this to avoid duplicating try/except and error logging in each run_*.
+    """
+    try:
+        return get_findings()
+    except Exception as e:
+        logger.error("❌ %s scan failed: %s", name, e)
+        return []
 
 
 def normalize_severity(severity: str) -> str:
@@ -72,175 +88,157 @@ def count_by_source(findings: list[HybridFinding]) -> dict[str, int]:
 
 def run_semgrep(scanner: Any, target_path: str, logger: logging.Logger) -> list[HybridFinding]:
     """Run Semgrep SAST and convert to HybridFinding format"""
-    findings = []
 
-    try:
-        # Call semgrep scanner (user's implementation)
-        # This assumes semgrep_scanner.py has a scan() method
-        if hasattr(scanner, "scan"):
-            semgrep_results = scanner.scan(target_path)
-
-            # Convert to HybridFinding format
-            # Semgrep scanner returns dict with 'findings' key
-            findings_list = []
-            if isinstance(semgrep_results, dict):
-                findings_list = semgrep_results.get("findings", [])
-            elif isinstance(semgrep_results, list):
-                findings_list = semgrep_results
-
-            for result in findings_list:
-                # SemgrepScanner returns: rule_id, file_path, start_line, message
-                rule_id = result.get("rule_id", "unknown")
-                finding = HybridFinding(
+    def _scan() -> list[HybridFinding]:
+        findings: list[HybridFinding] = []
+        if not hasattr(scanner, "scan"):
+            return findings
+        semgrep_results = scanner.scan(target_path)
+        findings_list = (
+            semgrep_results.get("findings", [])
+            if isinstance(semgrep_results, dict)
+            else semgrep_results
+            if isinstance(semgrep_results, list)
+            else []
+        )
+        for result in findings_list:
+            rule_id = result.get("rule_id", "unknown")
+            findings.append(
+                HybridFinding(
                     finding_id=f"semgrep-{rule_id}",
                     source_tool="semgrep",
                     severity=normalize_severity(result.get("severity", "medium")),
                     category="security",
-                    title=rule_id,  # Use rule_id as title
+                    title=rule_id,
                     description=result.get("message", ""),
-                    file_path=result.get("file_path", ""),  # Changed from 'path'
-                    line_number=result.get("start_line", None),  # Changed from 'line'
+                    file_path=result.get("file_path", ""),
+                    line_number=result.get("start_line", None),
                     recommendation=result.get("fix", ""),
                     references=result.get("references", []),
-                    confidence=0.9,  # Semgrep has low false positive rate
-                    cwe_id=result.get("cwe", None),  # Add CWE if available
+                    confidence=0.9,
+                    cwe_id=result.get("cwe", None),
                 )
-                findings.append(finding)
+            )
+        return findings
 
-    except Exception as e:
-        logger.error(f"❌ Semgrep scan failed: {e}")
-
-    return findings
+    return run_scanner_guarded("Semgrep", _scan, logger)
 
 
 def run_trivy(scanner: Any, target_path: str, logger: logging.Logger) -> list[HybridFinding]:
     """Run Trivy CVE scan and convert to HybridFinding format"""
-    findings = []
 
-    try:
-        # Run Trivy scanner
+    def _scan() -> list[HybridFinding]:
+        findings: list[HybridFinding] = []
         trivy_result = scanner.scan_filesystem(target_path, severity="CRITICAL,HIGH,MEDIUM,LOW")
-
-        # Convert to HybridFinding format
         for trivy_finding in trivy_result.findings:
-            finding = HybridFinding(
-                finding_id=f"trivy-{trivy_finding.cve_id}",
-                source_tool="trivy",
-                severity=normalize_severity(trivy_finding.severity),
-                category="security",
-                title=f"{trivy_finding.cve_id} in {trivy_finding.package_name}",
-                description=trivy_finding.description,
-                file_path=trivy_finding.file_path or target_path,
-                cve_id=trivy_finding.cve_id,
-                cwe_id=trivy_finding.cwe_id,
-                cvss_score=trivy_finding.cvss_score,
-                exploitability=trivy_finding.exploitability,
-                recommendation=(
-                    f"Upgrade {trivy_finding.package_name} to {trivy_finding.fixed_version}"
-                    if trivy_finding.fixed_version
-                    else "No fix available yet"
-                ),
-                references=trivy_finding.references,
-                confidence=1.0,  # CVEs are confirmed
-                llm_enriched=False,  # Will be enriched in Phase 2 if AI is enabled
+            findings.append(
+                HybridFinding(
+                    finding_id=f"trivy-{trivy_finding.cve_id}",
+                    source_tool="trivy",
+                    severity=normalize_severity(trivy_finding.severity),
+                    category="security",
+                    title=f"{trivy_finding.cve_id} in {trivy_finding.package_name}",
+                    description=trivy_finding.description,
+                    file_path=trivy_finding.file_path or target_path,
+                    cve_id=trivy_finding.cve_id,
+                    cwe_id=trivy_finding.cwe_id,
+                    cvss_score=trivy_finding.cvss_score,
+                    exploitability=trivy_finding.exploitability,
+                    recommendation=(
+                        f"Upgrade {trivy_finding.package_name} to {trivy_finding.fixed_version}"
+                        if trivy_finding.fixed_version
+                        else "No fix available yet"
+                    ),
+                    references=trivy_finding.references,
+                    confidence=1.0,
+                    llm_enriched=False,
+                )
             )
-            findings.append(finding)
+        return findings
 
-    except Exception as e:
-        logger.error(f"❌ Trivy scan failed: {e}")
-
-    return findings
+    return run_scanner_guarded("Trivy", _scan, logger)
 
 
 def run_checkov(scanner: Any, target_path: str, logger: logging.Logger) -> list[HybridFinding]:
     """Run Checkov IaC scan and convert to HybridFinding format"""
-    findings = []
 
-    try:
-        # Run Checkov scanner
+    def _scan() -> list[HybridFinding]:
+        findings: list[HybridFinding] = []
         checkov_result = scanner.scan(target_path)
-
-        # Convert to HybridFinding format
         for checkov_finding in checkov_result.findings:
-            # Build line number from line range
-            line_number = None
-            if checkov_finding.file_line_range and len(checkov_finding.file_line_range) > 0:
-                line_number = checkov_finding.file_line_range[0]
-
-            finding = HybridFinding(
-                finding_id=f"checkov-{checkov_finding.check_id}",
-                source_tool="checkov",
-                severity=normalize_severity(checkov_finding.severity),
-                category="security",
-                title=f"{checkov_finding.check_name} ({checkov_finding.framework})",
-                description=checkov_finding.description,
-                file_path=checkov_finding.file_path,
-                line_number=line_number,
-                recommendation=checkov_finding.guideline,
-                references=[checkov_finding.guideline] if checkov_finding.guideline else [],
-                confidence=0.9,  # Checkov has low false positive rate for IaC
-                llm_enriched=False,  # Will be enriched in Phase 2 if AI is enabled
+            line_number = (
+                checkov_finding.file_line_range[0]
+                if checkov_finding.file_line_range and len(checkov_finding.file_line_range) > 0
+                else None
             )
-            findings.append(finding)
+            findings.append(
+                HybridFinding(
+                    finding_id=f"checkov-{checkov_finding.check_id}",
+                    source_tool="checkov",
+                    severity=normalize_severity(checkov_finding.severity),
+                    category="security",
+                    title=f"{checkov_finding.check_name} ({checkov_finding.framework})",
+                    description=checkov_finding.description,
+                    file_path=checkov_finding.file_path,
+                    line_number=line_number,
+                    recommendation=checkov_finding.guideline,
+                    references=[checkov_finding.guideline] if checkov_finding.guideline else [],
+                    confidence=0.9,
+                    llm_enriched=False,
+                )
+            )
+        return findings
 
-    except Exception as e:
-        logger.error(f"❌ Checkov scan failed: {e}")
-
-    return findings
+    return run_scanner_guarded("Checkov", _scan, logger)
 
 
 def run_api_security(scanner: Any, target_path: str, logger: logging.Logger) -> list[HybridFinding]:
     """Run API Security Scanner and convert to HybridFinding format"""
-    findings = []
 
-    try:
-        # Run API Security scanner
+    def _scan() -> list[HybridFinding]:
+        findings: list[HybridFinding] = []
         api_result = scanner.scan(target_path)
-
-        # Convert to HybridFinding format
-        # API scanner returns APIScanResult object with findings attribute
         if hasattr(api_result, "findings"):
             for api_finding in api_result.findings:
-                finding = HybridFinding(
-                    finding_id=api_finding.finding_id,
-                    source_tool="api-security",
-                    severity=normalize_severity(api_finding.severity),
-                    category="security",
-                    title=api_finding.title,
-                    description=api_finding.description,
-                    file_path=api_finding.file_path,
-                    line_number=api_finding.line_number,
-                    cwe_id=api_finding.cwe_id,
-                    recommendation=api_finding.recommendation,
-                    references=api_finding.references,
-                    confidence=api_finding.confidence,
-                    llm_enriched=False,
+                findings.append(
+                    HybridFinding(
+                        finding_id=api_finding.finding_id,
+                        source_tool="api-security",
+                        severity=normalize_severity(api_finding.severity),
+                        category="security",
+                        title=api_finding.title,
+                        description=api_finding.description,
+                        file_path=api_finding.file_path,
+                        line_number=api_finding.line_number,
+                        cwe_id=api_finding.cwe_id,
+                        recommendation=api_finding.recommendation,
+                        references=api_finding.references,
+                        confidence=api_finding.confidence,
+                        llm_enriched=False,
+                    )
                 )
-                findings.append(finding)
         elif isinstance(api_result, list):
-            # Fallback for legacy format
             for api_finding in api_result:
-                finding = HybridFinding(
-                    finding_id=f"api-security-{api_finding.get('id', 'unknown')}",
-                    source_tool="api-security",
-                    severity=normalize_severity(api_finding.get("severity", "medium")),
-                    category="security",
-                    title=api_finding.get("title", "API Security Issue"),
-                    description=api_finding.get("description", ""),
-                    file_path=api_finding.get("file_path", target_path),
-                    line_number=api_finding.get("line_number"),
-                    cwe_id=api_finding.get("cwe_id"),
-                    recommendation=api_finding.get("recommendation", ""),
-                    references=api_finding.get("references", []),
-                    confidence=api_finding.get("confidence", 0.85),
-                    llm_enriched=False,
+                findings.append(
+                    HybridFinding(
+                        finding_id=f"api-security-{api_finding.get('id', 'unknown')}",
+                        source_tool="api-security",
+                        severity=normalize_severity(api_finding.get("severity", "medium")),
+                        category="security",
+                        title=api_finding.get("title", "API Security Issue"),
+                        description=api_finding.get("description", ""),
+                        file_path=api_finding.get("file_path", target_path),
+                        line_number=api_finding.get("line_number"),
+                        cwe_id=api_finding.get("cwe_id"),
+                        recommendation=api_finding.get("recommendation", ""),
+                        references=api_finding.get("references", []),
+                        confidence=api_finding.get("confidence", 0.85),
+                        llm_enriched=False,
+                    )
                 )
-                findings.append(finding)
+        return findings
 
-    except Exception as e:
-        logger.error(f"❌ API Security scan failed: {e}")
-
-    return findings
+    return run_scanner_guarded("API Security", _scan, logger)
 
 
 def _discover_openapi_spec(target_path: str, logger: logging.Logger) -> str | None:
@@ -296,121 +294,100 @@ def run_dast(
     Returns:
         List of ``HybridFinding`` objects (empty list on error or no findings).
     """
-    findings: list[HybridFinding] = []
 
-    # If no URL provided, try to auto-discover an OpenAPI spec
-    openapi_spec: str | None = None
-    if not dast_target_url:
-        openapi_spec = _discover_openapi_spec(target_path, logger)
-        if not openapi_spec:
-            logger.info("   DAST: No target URL or OpenAPI spec found, skipping")
-            return findings
-        # Use a placeholder URL; the orchestrator will derive endpoints from spec
-        dast_target_url = config.get("dast_fallback_url", "http://localhost:8080")
-        logger.info("   DAST: Using discovered OpenAPI spec with fallback URL %s", dast_target_url)
+    def _scan() -> list[HybridFinding]:
+        findings: list[HybridFinding] = []
+        openapi_spec = None
+        url = dast_target_url
+        if not url:
+            openapi_spec = _discover_openapi_spec(target_path, logger)
+            if not openapi_spec:
+                logger.info("   DAST: No target URL or OpenAPI spec found, skipping")
+                return findings
+            url = config.get("dast_fallback_url", "http://localhost:8080")
+            logger.info("   DAST: Using discovered OpenAPI spec with fallback URL %s", url)
 
-    try:
         dast_result = orchestrator.scan(
-            target_url=dast_target_url,
+            target_url=url,
             openapi_spec=openapi_spec or config.get("openapi_spec"),
             output_dir=config.get("dast_output_dir"),
         )
 
-        # Convert aggregated findings from DASTScanResult to HybridFinding
         for idx, agg in enumerate(dast_result.aggregated_findings):
             source_agent = agg.get("source", "dast")
             raw = agg.get("raw", {})
-
-            # Extract CWE/CVE from Nuclei classification if available
             classification = raw.get("info", {}).get("classification", {}) if isinstance(raw, dict) else {}
             cwe_id = classification.get("cwe-id")
             cve_id = classification.get("cve-id")
-
-            finding = HybridFinding(
-                finding_id=f"dast-{source_agent}-{idx}",
-                source_tool=f"dast-{source_agent}",
-                severity=normalize_severity(agg.get("severity", "medium")),
-                category="dast",
-                title=agg.get("name", "DAST Finding"),
-                description=agg.get("description", ""),
-                file_path=agg.get("url", dast_target_url),
-                line_number=None,
-                cwe_id=cwe_id if isinstance(cwe_id, str) else None,
-                cve_id=cve_id if isinstance(cve_id, str) else None,
-                recommendation="Review and remediate the runtime vulnerability",
-                references=[],
-                confidence=0.95,  # DAST findings are verified at runtime
-                llm_enriched=False,
+            findings.append(
+                HybridFinding(
+                    finding_id=f"dast-{source_agent}-{idx}",
+                    source_tool=f"dast-{source_agent}",
+                    severity=normalize_severity(agg.get("severity", "medium")),
+                    category="dast",
+                    title=agg.get("name", "DAST Finding"),
+                    description=agg.get("description", ""),
+                    file_path=agg.get("url", url),
+                    line_number=None,
+                    cwe_id=cwe_id if isinstance(cwe_id, str) else None,
+                    cve_id=cve_id if isinstance(cve_id, str) else None,
+                    recommendation="Review and remediate the runtime vulnerability",
+                    references=[],
+                    confidence=0.95,
+                    llm_enriched=False,
+                )
             )
-            findings.append(finding)
-
-        # Log agent health from the orchestrator result
         if dast_result.agents_failed:
             logger.warning("   DAST: Some agents failed: %s", ", ".join(dast_result.agents_failed))
+        return findings
 
-    except Exception as e:
-        logger.error("DAST orchestrator scan failed: %s", e)
-
-    return findings
+    return run_scanner_guarded("DAST", _scan, logger)
 
 
 def run_supply_chain(scanner: Any, target_path: str, logger: logging.Logger) -> list[HybridFinding]:
     """Run Supply Chain Attack Detection and convert to HybridFinding format"""
-    findings = []
 
-    try:
-        # Run Supply Chain scanner
-        # Note: SupplyChainAnalyzer.analyze_dependency_diff returns ThreatAssessment objects
+    def _scan() -> list[HybridFinding]:
+        findings: list[HybridFinding] = []
         supply_chain_result = scanner.analyze_dependency_diff()
-
-        # Convert to HybridFinding format
-        # supply_chain_result is a list of ThreatAssessment objects
         if isinstance(supply_chain_result, list):
             for sc_threat in supply_chain_result:
-                # ThreatAssessment has: package_name, ecosystem, threat_level, threat_types, evidence, recommendations
-                finding = HybridFinding(
-                    finding_id=f"supply-chain-{sc_threat.package_name}",
-                    source_tool="supply-chain",
-                    severity=normalize_severity(sc_threat.threat_level.value),
-                    category="supply-chain",
-                    title=f"Supply Chain Threat: {sc_threat.package_name} ({', '.join(sc_threat.threat_types)})",
-                    description="\n".join(sc_threat.evidence)
-                    if sc_threat.evidence
-                    else f"Detected threats: {', '.join(sc_threat.threat_types)}",
-                    file_path=sc_threat.change_info.file_path if sc_threat.change_info else target_path,
-                    line_number=None,
-                    cwe_id=None,
-                    recommendation="\n".join(sc_threat.recommendations) if sc_threat.recommendations else "",
-                    references=sc_threat.similar_legitimate_packages if sc_threat.similar_legitimate_packages else [],
-                    confidence=0.95,  # Supply chain threats are highly confident when detected
-                    llm_enriched=False,
+                findings.append(
+                    HybridFinding(
+                        finding_id=f"supply-chain-{sc_threat.package_name}",
+                        source_tool="supply-chain",
+                        severity=normalize_severity(sc_threat.threat_level.value),
+                        category="supply-chain",
+                        title=f"Supply Chain Threat: {sc_threat.package_name} ({', '.join(sc_threat.threat_types)})",
+                        description="\n".join(sc_threat.evidence)
+                        if sc_threat.evidence
+                        else f"Detected threats: {', '.join(sc_threat.threat_types)}",
+                        file_path=sc_threat.change_info.file_path if sc_threat.change_info else target_path,
+                        line_number=None,
+                        cwe_id=None,
+                        recommendation="\n".join(sc_threat.recommendations) if sc_threat.recommendations else "",
+                        references=sc_threat.similar_legitimate_packages if sc_threat.similar_legitimate_packages else [],
+                        confidence=0.95,
+                        llm_enriched=False,
+                    )
                 )
-                findings.append(finding)
+        return findings
 
-    except Exception as e:
-        logger.error(f"❌ Supply Chain scan failed: {e}")
-
-    return findings
+    return run_scanner_guarded("Supply Chain", _scan, logger)
 
 
 def run_fuzzing(scanner: Any, target_path: str, logger: logging.Logger) -> list[HybridFinding]:
-    """Run Intelligent Fuzzing Engine and convert to HybridFinding format.
+    """Run Intelligent Fuzzing Engine and convert to HybridFinding format."""
 
-    Discovers Python files with parseable functions and fuzzes them
-    using FuzzingEngine.fuzz_function().
-    """
-    findings = []
-
-    try:
+    def _scan() -> list[HybridFinding]:
         import glob as glob_mod
 
-        # Discover Python files to fuzz (focus on security-sensitive patterns)
+        findings: list[HybridFinding] = []
         py_files = glob_mod.glob(os.path.join(target_path, "**", "*.py"), recursive=True)
         if not py_files:
             logger.info("   ℹ️  No Python files found for fuzzing")
             return findings
 
-        # Fuzz up to 5 files to keep duration reasonable
         fuzz_targets = py_files[:5]
         for py_file in fuzz_targets:
             rel_path = os.path.relpath(py_file, target_path)
@@ -420,31 +397,28 @@ def run_fuzzing(scanner: Any, target_path: str, logger: logging.Logger) -> list[
                     function_name="__main__",
                     duration_minutes=1,
                 )
-                # Convert crashes from FuzzResult to HybridFinding
                 if hasattr(fuzzing_result, "crashes"):
                     for crash in fuzzing_result.crashes:
-                        finding = HybridFinding(
-                            finding_id=f"fuzz-{crash.crash_id}",
-                            source_tool="fuzzing",
-                            severity=normalize_severity(getattr(crash, "severity", "medium")),
-                            category="security",
-                            title=f"Fuzzing crash in {rel_path}: {crash.crash_type}",
-                            description=f"Crash type: {crash.crash_type}\nStack trace: {crash.stack_trace[:500]}",
-                            file_path=rel_path,
-                            cwe_id=getattr(crash, "cwe", None),
-                            recommendation="Review and fix the crash-inducing input handling",
-                            confidence=1.0 if crash.reproducible else 0.7,
-                            llm_enriched=False,
+                        findings.append(
+                            HybridFinding(
+                                finding_id=f"fuzz-{crash.crash_id}",
+                                source_tool="fuzzing",
+                                severity=normalize_severity(getattr(crash, "severity", "medium")),
+                                category="security",
+                                title=f"Fuzzing crash in {rel_path}: {crash.crash_type}",
+                                description=f"Crash type: {crash.crash_type}\nStack trace: {crash.stack_trace[:500]}",
+                                file_path=rel_path,
+                                cwe_id=getattr(crash, "cwe", None),
+                                recommendation="Review and fix the crash-inducing input handling",
+                                confidence=1.0 if crash.reproducible else 0.7,
+                                llm_enriched=False,
+                            )
                         )
-                        findings.append(finding)
             except Exception as e:
-                logger.debug(f"   Fuzzing {rel_path} skipped: {e}")
-                continue
+                logger.debug("   Fuzzing %s skipped: %s", rel_path, e)
+        return findings
 
-    except Exception as e:
-        logger.error(f"❌ Fuzzing failed: {e}")
-
-    return findings
+    return run_scanner_guarded("Fuzzing", _scan, logger)
 
 
 def run_threat_intel(enricher: Any, findings: list[HybridFinding], logger: logging.Logger) -> list[HybridFinding]:
@@ -540,75 +514,63 @@ def run_runtime_security(
     monitor: Any, target_path: str, logger: logging.Logger, monitoring_duration: int
 ) -> list[HybridFinding]:
     """Run Container Runtime Security Monitoring using Falco-based monitor_realtime()."""
-    findings = []
 
-    try:
-        logger.info(f"   🐳 Monitoring runtime security for {monitoring_duration}s...")
-
-        # Use monitor_realtime() which returns List[ThreatAlert]
-        alerts = monitor.monitor_realtime(
-            duration_seconds=monitoring_duration,
-        )
-
-        # Convert ThreatAlert objects to HybridFinding format
+    def _scan() -> list[HybridFinding]:
+        logger.info("   🐳 Monitoring runtime security for %ds...", monitoring_duration)
+        findings: list[HybridFinding] = []
+        alerts = monitor.monitor_realtime(duration_seconds=monitoring_duration)
         for alert in alerts or []:
-            finding = HybridFinding(
-                finding_id=f"runtime-{getattr(alert, 'alert_id', 'unknown')}",
-                source_tool="runtime-security",
-                severity=normalize_severity(getattr(alert, "severity", "medium")),
-                category="runtime",
-                title=getattr(alert, "title", "Runtime Security Threat"),
-                description=getattr(alert, "description", str(alert)),
-                file_path=getattr(alert, "container_id", target_path),
-                cwe_id=getattr(alert, "cwe_id", None),
-                recommendation=getattr(alert, "recommendation", "Review runtime security event"),
-                confidence=0.9,
-                llm_enriched=False,
+            findings.append(
+                HybridFinding(
+                    finding_id=f"runtime-{getattr(alert, 'alert_id', 'unknown')}",
+                    source_tool="runtime-security",
+                    severity=normalize_severity(getattr(alert, "severity", "medium")),
+                    category="runtime",
+                    title=getattr(alert, "title", "Runtime Security Threat"),
+                    description=getattr(alert, "description", str(alert)),
+                    file_path=getattr(alert, "container_id", target_path),
+                    cwe_id=getattr(alert, "cwe_id", None),
+                    recommendation=getattr(alert, "recommendation", "Review runtime security event"),
+                    confidence=0.9,
+                    llm_enriched=False,
+                )
             )
-            findings.append(finding)
+        return findings
 
-    except Exception as e:
-        logger.error(f"❌ Runtime security monitoring failed: {e}")
-
-    return findings
+    return run_scanner_guarded("Runtime Security", _scan, logger)
 
 
 def run_regression_testing(
     tester: Any, target_path: str, current_findings: list[HybridFinding], logger: logging.Logger
 ) -> list[HybridFinding]:
     """Run Security Regression Testing to detect reappearance of fixed vulnerabilities"""
-    findings = []
 
-    try:
+    def _scan() -> list[HybridFinding]:
         logger.info("   🧪 Checking for security regressions...")
-
-        # Run all regression tests
+        findings: list[HybridFinding] = []
         results = tester.run_all_tests()
-
-        # Convert failed tests to HybridFinding format (failures indicate regressions)
         for failure in results.get("failures", []):
-            finding = HybridFinding(
-                finding_id=failure.get("test_id", "unknown"),
-                source_tool="regression-testing",
-                severity="high",  # Regressions are always high severity
-                category="regression",
-                title=f"Security Regression: {failure.get('vulnerability', 'Fixed vulnerability reappeared')}",
-                description=f"Previously fixed {failure.get('vulnerability', 'vulnerability')} has reappeared. Test output: {failure.get('output', '')}",
-                file_path=failure.get("file", target_path),
-                line_number=None,
-                cwe_id=None,
-                cve_id=None,
-                recommendation="Review and re-apply the security fix for this vulnerability",
-                references=[],
-                confidence=1.0,  # Regressions are confirmed
-                llm_enriched=False,
+            findings.append(
+                HybridFinding(
+                    finding_id=failure.get("test_id", "unknown"),
+                    source_tool="regression-testing",
+                    severity="high",
+                    category="regression",
+                    title=f"Security Regression: {failure.get('vulnerability', 'Fixed vulnerability reappeared')}",
+                    description=f"Previously fixed {failure.get('vulnerability', 'vulnerability')} has reappeared. Test output: {failure.get('output', '')}",
+                    file_path=failure.get("file", target_path),
+                    line_number=None,
+                    cwe_id=None,
+                    cve_id=None,
+                    recommendation="Review and re-apply the security fix for this vulnerability",
+                    references=[],
+                    confidence=1.0,
+                    llm_enriched=False,
+                )
             )
-            findings.append(finding)
+        return findings
 
-    except Exception as e:
-        logger.error(f"❌ Regression testing failed: {e}")
-
-    return findings
+    return run_scanner_guarded("Regression Testing", _scan, logger)
 
 
 def run_gitleaks(scanner: Any, target_path: str, logger: logging.Logger) -> list[HybridFinding]:
@@ -627,50 +589,43 @@ def run_gitleaks(scanner: Any, target_path: str, logger: logging.Logger) -> list
     Returns:
         List of ``HybridFinding`` objects (empty list on error or no findings).
     """
-    findings: list[HybridFinding] = []
 
-    try:
+    def _scan() -> list[HybridFinding]:
+        findings: list[HybridFinding] = []
         gitleaks_result = scanner.scan(str(target_path), scan_type="filesystem")
-
-        # Gracefully handle error results (e.g. gitleaks not installed)
         if gitleaks_result.get("error"):
             error_msg = gitleaks_result.get("error", "unknown")
             if error_msg == "gitleaks_not_installed":
                 logger.warning("⚠️  Gitleaks binary not installed -- skipping")
             else:
-                logger.warning(f"⚠️  Gitleaks returned error: {error_msg}")
+                logger.warning("⚠️  Gitleaks returned error: %s", error_msg)
             return findings
 
-        raw_findings = gitleaks_result.get("findings", [])
-
-        for idx, f in enumerate(raw_findings):
+        for idx, f in enumerate(gitleaks_result.get("findings", [])):
             file_path = f.get("file_path", "")
             if not file_path or file_path.strip() in ("", "."):
                 continue
-
             rule_id = f.get("rule_id", "unknown")
             description = f.get("description", "Secret detected")
-
-            finding = HybridFinding(
-                finding_id=f"gitleaks-{rule_id}-{idx}",
-                source_tool="gitleaks",
-                severity="high",  # Secrets are high severity by default
-                category="secrets",
-                title=f"Secret detected: {description}",
-                description=(
-                    f"Gitleaks detected a potential {description} secret "
-                    f"in {file_path}" + (f" (commit {f.get('commit', '')[:8]})" if f.get("commit") else "")
-                ),
-                file_path=file_path,
-                line_number=f.get("start_line"),
-                confidence=0.7,  # Pattern-based detection (not API-verified)
+            findings.append(
+                HybridFinding(
+                    finding_id=f"gitleaks-{rule_id}-{idx}",
+                    source_tool="gitleaks",
+                    severity="high",
+                    category="secrets",
+                    title=f"Secret detected: {description}",
+                    description=(
+                        f"Gitleaks detected a potential {description} secret in {file_path}"
+                        + (f" (commit {f.get('commit', '')[:8]})" if f.get("commit") else "")
+                    ),
+                    file_path=file_path,
+                    line_number=f.get("start_line"),
+                    confidence=0.7,
+                )
             )
-            findings.append(finding)
+        return findings
 
-    except Exception as e:
-        logger.error(f"❌ Gitleaks scan failed: {e}")
-
-    return findings
+    return run_scanner_guarded("Gitleaks", _scan, logger)
 
 
 __all__ = [

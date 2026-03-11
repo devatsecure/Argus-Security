@@ -32,13 +32,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from tenacity import (
-    before_sleep_log,
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
+from tenacity import before_sleep_log, retry
+
+try:
+    from utils.retry_policies import LLM_RETRY, LLM_STOP, LLM_WAIT
+except ModuleNotFoundError:
+    from scripts.utils.retry_policies import LLM_RETRY, LLM_STOP, LLM_WAIT
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -604,9 +603,9 @@ def generate_sarif(findings, repo_path, metrics=None):
 
 
 @retry(
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=4, max=10),
-    retry=retry_if_exception_type((ConnectionError, TimeoutError)),
+    stop=LLM_STOP,
+    wait=LLM_WAIT,
+    retry=LLM_RETRY,
     before_sleep=before_sleep_log(logger, logging.WARNING),
     reraise=True,
 )
@@ -1771,257 +1770,193 @@ def _run_reporting(ctx: AuditContext, findings: list, report_file: Any) -> tuple
     return blocker_count, suggestion_count
 
 
+def _run_multi_agent_audit(ctx, config, repo_path, review_type):
+    """Run multi-agent sequential audit path: 7 agents, report, enrichment, SARIF/JSON, fail-on."""
+    report = run_multi_agent_sequential(
+        repo_path,
+        config,
+        review_type,
+        ctx.client,
+        ctx.provider,
+        ctx.model,
+        ctx.max_tokens,
+        ctx.files,
+        ctx.metrics,
+        ctx.circuit_breaker,
+        threat_model=ctx.threat_model,
+    )
+    report_dir = Path(repo_path) / ".argus/reviews"
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_file = report_dir / f"{review_type}-report.md"
+    with open(report_file, "w") as f:
+        f.write(report)
+    print(f"✅ Multi-agent audit complete! Report saved to: {report_file}")
+    findings = parse_findings_from_report(report)
+    print("\n🔬 Running enrichment pipeline...")
+    _run_license_scoring(config, repo_path)
+    findings, enrichment_meta = _run_enrichment_pipeline(findings, config, repo_path, ctx.metrics)
+    json_output_meta = {"enrichment": enrichment_meta} if enrichment_meta else {}
+    sarif = generate_sarif(findings, repo_path, ctx.metrics)
+    sarif_file = report_dir / "results.sarif"
+    with open(sarif_file, "w") as f:
+        json.dump(sarif, f, indent=2)
+    print(f"📄 SARIF saved to: {sarif_file}")
+    json_output = {
+        "version": "2.1.0",
+        "mode": "multi-agent-sequential",
+        "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "repository": os.environ.get("GITHUB_REPOSITORY", "unknown"),
+        "commit": os.environ.get("GITHUB_SHA", "unknown"),
+        "provider": ctx.provider,
+        "model": ctx.model,
+        "summary": ctx.metrics.metrics,
+        "findings": findings,
+        **json_output_meta,
+    }
+    json_file = report_dir / "results.json"
+    with open(json_file, "w") as f:
+        json.dump(json_output, f, indent=2)
+    print(f"📊 JSON saved to: {json_file}")
+    ctx.metrics.finalize()
+    ctx.metrics.save(report_dir / "metrics.json")
+    blocker_count = ctx.metrics.metrics["findings"]["critical"] + ctx.metrics.metrics["findings"]["high"]
+    suggestion_count = ctx.metrics.metrics["findings"]["medium"] + ctx.metrics.metrics["findings"]["low"]
+    print("\n📊 Final Results:")
+    print(f"   Critical: {ctx.metrics.metrics['findings']['critical']}")
+    print(f"   High: {ctx.metrics.metrics['findings']['high']}")
+    print(f"   Medium: {ctx.metrics.metrics['findings']['medium']}")
+    print(f"   Low: {ctx.metrics.metrics['findings']['low']}")
+    print(f"\n💰 Total Cost: ${ctx.metrics.metrics['cost_usd']:.2f}")
+    print(f"⏱️  Total Duration: {ctx.metrics.metrics['duration_seconds']}s")
+    print("🤖 Mode: Multi-Agent Sequential (7 agents)")
+    if any(ctx.metrics.metrics["exploitability"].values()):
+        print("\n⚠️  Exploitability:")
+        if ctx.metrics.metrics["exploitability"]["trivial"] > 0:
+            print(f"   ⚠️  Trivial: {ctx.metrics.metrics['exploitability']['trivial']}")
+        if ctx.metrics.metrics["exploitability"]["moderate"] > 0:
+            print(f"   🟨 Moderate: {ctx.metrics.metrics['exploitability']['moderate']}")
+        if ctx.metrics.metrics["exploitability"]["complex"] > 0:
+            print(f"   🟦 Complex: {ctx.metrics.metrics['exploitability']['complex']}")
+        if ctx.metrics.metrics["exploitability"]["theoretical"] > 0:
+            print(f"   ⬜ Theoretical: {ctx.metrics.metrics['exploitability']['theoretical']}")
+    if ctx.metrics.metrics["exploit_chains_found"] > 0:
+        print(f"   ⛓️  Exploit Chains: {ctx.metrics.metrics['exploit_chains_found']}")
+    if ctx.metrics.metrics["tests_generated"] > 0:
+        print(f"   🧪 Tests Generated: {ctx.metrics.metrics['tests_generated']}")
+    try:
+        validation_summary = output_validator.get_validation_summary()  # noqa: F821
+    except NameError:
+        validation_summary = {}
+    try:
+        timeout_summary = timeout_manager.get_summary()  # noqa: F821
+    except NameError:
+        timeout_summary = {}
+    if validation_summary.get("total_validations", 0) > 0:
+        print("\n📋 Output Validation:")
+        print(f"   Valid outputs: {validation_summary['valid_outputs']}/{validation_summary['total_validations']}")
+        if validation_summary.get("total_warnings", 0) > 0:
+            print(f"   ⚠️  Warnings: {validation_summary['total_warnings']}")
+        if validation_summary.get("invalid_outputs", 0) > 0:
+            print(f"   ❌ Invalid: {validation_summary['invalid_outputs']}")
+    if timeout_summary.get("total_executions", 0) > 0:
+        print("\n⏱️  Timeout Management:")
+        print(f"   Completed: {timeout_summary['completed']}/{timeout_summary['total_executions']}")
+        print(f"   Avg duration: {timeout_summary['avg_duration']:.1f}s")
+        if timeout_summary.get("timeout_exceeded", 0) > 0:
+            print(f"   ⚠️  Timeouts exceeded: {timeout_summary['timeout_exceeded']}")
+    print("completed=true")
+    print(f"blockers={blocker_count}")
+    print(f"suggestions={suggestion_count}")
+    print(f"report-path={report_file}")
+    print(f"sarif-path={sarif_file}")
+    print(f"json-path={json_file}")
+    print(f"cost-estimate={ctx.metrics.metrics['cost_usd']:.4f}")
+    print(f"files-analyzed={ctx.metrics.metrics['files_reviewed']}")
+    print(f"duration-seconds={ctx.metrics.metrics['duration_seconds']}")
+    fail_on = config.get("fail_on", "")
+    should_fail = False
+    if fail_on:
+        print(f"\n🚦 Checking fail conditions: {fail_on}")
+        conditions = [c.strip() for c in fail_on.split(",") if c.strip()]
+        for condition in conditions:
+            if ":" in condition:
+                category, severity = condition.split(":", 1)
+                category = category.strip().lower()
+                severity = severity.strip().lower()
+                if category == "any":
+                    if (
+                        severity in ctx.metrics.metrics["findings"]
+                        and ctx.metrics.metrics["findings"][severity] > 0
+                    ):
+                        print(f"   ❌ FAIL: Found {ctx.metrics.metrics['findings'][severity]} {severity} issues")
+                        should_fail = True
+                else:
+                    matching_findings = [
+                        f for f in findings if f["category"] == category and f["severity"] == severity
+                    ]
+                    if matching_findings:
+                        print(f"   ❌ FAIL: Found {len(matching_findings)} {category}:{severity} issues")
+                        should_fail = True
+    if should_fail:
+        print("\n❌ Failing due to fail-on conditions")
+        sys.exit(1)
+    return blocker_count, suggestion_count, ctx.metrics
+
+
+def _run_single_path_audit(ctx, config):
+    """Run single-agent 3-phase audit: research, planning, deep analysis, phase3, reporting."""
+    print("🤖 Mode: Single-Agent (3-Phase Process)")
+    print("   Phase 1: Research & File Selection")
+    print("   Phase 2: Planning & Focus Area Identification")
+    print("   Phase 3: Detailed Implementation Analysis")
+    try:
+        research_data = _run_phase1_research(ctx)
+        priority_files = [f for f in ctx.files if f["path"] in research_data.get("high_priority_files", [])]
+        if not priority_files:
+            priority_files = ctx.files[:10]
+        plan_summary = _run_phase2_planning(ctx, research_data, priority_files)
+        findings_dict = {}
+        deep_analysis_findings, findings_dict = _run_phase2_deep_analysis(ctx, findings_dict)
+        findings, report, report_file = _run_phase3_analysis(ctx, plan_summary, priority_files, findings_dict)
+        blocker_count, suggestion_count = _run_reporting(ctx, findings, report_file)
+        return blocker_count, suggestion_count, ctx.metrics
+    except Exception as e:
+        print(f"❌ Error during AI analysis: {e}")
+        print(f"Error type: {type(e).__name__}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+
+
 def run_audit(repo_path, config, review_type="audit"):
     """Run AI-powered code audit with multi-LLM support.
 
-    Thin orchestrator that delegates to extracted phase functions:
-      _setup_audit          -> provider/model/phase-gate/threat-model/file loading
-      _run_scanner_phase    -> heuristic + Semgrep SAST
-      _run_phase1_research  -> LLM research pass
-      _run_phase2_planning  -> LLM planning pass
-      _run_phase2_deep_analysis -> deep analysis engine
-      _run_phase3_analysis  -> LLM detailed analysis + finding merge
-      _run_reporting        -> enrichment, SARIF/JSON output, fail-on checks
-
-    The multi-agent branch (sequential mode) is kept inline because it is
-    an entirely separate code-path with its own reporting logic.
+    Thin orchestrator that delegates to:
+      _setup_audit, _run_scanner_phase, then either
+      _run_multi_agent_audit (sequential) or _run_single_path_audit (single-agent).
     """
 
-    # -- Setup: provider, model, circuit breaker, threat model, files --
     ctx = _setup_audit(repo_path, config, review_type)
-
     if not ctx.files:
         print("⚠️  No files to analyze")
         return 0, 0, ctx.metrics
-
-    # Record file metrics
     for f in ctx.files:
         ctx.metrics.record_file(f["lines"])
-
-    # -- Scanner phase: heuristic + Semgrep --
     heuristic_results, semgrep_results = _run_scanner_phase(ctx)
-
-    # -- Cost estimation --
     cost_limit = float(config.get("cost_limit", 1.0))
     estimated_cost, est_input, est_output = estimate_cost(ctx.files, ctx.max_tokens, ctx.provider)
     if ctx.provider == "ollama":
         print("💰 Estimated cost: $0.00 (local Ollama)")
     else:
         print(f"💰 Estimated cost: ${estimated_cost:.2f}")
-
     if estimated_cost > cost_limit and ctx.provider != "ollama":
         print(f"⚠️  Estimated cost ${estimated_cost:.2f} exceeds limit ${cost_limit:.2f}")
         print("💡 Reduce max-files, use path filters, or increase cost-limit")
         sys.exit(2)
-
-    # -- Multi-agent branch (kept inline — separate code-path) --
     multi_agent_mode = config.get("multi_agent_mode", "single")
-
     if multi_agent_mode == "sequential":
-        # Run multi-agent sequential review (with threat model context)
-        report = run_multi_agent_sequential(
-            repo_path,
-            config,
-            review_type,
-            ctx.client,
-            ctx.provider,
-            ctx.model,
-            ctx.max_tokens,
-            ctx.files,
-            ctx.metrics,
-            ctx.circuit_breaker,
-            threat_model=ctx.threat_model,  # Pass threat model to agents
-        )
-
-        # Skip to saving reports (multi-agent handles its own analysis)
-        report_dir = Path(repo_path) / ".argus/reviews"
-        report_dir.mkdir(parents=True, exist_ok=True)
-
-        report_file = report_dir / f"{review_type}-report.md"
-        with open(report_file, "w") as f:
-            f.write(report)
-
-        print(f"✅ Multi-agent audit complete! Report saved to: {report_file}")
-
-        # Parse findings from final orchestrated report
-        findings = parse_findings_from_report(report)
-
-        # -- v2.0 Enrichment Pipeline --
-        print("\n🔬 Running enrichment pipeline...")
-        _run_license_scoring(config, repo_path)
-        findings, enrichment_meta = _run_enrichment_pipeline(findings, config, repo_path, ctx.metrics)
-        json_output_meta = {"enrichment": enrichment_meta} if enrichment_meta else {}
-
-        # Generate SARIF with metrics
-        sarif = generate_sarif(findings, repo_path, ctx.metrics)
-        sarif_file = report_dir / "results.sarif"
-        with open(sarif_file, "w") as f:
-            json.dump(sarif, f, indent=2)
-        print(f"📄 SARIF saved to: {sarif_file}")
-
-        # Generate structured JSON
-        json_output = {
-            "version": "2.1.0",
-            "mode": "multi-agent-sequential",
-            "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-            "repository": os.environ.get("GITHUB_REPOSITORY", "unknown"),
-            "commit": os.environ.get("GITHUB_SHA", "unknown"),
-            "provider": ctx.provider,
-            "model": ctx.model,
-            "summary": ctx.metrics.metrics,
-            "findings": findings,
-            **json_output_meta,
-        }
-
-        json_file = report_dir / "results.json"
-        with open(json_file, "w") as f:
-            json.dump(json_output, f, indent=2)
-        print(f"📊 JSON saved to: {json_file}")
-
-        # Save metrics
-        metrics_file = report_dir / "metrics.json"
-        ctx.metrics.finalize()
-        ctx.metrics.save(metrics_file)
-
-        # Count blockers and suggestions
-        blocker_count = ctx.metrics.metrics["findings"]["critical"] + ctx.metrics.metrics["findings"]["high"]
-        suggestion_count = ctx.metrics.metrics["findings"]["medium"] + ctx.metrics.metrics["findings"]["low"]
-
-        print("\n📊 Final Results:")
-        print(f"   Critical: {ctx.metrics.metrics['findings']['critical']}")
-        print(f"   High: {ctx.metrics.metrics['findings']['high']}")
-        print(f"   Medium: {ctx.metrics.metrics['findings']['medium']}")
-        print(f"   Low: {ctx.metrics.metrics['findings']['low']}")
-        print(f"\n💰 Total Cost: ${ctx.metrics.metrics['cost_usd']:.2f}")
-        print(f"⏱️  Total Duration: {ctx.metrics.metrics['duration_seconds']}s")
-        print("🤖 Mode: Multi-Agent Sequential (7 agents)")
-
-        # Display exploitability metrics
-        if any(ctx.metrics.metrics["exploitability"].values()):
-            print("\n⚠️  Exploitability:")
-            if ctx.metrics.metrics["exploitability"]["trivial"] > 0:
-                print(f"   ⚠️  Trivial: {ctx.metrics.metrics['exploitability']['trivial']}")
-            if ctx.metrics.metrics["exploitability"]["moderate"] > 0:
-                print(f"   🟨 Moderate: {ctx.metrics.metrics['exploitability']['moderate']}")
-            if ctx.metrics.metrics["exploitability"]["complex"] > 0:
-                print(f"   🟦 Complex: {ctx.metrics.metrics['exploitability']['complex']}")
-            if ctx.metrics.metrics["exploitability"]["theoretical"] > 0:
-                print(f"   ⬜ Theoretical: {ctx.metrics.metrics['exploitability']['theoretical']}")
-
-        if ctx.metrics.metrics["exploit_chains_found"] > 0:
-            print(f"   ⛓️  Exploit Chains: {ctx.metrics.metrics['exploit_chains_found']}")
-
-        if ctx.metrics.metrics["tests_generated"] > 0:
-            print(f"   🧪 Tests Generated: {ctx.metrics.metrics['tests_generated']}")
-
-        # Display validation and timeout metrics (Medium Priority features)
-        try:
-            validation_summary = output_validator.get_validation_summary()  # noqa: F821
-        except NameError:
-            validation_summary = {}
-        try:
-            timeout_summary = timeout_manager.get_summary()  # noqa: F821
-        except NameError:
-            timeout_summary = {}
-
-        if validation_summary.get("total_validations", 0) > 0:
-            print("\n📋 Output Validation:")
-            print(f"   Valid outputs: {validation_summary['valid_outputs']}/{validation_summary['total_validations']}")
-            if validation_summary.get("total_warnings", 0) > 0:
-                print(f"   ⚠️  Warnings: {validation_summary['total_warnings']}")
-            if validation_summary.get("invalid_outputs", 0) > 0:
-                print(f"   ❌ Invalid: {validation_summary['invalid_outputs']}")
-
-        if timeout_summary.get("total_executions", 0) > 0:
-            print("\n⏱️  Timeout Management:")
-            print(f"   Completed: {timeout_summary['completed']}/{timeout_summary['total_executions']}")
-            print(f"   Avg duration: {timeout_summary['avg_duration']:.1f}s")
-            if timeout_summary.get("timeout_exceeded", 0) > 0:
-                print(f"   ⚠️  Timeouts exceeded: {timeout_summary['timeout_exceeded']}")
-
-        # Output for GitHub Actions
-        print("completed=true")
-        print(f"blockers={blocker_count}")
-        print(f"suggestions={suggestion_count}")
-        print(f"report-path={report_file}")
-        print(f"sarif-path={sarif_file}")
-        print(f"json-path={json_file}")
-        print(f"cost-estimate={ctx.metrics.metrics['cost_usd']:.4f}")
-        print(f"files-analyzed={ctx.metrics.metrics['files_reviewed']}")
-        print(f"duration-seconds={ctx.metrics.metrics['duration_seconds']}")
-
-        # Check fail-on conditions
-        fail_on = config.get("fail_on", "")
-        should_fail = False
-
-        if fail_on:
-            print(f"\n🚦 Checking fail conditions: {fail_on}")
-            conditions = [c.strip() for c in fail_on.split(",") if c.strip()]
-
-            for condition in conditions:
-                if ":" in condition:
-                    category, severity = condition.split(":", 1)
-                    category = category.strip().lower()
-                    severity = severity.strip().lower()
-
-                    if category == "any":
-                        if (
-                            severity in ctx.metrics.metrics["findings"]
-                            and ctx.metrics.metrics["findings"][severity] > 0
-                        ):
-                            print(f"   ❌ FAIL: Found {ctx.metrics.metrics['findings'][severity]} {severity} issues")
-                            should_fail = True
-                    else:
-                        matching_findings = [
-                            f for f in findings if f["category"] == category and f["severity"] == severity
-                        ]
-                        if matching_findings:
-                            print(f"   ❌ FAIL: Found {len(matching_findings)} {category}:{severity} issues")
-                            should_fail = True
-
-        if should_fail:
-            print("\n❌ Failing due to fail-on conditions")
-            sys.exit(1)
-
-        return blocker_count, suggestion_count, ctx.metrics
-
-    # -- Single-agent mode with DISCRETE PHASES --
-    print("🤖 Mode: Single-Agent (3-Phase Process)")
-    print("   Phase 1: Research & File Selection")
-    print("   Phase 2: Planning & Focus Area Identification")
-    print("   Phase 3: Detailed Implementation Analysis")
-
-    try:
-        # Phase 1: Research
-        research_data = _run_phase1_research(ctx)
-
-        # Compute priority files for Phases 2 & 3
-        priority_files = [f for f in ctx.files if f["path"] in research_data.get("high_priority_files", [])]
-        if not priority_files:
-            priority_files = ctx.files[:10]  # Fallback
-
-        # Phase 2: Planning
-        plan_summary = _run_phase2_planning(ctx, research_data, priority_files)
-
-        # Phase 2.7: Deep Analysis
-        findings_dict = {}  # Initialize findings dict for Phase 2.7
-        deep_analysis_findings, findings_dict = _run_phase2_deep_analysis(ctx, findings_dict)
-
-        # Phase 3: Detailed Analysis
-        findings, report, report_file = _run_phase3_analysis(ctx, plan_summary, priority_files, findings_dict)
-
-        # Reporting: enrichment, SARIF/JSON, fail-on checks
-        blocker_count, suggestion_count = _run_reporting(ctx, findings, report_file)
-
-        return blocker_count, suggestion_count, ctx.metrics
-
-    except Exception as e:
-        print(f"❌ Error during AI analysis: {e}")
-        print(f"Error type: {type(e).__name__}")
-        import traceback
-
-        traceback.print_exc()
-        sys.exit(1)
+        return _run_multi_agent_audit(ctx, config, repo_path, review_type)
+    return _run_single_path_audit(ctx, config)
 
 
 if __name__ == "__main__":

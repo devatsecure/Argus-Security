@@ -9,10 +9,12 @@ from unittest.mock import MagicMock
 
 import pytest
 
-# Add scripts directory to path for imports
-scripts_dir = Path(__file__).parent.parent / "scripts"
-if str(scripts_dir) not in sys.path:
-    sys.path.insert(0, str(scripts_dir))
+# Add repo root and scripts directory to path for imports
+_repo_root = Path(__file__).resolve().parent.parent
+scripts_dir = _repo_root / "scripts"
+for _path in (str(_repo_root), str(scripts_dir)):
+    if _path not in sys.path:
+        sys.path.insert(0, _path)
 
 
 @pytest.fixture

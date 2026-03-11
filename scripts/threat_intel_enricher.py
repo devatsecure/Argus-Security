@@ -28,12 +28,12 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
-from tenacity import (
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
+from tenacity import retry
+
+try:
+    from utils.retry_policies import HTTP_STOP, HTTP_WAIT, http_retry_if
+except ModuleNotFoundError:
+    from scripts.utils.retry_policies import HTTP_STOP, HTTP_WAIT, http_retry_if
 
 logger = logging.getLogger(__name__)
 
@@ -393,11 +393,7 @@ class ThreatIntelEnricher:
 
         return context
 
-    @retry(
-        wait=wait_exponential(multiplier=1, min=2, max=60),
-        stop=stop_after_attempt(3),
-        retry=retry_if_exception_type((urllib.error.URLError, urllib.error.HTTPError, ConnectionError, TimeoutError)),
-    )
+    @retry(wait=HTTP_WAIT, stop=HTTP_STOP, retry=http_retry_if())
     def _fetch_kev_data(self) -> dict:
         """Fetch KEV data from CISA API with retry logic"""
         logger.info("Fetching CISA KEV catalog...")
@@ -457,11 +453,7 @@ class ThreatIntelEnricher:
 
         return None
 
-    @retry(
-        wait=wait_exponential(multiplier=1, min=2, max=60),
-        stop=stop_after_attempt(3),
-        retry=retry_if_exception_type((urllib.error.URLError, urllib.error.HTTPError, ConnectionError, TimeoutError)),
-    )
+    @retry(wait=HTTP_WAIT, stop=HTTP_STOP, retry=http_retry_if())
     def _fetch_epss_data(self, cve_id: str) -> dict:
         """Fetch EPSS data from FIRST API with retry logic"""
         self._rate_limit("epss")
@@ -514,11 +506,7 @@ class ThreatIntelEnricher:
 
         return None
 
-    @retry(
-        wait=wait_exponential(multiplier=1, min=2, max=60),
-        stop=stop_after_attempt(3),
-        retry=retry_if_exception_type((urllib.error.URLError, ConnectionError, TimeoutError)),
-    )
+    @retry(wait=HTTP_WAIT, stop=HTTP_STOP, retry=http_retry_if())
     def _fetch_nvd_data(self, cve_id: str) -> dict:
         """Fetch NVD data from API with retry logic"""
         self._rate_limit("nvd")
@@ -635,11 +623,7 @@ class ThreatIntelEnricher:
             "exploit_sources": exploit_sources,
         }
 
-    @retry(
-        wait=wait_exponential(multiplier=1, min=2, max=60),
-        stop=stop_after_attempt(3),
-        retry=retry_if_exception_type((urllib.error.URLError, urllib.error.HTTPError, ConnectionError, TimeoutError)),
-    )
+    @retry(wait=HTTP_WAIT, stop=HTTP_STOP, retry=http_retry_if())
     def _fetch_github_advisories(self, cve_id: str) -> list[dict]:
         """Fetch GitHub advisories from API with retry logic"""
         self._rate_limit("github")
@@ -704,11 +688,7 @@ class ThreatIntelEnricher:
 
         return []
 
-    @retry(
-        wait=wait_exponential(multiplier=1, min=2, max=60),
-        stop=stop_after_attempt(3),
-        retry=retry_if_exception_type((urllib.error.URLError, ConnectionError, TimeoutError)),
-    )
+    @retry(wait=HTTP_WAIT, stop=HTTP_STOP, retry=http_retry_if())
     def _fetch_osv_data(self, cve_id: str) -> list[dict]:
         """Fetch OSV data from API with retry logic"""
         self._rate_limit("osv")

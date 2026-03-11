@@ -1,6 +1,10 @@
 """
 Integration tests for Phase 1 features
-Tests that modules work together in actual execution flow
+Tests that modules work together in actual execution flow.
+
+NOTE: Fixtures that write vulnerable code to disk (e.g. sql_injection.py, xss_vuln.js)
+are for scanner tests only. That content is vulnerable-by-design and must never
+be executed with untrusted input. When adding or changing such fixtures, keep this in mind.
 """
 
 import os
@@ -21,7 +25,11 @@ class TestPhase1Integration:
 
     @pytest.fixture
     def sample_vulnerable_repo(self, tmp_path):
-        """Create a temporary repo with known vulnerabilities for testing"""
+        """Create a temporary repo with known vulnerabilities for testing.
+
+        Content written to disk is vulnerable-by-design for scanners only;
+        do not execute with untrusted input.
+        """
         repo_dir = tmp_path / "vulnerable_repo"
         repo_dir.mkdir()
 

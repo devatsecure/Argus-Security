@@ -35,7 +35,10 @@ import tempfile
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-from utils.io import validate_path_safe
+try:
+    from utils.io import validate_path_safe
+except ModuleNotFoundError:
+    from scripts.utils.io import validate_path_safe
 
 logger = logging.getLogger(__name__)
 
