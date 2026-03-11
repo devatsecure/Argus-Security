@@ -22,8 +22,8 @@ import pytest
 TEST_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(TEST_ROOT))
 
-from utils.assertions import security_assertions
-from utils.fixtures import fixture_manager
+from tests.utils.assertions import security_assertions
+from tests.utils.fixtures import fixture_manager
 
 # Add scripts directory to path
 SCRIPTS_DIR = Path(__file__).parent.parent.parent / "scripts"

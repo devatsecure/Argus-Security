@@ -36,9 +36,9 @@ _semgrep_available = _is_semgrep_functional()
 TEST_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(TEST_ROOT))
 
-from utils.assertions import security_assertions
-from utils.fixtures import fixture_manager, scanner_parser
-from utils.scanner_runner import scanner_runner
+from tests.utils.assertions import security_assertions
+from tests.utils.fixtures import fixture_manager, scanner_parser
+from tests.utils.scanner_runner import scanner_runner
 
 # Add scripts directory to path
 SCRIPTS_DIR = Path(__file__).parent.parent.parent / "scripts"
