@@ -203,14 +203,18 @@ These modules enrich findings after scanner results are collected. All are wired
 
 ## Audited Projects
 
-Argus has been used to scan real-world open-source projects:
+Argus has been used to scan real-world open-source projects. Table ordered by GitHub stars (descending).
 
-| Project | Findings | Key Issues |
-|---------|----------|------------|
-| [MoonshotAI/kimi-cli](https://github.com/MoonshotAI/kimi-cli) | 35 (5 high) | IDOR on session endpoints, 7 dependency CVEs |
-| [anthropics/chrome-devtools-mcp](https://github.com/anthropics/chrome-devtools-mcp) | 1 (medium) | Missing security headers |
-| [juice-shop/juice-shop](https://github.com/juice-shop/juice-shop) | 1 (high) | Unquoted XSS attribute in template |
-| DVWA | Full pentest | Comprehensive vulnerability assessment |
+| Repo | Findings | Key Issues |
+|------|----------|------------|
+| **affaan-m/everything-claude-code** | 3 Critical | Command injection (CWE-78) in `utils.js` — `commandExists()` and `runCommand()` using unsanitized `execSync` with user-controlled input |
+| **thedotmack/claude-mem** | 8 (2 Critical, 4 High) | SQL injection (dynamic query), path traversal in ObservationCompiler; command injection in ProcessManager, ReDoS in tag-stripping, missing auth on admin endpoints, resource exhaustion in token calculator |
+| **KeygraphHQ/shannon** | 18 (5 Critical, 7 High) | Command injection in tool filtering, path traversal in save-deliverable, weak TOTP validation, secret exposure in error logs, prototype pollution via YAML parsing; dangerous patterns, TOCTOU in queue validation |
+| **anthropics/chrome-devtools-mcp** | 1 (medium) | Missing security headers |
+| **DVWA** | Full pentest | Comprehensive vulnerability assessment |
+| **juice-shop/juice-shop** | 1 (high) | Unquoted XSS attribute in template |
+| **MoonshotAI/kimi-cli** | 35 (5 high) | IDOR on session endpoints, 7 dependency CVEs |
+| **OpenBMB/UltraRAG** | 31 (7 Critical, 11 High) | SQL/NoSQL injection in Milvus backend, path traversal in corpus builders, SSTI in Jinja2 prompts, command injection risk, SHA-1 usage, debug mode in production; missing auth on MCP, rate limiting, unsafe deserialization |
 
 Reports include SARIF, JSON, Markdown, and responsible disclosure templates.
 
