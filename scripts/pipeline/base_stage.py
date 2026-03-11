@@ -33,18 +33,15 @@ class BaseStage(ABC):
 
     @property
     @abstractmethod
-    def name(self) -> str:
-        ...
+    def name(self) -> str: ...
 
     @property
     @abstractmethod
-    def display_name(self) -> str:
-        ...
+    def display_name(self) -> str: ...
 
     @property
     @abstractmethod
-    def phase_number(self) -> float:
-        ...
+    def phase_number(self) -> float: ...
 
     @property
     def required_stages(self) -> list[str]:
@@ -91,9 +88,7 @@ class BaseStage(ABC):
             )
         except Exception as exc:
             duration = time.time() - start
-            logger.error(
-                "%s failed: %s", self.display_name, exc, exc_info=True
-            )
+            logger.error("%s failed: %s", self.display_name, exc, exc_info=True)
             return StageResult(
                 success=False,
                 stage_name=self.name,

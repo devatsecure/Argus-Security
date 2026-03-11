@@ -194,16 +194,20 @@ class ProjectContextDetector:
             return "nodejs"
 
         # Check for Python
-        if ((self.repo_path / "setup.py").exists() or
-            (self.repo_path / "pyproject.toml").exists() or
-            (self.repo_path / "requirements.txt").exists()):
+        if (
+            (self.repo_path / "setup.py").exists()
+            or (self.repo_path / "pyproject.toml").exists()
+            or (self.repo_path / "requirements.txt").exists()
+        ):
             self.detection_details["runtime_marker"] = "python project files"
             return "python"
 
         # Check for Java
-        if ((self.repo_path / "pom.xml").exists() or
-            (self.repo_path / "build.gradle").exists() or
-            (self.repo_path / "build.gradle.kts").exists()):
+        if (
+            (self.repo_path / "pom.xml").exists()
+            or (self.repo_path / "build.gradle").exists()
+            or (self.repo_path / "build.gradle.kts").exists()
+        ):
             self.detection_details["runtime_marker"] = "java build files"
             return "java"
 
@@ -253,7 +257,7 @@ class ProjectContextDetector:
         if is_mobile:
             detected_mobile = next(
                 (name for name, deps in self.MOBILE_FRAMEWORKS.items() if any(d in all_deps for d in deps)),
-                "unknown-mobile"
+                "unknown-mobile",
             )
             return ProjectContext(
                 type="mobile-app",
@@ -360,8 +364,11 @@ class ProjectContextDetector:
                 break
 
         # Check for CLI framework markers
-        has_cli_deps = any(dep.lower() in marker.lower() or marker.lower() in dep.lower()
-                          for dep in dependencies for marker in self.CLI_FRAMEWORKS["python"])
+        has_cli_deps = any(
+            dep.lower() in marker.lower() or marker.lower() in dep.lower()
+            for dep in dependencies
+            for marker in self.CLI_FRAMEWORKS["python"]
+        )
 
         # Determine project type
         if has_console_scripts or (has_cli_deps and not detected_framework):

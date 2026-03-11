@@ -19,6 +19,7 @@ class EnrichmentFindingInput(BaseModel):
     Finding input for enrichment.
     Must have either CVE or vulnerability ID.
     """
+
     id: str = Field(..., min_length=1, description="Finding ID")
     cve: Optional[str] = Field(default=None, pattern=r"^CVE-\d{4}-\d{4,}$", description="CVE identifier")
     cve_id: Optional[str] = Field(default=None, pattern=r"^CVE-\d{4}-\d{4,}$", description="Alt CVE field")
@@ -26,7 +27,7 @@ class EnrichmentFindingInput(BaseModel):
     severity: str = Field(default="medium", description="Severity")
     cvss: Optional[float] = Field(default=None, ge=0.0, le=10.0, description="CVSS score")
 
-    @field_validator('cve', 'cve_id')
+    @field_validator("cve", "cve_id")
     @classmethod
     def validate_cve_format(cls, v: Optional[str]) -> Optional[str]:
         """Validate CVE format if present"""
@@ -46,13 +47,10 @@ class EnrichmentInput(BaseModel):
     Input for threat intelligence enricher.
     Validates findings before enrichment.
     """
-    findings: list[dict[str, Any]] = Field(
-        ...,
-        min_length=0,
-        description="List of findings to enrich"
-    )
 
-    @field_validator('findings')
+    findings: list[dict[str, Any]] = Field(..., min_length=0, description="List of findings to enrich")
+
+    @field_validator("findings")
     @classmethod
     def validate_findings(cls, v: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Validate each finding has minimum required fields"""
@@ -69,6 +67,7 @@ class ThreatContext(BaseModel):
     Threat intelligence context for a CVE.
     Ensures all threat data has proper types.
     """
+
     cve_id: str = Field(..., min_length=1, pattern=r"^CVE-\d{4}-\d{4,}$")
     cvss_score: Optional[float] = Field(default=None, ge=0.0, le=10.0)
     cvss_severity: Optional[str] = Field(default=None)
@@ -92,7 +91,7 @@ class ThreatContext(BaseModel):
     last_updated: Optional[str] = Field(default=None)
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
 
-    @field_validator('cve_id')
+    @field_validator("cve_id")
     @classmethod
     def validate_cve_format(cls, v: str) -> str:
         """Validate CVE format"""
@@ -100,7 +99,7 @@ class ThreatContext(BaseModel):
             raise ValueError(f"Invalid CVE format: {v}")
         return v
 
-    @field_validator('cwe_ids')
+    @field_validator("cwe_ids")
     @classmethod
     def validate_cwe_formats(cls, v: list[str]) -> list[str]:
         """Validate all CWE IDs have correct format"""
@@ -115,11 +114,9 @@ class EnrichedFinding(BaseModel):
     Finding enriched with threat intelligence.
     Validates complete enrichment structure.
     """
+
     original_finding: dict[str, Any] = Field(..., description="Original finding data")
-    threat_context: Optional[dict[str, Any]] = Field(
-        default=None,
-        description="Threat intelligence context"
-    )
+    threat_context: Optional[dict[str, Any]] = Field(default=None, description="Threat intelligence context")
     original_priority: str = Field(..., min_length=1, description="Original severity/priority")
     adjusted_priority: str = Field(..., min_length=1, description="Adjusted priority")
     priority_boost_reasons: list[str] = Field(default_factory=list)
@@ -128,7 +125,7 @@ class EnrichedFinding(BaseModel):
     remediation_deadline: Optional[str] = Field(default=None)
     risk_score: float = Field(..., ge=0.0, le=10.0, description="Composite risk score")
 
-    @field_validator('threat_context')
+    @field_validator("threat_context")
     @classmethod
     def validate_threat_context(cls, v: Optional[dict[str, Any]]) -> Optional[dict[str, Any]]:
         """Validate threat context structure if present"""
@@ -139,7 +136,7 @@ class EnrichedFinding(BaseModel):
                 raise ValueError(f"Threat context validation failed: {e}") from e
         return v
 
-    @field_validator('original_finding')
+    @field_validator("original_finding")
     @classmethod
     def validate_original_finding_has_id(cls, v: dict[str, Any]) -> dict[str, Any]:
         """Ensure original finding has an ID"""
@@ -150,6 +147,7 @@ class EnrichedFinding(BaseModel):
 
 class EnrichmentMetadata(BaseModel):
     """Metadata about enrichment run"""
+
     total_enriched: int = Field(..., ge=0)
     in_kev: int = Field(default=0, ge=0)
     high_epss: int = Field(default=0, ge=0)
@@ -168,13 +166,13 @@ class EnrichmentOutput(BaseModel):
     Output from threat intelligence enricher.
     Validates all enriched findings.
     """
+
     metadata: EnrichmentMetadata = Field(..., description="Summary statistics")
     enriched_findings: list[dict[str, Any]] = Field(
-        default_factory=list,
-        description="Enriched findings with threat context"
+        default_factory=list, description="Enriched findings with threat context"
     )
 
-    @field_validator('enriched_findings')
+    @field_validator("enriched_findings")
     @classmethod
     def validate_enriched_findings(cls, v: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Validate each enriched finding"""

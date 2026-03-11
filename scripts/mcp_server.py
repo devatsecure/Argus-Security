@@ -10,6 +10,7 @@ Usage:
 
 Requires: mcp>=1.0.0 (optional dependency)
 """
+
 from __future__ import annotations
 
 import json
@@ -59,8 +60,7 @@ CWE_REMEDIATION_MAP: dict[str, str] = {
         "Never concatenate user input into SQL strings. Use an ORM where possible."
     ),
     "CWE-90": (
-        "LDAP Injection: Sanitize special characters in LDAP queries. "
-        "Use framework-provided LDAP escaping utilities."
+        "LDAP Injection: Sanitize special characters in LDAP queries. Use framework-provided LDAP escaping utilities."
     ),
     "CWE-94": (
         "Code Injection: Never pass user input to eval(), exec(), or similar. "
@@ -74,10 +74,7 @@ CWE_REMEDIATION_MAP: dict[str, str] = {
         "Broken Cryptography: Replace weak algorithms (MD5, SHA1, DES) with "
         "strong ones (SHA-256+, AES-256). Use well-tested crypto libraries."
     ),
-    "CWE-352": (
-        "CSRF: Implement anti-CSRF tokens on all state-changing requests. "
-        "Use SameSite cookie attributes."
-    ),
+    "CWE-352": ("CSRF: Implement anti-CSRF tokens on all state-changing requests. Use SameSite cookie attributes."),
     "CWE-434": (
         "Unrestricted File Upload: Validate file types, enforce size limits, "
         "store uploads outside the web root, and scan for malware."
@@ -91,8 +88,7 @@ CWE_REMEDIATION_MAP: dict[str, str] = {
         "Never redirect to user-supplied URLs without validation."
     ),
     "CWE-611": (
-        "XXE: Disable external entity processing in XML parsers. "
-        "Use defusedxml or equivalent safe parsing libraries."
+        "XXE: Disable external entity processing in XML parsers. Use defusedxml or equivalent safe parsing libraries."
     ),
     "CWE-798": (
         "Hard-coded Credentials: Remove secrets from source code. "
@@ -271,9 +267,7 @@ def evaluate_policy_gate(
     # Check high-severity cap
     high_count = severity_counts.get("high", 0)
     if high_count > max_high:
-        reasons.append(
-            f"BLOCKED: {high_count} high finding(s) exceed limit of {max_high}"
-        )
+        reasons.append(f"BLOCKED: {high_count} high finding(s) exceed limit of {max_high}")
 
     passed = len(reasons) == 0
     return {
@@ -315,11 +309,7 @@ def get_remediation(finding: Finding) -> dict[str, Any]:
         "severity": finding.severity,
         "cwe": cwe,
         "remediation": advice,
-        "references": [
-            f"https://cwe.mitre.org/data/definitions/{cwe.replace('CWE-', '')}.html"
-        ]
-        if cwe
-        else [],
+        "references": [f"https://cwe.mitre.org/data/definitions/{cwe.replace('CWE-', '')}.html"] if cwe else [],
     }
 
 
@@ -328,9 +318,7 @@ def get_remediation(finding: Finding) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def create_argus_mcp_server(
-    repo_path: str, config: dict[str, Any] | None = None
-) -> Any:
+def create_argus_mcp_server(repo_path: str, config: dict[str, Any] | None = None) -> Any:
     """Factory creates MCP server with repo context in closure.
 
     Returns None if MCP is not available.
@@ -348,9 +336,7 @@ def create_argus_mcp_server(
         The configured MCP server, or None if MCP is not installed.
     """
     if not MCP_AVAILABLE:
-        logger.warning(
-            "MCP package not installed. Install with: pip install 'mcp>=1.0.0'"
-        )
+        logger.warning("MCP package not installed. Install with: pip install 'mcp>=1.0.0'")
         return None
 
     config = config or {}
@@ -385,10 +371,7 @@ def create_argus_mcp_server(
         sev = severity.lower().strip()
         if sev not in VALID_SEVERITIES:
             return json.dumps(
-                {
-                    "error": f"Invalid severity '{severity}'. Must be one of: "
-                    f"{', '.join(sorted(VALID_SEVERITIES))}"
-                }
+                {"error": f"Invalid severity '{severity}'. Must be one of: {', '.join(sorted(VALID_SEVERITIES))}"}
             )
 
         finding = Finding(
@@ -444,14 +427,10 @@ def create_argus_mcp_server(
         try:
             findings_list = json.loads(findings_json)
         except (json.JSONDecodeError, TypeError) as exc:
-            return json.dumps(
-                {"error": f"Invalid findings_json: {exc}"}
-            )
+            return json.dumps({"error": f"Invalid findings_json: {exc}"})
 
         if not isinstance(findings_list, list):
-            return json.dumps(
-                {"error": "findings_json must be a JSON array"}
-            )
+            return json.dumps({"error": "findings_json must be a JSON array"})
 
         result = evaluate_policy_gate(stage, findings_list)
         return json.dumps(result)
@@ -471,10 +450,7 @@ def create_argus_mcp_server(
         finding = store.get_by_id(finding_id)
         if finding is None:
             return json.dumps(
-                {
-                    "error": f"Finding '{finding_id}' not found. "
-                    f"Store contains {len(store.get_all())} finding(s)."
-                }
+                {"error": f"Finding '{finding_id}' not found. Store contains {len(store.get_all())} finding(s)."}
             )
 
         result = get_remediation(finding)

@@ -145,9 +145,7 @@ class AnthropicProvider:
             text = response.content[0].text if response.content else ""
             input_tokens = getattr(response.usage, "input_tokens", 0)
             output_tokens = getattr(response.usage, "output_tokens", 0)
-            return _AnthropicResponse(
-                text=text, input_tokens=input_tokens, output_tokens=output_tokens
-            )
+            return _AnthropicResponse(text=text, input_tokens=input_tokens, output_tokens=output_tokens)
         except Exception as e:
             logger.error(f"Anthropic API error in analyze(): {e}")
             raise

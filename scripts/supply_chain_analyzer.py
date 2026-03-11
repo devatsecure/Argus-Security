@@ -24,6 +24,7 @@ try:
 except ImportError:
     # Fallback to standard library with warning
     import xml.etree.ElementTree as ET  # noqa: N817
+
     logging.warning("defusedxml not available - XML parsing may be vulnerable to XXE/billion laughs attacks")
 
 from dataclasses import asdict, dataclass, field
@@ -287,9 +288,7 @@ class SupplyChainAnalyzer:
         self.repo_path = Path(repo_path)
         self.enable_network = enable_network
 
-    def analyze_dependency_diff(
-        self, base_ref: str = "main", head_ref: str = "HEAD"
-    ) -> list[ThreatAssessment]:
+    def analyze_dependency_diff(self, base_ref: str = "main", head_ref: str = "HEAD") -> list[ThreatAssessment]:
         """
         Analyze new/changed dependencies between two refs
 
@@ -618,10 +617,10 @@ class SupplyChainAnalyzer:
                 # Parse: package = "^1.0.0" or package = { version = "1.0.0" }
                 parts = line.split("=", 1)
                 pkg = parts[0].strip()
-                version_str = parts[1].strip().strip('"\'')
+                version_str = parts[1].strip().strip("\"'")
 
                 # Extract version from complex formats
-                version_match = re.search(r'[\^~>=<]*([0-9.]+)', version_str)
+                version_match = re.search(r"[\^~>=<]*([0-9.]+)", version_str)
                 if version_match:
                     deps[pkg.lower()] = version_match.group(1)
                 else:
@@ -789,7 +788,7 @@ class SupplyChainAnalyzer:
             if in_dependencies and "=" in line:
                 parts = line.split("=", 1)
                 pkg = parts[0].strip()
-                version_str = parts[1].strip().strip('"\'')
+                version_str = parts[1].strip().strip("\"'")
 
                 # Handle version = "1.0" and { version = "1.0", features = [...] }
                 version_match = re.search(r'(?:version\s*=\s*)?["\']?([0-9.]+)', version_str)
@@ -942,12 +941,8 @@ class SupplyChainAnalyzer:
             )
             similar_packages = typo_result.get("similar", [])
             threat_level = ThreatLevel.HIGH
-            recommendations.append(
-                f"CRITICAL: Verify you meant '{legitimate_pkg}' instead of '{change.package_name}'"
-            )
-            recommendations.append(
-                f"This may be a typosquatting attack attempting to mimic '{legitimate_pkg}'"
-            )
+            recommendations.append(f"CRITICAL: Verify you meant '{legitimate_pkg}' instead of '{change.package_name}'")
+            recommendations.append(f"This may be a typosquatting attack attempting to mimic '{legitimate_pkg}'")
 
         # 2. Malicious behavior check
         behavior_result = self.analyze_package_behavior(change.package_name, change.ecosystem)
@@ -956,9 +951,7 @@ class SupplyChainAnalyzer:
             evidence.extend(behavior_result["evidence"])
             if threat_level.value != "critical":
                 threat_level = ThreatLevel.CRITICAL
-            recommendations.append(
-                "CRITICAL: Package contains suspicious install scripts - manual review required"
-            )
+            recommendations.append("CRITICAL: Package contains suspicious install scripts - manual review required")
             recommendations.append("Do not install this package without thorough security review")
 
         # 3. OpenSSF Scorecard check
@@ -1416,16 +1409,12 @@ require {package_name} v0.0.0
         if patterns_found.get("network_call"):
             threats.append("network_call")
             for finding in patterns_found["network_call"][:3]:  # Limit to top 3
-                evidence.append(
-                    f"Suspicious network call in {finding['file']}:{finding['line']}: {finding['match']}"
-                )
+                evidence.append(f"Suspicious network call in {finding['file']}:{finding['line']}: {finding['match']}")
 
         if patterns_found.get("file_access"):
             threats.append("file_access")
             for finding in patterns_found["file_access"][:3]:
-                evidence.append(
-                    f"Suspicious file access in {finding['file']}:{finding['line']}: {finding['match']}"
-                )
+                evidence.append(f"Suspicious file access in {finding['file']}:{finding['line']}: {finding['match']}")
 
         if patterns_found.get("env_access"):
             threats.append("env_access")
@@ -1437,30 +1426,22 @@ require {package_name} v0.0.0
         if patterns_found.get("process_spawn"):
             threats.append("process_spawn")
             for finding in patterns_found["process_spawn"][:3]:
-                evidence.append(
-                    f"Process spawning in {finding['file']}:{finding['line']}: {finding['match']}"
-                )
+                evidence.append(f"Process spawning in {finding['file']}:{finding['line']}: {finding['match']}")
 
         if patterns_found.get("crypto_mining"):
             threats.append("crypto_mining")
             for finding in patterns_found["crypto_mining"][:3]:
-                evidence.append(
-                    f"Crypto mining indicator in {finding['file']}:{finding['line']}: {finding['match']}"
-                )
+                evidence.append(f"Crypto mining indicator in {finding['file']}:{finding['line']}: {finding['match']}")
 
         if patterns_found.get("data_exfil"):
             threats.append("data_exfiltration")
             for finding in patterns_found["data_exfil"][:3]:
-                evidence.append(
-                    f"Data exfiltration pattern in {finding['file']}:{finding['line']}: {finding['match']}"
-                )
+                evidence.append(f"Data exfiltration pattern in {finding['file']}:{finding['line']}: {finding['match']}")
 
         if patterns_found.get("obfuscation"):
             threats.append("obfuscation")
             for finding in patterns_found["obfuscation"][:3]:
-                evidence.append(
-                    f"Code obfuscation in {finding['file']}:{finding['line']}: {finding['match']}"
-                )
+                evidence.append(f"Code obfuscation in {finding['file']}:{finding['line']}: {finding['match']}")
 
         return {
             "suspicious": len(threats) > 0,
@@ -1758,9 +1739,9 @@ Examples:
         return 0
 
     # Print summary to console
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print(f"Supply Chain Threat Assessment: {len(threats)} threats detected")
-    print(f"{'='*80}\n")
+    print(f"{'=' * 80}\n")
 
     for threat in threats:
         print(f"Package: {threat.package_name} ({threat.ecosystem})")
@@ -1772,7 +1753,7 @@ Examples:
         print("\nRecommendations:")
         for rec in threat.recommendations:
             print(f"  - {rec}")
-        print(f"\n{'-'*80}\n")
+        print(f"\n{'-' * 80}\n")
 
     # Write to output file if specified
     if args.output:
@@ -1793,9 +1774,7 @@ Examples:
         logger.info(f"Threat assessment written to {args.output}")
 
     # Exit with error if critical/high threats found
-    critical_or_high = [
-        t for t in threats if t.threat_level in [ThreatLevel.CRITICAL, ThreatLevel.HIGH]
-    ]
+    critical_or_high = [t for t in threats if t.threat_level in [ThreatLevel.CRITICAL, ThreatLevel.HIGH]]
     if critical_or_high:
         logger.error(f"Found {len(critical_or_high)} critical/high severity threats")
         return 1

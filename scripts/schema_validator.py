@@ -45,28 +45,21 @@ def validate_finding(data: dict[str, Any]) -> dict[str, Any]:
 def validate_scanner_output(data: dict[str, Any], scanner_name: str) -> dict[str, Any]:
     """Validate scanner output is a dict with an optional ``findings`` list."""
     if not isinstance(data, dict):
-        raise ValidationError(
-            f"Scanner output from {scanner_name} must be a dict, got {type(data).__name__}"
-        )
+        raise ValidationError(f"Scanner output from {scanner_name} must be a dict, got {type(data).__name__}")
     if "findings" in data and not isinstance(data["findings"], list):
         raise ValidationError(
-            f"Scanner {scanner_name}: 'findings' must be a list, "
-            f"got {type(data['findings']).__name__}"
+            f"Scanner {scanner_name}: 'findings' must be a list, got {type(data['findings']).__name__}"
         )
     return data
 
 
-def validate_llm_response(
-    data: Any, expected_keys: set[str] | None = None
-) -> dict[str, Any]:
+def validate_llm_response(data: Any, expected_keys: set[str] | None = None) -> dict[str, Any]:
     """Validate a parsed LLM JSON response is a dict.
 
     Warns about any *expected_keys* that are absent from the response.
     """
     if not isinstance(data, dict):
-        raise ValidationError(
-            f"LLM response must be a dict, got {type(data).__name__}"
-        )
+        raise ValidationError(f"LLM response must be a dict, got {type(data).__name__}")
     if expected_keys:
         missing = expected_keys - data.keys()
         if missing:

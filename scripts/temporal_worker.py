@@ -8,6 +8,7 @@ Usage:
 
 Requires: temporalio>=1.7.0 (optional dependency)
 """
+
 from __future__ import annotations
 
 import argparse
@@ -38,15 +39,10 @@ def main() -> None:
         sys.exit(1)
 
     if not TEMPORAL_AVAILABLE:
-        print(
-            "Error: temporalio package not installed. "
-            "Install with: pip install temporalio>=1.7.0"
-        )
+        print("Error: temporalio package not installed. Install with: pip install temporalio>=1.7.0")
         sys.exit(1)
 
-    parser = argparse.ArgumentParser(
-        description="Argus Security Temporal Worker"
-    )
+    parser = argparse.ArgumentParser(description="Argus Security Temporal Worker")
     parser.add_argument(
         "--mode",
         choices=list(RETRY_POLICIES.keys()),
@@ -80,15 +76,11 @@ def main() -> None:
         args.mode,
         args.server,
     )
-    logger.info(
-        "Namespace: %s, Task Queue: %s", args.namespace, args.task_queue
-    )
+    logger.info("Namespace: %s, Task Queue: %s", args.namespace, args.task_queue)
 
     async def _run_worker() -> None:
         client = await create_temporal_client(args.server)
-        worker = await start_temporal_worker(
-            client, task_queue=args.task_queue, mode=args.mode
-        )
+        worker = await start_temporal_worker(client, task_queue=args.task_queue, mode=args.mode)
         logger.info("Worker started, listening on task queue: %s", args.task_queue)
         await worker.run()
 

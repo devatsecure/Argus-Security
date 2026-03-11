@@ -4,6 +4,7 @@ Usage:
     python scripts/mcp_server_runner.py --repo-path /path/to/repo
     python scripts/mcp_server_runner.py --repo-path /path/to/repo --profile standard
 """
+
 from __future__ import annotations
 
 import argparse
@@ -25,8 +26,7 @@ def main() -> None:
     """Parse arguments and start the Argus MCP server."""
     if not MCP_AVAILABLE:
         print(
-            "Error: MCP package not installed. "
-            "Install with: pip install 'mcp>=1.0.0'",
+            "Error: MCP package not installed. Install with: pip install 'mcp>=1.0.0'",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -66,9 +66,7 @@ def main() -> None:
         try:
             from config_loader import build_unified_config
 
-            config = build_unified_config(
-                profile=args.profile, repo_path=args.repo_path
-            )
+            config = build_unified_config(profile=args.profile, repo_path=args.repo_path)
             logger.info("Loaded config profile '%s'", args.profile)
         except Exception as exc:
             logger.warning("Could not load profile '%s': %s", args.profile, exc)

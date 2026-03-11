@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field, field_validator
 
 class CorrelationStatus(str, Enum):
     """Status of SAST-DAST correlation"""
+
     CONFIRMED = "confirmed"  # DAST verified SAST finding is exploitable
     PARTIAL = "partial"  # Similar but not exact match
     NOT_VERIFIED = "not_verified"  # Couldn't verify (might be FP)
@@ -25,6 +26,7 @@ class CorrelationStatus(str, Enum):
 
 class ExploitabilityLevel(str, Enum):
     """Exploit difficulty levels"""
+
     TRIVIAL = "trivial"
     MODERATE = "moderate"
     COMPLEX = "complex"
@@ -37,6 +39,7 @@ class CorrelationFindingInput(BaseModel):
     Finding input for correlation (SAST or DAST).
     Validates that finding has all required fields for correlation.
     """
+
     id: str = Field(..., min_length=1, description="Finding ID")
     path: str = Field(..., min_length=1, description="File path or URL")
     rule_id: str = Field(default="", description="Rule identifier")
@@ -45,11 +48,10 @@ class CorrelationFindingInput(BaseModel):
     cwe: Optional[str] = Field(default=None, description="CWE identifier")
     category: str = Field(default="UNKNOWN", description="Finding category")
     evidence: dict[str, Any] = Field(
-        default_factory=dict,
-        description="Evidence data (message, url, method, poc, etc.)"
+        default_factory=dict, description="Evidence data (message, url, method, poc, etc.)"
     )
 
-    @field_validator('id')
+    @field_validator("id")
     @classmethod
     def validate_id_not_empty(cls, v: str) -> str:
         """Ensure ID is not empty"""
@@ -57,7 +59,7 @@ class CorrelationFindingInput(BaseModel):
             raise ValueError("Finding ID cannot be empty")
         return v
 
-    @field_validator('path')
+    @field_validator("path")
     @classmethod
     def validate_path_not_empty(cls, v: str) -> str:
         """
@@ -76,19 +78,16 @@ class CorrelationInput(BaseModel):
     Input for correlation engine.
     Validates both SAST and DAST findings before correlation.
     """
+
     sast_findings: list[dict[str, Any]] = Field(
-        ...,
-        min_length=0,
-        description="List of SAST findings (normalized format)"
+        ..., min_length=0, description="List of SAST findings (normalized format)"
     )
     dast_findings: list[dict[str, Any]] = Field(
-        ...,
-        min_length=0,
-        description="List of DAST findings (normalized format)"
+        ..., min_length=0, description="List of DAST findings (normalized format)"
     )
     use_ai: bool = Field(default=True, description="Use AI for verification")
 
-    @field_validator('sast_findings')
+    @field_validator("sast_findings")
     @classmethod
     def validate_sast_findings(cls, v: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Validate each SAST finding has required fields"""
@@ -99,7 +98,7 @@ class CorrelationInput(BaseModel):
                 raise ValueError(f"SAST finding {i} validation failed: {e}") from e
         return v
 
-    @field_validator('dast_findings')
+    @field_validator("dast_findings")
     @classmethod
     def validate_dast_findings(cls, v: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Validate each DAST finding has required fields"""
@@ -113,6 +112,7 @@ class CorrelationInput(BaseModel):
 
 class FindingSummary(BaseModel):
     """Summary of a finding for correlation results"""
+
     id: str = Field(..., min_length=1)
     type: str = Field(default="unknown")
     path: str = Field(..., min_length=1)
@@ -122,6 +122,7 @@ class FindingSummary(BaseModel):
 
 class CorrelationResult(BaseModel):
     """Result of correlating SAST and DAST findings"""
+
     sast_finding_id: str = Field(..., min_length=1, description="SAST finding ID")
     dast_finding_id: Optional[str] = Field(default=None, description="Matched DAST finding ID")
     status: CorrelationStatus = Field(..., description="Correlation status")
@@ -133,7 +134,7 @@ class CorrelationResult(BaseModel):
     sast_summary: Optional[dict[str, Any]] = Field(default=None, description="SAST finding summary")
     dast_summary: Optional[dict[str, Any]] = Field(default=None, description="DAST finding summary")
 
-    @field_validator('reasoning')
+    @field_validator("reasoning")
     @classmethod
     def validate_reasoning_not_empty(cls, v: str) -> str:
         """Ensure reasoning is not empty"""
@@ -146,6 +147,7 @@ class CorrelationResult(BaseModel):
 
 class CorrelationMetadata(BaseModel):
     """Metadata about correlation run"""
+
     total_findings: int = Field(..., ge=0)
     confirmed: int = Field(default=0, ge=0)
     partial: int = Field(default=0, ge=0)
@@ -158,13 +160,11 @@ class CorrelationOutput(BaseModel):
     Output from correlation engine.
     Ensures all correlation results have proper structure.
     """
-    metadata: CorrelationMetadata = Field(..., description="Summary statistics")
-    correlations: list[dict[str, Any]] = Field(
-        default_factory=list,
-        description="List of correlation results"
-    )
 
-    @field_validator('correlations')
+    metadata: CorrelationMetadata = Field(..., description="Summary statistics")
+    correlations: list[dict[str, Any]] = Field(default_factory=list, description="List of correlation results")
+
+    @field_validator("correlations")
     @classmethod
     def validate_correlation_results(cls, v: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Validate each correlation result"""

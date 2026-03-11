@@ -25,6 +25,7 @@ from hybrid.models import HybridFinding
 # IRIS analyzer imports (optional)
 try:
     from iris_analyzer import IRISAnalyzer, IRISFinding, load_code_context
+
     IRIS_AVAILABLE = True
 except ImportError:
     IRIS_AVAILABLE = False
@@ -35,6 +36,7 @@ except ImportError:
 # Project context imports (optional)
 try:
     from project_context_detector import ProjectContext
+
     PROJECT_CONTEXT_AVAILABLE = True
 except ImportError:
     PROJECT_CONTEXT_AVAILABLE = False
@@ -45,10 +47,7 @@ logger = logging.getLogger(__name__)
 
 
 def enrich_with_ai(
-    ai_client: Any,
-    findings: list[HybridFinding],
-    project_context: Optional[Any],
-    logger: logging.Logger
+    ai_client: Any, findings: list[HybridFinding], project_context: Optional[Any], logger: logging.Logger
 ) -> list[HybridFinding]:
     """
     Enrich findings with AI analysis (Claude/OpenAI)
@@ -89,9 +88,7 @@ def enrich_with_ai(
 
             # Call AI model
             response, _input_tokens, _output_tokens = ai_client.call_llm_api(
-                prompt=prompt,
-                max_tokens=1000,
-                operation=f"Enrich finding {finding.finding_id}"
+                prompt=prompt, max_tokens=1000, operation=f"Enrich finding {finding.finding_id}"
             )
 
             # Parse AI response
@@ -125,12 +122,8 @@ def enrich_with_ai(
                     finding.suppression_reason = fp_reason
                     safe_patterns = analysis.get("safe_patterns_detected", [])
                     if safe_patterns:
-                        finding.description += (
-                            f"\n\n**Safe Patterns Detected:** {', '.join(safe_patterns)}"
-                        )
-                    logger.info(
-                        f"   🟢 FP detected by AI for {finding.finding_id}: {fp_reason}"
-                    )
+                        finding.description += f"\n\n**Safe Patterns Detected:** {', '.join(safe_patterns)}"
+                    logger.info(f"   🟢 FP detected by AI for {finding.finding_id}: {fp_reason}")
 
                 finding.llm_enriched = True
                 enriched_count += 1
@@ -157,7 +150,7 @@ def enrich_with_iris(
     findings: list[HybridFinding],
     target_path: str,
     project_context: Optional[Any],
-    logger: logging.Logger
+    logger: logging.Logger,
 ) -> list[HybridFinding]:
     """
     Enrich findings with IRIS semantic analysis
@@ -188,16 +181,13 @@ def enrich_with_iris(
     analyzed_count = 0
 
     # Focus on high-severity findings
-    high_severity_findings = [
-        f for f in findings
-        if f.severity.lower() in ['critical', 'high']
-    ]
+    high_severity_findings = [f for f in findings if f.severity.lower() in ["critical", "high"]]
 
     logger.info(f"   🎯 Analyzing {len(high_severity_findings)}/{len(findings)} CRITICAL/HIGH severity findings")
 
     for finding in findings:
         # Skip findings that aren't high severity
-        if finding.severity.lower() not in ['critical', 'high']:
+        if finding.severity.lower() not in ["critical", "high"]:
             enriched.append(finding)
             continue
 
@@ -209,13 +199,13 @@ def enrich_with_iris(
 
             # Build finding dict for IRIS
             finding_dict = {
-                'id': finding.finding_id,
-                'type': finding.title,
-                'severity': finding.severity,
-                'cwe_id': finding.cwe_id,
-                'description': finding.description,
-                'file_path': finding.file_path,
-                'line_number': finding.line_number or 1,
+                "id": finding.finding_id,
+                "type": finding.title,
+                "severity": finding.severity,
+                "cwe_id": finding.cwe_id,
+                "description": finding.description,
+                "file_path": finding.file_path,
+                "line_number": finding.line_number or 1,
             }
 
             # Load code context
@@ -227,10 +217,7 @@ def enrich_with_iris(
                     file_path = str(Path(target_path) / file_path)
 
                 code_context = load_code_context(
-                    file_path=file_path,
-                    line_number=finding.line_number or 1,
-                    lines_before=20,
-                    lines_after=20
+                    file_path=file_path, line_number=finding.line_number or 1, lines_before=20, lines_after=20
                 )
             else:
                 logger.debug(f"   ⚠️  Skipping IRIS for {finding.finding_id}: file not found")
@@ -241,17 +228,15 @@ def enrich_with_iris(
             repo_context = {}
             if project_context:
                 repo_context = {
-                    'frameworks': [project_context.framework] if project_context.framework else [],
-                    'type': project_context.type,
-                    'runtime': project_context.runtime,
+                    "frameworks": [project_context.framework] if project_context.framework else [],
+                    "type": project_context.type,
+                    "runtime": project_context.runtime,
                 }
 
             # Run IRIS analysis
             logger.debug(f"   🔬 IRIS analyzing {finding.finding_id}...")
             iris_finding = iris_analyzer.analyze_finding(
-                finding=finding_dict,
-                code_context=code_context,
-                repo_context=repo_context
+                finding=finding_dict, code_context=code_context, repo_context=repo_context
             )
 
             # Update finding with IRIS results
@@ -262,14 +247,9 @@ def enrich_with_iris(
 
                 # Update exploitability if IRIS has higher confidence
                 if iris_finding.iris_analysis.exploitation_complexity != "UNKNOWN":
-                    complexity_map = {
-                        "LOW": "trivial",
-                        "MEDIUM": "moderate",
-                        "HIGH": "complex"
-                    }
+                    complexity_map = {"LOW": "trivial", "MEDIUM": "moderate", "HIGH": "complex"}
                     finding.exploitability = complexity_map.get(
-                        iris_finding.iris_analysis.exploitation_complexity,
-                        finding.exploitability
+                        iris_finding.iris_analysis.exploitation_complexity, finding.exploitability
                     )
 
                 # Add IRIS attack vector to description if available
@@ -315,7 +295,7 @@ def analyze_xss_output_destination(finding: HybridFinding, target_path: str, log
 
     try:
         # Read file content around the finding
-        with open(finding.file_path, encoding='utf-8', errors='ignore') as f:
+        with open(finding.file_path, encoding="utf-8", errors="ignore") as f:
             content = f.read()
 
         # Browser/HTML output patterns
@@ -365,10 +345,7 @@ def analyze_xss_output_destination(finding: HybridFinding, target_path: str, log
 
 
 def build_enrichment_prompt(
-    finding: HybridFinding,
-    project_context: Optional[Any],
-    target_path: str,
-    logger: logging.Logger
+    finding: HybridFinding, project_context: Optional[Any], target_path: str, logger: logging.Logger
 ) -> str:
     """
     Build prompt for AI to analyze a finding with project context
@@ -407,8 +384,8 @@ def build_enrichment_prompt(
 **Project Context:**
 - Type: {project_context.type}
 - Runtime: {project_context.runtime}
-- Output Destinations: {', '.join(project_context.output_destinations)}
-- Framework: {project_context.framework or 'Unknown'}
+- Output Destinations: {", ".join(project_context.output_destinations)}
+- Framework: {project_context.framework or "Unknown"}
 """
 
     # Add context-aware rules
@@ -417,14 +394,14 @@ def build_enrichment_prompt(
 **Context-Aware Rules:**
 """
         # CLI tool specific rules
-        if project_context.is_cli_tool or 'terminal' in project_context.output_destinations:
+        if project_context.is_cli_tool or "terminal" in project_context.output_destinations:
             prompt += """- CLI Tools: XSS in console.log/print() is FALSE POSITIVE (terminal output, not browser-rendered HTML)
 - CLI Tools: CSRF findings are FALSE POSITIVE (no browser sessions)
 - Terminal output is not HTML-rendered, so XSS attacks do not apply
 """
 
         # Web app specific rules
-        if project_context.is_web_app or 'browser' in project_context.output_destinations:
+        if project_context.is_web_app or "browser" in project_context.output_destinations:
             prompt += """- Web Apps: XSS in HTML rendering (innerHTML, res.send, render_template) is TRUE POSITIVE
 - Web Apps: CSRF protection should be evaluated for state-changing operations
 - Browser-rendered content requires strict output encoding
@@ -437,7 +414,9 @@ def build_enrichment_prompt(
 """
 
         # Special handling for XSS findings
-        if (finding.title and "xss" in finding.title.lower()) or (finding.description and "cross-site" in finding.description.lower()):
+        if (finding.title and "xss" in finding.title.lower()) or (
+            finding.description and "cross-site" in finding.description.lower()
+        ):
             output_dest = analyze_xss_output_destination(finding, target_path, logger)
             if output_dest == "terminal" or output_dest == "console":
                 prompt += """

@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 try:
     from docker_manager import DockerManager
+
     DOCKER_AVAILABLE = True
 except ImportError:
     DOCKER_AVAILABLE = False
@@ -37,6 +38,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SandboxConfig:
     """Configuration for sandbox execution"""
+
     cpu_limit: float = 1.0  # CPU cores
     memory_limit: str = "512m"  # Memory limit
     timeout: int = 60  # Execution timeout in seconds
@@ -47,6 +49,7 @@ class SandboxConfig:
 @dataclass
 class SandboxResult:
     """Result from sandbox execution"""
+
     success: bool
     output: str
     error: str
@@ -86,9 +89,7 @@ class DockerSandbox:
             RuntimeError: If Docker is not available
         """
         if not DOCKER_AVAILABLE:
-            raise RuntimeError(
-                "Docker support not available. Install with: pip install docker"
-            )
+            raise RuntimeError("Docker support not available. Install with: pip install docker")
 
         self.config = config or SandboxConfig()
         self.docker_manager = DockerManager()
@@ -117,10 +118,7 @@ class DockerSandbox:
                 memory_limit=self.config.memory_limit,
                 network_disabled=self.config.network_disabled,
                 timeout=self.config.timeout,
-                environment={
-                    "PYTHONUNBUFFERED": "1",
-                    "FUZZING_MODE": "true"
-                }
+                environment={"PYTHONUNBUFFERED": "1", "FUZZING_MODE": "true"},
             )
             logger.info(f"Created sandbox container: {self.container_id[:12]}")
             return self.container_id
@@ -130,11 +128,7 @@ class DockerSandbox:
             raise RuntimeError(f"Container creation failed: {e}") from e
 
     def execute_python(
-        self,
-        code: str,
-        function_name: str,
-        test_input: Any,
-        timeout: Optional[int] = None
+        self, code: str, function_name: str, test_input: Any, timeout: Optional[int] = None
     ) -> SandboxResult:
         """
         Execute a Python function with test input in the sandbox
@@ -170,11 +164,7 @@ class DockerSandbox:
 
         try:
             result = self.docker_manager.execute_code(
-                self.container_id,
-                wrapped_code,
-                language="python",
-                timeout=exec_timeout,
-                working_dir="/tmp"
+                self.container_id, wrapped_code, language="python", timeout=exec_timeout, working_dir="/tmp"
             )
 
             execution_time_ms = int((time.time() - start_time) * 1000)
@@ -194,15 +184,11 @@ class DockerSandbox:
                 execution_time_ms=execution_time_ms,
                 crashed=True,
                 crash_type="sandbox_error",
-                stack_trace=str(e)
+                stack_trace=str(e),
             )
 
     def execute_python_module(
-        self,
-        module_path: str,
-        function_name: str,
-        test_input: Any,
-        timeout: Optional[int] = None
+        self, module_path: str, function_name: str, test_input: Any, timeout: Optional[int] = None
     ) -> SandboxResult:
         """
         Execute a function from a Python module file in the sandbox
@@ -230,18 +216,13 @@ class DockerSandbox:
                 execution_time_ms=0,
                 crashed=True,
                 crash_type="file_read_error",
-                stack_trace=str(e)
+                stack_trace=str(e),
             )
 
         # Execute the code
         return self.execute_python(code, function_name, test_input, timeout)
 
-    def _build_execution_wrapper(
-        self,
-        code: str,
-        function_name: str,
-        test_input: Any
-    ) -> str:
+    def _build_execution_wrapper(self, code: str, function_name: str, test_input: Any) -> str:
         """
         Build a safe execution wrapper for the target code
 
@@ -406,7 +387,7 @@ if __name__ == "__main__":
                 execution_time_ms=execution_time_ms,
                 crashed=result_data.get("crashed", False),
                 crash_type=result_data.get("crash_type"),
-                stack_trace=result_data.get("stack_trace", "")
+                stack_trace=result_data.get("stack_trace", ""),
             )
 
         except (json.JSONDecodeError, ValueError) as e:
@@ -430,7 +411,7 @@ if __name__ == "__main__":
                 execution_time_ms=execution_time_ms,
                 crashed=True,
                 crash_type=crash_type,
-                stack_trace=stderr
+                stack_trace=stderr,
             )
 
     def cleanup(self):
@@ -442,8 +423,7 @@ if __name__ == "__main__":
         if self.container_id:
             try:
                 logger.info(
-                    f"Cleaning up sandbox container {self.container_id[:12]} "
-                    f"({self._execution_count} executions)"
+                    f"Cleaning up sandbox container {self.container_id[:12]} ({self._execution_count} executions)"
                 )
                 self.docker_manager.stop_container(self.container_id, timeout=5)
                 self.docker_manager.remove_container(self.container_id, force=True)
@@ -487,11 +467,7 @@ def vulnerable_function(user_input):
 
             # Malicious input (would be dangerous outside sandbox)
             print("\n2. Testing with malicious input (safely contained)...")
-            result = sandbox.execute_python(
-                test_code,
-                "vulnerable_function",
-                "__import__('os').system('ls')"
-            )
+            result = sandbox.execute_python(test_code, "vulnerable_function", "__import__('os').system('ls')")
             print(f"Result: {result}")
             print(f"Crashed: {result.crashed}")
 
@@ -500,6 +476,7 @@ def vulnerable_function(user_input):
     except Exception as e:
         print(f"\n✗ Sandbox test failed: {e}")
         import traceback
+
         traceback.print_exc()
 
 

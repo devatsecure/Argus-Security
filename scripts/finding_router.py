@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 
 class FindingType(Enum):
     """Structured finding taxonomy"""
+
     OAUTH2_PUBLIC_CLIENT = "oauth2_public_client"
     FILE_PERMISSION = "file_permission"
     DEV_CONFIG = "dev_config"
@@ -25,6 +26,7 @@ class FindingType(Enum):
 @dataclass
 class RoutingDecision:
     """Result of routing analysis"""
+
     finding_type: FindingType
     confidence: float  # 0.0-1.0
     analyzer_method: Optional[str]
@@ -40,35 +42,56 @@ class FindingRouter:
         # Define routing rules with pattern sets
         self.routing_rules = {
             FindingType.OAUTH2_PUBLIC_CLIENT: {
-                'required_terms': ['oauth'],  # Only require 'oauth' since 'client' might not always be present
-                'supporting_terms': ['client', 'client_id', 'authorization', 'token', 'grant', 'pkce', 'redirect_uri', 'scope'],
-                'excluded_terms': ['file', 'permission', 'filesystem', 'chmod'],
-                'weight': 1.0
+                "required_terms": ["oauth"],  # Only require 'oauth' since 'client' might not always be present
+                "supporting_terms": [
+                    "client",
+                    "client_id",
+                    "authorization",
+                    "token",
+                    "grant",
+                    "pkce",
+                    "redirect_uri",
+                    "scope",
+                ],
+                "excluded_terms": ["file", "permission", "filesystem", "chmod"],
+                "weight": 1.0,
             },
             FindingType.FILE_PERMISSION: {
-                'required_terms': [['permission', 'storage', 'access', 'readable', 'writable']],  # Any one of these terms
-                'supporting_terms': ['file', 'chmod', 'read', 'write', 'plaintext', 'mode'],
-                'excluded_terms': ['oauth', 'client_id'],
-                'weight': 1.0
+                "required_terms": [
+                    ["permission", "storage", "access", "readable", "writable"]
+                ],  # Any one of these terms
+                "supporting_terms": ["file", "chmod", "read", "write", "plaintext", "mode"],
+                "excluded_terms": ["oauth", "client_id"],
+                "weight": 1.0,
             },
             FindingType.DEV_CONFIG: {
-                'required_terms': [],  # Make debug/dev optional but boost if present
-                'supporting_terms': ['debug', 'dev', 'config', 'flag', 'environment', 'development', 'test', 'mode', 'enabled'],
-                'excluded_terms': ['production', 'deploy'],
-                'weight': 1.0,
-                'min_support_terms': 2  # Require at least 2 supporting terms
+                "required_terms": [],  # Make debug/dev optional but boost if present
+                "supporting_terms": [
+                    "debug",
+                    "dev",
+                    "config",
+                    "flag",
+                    "environment",
+                    "development",
+                    "test",
+                    "mode",
+                    "enabled",
+                ],
+                "excluded_terms": ["production", "deploy"],
+                "weight": 1.0,
+                "min_support_terms": 2,  # Require at least 2 supporting terms
             },
             FindingType.LOCKING_MECHANISM: {
-                'required_terms': [['lock', 'race', 'mutex', 'deadlock', 'concurrent']],  # Any one of these terms
-                'supporting_terms': ['synchron', 'thread', 'semaphore', 'condition'],
-                'excluded_terms': ['unlock', 'key'],
-                'weight': 1.0
+                "required_terms": [["lock", "race", "mutex", "deadlock", "concurrent"]],  # Any one of these terms
+                "supporting_terms": ["synchron", "thread", "semaphore", "condition"],
+                "excluded_terms": ["unlock", "key"],
+                "weight": 1.0,
             },
             FindingType.HARDCODED_SECRET: {
-                'required_terms': ['secret', 'password'],
-                'supporting_terms': ['hardcoded', 'embedded', 'credential', 'api_key', 'token'],
-                'excluded_terms': ['client_id', 'public'],
-                'weight': 1.0
+                "required_terms": ["secret", "password"],
+                "supporting_terms": ["hardcoded", "embedded", "credential", "api_key", "token"],
+                "excluded_terms": ["client_id", "public"],
+                "weight": 1.0,
             },
         }
 
@@ -90,9 +113,7 @@ class FindingRouter:
 
         scores = {}
         for finding_type, rules in self.routing_rules.items():
-            confidence = self._calculate_routing_confidence(
-                combined_text, rules
-            )
+            confidence = self._calculate_routing_confidence(combined_text, rules)
             if confidence > 0.3:
                 scores[finding_type] = confidence
 
@@ -102,7 +123,7 @@ class FindingRouter:
                 confidence=0.0,
                 analyzer_method=None,
                 reasoning="No matching analyzer found",
-                fallback_analyzers=[]
+                fallback_analyzers=[],
             )
 
         # Get best match
@@ -122,7 +143,7 @@ class FindingRouter:
             confidence=best_confidence,
             analyzer_method=self._get_analyzer_method(best_type),
             reasoning=reasoning,
-            fallback_analyzers=fallbacks
+            fallback_analyzers=fallbacks,
         )
 
     def _calculate_routing_confidence(self, text: str, rules: dict) -> float:
@@ -139,7 +160,7 @@ class FindingRouter:
         confidence = 0.0
 
         # Check required terms
-        required_terms = rules.get('required_terms', [])
+        required_terms = rules.get("required_terms", [])
         if required_terms:
             # Check if required_terms is a list of alternatives (list of lists)
             # Format: [['term1', 'term2', 'term3']] means ANY one of these terms
@@ -161,12 +182,12 @@ class FindingRouter:
             confidence = 0.2
 
         # Check supporting terms (boost confidence)
-        supporting_terms = rules.get('supporting_terms', [])
+        supporting_terms = rules.get("supporting_terms", [])
         if supporting_terms:
             support_matches = sum(1 for term in supporting_terms if term in text)
 
             # Check minimum support terms requirement
-            min_support_terms = rules.get('min_support_terms', 0)
+            min_support_terms = rules.get("min_support_terms", 0)
             if min_support_terms > 0 and support_matches < min_support_terms:
                 return 0.0  # Minimum support requirement not met
 
@@ -174,14 +195,14 @@ class FindingRouter:
             confidence += support_score
 
         # Check excluded terms (reduce confidence)
-        excluded_terms = rules.get('excluded_terms', [])
+        excluded_terms = rules.get("excluded_terms", [])
         if excluded_terms:
             exclusion_hits = sum(1 for term in excluded_terms if term in text)
             if exclusion_hits > 0:
                 confidence *= 0.3  # Severe penalty
 
         # Apply rule weight
-        weight = rules.get('weight', 1.0)
+        weight = rules.get("weight", 1.0)
         confidence *= weight
 
         return min(confidence, 1.0)
@@ -250,7 +271,7 @@ class FindingRouter:
             confidence = self._calculate_routing_confidence(combined_text, rules)
 
             # Calculate detailed breakdown
-            required_terms = rules.get('required_terms', [])
+            required_terms = rules.get("required_terms", [])
             if required_terms and isinstance(required_terms[0], list):
                 # Alternative terms format - flatten and check
                 required = [term for term in required_terms[0] if term in combined_text]
@@ -258,23 +279,23 @@ class FindingRouter:
                 # Traditional format
                 required = [term for term in required_terms if term in combined_text]
 
-            supporting = [term for term in rules.get('supporting_terms', []) if term in combined_text]
-            excluded = [term for term in rules.get('excluded_terms', []) if term in combined_text]
+            supporting = [term for term in rules.get("supporting_terms", []) if term in combined_text]
+            excluded = [term for term in rules.get("excluded_terms", []) if term in combined_text]
 
             all_scores[finding_type.value] = {
-                'confidence': confidence,
-                'required_matched': required,
-                'supporting_matched': supporting,
-                'excluded_matched': excluded,
+                "confidence": confidence,
+                "required_matched": required,
+                "supporting_matched": supporting,
+                "excluded_matched": excluded,
             }
 
         decision = self.route_with_confidence(finding)
 
         return {
-            'selected_type': decision.finding_type.value,
-            'selected_confidence': decision.confidence,
-            'selected_method': decision.analyzer_method,
-            'reasoning': decision.reasoning,
-            'fallbacks': decision.fallback_analyzers,
-            'all_scores': all_scores,
+            "selected_type": decision.finding_type.value,
+            "selected_confidence": decision.confidence,
+            "selected_method": decision.analyzer_method,
+            "reasoning": decision.reasoning,
+            "fallbacks": decision.fallback_analyzers,
+            "all_scores": all_scores,
         }

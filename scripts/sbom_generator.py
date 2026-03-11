@@ -12,9 +12,7 @@ import subprocess
 from pathlib import Path
 from typing import Any, Optional
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 # Supported SBOM formats
@@ -74,10 +72,7 @@ class SBOMGenerator:
             ValueError: If scan_type is not recognized.
         """
         if scan_type not in (SCAN_TYPE_FS, SCAN_TYPE_IMAGE):
-            raise ValueError(
-                f"Invalid scan_type: {scan_type!r}. "
-                f"Must be '{SCAN_TYPE_FS}' or '{SCAN_TYPE_IMAGE}'."
-            )
+            raise ValueError(f"Invalid scan_type: {scan_type!r}. Must be '{SCAN_TYPE_FS}' or '{SCAN_TYPE_IMAGE}'.")
 
         return [
             self.trivy_path,
@@ -90,9 +85,7 @@ class SBOMGenerator:
             target_path,
         ]
 
-    def _run_trivy(
-        self, cmd: list[str], timeout: int = 300
-    ) -> subprocess.CompletedProcess:
+    def _run_trivy(self, cmd: list[str], timeout: int = 300) -> subprocess.CompletedProcess:
         """Execute a Trivy command safely.
 
         Args:
@@ -110,26 +103,19 @@ class SBOMGenerator:
         env["TRIVY_NO_PROGRESS"] = "true"
 
         try:
-            result = subprocess.run(
-                cmd, capture_output=True, text=True, timeout=timeout, env=env
-            )
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, env=env)
         except FileNotFoundError:
             raise SBOMGenerationError(
-                f"Trivy binary not found at '{self.trivy_path}'. "
-                "Install Trivy: https://aquasecurity.github.io/trivy/"
+                f"Trivy binary not found at '{self.trivy_path}'. Install Trivy: https://aquasecurity.github.io/trivy/"
             )
         except subprocess.TimeoutExpired:
-            raise SBOMGenerationError(
-                f"Trivy SBOM generation timed out after {timeout} seconds."
-            )
+            raise SBOMGenerationError(f"Trivy SBOM generation timed out after {timeout} seconds.")
         except subprocess.SubprocessError as e:
             raise SBOMGenerationError(f"Trivy subprocess error: {e}")
 
         if result.returncode != 0:
             stderr = result.stderr.strip() if result.stderr else "unknown error"
-            raise SBOMGenerationError(
-                f"Trivy exited with code {result.returncode}: {stderr}"
-            )
+            raise SBOMGenerationError(f"Trivy exited with code {result.returncode}: {stderr}")
 
         return result
 
@@ -149,22 +135,13 @@ class SBOMGenerator:
             with open(sbom_path) as f:
                 return json.load(f)
         except FileNotFoundError:
-            raise SBOMGenerationError(
-                f"SBOM file not found at '{sbom_path}'. "
-                "Trivy may not have produced output."
-            )
+            raise SBOMGenerationError(f"SBOM file not found at '{sbom_path}'. Trivy may not have produced output.")
         except json.JSONDecodeError as e:
-            raise SBOMGenerationError(
-                f"Failed to parse SBOM JSON at '{sbom_path}': {e}"
-            )
+            raise SBOMGenerationError(f"Failed to parse SBOM JSON at '{sbom_path}': {e}")
         except OSError as e:
-            raise SBOMGenerationError(
-                f"Could not read SBOM file '{sbom_path}': {e}"
-            )
+            raise SBOMGenerationError(f"Could not read SBOM file '{sbom_path}': {e}")
 
-    def _count_components(
-        self, sbom_data: dict[str, Any], sbom_format: str
-    ) -> int:
+    def _count_components(self, sbom_data: dict[str, Any], sbom_format: str) -> int:
         """Count components in a parsed SBOM.
 
         Args:
@@ -180,9 +157,7 @@ class SBOMGenerator:
             return len(sbom_data.get("packages", []))
         return 0
 
-    def generate_cyclonedx(
-        self, target_path: str, scan_type: str = SCAN_TYPE_FS
-    ) -> dict[str, Any]:
+    def generate_cyclonedx(self, target_path: str, scan_type: str = SCAN_TYPE_FS) -> dict[str, Any]:
         """Generate CycloneDX 1.5 SBOM.
 
         Args:
@@ -198,9 +173,7 @@ class SBOMGenerator:
         try:
             Path(self.output_dir).mkdir(parents=True, exist_ok=True)
 
-            cmd = self._build_command(
-                target_path, CYCLONEDX_FORMAT, output_path, scan_type
-            )
+            cmd = self._build_command(target_path, CYCLONEDX_FORMAT, output_path, scan_type)
             logger.info(
                 "Generating CycloneDX SBOM for %s (scan_type=%s)",
                 target_path,
@@ -210,9 +183,7 @@ class SBOMGenerator:
             self._run_trivy(cmd)
 
             sbom_data = self._parse_sbom_file(output_path)
-            component_count = self._count_components(
-                sbom_data, CYCLONEDX_FORMAT
-            )
+            component_count = self._count_components(sbom_data, CYCLONEDX_FORMAT)
 
             logger.info(
                 "CycloneDX SBOM generated: %s (%d components)",
@@ -246,9 +217,7 @@ class SBOMGenerator:
                 "error": str(e),
             }
 
-    def generate_spdx(
-        self, target_path: str, scan_type: str = SCAN_TYPE_FS
-    ) -> dict[str, Any]:
+    def generate_spdx(self, target_path: str, scan_type: str = SCAN_TYPE_FS) -> dict[str, Any]:
         """Generate SPDX 2.3 SBOM.
 
         Args:
@@ -264,9 +233,7 @@ class SBOMGenerator:
         try:
             Path(self.output_dir).mkdir(parents=True, exist_ok=True)
 
-            cmd = self._build_command(
-                target_path, SPDX_FORMAT, output_path, scan_type
-            )
+            cmd = self._build_command(target_path, SPDX_FORMAT, output_path, scan_type)
             logger.info(
                 "Generating SPDX SBOM for %s (scan_type=%s)",
                 target_path,
@@ -310,9 +277,7 @@ class SBOMGenerator:
                 "error": str(e),
             }
 
-    def generate_all(
-        self, target_path: str, scan_type: str = SCAN_TYPE_FS
-    ) -> dict[str, Any]:
+    def generate_all(self, target_path: str, scan_type: str = SCAN_TYPE_FS) -> dict[str, Any]:
         """Generate both CycloneDX and SPDX SBOMs.
 
         Args:
@@ -365,15 +330,10 @@ class SBOMGenerator:
                 "by_type": {},
                 "by_ecosystem": {},
                 "licenses": [],
-                "error": (
-                    "Unrecognized SBOM format: "
-                    "no 'components' or 'packages' key found."
-                ),
+                "error": ("Unrecognized SBOM format: no 'components' or 'packages' key found."),
             }
 
-    def _summarize_cyclonedx(
-        self, sbom_data: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _summarize_cyclonedx(self, sbom_data: dict[str, Any]) -> dict[str, Any]:
         """Summarize a CycloneDX SBOM.
 
         Args:
@@ -396,9 +356,7 @@ class SBOMGenerator:
             purl = comp.get("purl", "")
             ecosystem = self._extract_ecosystem_from_purl(purl)
             if ecosystem:
-                by_ecosystem[ecosystem] = (
-                    by_ecosystem.get(ecosystem, 0) + 1
-                )
+                by_ecosystem[ecosystem] = by_ecosystem.get(ecosystem, 0) + 1
 
             # Collect licenses
             for lic in comp.get("licenses", []):
@@ -414,9 +372,7 @@ class SBOMGenerator:
             "licenses": sorted(licenses),
         }
 
-    def _summarize_spdx(
-        self, sbom_data: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _summarize_spdx(self, sbom_data: dict[str, Any]) -> dict[str, Any]:
         """Summarize an SPDX SBOM.
 
         Args:
@@ -432,21 +388,15 @@ class SBOMGenerator:
 
         for pkg in packages:
             # SPDX uses 'primaryPackagePurpose' instead of 'type'
-            pkg_type = pkg.get(
-                "primaryPackagePurpose", "LIBRARY"
-            ).lower()
+            pkg_type = pkg.get("primaryPackagePurpose", "LIBRARY").lower()
             by_type[pkg_type] = by_type.get(pkg_type, 0) + 1
 
             # Extract ecosystem from externalRefs purl
             for ref in pkg.get("externalRefs", []):
                 if ref.get("referenceType") == "purl":
-                    ecosystem = self._extract_ecosystem_from_purl(
-                        ref.get("referenceLocator", "")
-                    )
+                    ecosystem = self._extract_ecosystem_from_purl(ref.get("referenceLocator", ""))
                     if ecosystem:
-                        by_ecosystem[ecosystem] = (
-                            by_ecosystem.get(ecosystem, 0) + 1
-                        )
+                        by_ecosystem[ecosystem] = by_ecosystem.get(ecosystem, 0) + 1
                     break
 
             # Collect licenses
@@ -493,12 +443,8 @@ def main():
     """CLI entry point for Trivy-based SBOM generation."""
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Generate Software Bill of Materials (SBOM) using Trivy"
-    )
-    parser.add_argument(
-        "target", help="Target to scan (directory path or container image)"
-    )
+    parser = argparse.ArgumentParser(description="Generate Software Bill of Materials (SBOM) using Trivy")
+    parser.add_argument("target", help="Target to scan (directory path or container image)")
     parser.add_argument(
         "--scan-type",
         choices=["fs", "image"],
@@ -525,24 +471,16 @@ def main():
 
     args = parser.parse_args()
 
-    generator = SBOMGenerator(
-        trivy_path=args.trivy_path, output_dir=args.output_dir
-    )
+    generator = SBOMGenerator(trivy_path=args.trivy_path, output_dir=args.output_dir)
 
     if args.format == "cyclonedx":
-        result = generator.generate_cyclonedx(
-            args.target, scan_type=args.scan_type
-        )
+        result = generator.generate_cyclonedx(args.target, scan_type=args.scan_type)
         print(json.dumps(result, indent=2))
     elif args.format == "spdx":
-        result = generator.generate_spdx(
-            args.target, scan_type=args.scan_type
-        )
+        result = generator.generate_spdx(args.target, scan_type=args.scan_type)
         print(json.dumps(result, indent=2))
     else:
-        result = generator.generate_all(
-            args.target, scan_type=args.scan_type
-        )
+        result = generator.generate_all(args.target, scan_type=args.scan_type)
         print(json.dumps(result, indent=2))
 
 

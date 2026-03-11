@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class MetadataValidationResult:
     """Result of metadata-based validation"""
+
     has_metadata: bool
     permission_indicators: list[str]
     confidence: float  # 0.0-0.7 (lower than direct check)
@@ -110,7 +111,7 @@ class FileMetadataValidator:
             permission_indicators=indicators,
             confidence=confidence,
             reasoning=reasoning,
-            sources=sources
+            sources=sources,
         )
 
     def _normalize_path(self, file_path: str) -> str:
@@ -133,9 +134,9 @@ class FileMetadataValidator:
             content = gitattributes.read_text()
 
             # Parse each line and check for pattern matches
-            for line in content.split('\n'):
+            for line in content.split("\n"):
                 line = line.strip()
-                if not line or line.startswith('#'):
+                if not line or line.startswith("#"):
                     continue
 
                 # Split into pattern and attributes
@@ -144,24 +145,24 @@ class FileMetadataValidator:
                     continue
 
                 pattern = parts[0]
-                attributes = ' '.join(parts[1:])
+                attributes = " ".join(parts[1:])
 
                 # Convert gitattributes pattern to regex
                 # Simple conversion: * -> .*, ? -> .
-                regex_pattern = pattern.replace('.', r'\.').replace('*', '.*').replace('?', '.')
+                regex_pattern = pattern.replace(".", r"\.").replace("*", ".*").replace("?", ".")
 
                 # Check if path matches the pattern
                 if re.match(regex_pattern, rel_path):
                     # Check for secret filter
-                    if 'filter=secret' in attributes.lower():
+                    if "filter=secret" in attributes.lower():
                         indicators.append("Marked as secret in .gitattributes")
 
                     # Check for encryption markers
-                    if 'crypt' in attributes.lower():
+                    if "crypt" in attributes.lower():
                         indicators.append("Encryption configured in .gitattributes")
 
                     # Check for diff=secret or diff=crypt
-                    if re.search(r'diff=(secret|crypt)', attributes, re.IGNORECASE):
+                    if re.search(r"diff=(secret|crypt)", attributes, re.IGNORECASE):
                         indicators.append("Hidden from diffs via .gitattributes")
 
         except Exception as e:
@@ -192,13 +193,13 @@ class FileMetadataValidator:
 
     def _matches_ignore_pattern(self, path: str, ignore_content: str) -> bool:
         """Check if path matches any ignore pattern"""
-        for line in ignore_content.split('\n'):
+        for line in ignore_content.split("\n"):
             line = line.strip()
-            if not line or line.startswith('#'):
+            if not line or line.startswith("#"):
                 continue
 
             # Simple pattern matching (not full gitignore spec)
-            pattern = line.replace('*', '.*')
+            pattern = line.replace("*", ".*")
             if re.match(pattern, path):
                 return True
 
@@ -233,13 +234,7 @@ class FileMetadataValidator:
         indicators = []
 
         # Check common deployment files
-        deploy_files = [
-            "docker-compose.yml",
-            "Dockerfile",
-            ".github/workflows/*.yml",
-            "k8s/*.yaml",
-            "terraform/*.tf"
-        ]
+        deploy_files = ["docker-compose.yml", "Dockerfile", ".github/workflows/*.yml", "k8s/*.yaml", "terraform/*.tf"]
 
         for pattern in deploy_files:
             for deploy_file in self.repo_root.glob(pattern):

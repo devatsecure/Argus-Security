@@ -35,8 +35,8 @@ class AgentOSArgumentParser(argparse.ArgumentParser):
             **kwargs: Keyword arguments for argparse.ArgumentParser
         """
         # Set default formatter if not provided
-        if 'formatter_class' not in kwargs:
-            kwargs['formatter_class'] = argparse.RawDescriptionHelpFormatter
+        if "formatter_class" not in kwargs:
+            kwargs["formatter_class"] = argparse.RawDescriptionHelpFormatter
 
         super().__init__(*args, **kwargs)
         self._standard_args_added = False
@@ -56,33 +56,20 @@ class AgentOSArgumentParser(argparse.ArgumentParser):
         if self._standard_args_added:
             return
 
-        self.add_argument(
-            "--debug",
-            action="store_true",
-            help="Enable debug logging"
-        )
+        self.add_argument("--debug", action="store_true", help="Enable debug logging")
 
         self.add_argument(
-            "--output-file",
-            "--output",
-            "-o",
-            type=Path,
-            help="Output file path (JSON, SARIF, or Markdown)"
+            "--output-file", "--output", "-o", type=Path, help="Output file path (JSON, SARIF, or Markdown)"
         )
 
         self.add_argument(
             "--format",
             choices=["json", "sarif", "markdown", "md"],
             default="json",
-            help="Output format (default: json)"
+            help="Output format (default: json)",
         )
 
-        self.add_argument(
-            "--verbose",
-            "-v",
-            action="store_true",
-            help="Enable verbose output"
-        )
+        self.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
 
         self._standard_args_added = True
 
@@ -99,30 +86,22 @@ class AgentOSArgumentParser(argparse.ArgumentParser):
         if self._ai_args_added:
             return
 
-        ai_group = self.add_argument_group('AI Configuration')
+        ai_group = self.add_argument_group("AI Configuration")
 
         ai_group.add_argument(
             "--ai-provider",
             choices=["anthropic", "openai", "ollama", "auto"],
             default="auto",
-            help="AI provider for intelligent analysis (default: auto)"
+            help="AI provider for intelligent analysis (default: auto)",
         )
 
         ai_group.add_argument(
-            "--api-key",
-            help="API key for AI provider (or use ANTHROPIC_API_KEY/OPENAI_API_KEY env var)"
+            "--api-key", help="API key for AI provider (or use ANTHROPIC_API_KEY/OPENAI_API_KEY env var)"
         )
 
-        ai_group.add_argument(
-            "--model",
-            help="Specific model to use (e.g., claude-3-sonnet-20240229, gpt-4)"
-        )
+        ai_group.add_argument("--model", help="Specific model to use (e.g., claude-3-sonnet-20240229, gpt-4)")
 
-        ai_group.add_argument(
-            "--no-ai",
-            action="store_true",
-            help="Disable AI verification, use heuristics only"
-        )
+        ai_group.add_argument("--no-ai", action="store_true", help="Disable AI verification, use heuristics only")
 
         self._ai_args_added = True
 
@@ -139,19 +118,15 @@ class AgentOSArgumentParser(argparse.ArgumentParser):
         if self._scanner_args_added:
             return
 
-        scanner_group = self.add_argument_group('Scanner Configuration')
+        scanner_group = self.add_argument_group("Scanner Configuration")
 
-        scanner_group.add_argument(
-            "--enable-all-scanners",
-            action="store_true",
-            help="Enable all available scanners"
-        )
+        scanner_group.add_argument("--enable-all-scanners", action="store_true", help="Enable all available scanners")
 
         scanner_group.add_argument(
             "--scanners",
             nargs="+",
             choices=["semgrep", "trivy", "trufflehog", "gitleaks", "checkov", "nuclei"],
-            help="Specific scanners to enable"
+            help="Specific scanners to enable",
         )
 
         scanner_group.add_argument(
@@ -159,14 +134,10 @@ class AgentOSArgumentParser(argparse.ArgumentParser):
             nargs="+",
             choices=["critical", "high", "medium", "low", "info"],
             default=["critical", "high", "medium"],
-            help="Severity levels to include (default: critical, high, medium)"
+            help="Severity levels to include (default: critical, high, medium)",
         )
 
-        scanner_group.add_argument(
-            "--max-findings",
-            type=int,
-            help="Maximum number of findings to process"
-        )
+        scanner_group.add_argument("--max-findings", type=int, help="Maximum number of findings to process")
 
         self._scanner_args_added = True
 
@@ -181,14 +152,7 @@ class AgentOSArgumentParser(argparse.ArgumentParser):
         if help_text is None:
             help_text = "Input file path (JSON format)"
 
-        self.add_argument(
-            "--input-file",
-            "--input",
-            "-i",
-            type=Path,
-            required=required,
-            help=help_text
-        )
+        self.add_argument("--input-file", "--input", "-i", type=Path, required=required, help=help_text)
 
     def add_findings_argument(self, required: bool = True):
         """
@@ -198,10 +162,7 @@ class AgentOSArgumentParser(argparse.ArgumentParser):
             required: Whether the argument is required (default: True)
         """
         self.add_argument(
-            "--findings",
-            type=Path,
-            required=required,
-            help="Path to findings JSON file (normalized format)"
+            "--findings", type=Path, required=required, help="Path to findings JSON file (normalized format)"
         )
 
     def add_target_argument(self, required: bool = True, help_text: Optional[str] = None):
@@ -215,11 +176,7 @@ class AgentOSArgumentParser(argparse.ArgumentParser):
         if help_text is None:
             help_text = "Target path to scan (file or directory)"
 
-        self.add_argument(
-            "target",
-            nargs='?' if not required else None,
-            help=help_text
-        )
+        self.add_argument("target", nargs="?" if not required else None, help=help_text)
 
 
 def validate_file_exists(file_path: Path) -> Path:
@@ -279,12 +236,14 @@ def validate_url(url: str) -> str:
 
     # Basic URL validation regex
     url_pattern = re.compile(
-        r'^https?://'  # http:// or https://
-        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?|'  # domain
-        r'localhost|'  # localhost
-        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # IP
-        r'(?::\d+)?'  # optional port
-        r'(?:/?|[/?]\S+)$', re.IGNORECASE)
+        r"^https?://"  # http:// or https://
+        r"(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+[A-Z]{2,6}\.?|"  # domain
+        r"localhost|"  # localhost
+        r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})"  # IP
+        r"(?::\d+)?"  # optional port
+        r"(?:/?|[/?]\S+)$",
+        re.IGNORECASE,
+    )
 
     if not url_pattern.match(url):
         raise argparse.ArgumentTypeError(f"Invalid URL: {url}")
@@ -309,9 +268,7 @@ def validate_severity(severity: str) -> str:
     severity_lower = severity.lower()
 
     if severity_lower not in valid_severities:
-        raise argparse.ArgumentTypeError(
-            f"Invalid severity: {severity}. Must be one of: {', '.join(valid_severities)}"
-        )
+        raise argparse.ArgumentTypeError(f"Invalid severity: {severity}. Must be one of: {', '.join(valid_severities)}")
 
     return severity_lower
 
@@ -325,17 +282,14 @@ def setup_logging(args: argparse.Namespace):
     """
     import logging
 
-    if hasattr(args, 'debug') and args.debug:
+    if hasattr(args, "debug") and args.debug:
         level = logging.DEBUG
-    elif hasattr(args, 'verbose') and args.verbose:
+    elif hasattr(args, "verbose") and args.verbose:
         level = logging.INFO
     else:
         level = logging.WARNING
 
-    logging.basicConfig(
-        level=level,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
+    logging.basicConfig(level=level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 
 def create_example_usage(script_name: str, examples: list[str]) -> str:

@@ -39,15 +39,13 @@ from pathlib import Path
 from typing import Optional
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
 class CorrelationStatus(Enum):
     """Status of SAST-DAST correlation"""
+
     CONFIRMED = "confirmed"  # DAST verified SAST finding is exploitable
     PARTIAL = "partial"  # Similar but not exact match
     NOT_VERIFIED = "not_verified"  # Couldn't verify (might be FP)
@@ -57,6 +55,7 @@ class CorrelationStatus(Enum):
 @dataclass
 class CorrelationResult:
     """Result of correlating SAST and DAST findings"""
+
     sast_finding_id: str
     dast_finding_id: Optional[str]
     status: CorrelationStatus
@@ -129,6 +128,7 @@ class SASTDASTCorrelator:
                 # Get config from environment if not provided
                 if not self.config:
                     import os
+
                     self.config = {
                         "anthropic_api_key": os.getenv("ANTHROPIC_API_KEY"),
                         "openai_api_key": os.getenv("OPENAI_API_KEY"),
@@ -151,10 +151,7 @@ class SASTDASTCorrelator:
                 self.llm = None
 
     def correlate(
-        self,
-        sast_findings: list[dict],
-        dast_findings: list[dict],
-        use_ai: bool = True
+        self, sast_findings: list[dict], dast_findings: list[dict], use_ai: bool = True
     ) -> list[CorrelationResult]:
         """Correlate SAST and DAST findings
 
@@ -183,10 +180,7 @@ class SASTDASTCorrelator:
         return results
 
     def _correlate_single(
-        self,
-        sast_finding: dict,
-        dast_findings: list[dict],
-        use_ai: bool = True
+        self, sast_finding: dict, dast_findings: list[dict], use_ai: bool = True
     ) -> CorrelationResult:
         """Correlate a single SAST finding with DAST results
 
@@ -210,7 +204,7 @@ class SASTDASTCorrelator:
                 exploitability="unknown",
                 reasoning="No DAST test covered this endpoint or vulnerability type",
                 match_score=0.0,
-                sast_summary=self._summarize_finding(sast_finding)
+                sast_summary=self._summarize_finding(sast_finding),
             )
 
         # 2. Get best candidate
@@ -225,11 +219,7 @@ class SASTDASTCorrelator:
         # 4. Fallback to heuristic-based correlation
         return self._heuristic_correlation(sast_finding, dast_finding, match_score)
 
-    def _find_dast_candidates(
-        self,
-        sast_finding: dict,
-        dast_findings: list[dict]
-    ) -> list[dict]:
+    def _find_dast_candidates(self, sast_finding: dict, dast_findings: list[dict]) -> list[dict]:
         """Find DAST findings that might match SAST finding
 
         Args:
@@ -250,10 +240,7 @@ class SASTDASTCorrelator:
 
             # Only include candidates above threshold
             if score > 0.3:  # 30% similarity threshold
-                candidates.append({
-                    "finding": dast,
-                    "match_score": score
-                })
+                candidates.append({"finding": dast, "match_score": score})
 
         # Sort by score descending
         candidates.sort(reverse=True, key=lambda x: x["match_score"])
@@ -261,11 +248,7 @@ class SASTDASTCorrelator:
         logger.debug(f"Found {len(candidates)} DAST candidates for SAST finding")
         return candidates
 
-    def _calculate_match_score(
-        self,
-        sast_finding: dict,
-        dast_finding: dict
-    ) -> float:
+    def _calculate_match_score(self, sast_finding: dict, dast_finding: dict) -> float:
         """Calculate similarity score between SAST and DAST findings
 
         Args:
@@ -277,9 +260,9 @@ class SASTDASTCorrelator:
         """
         score = 0.0
         weights = {
-            "path": 0.4,      # Path/URL matching is most important
-            "vuln_type": 0.35, # Vulnerability type is critical
-            "cwe": 0.25        # CWE provides additional confirmation
+            "path": 0.4,  # Path/URL matching is most important
+            "vuln_type": 0.35,  # Vulnerability type is critical
+            "cwe": 0.25,  # CWE provides additional confirmation
         }
 
         # 1. Path/URL matching (fuzzy)
@@ -412,7 +395,7 @@ class SASTDASTCorrelator:
         identifier_lower = identifier.lower()
 
         # Check if it's a CWE
-        cwe_match = re.search(r'cwe-?\d+', identifier_lower)
+        cwe_match = re.search(r"cwe-?\d+", identifier_lower)
         if cwe_match:
             cwe = cwe_match.group(0).upper().replace("CWE-", "CWE-")
             return self.CWE_TO_VULN_TYPE.get(cwe.replace("-", "-"), "")
@@ -441,12 +424,7 @@ class SASTDASTCorrelator:
                 return True
         return False
 
-    def _ai_verify_correlation(
-        self,
-        sast_finding: dict,
-        dast_finding: dict,
-        match_score: float
-    ) -> CorrelationResult:
+    def _ai_verify_correlation(self, sast_finding: dict, dast_finding: dict, match_score: float) -> CorrelationResult:
         """Use AI to verify if DAST confirms SAST finding
 
         Args:
@@ -463,9 +441,7 @@ class SASTDASTCorrelator:
         try:
             # Call LLM API
             response_text, input_tokens, output_tokens = self.llm.call_llm_api(
-                prompt=prompt,
-                max_tokens=500,
-                operation="SAST-DAST correlation"
+                prompt=prompt, max_tokens=500, operation="SAST-DAST correlation"
             )
 
             # Parse JSON response
@@ -480,7 +456,7 @@ class SASTDASTCorrelator:
                     decision=data.get("status", "not_verified"),
                     reasoning=data.get("reasoning", ""),
                     confidence=data.get("confidence", 0.0),
-                    noise_score=1.0 - match_score  # Inverse of match score
+                    noise_score=1.0 - match_score,  # Inverse of match score
                 )
 
             return CorrelationResult(
@@ -493,7 +469,7 @@ class SASTDASTCorrelator:
                 poc_exploit=dast_finding.get("evidence", {}).get("poc"),
                 match_score=match_score,
                 sast_summary=self._summarize_finding(sast_finding),
-                dast_summary=self._summarize_finding(dast_finding)
+                dast_summary=self._summarize_finding(dast_finding),
             )
 
         except json.JSONDecodeError as e:
@@ -505,12 +481,7 @@ class SASTDASTCorrelator:
             logger.error(f"AI verification failed: {type(e).__name__}: {e}")
             return self._heuristic_correlation(sast_finding, dast_finding, match_score)
 
-    def _build_correlation_prompt(
-        self,
-        sast_finding: dict,
-        dast_finding: dict,
-        match_score: float
-    ) -> str:
+    def _build_correlation_prompt(self, sast_finding: dict, dast_finding: dict, match_score: float) -> str:
         """Build prompt for AI correlation verification
 
         Args:
@@ -529,24 +500,24 @@ class SASTDASTCorrelator:
         prompt = f"""You are a security analyst correlating static (SAST) and dynamic (DAST) analysis results.
 
 **SAST Finding (Static Analysis):**
-- ID: {sast_finding.get('id', 'unknown')}
-- Type: {sast_finding.get('rule_name', 'unknown')}
-- File: {sast_finding.get('path', 'unknown')}
-- Line: {sast_finding.get('line', 'unknown')}
-- Severity: {sast_finding.get('severity', 'unknown')}
-- CWE: {sast_finding.get('cwe', 'N/A')}
-- Description: {sast_finding.get('evidence', {}).get('message', 'N/A')}
+- ID: {sast_finding.get("id", "unknown")}
+- Type: {sast_finding.get("rule_name", "unknown")}
+- File: {sast_finding.get("path", "unknown")}
+- Line: {sast_finding.get("line", "unknown")}
+- Severity: {sast_finding.get("severity", "unknown")}
+- CWE: {sast_finding.get("cwe", "N/A")}
+- Description: {sast_finding.get("evidence", {}).get("message", "N/A")}
 - Code: {code_snippet}
 
 **DAST Finding (Dynamic Test):**
-- ID: {dast_finding.get('id', 'unknown')}
-- URL: {dast_finding.get('evidence', {}).get('url', dast_finding.get('path', 'unknown'))}
-- Method: {dast_finding.get('evidence', {}).get('method', 'unknown')}
-- Vulnerability: {dast_finding.get('rule_name', 'unknown')}
-- Severity: {dast_finding.get('severity', 'unknown')}
-- CWE: {dast_finding.get('cwe', 'N/A')}
-- Evidence: {dast_finding.get('evidence', {}).get('message', 'N/A')}
-- Proof of Concept: {dast_finding.get('evidence', {}).get('poc', 'N/A')}
+- ID: {dast_finding.get("id", "unknown")}
+- URL: {dast_finding.get("evidence", {}).get("url", dast_finding.get("path", "unknown"))}
+- Method: {dast_finding.get("evidence", {}).get("method", "unknown")}
+- Vulnerability: {dast_finding.get("rule_name", "unknown")}
+- Severity: {dast_finding.get("severity", "unknown")}
+- CWE: {dast_finding.get("cwe", "N/A")}
+- Evidence: {dast_finding.get("evidence", {}).get("message", "N/A")}
+- Proof of Concept: {dast_finding.get("evidence", {}).get("poc", "N/A")}
 
 **Heuristic Match Score:** {match_score:.2f} (0.0-1.0)
 
@@ -568,12 +539,7 @@ Consider:
 """
         return prompt
 
-    def _heuristic_correlation(
-        self,
-        sast_finding: dict,
-        dast_finding: dict,
-        match_score: float
-    ) -> CorrelationResult:
+    def _heuristic_correlation(self, sast_finding: dict, dast_finding: dict, match_score: float) -> CorrelationResult:
         """Perform heuristic-based correlation without AI
 
         Args:
@@ -599,7 +565,9 @@ Consider:
             status = CorrelationStatus.NOT_VERIFIED
             confidence = 0.3
             exploitability = "theoretical"
-            reasoning = f"Low confidence match (score: {match_score:.2f}) - correlation uncertain without AI verification"
+            reasoning = (
+                f"Low confidence match (score: {match_score:.2f}) - correlation uncertain without AI verification"
+            )
 
         return CorrelationResult(
             sast_finding_id=sast_finding.get("id", "unknown"),
@@ -611,7 +579,7 @@ Consider:
             poc_exploit=dast_finding.get("evidence", {}).get("poc"),
             match_score=match_score,
             sast_summary=self._summarize_finding(sast_finding),
-            dast_summary=self._summarize_finding(dast_finding)
+            dast_summary=self._summarize_finding(dast_finding),
         )
 
     def _summarize_finding(self, finding: dict) -> dict:
@@ -628,7 +596,7 @@ Consider:
             "type": finding.get("rule_name", "unknown"),
             "path": finding.get("path", "unknown"),
             "severity": finding.get("severity", "unknown"),
-            "cwe": finding.get("cwe", "N/A")
+            "cwe": finding.get("cwe", "N/A"),
         }
 
     def _print_summary(self, results: list[CorrelationResult]) -> None:
@@ -670,12 +638,7 @@ Consider:
         if high_confidence:
             logger.info(f"\n🔥 {len(high_confidence)} high-confidence exploitable findings confirmed by DAST")
 
-    def export_results(
-        self,
-        results: list[CorrelationResult],
-        output_file: str,
-        format: str = "json"
-    ) -> None:
+    def export_results(self, results: list[CorrelationResult], output_file: str, format: str = "json") -> None:
         """Export correlation results to file
 
         Args:
@@ -706,7 +669,7 @@ Consider:
                 "not_verified": len([r for r in results if r.status == CorrelationStatus.NOT_VERIFIED]),
                 "no_coverage": len([r for r in results if r.status == CorrelationStatus.NO_DAST_COVERAGE]),
             },
-            "correlations": [r.to_dict() for r in results]
+            "correlations": [r.to_dict() for r in results],
         }
 
         with open(output_file, "w") as f:
@@ -730,7 +693,9 @@ Consider:
             f.write(f"- **Confirmed:** {len([r for r in results if r.status == CorrelationStatus.CONFIRMED])}\n")
             f.write(f"- **Partial:** {len([r for r in results if r.status == CorrelationStatus.PARTIAL])}\n")
             f.write(f"- **Not verified:** {len([r for r in results if r.status == CorrelationStatus.NOT_VERIFIED])}\n")
-            f.write(f"- **No coverage:** {len([r for r in results if r.status == CorrelationStatus.NO_DAST_COVERAGE])}\n\n")
+            f.write(
+                f"- **No coverage:** {len([r for r in results if r.status == CorrelationStatus.NO_DAST_COVERAGE])}\n\n"
+            )
 
             # Confirmed findings
             confirmed = [r for r in results if r.status == CorrelationStatus.CONFIRMED]
@@ -750,37 +715,12 @@ def main():
     parser = argparse.ArgumentParser(
         description="SAST-DAST Correlation Engine - Verify SAST findings with DAST results using AI"
     )
-    parser.add_argument(
-        "--sast-file",
-        required=True,
-        help="Path to SAST findings JSON file (normalized format)"
-    )
-    parser.add_argument(
-        "--dast-file",
-        required=True,
-        help="Path to DAST findings JSON file (normalized format)"
-    )
-    parser.add_argument(
-        "--output-file",
-        required=True,
-        help="Path to output correlation results JSON file"
-    )
-    parser.add_argument(
-        "--format",
-        choices=["json", "markdown"],
-        default="json",
-        help="Output format (default: json)"
-    )
-    parser.add_argument(
-        "--no-ai",
-        action="store_true",
-        help="Disable AI verification, use heuristics only"
-    )
-    parser.add_argument(
-        "--debug",
-        action="store_true",
-        help="Enable debug logging"
-    )
+    parser.add_argument("--sast-file", required=True, help="Path to SAST findings JSON file (normalized format)")
+    parser.add_argument("--dast-file", required=True, help="Path to DAST findings JSON file (normalized format)")
+    parser.add_argument("--output-file", required=True, help="Path to output correlation results JSON file")
+    parser.add_argument("--format", choices=["json", "markdown"], default="json", help="Output format (default: json)")
+    parser.add_argument("--no-ai", action="store_true", help="Disable AI verification, use heuristics only")
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
 
     args = parser.parse_args()
 
@@ -813,11 +753,7 @@ def main():
 
     # Run correlation
     try:
-        results = correlator.correlate(
-            sast_findings=sast_findings,
-            dast_findings=dast_findings,
-            use_ai=not args.no_ai
-        )
+        results = correlator.correlate(sast_findings=sast_findings, dast_findings=dast_findings, use_ai=not args.no_ai)
 
         # Export results
         correlator.export_results(results, args.output_file, format=args.format)
@@ -828,6 +764,7 @@ def main():
     except Exception as e:
         logger.error(f"Correlation failed: {type(e).__name__}: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 

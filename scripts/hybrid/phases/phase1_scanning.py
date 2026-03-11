@@ -162,9 +162,7 @@ def run_phase1_scanning(
             logger.info("   Running Gitleaks secret scanner...")
             from hybrid.scanner_runners import run_gitleaks
 
-            gitleaks_findings = run_gitleaks(
-                analyzer.gitleaks_scanner, str(target_path), logger
-            )
+            gitleaks_findings = run_gitleaks(analyzer.gitleaks_scanner, str(target_path), logger)
             all_findings.extend(gitleaks_findings)
             logger.info("   Gitleaks: %d secrets detected", len(gitleaks_findings))
             scanner_health["Gitleaks"] = f"ran({len(gitleaks_findings)})" if gitleaks_findings else "clean"

@@ -85,24 +85,14 @@ def render_decision_metrics(analyzer, decisions):
 
     with col1:
         st.metric(
-            "Suppression Rate",
-            f"{analysis['suppression_rate']:.1f}%",
-            help="Percentage of findings suppressed by AI"
+            "Suppression Rate", f"{analysis['suppression_rate']:.1f}%", help="Percentage of findings suppressed by AI"
         )
 
     with col2:
-        st.metric(
-            "Avg Confidence",
-            f"{analysis['avg_confidence']:.3f}",
-            help="Average confidence score (0-1)"
-        )
+        st.metric("Avg Confidence", f"{analysis['avg_confidence']:.3f}", help="Average confidence score (0-1)")
 
     with col3:
-        st.metric(
-            "Low Confidence",
-            analysis['low_confidence_count'],
-            help="Decisions with confidence < 0.6"
-        )
+        st.metric("Low Confidence", analysis["low_confidence_count"], help="Decisions with confidence < 0.6")
 
     # Confidence distribution chart
     st.subheader("Confidence Distribution")
@@ -111,10 +101,7 @@ def render_decision_metrics(analyzer, decisions):
     if conf_dist:
         import pandas as pd
 
-        df = pd.DataFrame([
-            {"Range": k, "Count": v}
-            for k, v in conf_dist.items()
-        ])
+        df = pd.DataFrame([{"Range": k, "Count": v} for k, v in conf_dist.items()])
 
         st.bar_chart(df.set_index("Range"))
 
@@ -126,15 +113,18 @@ def render_decision_metrics(analyzer, decisions):
         scanner_data = []
         for scanner, stats in scanner_stats.items():
             suppress_rate = (stats["suppress"] / stats["total"] * 100) if stats["total"] > 0 else 0
-            scanner_data.append({
-                "Scanner": scanner,
-                "Total": stats["total"],
-                "Suppressed": stats["suppress"],
-                "Escalated": stats["escalate"],
-                "Suppression %": f"{suppress_rate:.1f}%"
-            })
+            scanner_data.append(
+                {
+                    "Scanner": scanner,
+                    "Total": stats["total"],
+                    "Suppressed": stats["suppress"],
+                    "Escalated": stats["escalate"],
+                    "Suppression %": f"{suppress_rate:.1f}%",
+                }
+            )
 
         import pandas as pd
+
         df = pd.DataFrame(scanner_data)
         st.dataframe(df, use_container_width=True)
 
@@ -153,23 +143,16 @@ def render_feedback_metrics(collector, feedback):
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.metric(
-            "Total Feedback",
-            stats["total_feedback"]
-        )
+        st.metric("Total Feedback", stats["total_feedback"])
 
     with col2:
         st.metric(
-            "False Positive Rate",
-            f"{stats['fp_rate']:.1f}%",
-            help="Percentage of findings marked as false positives"
+            "False Positive Rate", f"{stats['fp_rate']:.1f}%", help="Percentage of findings marked as false positives"
         )
 
     with col3:
         st.metric(
-            "True Positive Rate",
-            f"{stats['tp_rate']:.1f}%",
-            help="Percentage of findings marked as true positives"
+            "True Positive Rate", f"{stats['tp_rate']:.1f}%", help="Percentage of findings marked as true positives"
         )
 
     # By scanner breakdown
@@ -180,14 +163,17 @@ def render_feedback_metrics(collector, feedback):
         scanner_data = []
         for scanner, scanner_stats in by_scanner.items():
             fp_rate = (scanner_stats["fp"] / scanner_stats["total"] * 100) if scanner_stats["total"] > 0 else 0
-            scanner_data.append({
-                "Scanner": scanner,
-                "Total Feedback": scanner_stats["total"],
-                "False Positives": scanner_stats["fp"],
-                "FP Rate": fp_rate
-            })
+            scanner_data.append(
+                {
+                    "Scanner": scanner,
+                    "Total Feedback": scanner_stats["total"],
+                    "False Positives": scanner_stats["fp"],
+                    "FP Rate": fp_rate,
+                }
+            )
 
         import pandas as pd
+
         df = pd.DataFrame(scanner_data)
 
         # Sort by FP rate descending
@@ -197,13 +183,14 @@ def render_feedback_metrics(collector, feedback):
 
         # Bar chart of FP rates
         import plotly.express as px
+
         fig = px.bar(
             df,
             x="Scanner",
             y="FP Rate",
             title="False Positive Rate by Scanner",
             color="FP Rate",
-            color_continuous_scale="Reds"
+            color_continuous_scale="Reds",
         )
         st.plotly_chart(fig, use_container_width=True)
 
@@ -288,10 +275,7 @@ def render_time_series(decisions, feedback):
 
         if dates:
             date_counts = Counter(dates)
-            df = pd.DataFrame([
-                {"Date": date, "Decisions": count}
-                for date, count in sorted(date_counts.items())
-            ])
+            df = pd.DataFrame([{"Date": date, "Decisions": count} for date, count in sorted(date_counts.items())])
 
             st.line_chart(df.set_index("Date"))
 
@@ -314,10 +298,7 @@ def render_time_series(decisions, feedback):
 
         if dates:
             date_counts = Counter(dates)
-            df = pd.DataFrame([
-                {"Date": date, "Feedback": count}
-                for date, count in sorted(date_counts.items())
-            ])
+            df = pd.DataFrame([{"Date": date, "Feedback": count} for date, count in sorted(date_counts.items())])
 
             st.line_chart(df.set_index("Date"))
 
@@ -355,11 +336,7 @@ def render_cache_stats(cache_stats):
 
         scanner_data = []
         for scanner, stats in scanner_stats.items():
-            scanner_data.append({
-                "Scanner": scanner,
-                "Entries": stats["entries"],
-                "Size (MB)": stats["size_mb"]
-            })
+            scanner_data.append({"Scanner": scanner, "Entries": stats["entries"], "Size (MB)": stats["size_mb"]})
 
         df = pd.DataFrame(scanner_data)
         st.dataframe(df, use_container_width=True)
@@ -368,10 +345,7 @@ def render_cache_stats(cache_stats):
 def main():
     """Main dashboard application"""
     st.set_page_config(
-        page_title="Argus Observability",
-        page_icon="🔒",
-        layout="wide",
-        initial_sidebar_state="expanded"
+        page_title="Argus Observability", page_icon="🔒", layout="wide", initial_sidebar_state="expanded"
     )
 
     st.title("🔒 Argus Observability Dashboard")
@@ -391,11 +365,7 @@ def main():
         # Date range filter
         st.subheader("Date Range")
         days_back = st.slider(
-            "Days to analyze",
-            min_value=1,
-            max_value=90,
-            value=30,
-            help="Analyze data from the last N days"
+            "Days to analyze", min_value=1, max_value=90, value=30, help="Analyze data from the last N days"
         )
 
         st.divider()
@@ -417,14 +387,8 @@ def main():
 
         # Filter by date range
         start_date = datetime.now() - timedelta(days=days_back)
-        decisions = [
-            d for d in decisions
-            if datetime.fromisoformat(d.get("timestamp", "")) >= start_date
-        ]
-        feedback = [
-            f for f in feedback
-            if datetime.fromisoformat(f.get("timestamp", "")) >= start_date
-        ]
+        decisions = [d for d in decisions if datetime.fromisoformat(d.get("timestamp", "")) >= start_date]
+        feedback = [f for f in feedback if datetime.fromisoformat(f.get("timestamp", "")) >= start_date]
 
         # Render sections
         render_overview(decisions, feedback, cache_stats)

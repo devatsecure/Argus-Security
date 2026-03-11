@@ -73,6 +73,7 @@ except ImportError:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _parse_bool(value: Any) -> bool:
     """Parse a config value as boolean."""
     if isinstance(value, str):
@@ -83,6 +84,7 @@ def _parse_bool(value: Any) -> bool:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def run_enrichment_pipeline(
     findings: list[dict[str, Any]],
@@ -141,7 +143,10 @@ def run_enrichment_pipeline(
 
     # -- Step 6: Advanced Suppression -----------------------------------------
     remaining, step_meta = _step_suppression(
-        remaining, config, target_path, suppressed_by_vex,
+        remaining,
+        config,
+        target_path,
+        suppressed_by_vex,
     )
     if step_meta:
         metadata["suppression"] = step_meta
@@ -153,8 +158,11 @@ def run_enrichment_pipeline(
 # Individual enrichment steps (private)
 # ---------------------------------------------------------------------------
 
+
 def _step_epss(
-    findings: list[dict[str, Any]], config: dict[str, Any], target_path: str,
+    findings: list[dict[str, Any]],
+    config: dict[str, Any],
+    target_path: str,
 ) -> tuple[list[dict[str, Any]], Optional[dict[str, Any]]]:
     """Step 1: EPSS scoring."""
     if not _EPSS_OK or not _parse_bool(config.get("enable_epss_scoring", True)):
@@ -167,11 +175,7 @@ def _step_epss(
             ttl_hours=ttl,
         )
         findings = scorer.enrich_findings(findings)
-        cve_ids = [
-            f.get("cve_id") or f.get("cve", "")
-            for f in findings
-            if f.get("cve_id") or f.get("cve")
-        ]
+        cve_ids = [f.get("cve_id") or f.get("cve", "") for f in findings if f.get("cve_id") or f.get("cve")]
         step_meta: dict[str, Any] = {}
         if cve_ids:
             scores = scorer.fetch_scores(cve_ids)
@@ -186,7 +190,8 @@ def _step_epss(
 
 
 def _step_fix_versions(
-    findings: list[dict[str, Any]], config: dict[str, Any],
+    findings: list[dict[str, Any]],
+    config: dict[str, Any],
 ) -> tuple[list[dict[str, Any]], Optional[dict[str, Any]]]:
     """Step 2: Fix version tracking."""
     if not _FIX_OK or not _parse_bool(config.get("enable_fix_version_tracking", True)):
@@ -212,7 +217,9 @@ def _step_fix_versions(
 
 
 def _step_vex(
-    findings: list[dict[str, Any]], config: dict[str, Any], target_path: str,
+    findings: list[dict[str, Any]],
+    config: dict[str, Any],
+    target_path: str,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], Optional[dict[str, Any]]]:
     """Step 3: VEX filtering.
 
@@ -226,11 +233,7 @@ def _step_vex(
 
     try:
         vex_paths_str = config.get("vex_paths", "")
-        vex_paths = (
-            [p.strip() for p in vex_paths_str.split(",") if p.strip()]
-            if vex_paths_str
-            else None
-        )
+        vex_paths = [p.strip() for p in vex_paths_str.split(",") if p.strip()] if vex_paths_str else None
         auto_dir = config.get("vex_auto_discover_dir", ".argus/vex")
         processor = VEXProcessor(vex_paths=vex_paths, auto_discover_dir=auto_dir)
         statements = processor.load_statements()
@@ -243,10 +246,7 @@ def _step_vex(
                 len(suppressed_by_vex),
                 len(findings),
             )
-        print(
-            f"   VEX: {len(suppressed_by_vex)} suppressed, "
-            f"{len(statements) if statements else 0} statements loaded"
-        )
+        print(f"   VEX: {len(suppressed_by_vex)} suppressed, {len(statements) if statements else 0} statements loaded")
         return findings, suppressed_by_vex, step_meta
     except Exception as e:
         logger.warning("VEX processing failed (non-fatal): %s", e)
@@ -255,7 +255,8 @@ def _step_vex(
 
 
 def _step_dedup(
-    findings: list, config: dict,
+    findings: list,
+    config: dict,
 ) -> tuple[list, dict | None]:
     """Step 4: Vulnerability deduplication."""
     if not _DEDUP_OK or not _parse_bool(config.get("enable_vuln_deduplication", True)):
@@ -270,7 +271,9 @@ def _step_dedup(
         step_meta = VulnDeduplicator.get_summary(result)
         removed = before_count - len(findings)
         logger.info(
-            "Deduplication: %d removed, %d remaining", removed, len(findings),
+            "Deduplication: %d removed, %d remaining",
+            removed,
+            len(findings),
         )
         print(f"   Dedup: {removed} duplicates removed ({before_count} -> {len(findings)})")
         return findings, step_meta
@@ -281,7 +284,9 @@ def _step_dedup(
 
 
 def _step_compliance(
-    findings: list, config: dict, target_path: str,
+    findings: list,
+    config: dict,
+    target_path: str,
 ) -> tuple[list, dict | None]:
     """Step 5: Compliance mapping."""
     if not _COMPLIANCE_OK or not _parse_bool(
@@ -291,11 +296,7 @@ def _step_compliance(
 
     try:
         frameworks_str = config.get("compliance_frameworks", "")
-        frameworks = (
-            [f.strip() for f in frameworks_str.split(",") if f.strip()]
-            if frameworks_str
-            else None
-        )
+        frameworks = [f.strip() for f in frameworks_str.split(",") if f.strip()] if frameworks_str else None
         mapper = ComplianceMapper(frameworks=frameworks)
         reports = mapper.generate_all_reports(findings)
         step_meta: dict | None = None
@@ -309,11 +310,10 @@ def _step_compliance(
             with open(compliance_file, "w") as fh:
                 fh.write(compliance_md)
             logger.info(
-                "Compliance mapping: %d reports generated", len(reports),
+                "Compliance mapping: %d reports generated",
+                len(reports),
             )
-            print(
-                f"   Compliance: {len(reports)} framework reports -> {compliance_file}"
-            )
+            print(f"   Compliance: {len(reports)} framework reports -> {compliance_file}")
         return findings, step_meta
     except Exception as e:
         logger.warning("Compliance mapping failed (non-fatal): %s", e)
@@ -348,7 +348,8 @@ def _step_suppression(
                     {
                         "cve_id": f.get("cve_id") or f.get("cve", ""),
                         "reason": f.get(
-                            "vex_justification", "VEX: not affected",
+                            "vex_justification",
+                            "VEX: not affected",
                         ),
                     }
                     for f in suppressed_by_vex
@@ -369,9 +370,7 @@ def _step_suppression(
         expired = manager.get_expired_rules(rules)
         if expired:
             logger.warning("%d suppression rules have expired", len(expired))
-            print(
-                f"   Suppression: {len(expired)} expired rules (review recommended)"
-            )
+            print(f"   Suppression: {len(expired)} expired rules (review recommended)")
 
         step_meta = {
             "rules_loaded": len(rules),
@@ -379,12 +378,10 @@ def _step_suppression(
             "expired_rules": len(expired),
         }
         logger.info(
-            "Suppression: %d suppressed by rules", len(suppressed_by_rules),
+            "Suppression: %d suppressed by rules",
+            len(suppressed_by_rules),
         )
-        print(
-            f"   Suppression: {len(suppressed_by_rules)} findings "
-            f"suppressed by {len(rules)} rules"
-        )
+        print(f"   Suppression: {len(suppressed_by_rules)} findings suppressed by {len(rules)} rules")
         return findings, step_meta
     except Exception as e:
         logger.warning("Advanced suppression failed (non-fatal): %s", e)

@@ -45,12 +45,7 @@ class CacheManager:
         - results: Actual scan results
     """
 
-    def __init__(
-        self,
-        cache_dir: str = ".argus-cache",
-        default_ttl_days: int = 7,
-        enable_stats: bool = True
-    ):
+    def __init__(self, cache_dir: str = ".argus-cache", default_ttl_days: int = 7, enable_stats: bool = True):
         """
         Initialize cache manager
 
@@ -67,14 +62,7 @@ class CacheManager:
         self._lock = threading.RLock()
 
         # Statistics
-        self._stats = {
-            "hits": 0,
-            "misses": 0,
-            "sets": 0,
-            "invalidations": 0,
-            "errors": 0,
-            "total_size_bytes": 0
-        }
+        self._stats = {"hits": 0, "misses": 0, "sets": 0, "invalidations": 0, "errors": 0, "total_size_bytes": 0}
 
         # Decision log path
         self.decision_log_path = self.cache_dir / "decisions.jsonl"
@@ -170,10 +158,7 @@ class CacheManager:
         return scanner_dir / f"{cache_key}.json"
 
     def get_cached_result(
-        self,
-        file_path: str,
-        scanner_name: str,
-        scanner_version: Optional[str] = None
+        self, file_path: str, scanner_name: str, scanner_version: Optional[str] = None
     ) -> Optional[dict[str, Any]]:
         """
         Retrieve cached scan result if valid
@@ -200,11 +185,7 @@ class CacheManager:
                 cache_entry = json.load(f)
 
             # Validate cache entry
-            if not self._is_cache_entry_valid(
-                cache_entry,
-                file_path,
-                scanner_version
-            ):
+            if not self._is_cache_entry_valid(cache_entry, file_path, scanner_version):
                 with self._lock:
                     self._stats["misses"] += 1
                     self._stats["invalidations"] += 1
@@ -219,8 +200,7 @@ class CacheManager:
                 self._stats["hits"] += 1
 
             logger.info(
-                f"Cache hit: {file_path} (scanner: {scanner_name}, "
-                f"age: {self._format_age(cache_entry['timestamp'])})"
+                f"Cache hit: {file_path} (scanner: {scanner_name}, age: {self._format_age(cache_entry['timestamp'])})"
             )
 
             return cache_entry["results"]
@@ -248,7 +228,7 @@ class CacheManager:
         scanner_name: str,
         results: dict[str, Any],
         scanner_version: Optional[str] = None,
-        ttl_seconds: Optional[int] = None
+        ttl_seconds: Optional[int] = None,
     ) -> bool:
         """
         Store scan results in cache
@@ -282,7 +262,7 @@ class CacheManager:
                 "scanner_version": scanner_version or "unknown",
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "ttl_seconds": ttl_seconds or self.default_ttl_seconds,
-                "results": results
+                "results": results,
             }
 
             # Write atomically (write to temp, then rename)
@@ -307,12 +287,7 @@ class CacheManager:
                 self._stats["errors"] += 1
             return False
 
-    def is_cache_valid(
-        self,
-        file_path: str,
-        scanner_name: str,
-        scanner_version: Optional[str] = None
-    ) -> bool:
+    def is_cache_valid(self, file_path: str, scanner_name: str, scanner_version: Optional[str] = None) -> bool:
         """
         Check if cache entry exists and is valid
 
@@ -333,20 +308,13 @@ class CacheManager:
             with open(cache_path) as f:
                 cache_entry = json.load(f)
 
-            return self._is_cache_entry_valid(
-                cache_entry,
-                file_path,
-                scanner_version
-            )
+            return self._is_cache_entry_valid(cache_entry, file_path, scanner_version)
 
         except Exception:
             return False
 
     def _is_cache_entry_valid(
-        self,
-        cache_entry: dict[str, Any],
-        file_path: str,
-        scanner_version: Optional[str] = None
+        self, cache_entry: dict[str, Any], file_path: str, scanner_version: Optional[str] = None
     ) -> bool:
         """
         Validate cache entry against current file and scanner state
@@ -384,10 +352,7 @@ class CacheManager:
             if scanner_version:
                 cached_version = cache_entry.get("scanner_version")
                 if cached_version and cached_version != scanner_version:
-                    logger.debug(
-                        f"Cache invalid: scanner version changed "
-                        f"({cached_version} -> {scanner_version})"
-                    )
+                    logger.debug(f"Cache invalid: scanner version changed ({cached_version} -> {scanner_version})")
                     return False
 
             return True
@@ -471,13 +436,8 @@ class CacheManager:
                                 cache_entry = json.load(f)
 
                             # Check expiration
-                            cached_time = datetime.fromisoformat(
-                                cache_entry["timestamp"]
-                            )
-                            ttl_seconds = cache_entry.get(
-                                "ttl_seconds",
-                                self.default_ttl_seconds
-                            )
+                            cached_time = datetime.fromisoformat(cache_entry["timestamp"])
+                            ttl_seconds = cache_entry.get("ttl_seconds", self.default_ttl_seconds)
                             expiry_time = cached_time + timedelta(seconds=ttl_seconds)
 
                             if datetime.now(timezone.utc) > expiry_time:
@@ -522,9 +482,7 @@ class CacheManager:
 
                 # Calculate hit rate
                 total_accesses = stats["hits"] + stats["misses"]
-                stats["hit_rate"] = (
-                    stats["hits"] / total_accesses if total_accesses > 0 else 0.0
-                )
+                stats["hit_rate"] = stats["hits"] / total_accesses if total_accesses > 0 else 0.0
 
                 # Count entries and calculate size
                 total_entries = 0
@@ -549,7 +507,7 @@ class CacheManager:
                     scanner_stats[scanner_name] = {
                         "entries": scanner_entries,
                         "size_bytes": scanner_size,
-                        "size_mb": round(scanner_size / (1024 * 1024), 2)
+                        "size_mb": round(scanner_size / (1024 * 1024), 2),
                     }
 
                 stats["total_entries"] = total_entries
@@ -730,9 +688,9 @@ def print_cache_stats(cache_manager: CacheManager) -> None:
     print(f"\nTotal Entries:  {stats['total_entries']}")
     print(f"Total Size:     {stats['total_size_mb']} MB")
 
-    if stats['scanners']:
+    if stats["scanners"]:
         print("\nPer-Scanner Stats:")
-        for scanner, scanner_stats in stats['scanners'].items():
+        for scanner, scanner_stats in stats["scanners"].items():
             print(f"  {scanner}:")
             print(f"    Entries: {scanner_stats['entries']}")
             print(f"    Size:    {scanner_stats['size_mb']} MB")
@@ -744,14 +702,8 @@ def main():
     """CLI interface for cache management"""
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Manage Agent OS Action cache"
-    )
-    parser.add_argument(
-        "--cache-dir",
-        default=".argus-cache",
-        help="Cache directory path (default: .argus-cache)"
-    )
+    parser = argparse.ArgumentParser(description="Manage Agent OS Action cache")
+    parser.add_argument("--cache-dir", default=".argus-cache", help="Cache directory path (default: .argus-cache)")
 
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
 
@@ -760,20 +712,14 @@ def main():
 
     # Clear command
     clear_parser = subparsers.add_parser("clear", help="Clear cache")
-    clear_parser.add_argument(
-        "--scanner",
-        help="Only clear this scanner's cache"
-    )
+    clear_parser.add_argument("--scanner", help="Only clear this scanner's cache")
 
     # Clean command
     subparsers.add_parser("clean", help="Remove expired cache entries")
 
     # Test command
     test_parser = subparsers.add_parser("test", help="Test cache functionality")
-    test_parser.add_argument(
-        "file_path",
-        help="File to test cache with"
-    )
+    test_parser.add_argument("file_path", help="File to test cache with")
 
     args = parser.parse_args()
 
@@ -809,11 +755,7 @@ def main():
 
         # Test set
         print("1. Setting cache...")
-        success = cache_manager.set_cached_result(
-            args.file_path,
-            scanner_name,
-            test_results
-        )
+        success = cache_manager.set_cached_result(args.file_path, scanner_name, test_results)
         print(f"   Result: {'Success' if success else 'Failed'}")
 
         # Test get

@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class EnhancedFPAnalysis:
     """Enhanced false positive analysis result"""
+
     is_false_positive: bool
     confidence: float  # 0.0-1.0
     category: str
@@ -162,8 +163,8 @@ class EnhancedFalsePositiveDetector:
         reasoning = (
             "OAuth2 public clients (SPAs, mobile apps) don't require client secrets. "
             "They use other security mechanisms like PKCE, state parameters, and redirect URI validation."
-            if is_public_client else
-            "This appears to be a confidential client that should have proper secret management."
+            if is_public_client
+            else "This appears to be a confidential client that should have proper secret management."
         )
 
         return EnhancedFPAnalysis(
@@ -171,7 +172,7 @@ class EnhancedFalsePositiveDetector:
             confidence=confidence,
             category="oauth2_public_client",
             reasoning=reasoning,
-            evidence=public_indicators if public_indicators else ["No public client indicators found"]
+            evidence=public_indicators if public_indicators else ["No public client indicators found"],
         )
 
     def analyze_file_permissions(self, finding: dict[str, Any]) -> EnhancedFPAnalysis:
@@ -254,8 +255,8 @@ class EnhancedFalsePositiveDetector:
 
             reasoning = (
                 "File has proper restrictive permissions preventing unauthorized access."
-                if is_false_positive else
-                "File permissions allow unauthorized access to sensitive data."
+                if is_false_positive
+                else "File permissions allow unauthorized access to sensitive data."
             )
 
             return EnhancedFPAnalysis(
@@ -263,7 +264,7 @@ class EnhancedFalsePositiveDetector:
                 confidence=confidence,
                 category="file_permissions",
                 reasoning=reasoning,
-                evidence=evidence if evidence else ["Could not validate file permissions"]
+                evidence=evidence if evidence else ["Could not validate file permissions"],
             )
 
         # Fallback: metadata-driven validation
@@ -295,7 +296,7 @@ class EnhancedFalsePositiveDetector:
             confidence=confidence,
             category="file_permissions_metadata",
             reasoning=reasoning,
-            evidence=evidence
+            evidence=evidence,
         )
 
     def _check_dev_path_signals(self, file_path: str) -> list[str]:
@@ -311,9 +312,21 @@ class EnhancedFalsePositiveDetector:
         path_signals = []
 
         dev_path_patterns = [
-            "test", "tests", "spec", "mock", "fixture", "example",
-            "sample", "demo", "tutorial", "development", "dev",
-            "__pycache__", "node_modules", ".git", "docs"
+            "test",
+            "tests",
+            "spec",
+            "mock",
+            "fixture",
+            "example",
+            "sample",
+            "demo",
+            "tutorial",
+            "development",
+            "dev",
+            "__pycache__",
+            "node_modules",
+            ".git",
+            "docs",
         ]
 
         for pattern in dev_path_patterns:
@@ -368,9 +381,9 @@ class EnhancedFalsePositiveDetector:
 
         # Check for dead/commented code
         if re.search(r"^\s*#|^\s*//|^\s*/\*", code_snippet, re.MULTILINE):
-            lines = [line.strip() for line in code_snippet.split('\n') if line.strip()]  # Skip empty lines
+            lines = [line.strip() for line in code_snippet.split("\n") if line.strip()]  # Skip empty lines
             if len(lines) > 0:
-                commented_lines = sum(1 for line in lines if re.match(r'^[#/]', line))
+                commented_lines = sum(1 for line in lines if re.match(r"^[#/]", line))
                 comment_ratio = commented_lines / len(lines)
                 if comment_ratio > 0.7:  # Lower threshold from 0.8 to 0.7
                     code_signals.append(f"Heavily commented code ({comment_ratio:.0%} commented)")
@@ -500,7 +513,7 @@ class EnhancedFalsePositiveDetector:
 
         # Minimum evidence thresholds
         min_code_signals_alone = 2  # Need strong code evidence without path (e.g., DEBUG + __main__)
-        min_signals_with_path = 1   # Need at least 1 code signal + path
+        min_signals_with_path = 1  # Need at least 1 code signal + path
 
         # Collect signals from different sources
         path_signals = self._check_dev_path_signals(file_path)
@@ -548,7 +561,9 @@ class EnhancedFalsePositiveDetector:
                         all_evidence.append("Single high-confidence signal: 100% commented code")
                         break
                     # Environment conditional in comments/docs with example patterns
-                    if "Environment conditional" in signal and any(pat in file_path.lower() for pat in ["example", "docs", "tutorial"]):
+                    if "Environment conditional" in signal and any(
+                        pat in file_path.lower() for pat in ["example", "docs", "tutorial"]
+                    ):
                         is_high_confidence_single = True
                         all_evidence.append("Single high-confidence signal: Environment conditional in example/docs")
                         break
@@ -614,7 +629,7 @@ class EnhancedFalsePositiveDetector:
             confidence=confidence,
             category="dev_config",
             reasoning=reasoning,
-            evidence=all_evidence if all_evidence else ["No dev-only indicators found"]
+            evidence=all_evidence if all_evidence else ["No dev-only indicators found"],
         )
 
     def analyze_locking_mechanism(self, finding: dict[str, Any]) -> EnhancedFPAnalysis:
@@ -709,7 +724,7 @@ class EnhancedFalsePositiveDetector:
             "mutex": "In-memory mutex for thread synchronization - appropriate for multi-threaded code.",
             "file_lock": "File-based lock for inter-process coordination - appropriate for distributed systems.",
             "hybrid": "Uses both in-memory and file-based locking for comprehensive synchronization.",
-            "unknown": "Locking mechanism unclear - may need manual review."
+            "unknown": "Locking mechanism unclear - may need manual review.",
         }.get(lock_type, "Unknown locking pattern.")
 
         if is_false_positive:
@@ -720,7 +735,7 @@ class EnhancedFalsePositiveDetector:
             confidence=confidence,
             category=f"locking_{lock_type}",
             reasoning=reasoning,
-            evidence=evidence
+            evidence=evidence,
         )
 
     def analyze_safe_coding_pattern(self, finding: dict[str, Any]) -> EnhancedFPAnalysis:
@@ -750,20 +765,18 @@ class EnhancedFalsePositiveDetector:
         confidence = 0.0
 
         # --- SQL Injection safe patterns ---
-        if any(kw in message + rule_id + category for kw in [
-            "sql", "injection", "sqli", "query", "cwe-89"
-        ]):
+        if any(kw in message + rule_id + category for kw in ["sql", "injection", "sqli", "query", "cwe-89"]):
             parameterized_patterns = [
-                (r'\?\s*[,\)]', "? placeholder parameters"),
-                (r'\$\d+', "PostgreSQL $N positional parameters"),
-                (r':\w+', "Named :param parameters"),
-                (r'@\w+', "@param SQL Server parameters"),
-                (r'params\s*[\[.]', "params[] array usage"),
-                (r'\.prepare\s*\(', "Prepared statement API"),
-                (r'\.execute\s*\([^)]*,\s*[\[\(]', "execute(query, [params]) pattern"),
-                (r'\.query\s*\([^)]*,\s*[\[\(]', "query(sql, [params]) pattern"),
-                (r'bind_param|bindParam|bindValue', "Parameter binding API"),
-                (r'placeholders?', "Explicit placeholder usage"),
+                (r"\?\s*[,\)]", "? placeholder parameters"),
+                (r"\$\d+", "PostgreSQL $N positional parameters"),
+                (r":\w+", "Named :param parameters"),
+                (r"@\w+", "@param SQL Server parameters"),
+                (r"params\s*[\[.]", "params[] array usage"),
+                (r"\.prepare\s*\(", "Prepared statement API"),
+                (r"\.execute\s*\([^)]*,\s*[\[\(]", "execute(query, [params]) pattern"),
+                (r"\.query\s*\([^)]*,\s*[\[\(]", "query(sql, [params]) pattern"),
+                (r"bind_param|bindParam|bindValue", "Parameter binding API"),
+                (r"placeholders?", "Explicit placeholder usage"),
             ]
 
             for pattern, description in parameterized_patterns:
@@ -776,17 +789,17 @@ class EnhancedFalsePositiveDetector:
                 confidence = min(confidence, 0.95)
 
         # --- Command Injection safe patterns ---
-        elif any(kw in message + rule_id + category for kw in [
-            "command", "injection", "cmd", "exec", "spawn", "subprocess",
-            "os.system", "cwe-78", "process"
-        ]):
+        elif any(
+            kw in message + rule_id + category
+            for kw in ["command", "injection", "cmd", "exec", "spawn", "subprocess", "os.system", "cwe-78", "process"]
+        ):
             safe_exec_patterns = [
-                (r'shell\s*:\s*false', "shell: false (no shell invocation)"),
-                (r'shell\s*=\s*False', "shell=False (no shell invocation)"),
-                (r'execFile\s*\(', "execFile() (no shell)"),
-                (r'exec\.Command\s*\(', "Go exec.Command (no shell)"),
-                (r'ProcessBuilder', "Java ProcessBuilder (no shell)"),
-                (r'spawn\s*\(\s*process\.execPath', "spawn with own Node binary"),
+                (r"shell\s*:\s*false", "shell: false (no shell invocation)"),
+                (r"shell\s*=\s*False", "shell=False (no shell invocation)"),
+                (r"execFile\s*\(", "execFile() (no shell)"),
+                (r"exec\.Command\s*\(", "Go exec.Command (no shell)"),
+                (r"ProcessBuilder", "Java ProcessBuilder (no shell)"),
+                (r"spawn\s*\(\s*process\.execPath", "spawn with own Node binary"),
             ]
 
             for pattern, description in safe_exec_patterns:
@@ -795,9 +808,9 @@ class EnhancedFalsePositiveDetector:
                     confidence += 0.3
 
             # Check if arguments are hardcoded (not user-controllable)
-            if re.search(r'spawn\s*\([^)]+,\s*\[', code_snippet):
+            if re.search(r"spawn\s*\([^)]+,\s*\[", code_snippet):
                 # Array-form args detected
-                if not re.search(r'(req\.|request\.|user_?input|argv|args\[)', code_snippet, re.I):
+                if not re.search(r"(req\.|request\.|user_?input|argv|args\[)", code_snippet, re.I):
                     evidence.append("Arguments appear hardcoded (not user-controllable)")
                     confidence += 0.2
 
@@ -806,18 +819,19 @@ class EnhancedFalsePositiveDetector:
                 confidence = min(confidence, 0.95)
 
         # --- ReDoS with pre-existing mitigation ---
-        elif any(kw in message + rule_id + category for kw in [
-            "redos", "regex", "denial", "catastrophic", "backtracking", "cwe-1333"
-        ]):
+        elif any(
+            kw in message + rule_id + category
+            for kw in ["redos", "regex", "denial", "catastrophic", "backtracking", "cwe-1333"]
+        ):
             validation_patterns = [
-                (r'MAX_\w+\s*=\s*\d+', "MAX constant limiting input size"),
-                (r'\.length\s*[<>]=?\s*\d+', "Length check before processing"),
-                (r'len\s*\(\s*\w+\s*\)\s*[<>]=?', "Python len() check"),
-                (r'\.slice\s*\(', "Input slicing to bound size"),
-                (r'\.substring\s*\(', "Input substring to bound size"),
-                (r'validate\w*\s*\(', "Validation function call"),
-                (r'if\s*\(\s*\w+\.length\s*>', "Conditional length check"),
-                (r'count\w*\s*\(', "Count function for input limiting"),
+                (r"MAX_\w+\s*=\s*\d+", "MAX constant limiting input size"),
+                (r"\.length\s*[<>]=?\s*\d+", "Length check before processing"),
+                (r"len\s*\(\s*\w+\s*\)\s*[<>]=?", "Python len() check"),
+                (r"\.slice\s*\(", "Input slicing to bound size"),
+                (r"\.substring\s*\(", "Input substring to bound size"),
+                (r"validate\w*\s*\(", "Validation function call"),
+                (r"if\s*\(\s*\w+\.length\s*>", "Conditional length check"),
+                (r"count\w*\s*\(", "Count function for input limiting"),
             ]
 
             for pattern, description in validation_patterns:
@@ -830,15 +844,17 @@ class EnhancedFalsePositiveDetector:
                 confidence = min(confidence, 0.85)
 
         # --- Missing Auth on localhost-only tools ---
-        elif any(kw in message + rule_id + category for kw in [
-            "auth", "missing auth", "no auth", "unauthenticated",
-            "access control", "cwe-306", "cwe-862"
-        ]):
+        elif any(
+            kw in message + rule_id + category
+            for kw in ["auth", "missing auth", "no auth", "unauthenticated", "access control", "cwe-306", "cwe-862"]
+        ):
             localhost_patterns = [
-                (r'localhost', "Binds to localhost"),
-                (r'127\.0\.0\.1', "Binds to 127.0.0.1"),
-                (r'listen\s*\(\s*\d+\s*,\s*["\'](?:localhost|127\.0\.0\.1)["\']',
-                 "Server explicitly binds to localhost only"),
+                (r"localhost", "Binds to localhost"),
+                (r"127\.0\.0\.1", "Binds to 127.0.0.1"),
+                (
+                    r'listen\s*\(\s*\d+\s*,\s*["\'](?:localhost|127\.0\.0\.1)["\']',
+                    "Server explicitly binds to localhost only",
+                ),
             ]
 
             for pattern, description in localhost_patterns:
@@ -863,15 +879,14 @@ class EnhancedFalsePositiveDetector:
                 confidence=0.0,
                 category="safe_coding_pattern",
                 reasoning="No safe coding patterns detected for this finding type",
-                evidence=["No matching safe patterns found"]
+                evidence=["No matching safe patterns found"],
             )
 
         reasoning = (
             f"Safe coding pattern detected: code already uses mitigations that "
             f"address the flagged vulnerability ({len(evidence)} indicators found)."
-            if is_false_positive else
-            f"Some safe patterns found but insufficient to confirm full mitigation "
-            f"({len(evidence)} indicators)."
+            if is_false_positive
+            else f"Some safe patterns found but insufficient to confirm full mitigation ({len(evidence)} indicators)."
         )
 
         return EnhancedFPAnalysis(
@@ -879,7 +894,7 @@ class EnhancedFalsePositiveDetector:
             confidence=confidence,
             category="safe_coding_pattern",
             reasoning=reasoning,
-            evidence=evidence
+            evidence=evidence,
         )
 
     def analyze(self, finding: dict[str, Any]) -> Optional[EnhancedFPAnalysis]:
@@ -945,12 +960,9 @@ class EnhancedFalsePositiveDetector:
             result.evidence.insert(
                 0,
                 f"[METADATA] Routing confidence: {routing.confidence:.2f} "
-                f"(blended from {original_confidence:.2f} to {result.confidence:.2f} with 70/30 weighting and floor)"
+                f"(blended from {original_confidence:.2f} to {result.confidence:.2f} with 70/30 weighting and floor)",
             )
-            logger.debug(
-                f"Analysis complete: is_fp={result.is_false_positive}, "
-                f"confidence={result.confidence:.2f}"
-            )
+            logger.debug(f"Analysis complete: is_fp={result.is_false_positive}, confidence={result.confidence:.2f}")
 
         return result
 
@@ -976,7 +988,7 @@ def integrate_with_agent_personas(finding: dict[str, Any], llm_manager) -> dict[
             "confidence": enhanced_analysis.confidence,
             "category": enhanced_analysis.category,
             "reasoning": enhanced_analysis.reasoning,
-            "evidence": enhanced_analysis.evidence
+            "evidence": enhanced_analysis.evidence,
         }
 
         # Adjust severity if high confidence false positive

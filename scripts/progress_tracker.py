@@ -76,13 +76,15 @@ class ProgressTracker:
         # Detect if we should use rich progress bars
         if enable_rich is None:
             # Disable in CI environments or if not a TTY
-            is_ci = any([
-                os.environ.get("CI") == "true",
-                os.environ.get("GITHUB_ACTIONS") == "true",
-                os.environ.get("GITLAB_CI") == "true",
-                os.environ.get("JENKINS_URL"),
-                os.environ.get("CIRCLECI") == "true",
-            ])
+            is_ci = any(
+                [
+                    os.environ.get("CI") == "true",
+                    os.environ.get("GITHUB_ACTIONS") == "true",
+                    os.environ.get("GITLAB_CI") == "true",
+                    os.environ.get("JENKINS_URL"),
+                    os.environ.get("CIRCLECI") == "true",
+                ]
+            )
             is_tty = sys.stdout.isatty()
             self.use_rich = is_tty and not is_ci
         else:
@@ -176,7 +178,7 @@ class ProgressTracker:
         summary.add_row("Files scanned:", f"[cyan]{self.stats['files_scanned']}[/cyan]")
         summary.add_row("Scanners completed:", f"[green]{self.stats['scanners_completed']}[/green]")
         summary.add_row("LLM calls:", f"[magenta]{self.stats['llm_calls']}[/magenta]")
-        if self.stats['errors'] > 0:
+        if self.stats["errors"] > 0:
             summary.add_row("Errors:", f"[red]{self.stats['errors']}[/red]")
         summary.add_row("Duration:", f"[yellow]{duration:.1f}s[/yellow]")
         self.console.print(summary)
@@ -495,7 +497,7 @@ if __name__ == "__main__":
     semgrep_id = tracker.start_scan("Semgrep", total_files=50)
     for step in range(50):
         time.sleep(0.05)  # Simulate work
-        tracker.update_progress(semgrep_id, completed=step+1, message=f"Scanning file {step+1}/50")
+        tracker.update_progress(semgrep_id, completed=step + 1, message=f"Scanning file {step + 1}/50")
     tracker.complete_scan(semgrep_id)
 
     # Simulate Trivy scan
@@ -507,7 +509,7 @@ if __name__ == "__main__":
 
     tracker.stop()
 
-    print("\n" + "="*50 + "\n")
+    print("\n" + "=" * 50 + "\n")
 
     # Example 2: Operations with context manager
     print("Example 2: Operations with Context Manager\n")
@@ -522,7 +524,7 @@ if __name__ == "__main__":
 
     tracker.stop()
 
-    print("\n" + "="*50 + "\n")
+    print("\n" + "=" * 50 + "\n")
 
     # Example 3: Error handling
     print("Example 3: Error Handling\n")
@@ -539,7 +541,7 @@ if __name__ == "__main__":
 
     tracker.stop()
 
-    print("\n" + "="*50 + "\n")
+    print("\n" + "=" * 50 + "\n")
 
     # Example 4: Mixed progress and operations
     print("Example 4: Mixed Progress and Operations\n")
@@ -569,7 +571,7 @@ if __name__ == "__main__":
     stats = tracker.get_stats()
     print(f"\nFinal stats: {stats}")
 
-    print("\n" + "="*50 + "\n")
+    print("\n" + "=" * 50 + "\n")
 
     # Example 5: CI environment simulation (no rich output)
     print("Example 5: CI Environment (Plain Logging)\n")
@@ -579,7 +581,7 @@ if __name__ == "__main__":
     scan_id = tracker.start_scan("Semgrep", total_files=10)
     for i in range(10):
         time.sleep(0.1)
-        tracker.update_progress(scan_id, completed=i+1)
+        tracker.update_progress(scan_id, completed=i + 1)
     tracker.complete_scan(scan_id)
 
     tracker.stop()

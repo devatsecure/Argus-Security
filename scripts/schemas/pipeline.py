@@ -95,9 +95,7 @@ class ConsensusResult(BaseModel):
         """Ensure consensus_level is one of the known levels."""
         allowed = {"unanimous", "strong", "majority", "weak"}
         if v not in allowed:
-            raise ValueError(
-                f"consensus_level must be one of {allowed}, got '{v}'"
-            )
+            raise ValueError(f"consensus_level must be one of {allowed}, got '{v}'")
         return v
 
 
@@ -129,9 +127,7 @@ class AgentVerdictSummary(BaseModel):
             "false_positive",
         }
         if v not in allowed:
-            raise ValueError(
-                f"verdict must be one of {allowed}, got '{v}'"
-            )
+            raise ValueError(f"verdict must be one of {allowed}, got '{v}'")
         return v
 
 
@@ -160,9 +156,7 @@ class SandboxResult(BaseModel):
         if v is not None:
             allowed = {"exploitable", "not_exploitable", "partial", "error"}
             if v not in allowed:
-                raise ValueError(
-                    f"result must be one of {allowed}, got '{v}'"
-                )
+                raise ValueError(f"result must be one of {allowed}, got '{v}'")
         return v
 
 
@@ -249,9 +243,7 @@ class PipelineFinding(UnifiedFinding):
             "container": "CONTAINER",
         }
         raw_category = raw.get("category", "UNKNOWN")
-        normalised_category = _category_map.get(
-            raw_category.lower(), raw_category.upper()
-        )
+        normalised_category = _category_map.get(raw_category.lower(), raw_category.upper())
 
         mapped: dict[str, Any] = {
             # Identity
@@ -316,9 +308,7 @@ class PipelineMetadata(BaseModel):
     """
 
     version: str = "1.0.0"
-    timestamp: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     repository: str = ""
     commit: str = ""
     branch: str = ""
@@ -370,8 +360,5 @@ class PipelineResult(BaseModel):
     def critical_findings(self) -> list[PipelineFinding]:
         """Return all findings with critical severity."""
         return [
-            f
-            for f in self.findings
-            if (f.severity if isinstance(f.severity, str) else f.severity.value)
-            == "critical"
+            f for f in self.findings if (f.severity if isinstance(f.severity, str) else f.severity.value) == "critical"
         ]

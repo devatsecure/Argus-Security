@@ -96,10 +96,7 @@ class VulnDeduplicator:
 
     def __init__(self, strategy: str = "auto") -> None:
         if strategy not in self.VALID_STRATEGIES:
-            raise ValueError(
-                f"Invalid strategy {strategy!r}. "
-                f"Must be one of {sorted(self.VALID_STRATEGIES)}."
-            )
+            raise ValueError(f"Invalid strategy {strategy!r}. Must be one of {sorted(self.VALID_STRATEGIES)}.")
         self.strategy = strategy
 
     # ------------------------------------------------------------------
@@ -115,45 +112,22 @@ class VulnDeduplicator:
         """
 
         # --- vuln_id ---
-        vuln_id = (
-            finding.get("cve_id")
-            or finding.get("vuln_id")
-            or finding.get("vulnerability_id")
-            or ""
-        )
+        vuln_id = finding.get("cve_id") or finding.get("vuln_id") or finding.get("vulnerability_id") or ""
 
         # --- package name ---
-        pkg_name = (
-            finding.get("package_name")
-            or finding.get("pkg_name")
-            or ""
-        )
+        pkg_name = finding.get("package_name") or finding.get("pkg_name") or ""
 
         # --- package version ---
-        pkg_version = (
-            finding.get("installed_version")
-            or finding.get("version")
-            or finding.get("pkg_version")
-            or ""
-        )
+        pkg_version = finding.get("installed_version") or finding.get("version") or finding.get("pkg_version") or ""
 
         # --- package path ---
         pkg_path = finding.get("pkg_path", "")
 
         # --- file path ---
-        file_path = (
-            finding.get("file_path")
-            or finding.get("path")
-            or finding.get("location")
-            or ""
-        )
+        file_path = finding.get("file_path") or finding.get("path") or finding.get("location") or ""
 
         # --- rule id ---
-        rule_id = (
-            finding.get("rule_id")
-            or finding.get("check_id")
-            or ""
-        )
+        rule_id = finding.get("rule_id") or finding.get("check_id") or ""
 
         # Build the key respecting the strategy
         if strategy == "relaxed":
@@ -275,11 +249,7 @@ class VulnDeduplicator:
         groups: dict[str, list[dict]] = defaultdict(list)
 
         for finding in findings:
-            strategy = (
-                self._determine_strategy(finding)
-                if self.strategy == "auto"
-                else self.strategy
-            )
+            strategy = self._determine_strategy(finding) if self.strategy == "auto" else self.strategy
             key = self._extract_key(finding, strategy)
             groups[key.to_hash()].append(finding)
 
@@ -357,11 +327,7 @@ class VulnDeduplicator:
         ungrouped: list[dict] = []
 
         for f in findings:
-            vid = (
-                f.get("cve_id")
-                or f.get("vuln_id")
-                or f.get("vulnerability_id")
-            )
+            vid = f.get("cve_id") or f.get("vuln_id") or f.get("vulnerability_id")
             if vid:
                 by_vuln[vid].append(f)
             else:
@@ -371,10 +337,7 @@ class VulnDeduplicator:
 
         for _vid, group in by_vuln.items():
             # Collect distinct scanners
-            scanners = list({
-                str(f.get("scanner", f.get("source", "unknown")))
-                for f in group
-            })
+            scanners = list({str(f.get("scanner", f.get("source", "unknown"))) for f in group})
 
             if len(scanners) <= 1 and len(group) <= 1:
                 merged.extend(group)
@@ -388,9 +351,7 @@ class VulnDeduplicator:
             for f in group:
                 scanner = str(f.get("scanner", f.get("source", "unknown")))
                 scanner_details[scanner] = {
-                    k: v
-                    for k, v in f.items()
-                    if k not in ("scanner", "source") and v not in (None, "", [], {})
+                    k: v for k, v in f.items() if k not in ("scanner", "source") and v not in (None, "", [], {})
                 }
 
             unified["scanners"] = scanners
@@ -410,9 +371,7 @@ class VulnDeduplicator:
         """Produce a human-friendly summary dictionary from a result."""
         reduction_pct = 0.0
         if result.original_count > 0:
-            reduction_pct = round(
-                (result.duplicates_removed / result.original_count) * 100, 2
-            )
+            reduction_pct = round((result.duplicates_removed / result.original_count) * 100, 2)
 
         # Strategy breakdown (approximate from merge groups)
         by_strategy: dict[str, int] = defaultdict(int)

@@ -369,9 +369,7 @@ class DockerManager:
                             try:
                                 self._validate_path(item, allowed_base)
                             except ValueError as e:
-                                logger.error(
-                                    f"Path validation failed for file in archive {item}: {e}"
-                                )
+                                logger.error(f"Path validation failed for file in archive {item}: {e}")
                                 raise
                             rel_path = item.relative_to(validated_path)
                             tar.add(item, arcname=rel_path)
@@ -379,9 +377,7 @@ class DockerManager:
             tar_buffer.seek(0)
             container.put_archive(container_path, tar_buffer.getvalue())
 
-            logger.info(
-                f"Copied {validated_path} to container {container_id[:12]}:{container_path}"
-            )
+            logger.info(f"Copied {validated_path} to container {container_id[:12]}:{container_path}")
             return True
 
         except ValueError as e:
@@ -539,8 +535,7 @@ class DockerManager:
                 f"which is outside allowed base {allowed_base}"
             )
             raise ValueError(
-                f"Path {path} escapes allowed directory {allowed_base}. "
-                "Path traversal attacks are not allowed."
+                f"Path {path} escapes allowed directory {allowed_base}. Path traversal attacks are not allowed."
             )
 
         # Check for symbolic links that might escape the allowed directory

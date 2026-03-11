@@ -123,9 +123,7 @@ class LicenseRiskScorer:
     }
 
     # Case-insensitive index built once at class definition time.
-    _LICENSE_DB_LOWER: dict[str, tuple[LicenseCategory, str]] = {
-        k.lower(): v for k, v in LICENSE_DB.items()
-    }
+    _LICENSE_DB_LOWER: dict[str, tuple[LicenseCategory, str]] = {k.lower(): v for k, v in LICENSE_DB.items()}
 
     # ------------------------------------------------------------------
     # Public API

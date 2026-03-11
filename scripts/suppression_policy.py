@@ -14,16 +14,18 @@ logger = logging.getLogger(__name__)
 
 class EvidenceQuality(Enum):
     """Quality ratings for evidence signals"""
-    DIRECT_CODE_MATCH = "direct_code_match"        # 2.0 points
-    METADATA_SIGNAL = "metadata_signal"            # 1.5 points
+
+    DIRECT_CODE_MATCH = "direct_code_match"  # 2.0 points
+    METADATA_SIGNAL = "metadata_signal"  # 1.5 points
     CONTEXTUAL_INFERENCE = "contextual_inference"  # 1.0 points
-    PATH_INDICATOR = "path_indicator"              # 0.5 points
-    HEURISTIC = "heuristic"                        # 0.3 points
+    PATH_INDICATOR = "path_indicator"  # 0.5 points
+    HEURISTIC = "heuristic"  # 0.3 points
 
 
 @dataclass
 class SuppressionDecision:
     """Result of suppression policy evaluation"""
+
     can_suppress: bool
     confidence: float
     evidence_count: int
@@ -64,7 +66,7 @@ class SuppressionPolicy:
     def evaluate_suppression(
         self,
         analysis: Any,  # EnhancedFPAnalysis
-        finding: dict[str, Any]
+        finding: dict[str, Any],
     ) -> SuppressionDecision:
         """
         Evaluate if finding can be auto-suppressed based on evidence
@@ -81,25 +83,20 @@ class SuppressionPolicy:
         # Check confidence threshold
         if analysis.confidence < self.MIN_CONFIDENCE_AUTO_SUPPRESS:
             violations.append(
-                f"Confidence {analysis.confidence:.2f} below threshold "
-                f"{self.MIN_CONFIDENCE_AUTO_SUPPRESS}"
+                f"Confidence {analysis.confidence:.2f} below threshold {self.MIN_CONFIDENCE_AUTO_SUPPRESS}"
             )
 
         # Check evidence count (excluding metadata)
         real_evidence = [e for e in analysis.evidence if not e.startswith("[METADATA]")]
         evidence_count = len(real_evidence)
         if evidence_count < self.MIN_EVIDENCE_AUTO_SUPPRESS:
-            violations.append(
-                f"Evidence count {evidence_count} below minimum "
-                f"{self.MIN_EVIDENCE_AUTO_SUPPRESS}"
-            )
+            violations.append(f"Evidence count {evidence_count} below minimum {self.MIN_EVIDENCE_AUTO_SUPPRESS}")
 
         # Calculate evidence quality score (excluding metadata)
         quality_score = self._calculate_evidence_quality(real_evidence)
         if quality_score < self.MIN_EVIDENCE_QUALITY_SCORE:
             violations.append(
-                f"Evidence quality score {quality_score:.1f} below minimum "
-                f"{self.MIN_EVIDENCE_QUALITY_SCORE}"
+                f"Evidence quality score {quality_score:.1f} below minimum {self.MIN_EVIDENCE_QUALITY_SCORE}"
             )
 
         # Check for conflicting signals
@@ -126,7 +123,7 @@ class SuppressionPolicy:
             evidence_count=evidence_count,
             evidence_quality_score=quality_score,
             reasoning=reasoning,
-            policy_violations=violations
+            policy_violations=violations,
         )
 
     def _calculate_evidence_quality(self, evidence_list: list[str]) -> float:
@@ -145,31 +142,73 @@ class SuppressionPolicy:
             evidence_lower = evidence_item.lower()
 
             # Classify evidence type and add weight
-            if any(term in evidence_lower for term in [
-                "code match", "direct match", "pattern found", "mutex detected",
-                "pkce flow", "lock mechanism", "properly prevents", "properly secured",
-                "in-memory mutex", "file lock", "synchronized", "thread synchronization"
-            ]):
+            if any(
+                term in evidence_lower
+                for term in [
+                    "code match",
+                    "direct match",
+                    "pattern found",
+                    "mutex detected",
+                    "pkce flow",
+                    "lock mechanism",
+                    "properly prevents",
+                    "properly secured",
+                    "in-memory mutex",
+                    "file lock",
+                    "synchronized",
+                    "thread synchronization",
+                ]
+            ):
                 score += self.QUALITY_WEIGHTS[EvidenceQuality.DIRECT_CODE_MATCH]
 
-            elif any(term in evidence_lower for term in [
-                "file permissions", "metadata", "gitattributes", ".dockerignore",
-                "security.md", "restricted permissions", "only readable by owner",
-                "permissions:", "octal"
-            ]):
+            elif any(
+                term in evidence_lower
+                for term in [
+                    "file permissions",
+                    "metadata",
+                    "gitattributes",
+                    ".dockerignore",
+                    "security.md",
+                    "restricted permissions",
+                    "only readable by owner",
+                    "permissions:",
+                    "octal",
+                ]
+            ):
                 score += self.QUALITY_WEIGHTS[EvidenceQuality.METADATA_SIGNAL]
 
-            elif any(term in evidence_lower for term in [
-                "context", "typically", "appears to be", "suggests",
-                "indicates", "likely", "appropriate for", "typical for",
-                "public client", "dev-only", "environment conditional"
-            ]):
+            elif any(
+                term in evidence_lower
+                for term in [
+                    "context",
+                    "typically",
+                    "appears to be",
+                    "suggests",
+                    "indicates",
+                    "likely",
+                    "appropriate for",
+                    "typical for",
+                    "public client",
+                    "dev-only",
+                    "environment conditional",
+                ]
+            ):
                 score += self.QUALITY_WEIGHTS[EvidenceQuality.CONTEXTUAL_INFERENCE]
 
-            elif any(term in evidence_lower for term in [
-                "path indicator", "file in", "directory", "location",
-                "secure location", "test", "mock", "fixture", "example"
-            ]):
+            elif any(
+                term in evidence_lower
+                for term in [
+                    "path indicator",
+                    "file in",
+                    "directory",
+                    "location",
+                    "secure location",
+                    "test",
+                    "mock",
+                    "fixture",
+                    "example",
+                ]
+            ):
                 score += self.QUALITY_WEIGHTS[EvidenceQuality.PATH_INDICATOR]
 
             else:
@@ -195,8 +234,7 @@ class SuppressionPolicy:
         severity = finding.get("severity", "").lower()
         if severity in ["critical", "high"] and analysis.confidence > 0.9:
             conflicts.append(
-                f"High severity ({severity}) with very high FP confidence "
-                f"({analysis.confidence:.2f}) - suspicious"
+                f"High severity ({severity}) with very high FP confidence ({analysis.confidence:.2f}) - suspicious"
             )
 
         # Check for production file paths with dev suppression
@@ -204,10 +242,7 @@ class SuppressionPolicy:
         if analysis.category == "dev_config":
             prod_indicators = ["prod", "production", "release", "main", "master"]
             if any(indicator in file_path.lower() for indicator in prod_indicators):
-                conflicts.append(
-                    f"Production path indicator in {file_path} conflicts with "
-                    f"dev-only suppression"
-                )
+                conflicts.append(f"Production path indicator in {file_path} conflicts with dev-only suppression")
 
         # Check for secret findings in non-test paths being suppressed as dev config
         if analysis.category == "dev_config":
@@ -217,8 +252,7 @@ class SuppressionPolicy:
                 test_indicators = ["test", "mock", "fixture", "example", "sample", "demo"]
                 if not any(indicator in file_path.lower() for indicator in test_indicators):
                     conflicts.append(
-                        f"Secret-related finding in non-test path {file_path} "
-                        f"should not be suppressed as dev config"
+                        f"Secret-related finding in non-test path {file_path} should not be suppressed as dev config"
                     )
 
         # Check for OAuth2 suppression with actual client_secret present
@@ -226,8 +260,7 @@ class SuppressionPolicy:
             code_snippet = finding.get("evidence", {}).get("snippet", "")
             if "client_secret" in code_snippet.lower():
                 conflicts.append(
-                    "OAuth2 suppression conflict: client_secret found in code, "
-                    "this should not be a public client"
+                    "OAuth2 suppression conflict: client_secret found in code, this should not be a public client"
                 )
 
         return conflicts
@@ -238,7 +271,5 @@ class SuppressionPolicy:
             "min_evidence_count": self.MIN_EVIDENCE_AUTO_SUPPRESS,
             "min_confidence": self.MIN_CONFIDENCE_AUTO_SUPPRESS,
             "min_quality_score": self.MIN_EVIDENCE_QUALITY_SCORE,
-            "quality_weights": {
-                k.value: v for k, v in self.QUALITY_WEIGHTS.items()
-            }
+            "quality_weights": {k.value: v for k, v in self.QUALITY_WEIGHTS.items()},
         }

@@ -63,13 +63,7 @@ class ReportGenerator:
         Returns:
             SARIF level string ('error', 'warning', 'note')
         """
-        mapping = {
-            "critical": "error",
-            "high": "error",
-            "medium": "warning",
-            "low": "note",
-            "info": "note"
-        }
+        mapping = {"critical": "error", "high": "error", "medium": "warning", "low": "note", "info": "note"}
         return mapping.get(severity.lower(), "warning")
 
     @staticmethod
@@ -145,9 +139,7 @@ class ReportGenerator:
             # Add exploitability as a property
             if "exploitability" in finding:
                 properties["exploitability"] = finding["exploitability"]
-                properties["exploitabilityScore"] = self.map_exploitability_to_score(
-                    finding["exploitability"]
-                )
+                properties["exploitabilityScore"] = self.map_exploitability_to_score(finding["exploitability"])
 
             # Add exploit chain reference if part of a chain
             if "part_of_chain" in finding:
@@ -175,9 +167,7 @@ class ReportGenerator:
 
         return sarif
 
-    def save_sarif_report(
-        self, findings: list[dict[str, Any]], metrics: Optional[dict[str, Any]] = None
-    ) -> Path:
+    def save_sarif_report(self, findings: list[dict[str, Any]], metrics: Optional[dict[str, Any]] = None) -> Path:
         """Generate and save SARIF report to file
 
         Args:
@@ -344,8 +334,7 @@ class ReportGenerator:
                 # Get description from next lines
                 description_lines = []
                 for j in range(i + 1, min(i + 5, len(lines))):
-                    if (lines[j].strip() and not lines[j].startswith("#") and
-                        not re.match(r"^\d+\.", lines[j])):
+                    if lines[j].strip() and not lines[j].startswith("#") and not re.match(r"^\d+\.", lines[j]):
                         description_lines.append(lines[j].strip())
                     elif lines[j].startswith("#") or re.match(r"^\d+\.", lines[j]):
                         break
@@ -359,14 +348,10 @@ class ReportGenerator:
                 # Override category based on keywords
                 lower_text = (issue_name + " " + description).lower()
                 if any(
-                    kw in lower_text
-                    for kw in ["security", "sql", "xss", "csrf", "auth", "jwt", "secret", "injection"]
+                    kw in lower_text for kw in ["security", "sql", "xss", "csrf", "auth", "jwt", "secret", "injection"]
                 ):
                     category = "security"
-                elif any(
-                    kw in lower_text
-                    for kw in ["performance", "n+1", "memory", "leak", "slow", "inefficient"]
-                ):
+                elif any(kw in lower_text for kw in ["performance", "n+1", "memory", "leak", "slow", "inefficient"]):
                     category = "performance"
                 elif any(kw in lower_text for kw in ["test", "coverage", "testing"]):
                     category = "testing"
@@ -513,16 +498,8 @@ class ReportGenerator:
         metrics_dict = metrics.get("metrics", metrics) if isinstance(metrics, dict) else metrics.metrics
 
         # Count blockers and suggestions
-        blocker_count = (
-            len([f for f in findings if f.get("severity") in ["critical", "high"]])
-            if findings
-            else 0
-        )
-        suggestion_count = (
-            len([f for f in findings if f.get("severity") in ["medium", "low"]])
-            if findings
-            else 0
-        )
+        blocker_count = len([f for f in findings if f.get("severity") in ["critical", "high"]]) if findings else 0
+        suggestion_count = len([f for f in findings if f.get("severity") in ["medium", "low"]]) if findings else 0
 
         # Try to write to GITHUB_OUTPUT
         github_output = os.environ.get("GITHUB_OUTPUT")

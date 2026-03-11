@@ -33,6 +33,7 @@ def _get_phase_gate_class():
     global _PhaseGate
     if _PhaseGate is None:
         from phase_gate import PhaseGate
+
         _PhaseGate = PhaseGate
     return _PhaseGate
 
@@ -112,9 +113,7 @@ class PipelineOrchestrator:
                 phase_gate_cls = _get_phase_gate_class()
                 strict = bool(self.config.get("phase_gate_strict", False))
                 self._phase_gate = phase_gate_cls(strict=strict)
-                logger.info(
-                    "Phase gating enabled (strict=%s)", strict
-                )
+                logger.info("Phase gating enabled (strict=%s)", strict)
             except Exception as exc:
                 logger.warning(
                     "Failed to initialize phase gate: %s (continuing without gating)",
@@ -122,9 +121,7 @@ class PipelineOrchestrator:
                 )
 
     @staticmethod
-    def _build_gate_output(
-        stage_name: str, ctx: PipelineContext
-    ) -> dict[str, Any]:
+    def _build_gate_output(stage_name: str, ctx: PipelineContext) -> dict[str, Any]:
         """Build a gate-compatible output dict from the pipeline context.
 
         Maps the mutable ``PipelineContext`` fields to the dict structure
@@ -144,9 +141,7 @@ class PipelineOrchestrator:
             return {
                 "gate_result": ctx.policy_gate_result,
                 "pass_fail": (
-                    ctx.policy_gate_result.get("pass_fail")
-                    if isinstance(ctx.policy_gate_result, dict)
-                    else None
+                    ctx.policy_gate_result.get("pass_fail") if isinstance(ctx.policy_gate_result, dict) else None
                 ),
             }
         if gate_phase == "reporting":
@@ -201,10 +196,7 @@ class PipelineOrchestrator:
 
         for stage in self.stages:
             # -- Check dependencies --
-            unmet = [
-                dep for dep in stage.required_stages
-                if dep not in completed_stages
-            ]
+            unmet = [dep for dep in stage.required_stages if dep not in completed_stages]
             if unmet:
                 result = StageResult(
                     success=False,
@@ -214,9 +206,7 @@ class PipelineOrchestrator:
                     skip_reason=f"Unmet dependencies: {unmet}",
                 )
                 results.append(result)
-                logger.warning(
-                    "Skipping %s: unmet deps %s", stage.display_name, unmet
-                )
+                logger.warning("Skipping %s: unmet deps %s", stage.display_name, unmet)
                 continue
 
             # -- Check preconditions --
@@ -280,20 +270,11 @@ class PipelineOrchestrator:
 
                     # -- Phase gate validation --
                     if self._phase_gate is not None:
-                        gate_phase = _STAGE_TO_GATE_PHASE.get(
-                            stage.name, stage.name
-                        )
-                        gate_output = self._build_gate_output(
-                            stage.name, ctx
-                        )
-                        decision = self._phase_gate.validate(
-                            gate_phase, gate_output
-                        )
+                        gate_phase = _STAGE_TO_GATE_PHASE.get(stage.name, stage.name)
+                        gate_output = self._build_gate_output(stage.name, ctx)
+                        decision = self._phase_gate.validate(gate_phase, gate_output)
                         if not decision.should_proceed:
-                            ctx.errors.append(
-                                f"Phase gate blocked after "
-                                f"{stage.display_name}: {decision.reason}"
-                            )
+                            ctx.errors.append(f"Phase gate blocked after {stage.display_name}: {decision.reason}")
                             logger.error(
                                 "Phase gate BLOCKED pipeline after %s: %s",
                                 stage.display_name,
@@ -306,9 +287,7 @@ class PipelineOrchestrator:
                         stage.display_name,
                         result.error,
                     )
-                    ctx.errors.append(
-                        f"{stage.display_name}: {result.error}"
-                    )
+                    ctx.errors.append(f"{stage.display_name}: {result.error}")
                     try:
                         stage.rollback(ctx)
                     except Exception as rb_exc:

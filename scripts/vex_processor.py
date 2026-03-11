@@ -33,6 +33,7 @@ logger = logging.getLogger(__name__)
 # Enums
 # ---------------------------------------------------------------------------
 
+
 class VEXStatus(Enum):
     """VEX exploitability status values (aligned with CISA VEX spec)."""
 
@@ -48,9 +49,7 @@ class VEXJustification(Enum):
     COMPONENT_NOT_PRESENT = "component_not_present"
     VULNERABLE_CODE_NOT_PRESENT = "vulnerable_code_not_present"
     VULNERABLE_CODE_NOT_IN_EXECUTE_PATH = "vulnerable_code_not_in_execute_path"
-    VULNERABLE_CODE_CANNOT_BE_CONTROLLED_BY_ADVERSARY = (
-        "vulnerable_code_cannot_be_controlled_by_adversary"
-    )
+    VULNERABLE_CODE_CANNOT_BE_CONTROLLED_BY_ADVERSARY = "vulnerable_code_cannot_be_controlled_by_adversary"
     INLINE_MITIGATIONS_ALREADY_EXIST = "inline_mitigations_already_exist"
     NONE = "none"
 
@@ -58,6 +57,7 @@ class VEXJustification(Enum):
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class VEXStatement:
@@ -124,6 +124,7 @@ def _normalise_justification(raw: str | None) -> VEXJustification:
 # ---------------------------------------------------------------------------
 # VEXProcessor
 # ---------------------------------------------------------------------------
+
 
 class VEXProcessor:
     """
@@ -262,9 +263,7 @@ class VEXProcessor:
                         )
                     )
             except Exception:
-                logger.warning(
-                    "Skipping malformed OpenVEX statement in %s", source_file, exc_info=True
-                )
+                logger.warning("Skipping malformed OpenVEX statement in %s", source_file, exc_info=True)
 
         return statements
 
@@ -295,9 +294,7 @@ class VEXProcessor:
             try:
                 vuln_id = vuln.get("id", "")
                 if not vuln_id:
-                    logger.warning(
-                        "Skipping CycloneDX VEX entry without id in %s", source_file
-                    )
+                    logger.warning("Skipping CycloneDX VEX entry without id in %s", source_file)
                     continue
 
                 analysis = vuln.get("analysis", {}) or {}
@@ -380,9 +377,7 @@ class VEXProcessor:
             try:
                 cve = vuln.get("cve", "")
                 if not cve:
-                    logger.warning(
-                        "Skipping CSAF vulnerability without CVE in %s", source_file
-                    )
+                    logger.warning("Skipping CSAF vulnerability without CVE in %s", source_file)
                     continue
 
                 product_status = vuln.get("product_status", {}) or {}
@@ -416,10 +411,7 @@ class VEXProcessor:
                         continue
 
                     for pid in product_ids:
-                        statement_text = (
-                            remediation_map.get(pid, "")
-                            or threat_map.get(pid, "")
-                        )
+                        statement_text = remediation_map.get(pid, "") or threat_map.get(pid, "")
 
                         statements.append(
                             VEXStatement(
@@ -490,9 +482,7 @@ class VEXProcessor:
             resolved = Path(path).resolve()
             if resolved.is_file():
                 stmts = self._load_file(str(resolved))
-                logger.info(
-                    "Loaded %d VEX statements from %s", len(stmts), resolved
-                )
+                logger.info("Loaded %d VEX statements from %s", len(stmts), resolved)
                 all_statements.extend(stmts)
             else:
                 logger.warning("VEX path does not exist or is not a file: %s", path)

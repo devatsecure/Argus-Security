@@ -131,10 +131,7 @@ class FileSelector:
             return []
         except subprocess.CalledProcessError as e:
             # Not necessarily an error - might not be in a PR context
-            logger.debug(
-                f"Git diff failed (stderr: {e.stderr}). "
-                "This is normal if not in a PR context."
-            )
+            logger.debug(f"Git diff failed (stderr: {e.stderr}). This is normal if not in a PR context.")
             return []
         except FileNotFoundError:
             logger.warning("Git not found in PATH. Ensure git is installed.")
@@ -156,10 +153,7 @@ class FileSelector:
         if not patterns:
             return False
 
-        return any(
-            Path(file_path).match(pattern) or glob.fnmatch.fnmatch(file_path, pattern)
-            for pattern in patterns
-        )
+        return any(Path(file_path).match(pattern) or glob.fnmatch.fnmatch(file_path, pattern) for pattern in patterns)
 
     def should_exclude_file(
         self,
@@ -184,9 +178,7 @@ class FileSelector:
         # If exclude patterns are specified, file must not match any
         return bool(exclude_patterns and self.matches_glob_patterns(rel_path, exclude_patterns))
 
-    def calculate_file_priority(
-        self, rel_path: str, only_changed: bool = False
-    ) -> int:
+    def calculate_file_priority(self, rel_path: str, only_changed: bool = False) -> int:
         """Calculate priority score for a file based on its path and content type.
 
         Higher priority scores indicate files that should be reviewed first.
@@ -352,12 +344,8 @@ class FileSelector:
 
         # Parse configuration
         only_changed = config.get("only_changed", False)
-        include_patterns = [
-            p.strip() for p in config.get("include_paths", "").split(",") if p.strip()
-        ]
-        exclude_patterns = [
-            p.strip() for p in config.get("exclude_paths", "").split(",") if p.strip()
-        ]
+        include_patterns = [p.strip() for p in config.get("include_paths", "").split(",") if p.strip()]
+        exclude_patterns = [p.strip() for p in config.get("exclude_paths", "").split(",") if p.strip()]
 
         return self.get_codebase_files(
             repo_path,

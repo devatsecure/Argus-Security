@@ -131,9 +131,10 @@ class TrivyScanner:
         try:
             # Set environment to bypass Docker credential helpers
             import os
+
             env = os.environ.copy()
-            env['DOCKER_CONFIG'] = '/tmp/.docker-fake'  # Use fake config to avoid credential helper issues
-            env['TRIVY_NO_PROGRESS'] = 'true'
+            env["DOCKER_CONFIG"] = "/tmp/.docker-fake"  # Use fake config to avoid credential helper issues
+            env["TRIVY_NO_PROGRESS"] = "true"
 
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=300, env=env)  # 5 minute timeout
 
@@ -434,10 +435,7 @@ The CWE is CWE-"""
             if unknown:
                 return {
                     "success": False,
-                    "error": (
-                        f"Unknown SBOM format(s): {unknown}. "
-                        f"Valid formats: {valid_formats}"
-                    ),
+                    "error": (f"Unknown SBOM format(s): {unknown}. Valid formats: {valid_formats}"),
                 }
 
         try:

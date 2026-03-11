@@ -28,9 +28,7 @@ import numpy as np
 from scipy import stats
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -226,9 +224,7 @@ class MetricsCalculator:
         """Initialize the metrics calculator."""
         self.logger = logger
 
-    def compare_findings(
-        self, argus_findings: list[dict], codex_findings: list[dict]
-    ) -> MetricsReport:
+    def compare_findings(self, argus_findings: list[dict], codex_findings: list[dict]) -> MetricsReport:
         """
         Compare findings from two sources and calculate agreement metrics.
 
@@ -239,10 +235,7 @@ class MetricsCalculator:
         Returns:
             MetricsReport with all calculated metrics
         """
-        self.logger.info(
-            f"Comparing {len(argus_findings)} Argus findings with "
-            f"{len(codex_findings)} Codex findings"
-        )
+        self.logger.info(f"Comparing {len(argus_findings)} Argus findings with {len(codex_findings)} Codex findings")
 
         # Create report
         report = MetricsReport(
@@ -401,9 +394,7 @@ class MetricsCalculator:
 
         # For simplicity in Cohen's Kappa, we treat the table as binary
         # This assumes codex_findings represents all possible findings in the scope
-        total_codex = len(matches) + (
-            sum(1 for m in matches if m.codex_finding) if matches else 0
-        )  # Approximate
+        total_codex = len(matches) + (sum(1 for m in matches if m.codex_finding) if matches else 0)  # Approximate
 
         agree_present = both_found
         disagree = argus_only
@@ -450,9 +441,7 @@ class MetricsCalculator:
 
             # Standard error (Fleiss formula)
             if p_e > 0:
-                variance = (
-                    (p_o * (1 - p_o) + p_e * (1 - p_e)) / (n * (1 - p_e) ** 2) if n > 0 else 0
-                )
+                variance = (p_o * (1 - p_o) + p_e * (1 - p_e)) / (n * (1 - p_e) ** 2) if n > 0 else 0
                 result.std_error = np.sqrt(variance) if variance >= 0 else 0.0
             else:
                 result.std_error = 0.0
@@ -655,9 +644,7 @@ class MetricsCalculator:
 
         return result
 
-    def _build_severity_distribution(
-        self, argus_findings: list[dict], codex_findings: list[dict]
-    ) -> dict:
+    def _build_severity_distribution(self, argus_findings: list[dict], codex_findings: list[dict]) -> dict:
         """Build severity distribution data for visualization."""
         severities = {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0}
 
@@ -680,9 +667,7 @@ class MetricsCalculator:
             "categories": list(severities.keys()),
         }
 
-    def _build_category_distribution(
-        self, argus_findings: list[dict], codex_findings: list[dict]
-    ) -> dict:
+    def _build_category_distribution(self, argus_findings: list[dict], codex_findings: list[dict]) -> dict:
         """Build category distribution data for visualization."""
         categories = {}
 
@@ -753,9 +738,7 @@ def save_metrics_report(report: MetricsReport, output_file: str) -> None:
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Calculate inter-rater agreement metrics for security findings"
-    )
+    parser = argparse.ArgumentParser(description="Calculate inter-rater agreement metrics for security findings")
     parser.add_argument("--argus-file", required=True, help="Path to Argus findings JSON")
     parser.add_argument("--codex-file", required=True, help="Path to Codex findings JSON")
     parser.add_argument("--output-file", default="metrics_report.json", help="Output metrics report")
@@ -788,8 +771,10 @@ if __name__ == "__main__":
     print(f"\nSimple Agreement Rate: {report.simple_agreement_rate:.1%}")
     if report.cohens_kappa:
         print(f"Cohen's Kappa: {report.cohens_kappa.kappa:.3f} ({report.cohens_kappa.interpretation})")
-        print(f"  95% CI: [{report.cohens_kappa.confidence_interval_lower:.3f}, "
-              f"{report.cohens_kappa.confidence_interval_upper:.3f}]")
+        print(
+            f"  95% CI: [{report.cohens_kappa.confidence_interval_lower:.3f}, "
+            f"{report.cohens_kappa.confidence_interval_upper:.3f}]"
+        )
         print(f"  p-value: {report.cohens_kappa.p_value:.4f}")
     if report.precision_recall:
         print("\nPrecision/Recall Metrics:")
@@ -806,6 +791,5 @@ if __name__ == "__main__":
     if report.severity_agreements:
         print("\nSeverity Agreement:")
         for sev in report.severity_agreements:
-            print(f"  {sev.severity}: {sev.agreement_rate:.1%} agreement "
-                  f"({sev.both_agree}/{sev.codex_count})")
+            print(f"  {sev.severity}: {sev.agreement_rate:.1%} agreement ({sev.both_agree}/{sev.codex_count})")
     print("=" * 60)

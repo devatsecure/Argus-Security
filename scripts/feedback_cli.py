@@ -45,7 +45,7 @@ def main():
             confidence=args.confidence,
             pattern_used=args.pattern,
             finding_category=args.category,
-            reasoning=args.reasoning
+            reasoning=args.reasoning,
         )
         print(f"Recorded: {'Correct' if record.is_correct else 'Incorrect'}")
         if record.error_type:
@@ -54,7 +54,7 @@ def main():
     elif args.command == "stats":
         stats = feedback_loop.get_statistics()
         print(f"Total records: {stats['total_records']}")
-        if stats['total_records'] > 0:
+        if stats["total_records"] > 0:
             print(f"Accuracy: {stats['accuracy']:.1%}")
             print(f"False negatives: {stats['false_negatives']}")
             print(f"False positives: {stats['false_positives']}")

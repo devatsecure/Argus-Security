@@ -209,13 +209,21 @@ class AuditOrchestrator:
 
             from scripts.semgrep_scanner import SemgrepScanner
 
-            semgrep_scanner = SemgrepScanner({
-                "semgrep_rules": "auto",
-                "exclude_patterns": [
-                    "*/test/*", "*/tests/*", "*/.git/*", "*/node_modules/*",
-                    "*/.venv/*", "*/venv/*", "*/build/*", "*/dist/*",
-                ],
-            })
+            semgrep_scanner = SemgrepScanner(
+                {
+                    "semgrep_rules": "auto",
+                    "exclude_patterns": [
+                        "*/test/*",
+                        "*/tests/*",
+                        "*/.git/*",
+                        "*/node_modules/*",
+                        "*/.venv/*",
+                        "*/venv/*",
+                        "*/build/*",
+                        "*/dist/*",
+                    ],
+                }
+            )
 
             results = semgrep_scanner.scan(self.repo_path)
 
@@ -339,12 +347,8 @@ class AuditOrchestrator:
         """Print audit summary to console"""
         self.metrics.finalize()
 
-        blocker_count = (
-            self.metrics.metrics["findings"]["critical"] + self.metrics.metrics["findings"]["high"]
-        )
-        suggestion_count = (
-            self.metrics.metrics["findings"]["medium"] + self.metrics.metrics["findings"]["low"]
-        )
+        blocker_count = self.metrics.metrics["findings"]["critical"] + self.metrics.metrics["findings"]["high"]
+        suggestion_count = self.metrics.metrics["findings"]["medium"] + self.metrics.metrics["findings"]["low"]
 
         print("\n📊 Final Results:")
         print(f"   Critical: {self.metrics.metrics['findings']['critical']}")
@@ -391,16 +395,11 @@ class AuditOrchestrator:
                 severity = severity.strip().lower()
 
                 if category == "any":
-                    if severity in self.metrics.metrics["findings"] and self.metrics.metrics["findings"][
-                        severity
-                    ] > 0:
+                    if severity in self.metrics.metrics["findings"] and self.metrics.metrics["findings"][severity] > 0:
                         print(f"   ❌ FAIL: Found {self.metrics.metrics['findings'][severity]} {severity} issues")
                         should_fail = True
                 else:
-                    matching = [
-                        f for f in findings
-                        if f.get("category") == category and f.get("severity") == severity
-                    ]
+                    matching = [f for f in findings if f.get("category") == category and f.get("severity") == severity]
                     if matching:
                         print(f"   ❌ FAIL: Found {len(matching)} {category}:{severity} issues")
                         should_fail = True

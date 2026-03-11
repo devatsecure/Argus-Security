@@ -304,16 +304,9 @@ class DiffImpactAnalyzer:
         for dirpath, _dirnames, filenames in os.walk(project_path):
             # Skip hidden directories and common non-source dirs
             rel_dir = os.path.relpath(dirpath, project_path)
-            if any(
-                part.startswith(".")
-                for part in rel_dir.split(os.sep)
-                if part != "."
-            ):
+            if any(part.startswith(".") for part in rel_dir.split(os.sep) if part != "."):
                 continue
-            if any(
-                skip in rel_dir
-                for skip in ("node_modules", "__pycache__", "vendor", ".git")
-            ):
+            if any(skip in rel_dir for skip in ("node_modules", "__pycache__", "vendor", ".git")):
                 continue
 
             for filename in filenames:
@@ -418,9 +411,7 @@ class DiffScopeBuilder:
             )
 
         # Step 2: Expand impact
-        expanded = self._analyzer.expand_impact(
-            classification.security_relevant, project_path
-        )
+        expanded = self._analyzer.expand_impact(classification.security_relevant, project_path)
 
         # Step 3: Merge into final file list (de-duplicated, sorted)
         all_files = sorted(set(classification.security_relevant) | set(expanded))
@@ -471,11 +462,7 @@ class DiffScopeBuilder:
                 )
                 return []
 
-            files = [
-                line.strip()
-                for line in result.stdout.strip().splitlines()
-                if line.strip()
-            ]
+            files = [line.strip() for line in result.stdout.strip().splitlines() if line.strip()]
             logger.info("git diff detected %d changed file(s)", len(files))
             return files
 
@@ -517,8 +504,4 @@ if __name__ == "__main__":
     builder = DiffScopeBuilder()
     changed = builder.get_changed_files(project)
     scope = builder.build_scope(project, changed, only_changed=True)
-    print(
-        f"Changed: {len(changed)}, "
-        f"Scan scope: {len(scope.files)}, "
-        f"Skipped: {len(scope.skipped)}"
-    )
+    print(f"Changed: {len(changed)}, Scan scope: {len(scope.files)}, Skipped: {len(scope.skipped)}")

@@ -200,7 +200,9 @@ class DASTScanner:
         logger.info("    brew install nuclei")
         logger.info("")
         logger.info("  Linux (Binary):")
-        logger.info("    wget https://github.com/projectdiscovery/nuclei/releases/latest/download/nuclei_linux_amd64.zip")
+        logger.info(
+            "    wget https://github.com/projectdiscovery/nuclei/releases/latest/download/nuclei_linux_amd64.zip"
+        )
         logger.info("    unzip nuclei_linux_amd64.zip && sudo mv nuclei /usr/local/bin/")
         logger.info("")
         logger.info("  Go install:")

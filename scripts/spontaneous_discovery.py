@@ -77,12 +77,7 @@ class Discovery:
         finding_id = self._generate_id(repo, self.title, self.affected_files)
 
         # Map discovery category to finding category
-        category_map = {
-            "architecture": "SAST",
-            "hidden_vuln": "SAST",
-            "config": "IAC",
-            "data_security": "SAST"
-        }
+        category_map = {"architecture": "SAST", "hidden_vuln": "SAST", "config": "IAC", "data_security": "SAST"}
 
         # Primary file for the finding
         primary_file = self.affected_files[0] if self.affected_files else "project-wide"
@@ -106,13 +101,13 @@ class Discovery:
                 "affected_files": self.affected_files,
                 "code_snippets": self.code_snippets,
                 "discovery_type": "spontaneous",
-                "ai_analyzed": True
+                "ai_analyzed": True,
             },
             references=self.references,
             confidence=self.confidence,
             llm_enriched=True,
             status="open",
-            fix_suggestion=self.remediation
+            fix_suggestion=self.remediation,
         )
 
     def _generate_id(self, repo: str, title: str, files: list[str]) -> str:
@@ -163,7 +158,7 @@ class SpontaneousDiscovery:
         "sql_injection": "CWE-89",
         "xss_vulnerability": "CWE-79",
         "insecure_deserialization": "CWE-502",
-        "rate_limiting": "CWE-307"
+        "rate_limiting": "CWE-307",
     }
 
     def __init__(self, llm_manager: Optional[Any] = None):
@@ -180,11 +175,7 @@ class SpontaneousDiscovery:
             logger.warning("No LLM manager provided - spontaneous discovery will be limited")
 
     def discover(
-        self,
-        files: list[str],
-        existing_findings: list[dict],
-        architecture: str,
-        max_files_analyze: int = 50
+        self, files: list[str], existing_findings: list[dict], architecture: str, max_files_analyze: int = 50
     ) -> list[Discovery]:
         """
         Main entry point - discover security issues beyond scanner rules
@@ -291,11 +282,7 @@ class SpontaneousDiscovery:
 
         return discoveries
 
-    def find_hidden_vulnerabilities(
-        self,
-        files: list[str],
-        existing_findings: list[dict]
-    ) -> list[Discovery]:
+    def find_hidden_vulnerabilities(self, files: list[str], existing_findings: list[dict]) -> list[Discovery]:
         """
         Look for vulnerabilities that scanners might miss
 
@@ -336,11 +323,7 @@ class SpontaneousDiscovery:
 
         return discoveries
 
-    def check_configuration_security(
-        self,
-        files: list[str],
-        architecture: str
-    ) -> list[Discovery]:
+    def check_configuration_security(self, files: list[str], architecture: str) -> list[Discovery]:
         """
         Identify insecure configurations
 
@@ -445,7 +428,7 @@ class SpontaneousDiscovery:
             "languages": set(),
             "config_files": [],
             "route_files": [],
-            "model_files": []
+            "model_files": [],
         }
 
         for file_path in files:
@@ -494,12 +477,7 @@ class SpontaneousDiscovery:
 
         return patterns
 
-    def _check_authentication_layer(
-        self,
-        files: list[str],
-        patterns: dict,
-        architecture: str
-    ) -> Optional[Discovery]:
+    def _check_authentication_layer(self, files: list[str], patterns: dict, architecture: str) -> Optional[Discovery]:
         """Check for missing authentication layer"""
 
         # Skip if this is not a backend API
@@ -521,7 +499,7 @@ class SpontaneousDiscovery:
                 evidence=[
                     f"Found {len(patterns['route_files'])} route files but no authentication modules",
                     "No files containing 'auth', 'login', 'jwt', or 'oauth' detected",
-                    "This pattern suggests missing authentication controls"
+                    "This pattern suggests missing authentication controls",
                 ],
                 remediation=(
                     "Implement authentication for all sensitive endpoints:\n"
@@ -532,19 +510,12 @@ class SpontaneousDiscovery:
                 ),
                 cwe_id=self.CWE_MAPPINGS["missing_authentication"],
                 affected_files=patterns["route_files"][:5],  # Limit to first 5
-                references=[
-                    "https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html"
-                ]
+                references=["https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html"],
             )
 
         return None
 
-    def _check_authorization_layer(
-        self,
-        files: list[str],
-        patterns: dict,
-        architecture: str
-    ) -> Optional[Discovery]:
+    def _check_authorization_layer(self, files: list[str], patterns: dict, architecture: str) -> Optional[Discovery]:
         """Check for missing authorization/access control"""
 
         if architecture not in ["backend-api", "web-app", "microservice"]:
@@ -580,7 +551,7 @@ class SpontaneousDiscovery:
                     evidence=[
                         "Authentication files detected but no authorization patterns found",
                         "No 'authorize', 'permission', 'role', or 'rbac' patterns in route handlers",
-                        "This suggests missing fine-grained access controls"
+                        "This suggests missing fine-grained access controls",
                     ],
                     remediation=(
                         "Implement authorization controls:\n"
@@ -591,9 +562,7 @@ class SpontaneousDiscovery:
                     ),
                     cwe_id=self.CWE_MAPPINGS["missing_authorization"],
                     affected_files=patterns["route_files"][:5],
-                    references=[
-                        "https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html"
-                    ]
+                    references=["https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html"],
                 )
 
         return None
@@ -611,7 +580,7 @@ class SpontaneousDiscovery:
             (r"sha1\s*\(", "SHA1 hash function (deprecated for security)"),
             (r"des\s*\(", "DES encryption (insecure, use AES)"),
             (r"rc4", "RC4 cipher (broken)"),
-            (r"ecb", "ECB mode (insecure block cipher mode)")
+            (r"ecb", "ECB mode (insecure block cipher mode)"),
         ]
 
         for file_path in files[:30]:  # Check first 30 files
@@ -656,9 +625,7 @@ class SpontaneousDiscovery:
                 ),
                 cwe_id=self.CWE_MAPPINGS["weak_crypto"],
                 affected_files=[f.split(":")[0] for f in weak_crypto_files],
-                references=[
-                    "https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html"
-                ]
+                references=["https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html"],
             )
 
         return None
@@ -699,7 +666,7 @@ class SpontaneousDiscovery:
                 evidence=[
                     f"Found {len(patterns['route_files'])} route files",
                     "No validation patterns ('validate', 'schema', 'sanitize') detected",
-                    "Input validation appears to be missing or inconsistent"
+                    "Input validation appears to be missing or inconsistent",
                 ],
                 remediation=(
                     "Implement input validation:\n"
@@ -710,9 +677,7 @@ class SpontaneousDiscovery:
                 ),
                 cwe_id="CWE-20",  # Improper Input Validation
                 affected_files=patterns["route_files"][:5],
-                references=[
-                    "https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html"
-                ]
+                references=["https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html"],
             )
 
         return None
@@ -744,7 +709,7 @@ class SpontaneousDiscovery:
             "x-frame-options": "Clickjacking protection",
             "x-content-type-options": "MIME sniffing protection",
             "content-security-policy": "CSP",
-            "x-xss-protection": "XSS protection"
+            "x-xss-protection": "XSS protection",
         }
 
         headers_found = set()
@@ -780,7 +745,7 @@ class SpontaneousDiscovery:
                 evidence=[
                     f"Checked {len(config_files_checked)} configuration files",
                     f"Missing headers: {', '.join(missing_headers)}",
-                    "Security headers provide defense-in-depth protection"
+                    "Security headers provide defense-in-depth protection",
                 ],
                 remediation=(
                     "Add security headers to HTTP responses:\n"
@@ -792,9 +757,7 @@ class SpontaneousDiscovery:
                 ),
                 cwe_id="CWE-693",  # Protection Mechanism Failure
                 affected_files=config_files_checked[:5],
-                references=[
-                    "https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Headers_Cheat_Sheet.html"
-                ]
+                references=["https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Headers_Cheat_Sheet.html"],
             )
 
         return None
@@ -854,9 +817,7 @@ class SpontaneousDiscovery:
                 ),
                 cwe_id=self.CWE_MAPPINGS["cors_misconfiguration"],
                 affected_files=cors_files,
-                references=[
-                    "https://cheatsheetseries.owasp.org/cheatsheets/CORS_Cheat_Sheet.html"
-                ]
+                references=["https://cheatsheetseries.owasp.org/cheatsheets/CORS_Cheat_Sheet.html"],
             )
 
         return None
@@ -917,7 +878,7 @@ class SpontaneousDiscovery:
                 affected_files=debug_files,
                 references=[
                     "https://owasp.org/www-community/vulnerabilities/Information_exposure_through_query_strings_in_url"
-                ]
+                ],
             )
 
         return None
@@ -941,7 +902,7 @@ class SpontaneousDiscovery:
                         # Look for admin routes
                         if re.search(r"['\"/]admin['\"/]", line, re.IGNORECASE):
                             # Check if there's authentication nearby
-                            context = "".join(lines[max(0, i-5):min(len(lines), i+5)])
+                            context = "".join(lines[max(0, i - 5) : min(len(lines), i + 5)])
 
                             # If no auth patterns nearby, flag it
                             if not any(x in context.lower() for x in ["auth", "login", "permission", "require_admin"]):
@@ -976,9 +937,7 @@ class SpontaneousDiscovery:
                 ),
                 cwe_id=self.CWE_MAPPINGS["admin_exposure"],
                 affected_files=admin_files,
-                references=[
-                    "https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html"
-                ]
+                references=["https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html"],
             )
 
         return None
@@ -998,7 +957,7 @@ class SpontaneousDiscovery:
             (r"log.*credit[_-]?card", "Logging credit card"),
             (r"log.*ssn", "Logging SSN"),
             (r"print.*password", "Printing password to stdout"),
-            (r"console\.log.*password", "Logging password to console")
+            (r"console\.log.*password", "Logging password to console"),
         ]
 
         for file_path in files[:40]:
@@ -1038,9 +997,7 @@ class SpontaneousDiscovery:
                 ),
                 cwe_id=self.CWE_MAPPINGS["sensitive_logging"],
                 affected_files=log_files,
-                references=[
-                    "https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html"
-                ]
+                references=["https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html"],
             )
 
         return None
@@ -1064,9 +1021,7 @@ class SpontaneousDiscovery:
         return None
 
     def _deduplicate_with_existing(
-        self,
-        discoveries: list[Discovery],
-        existing_findings: list[dict]
+        self, discoveries: list[Discovery], existing_findings: list[dict]
     ) -> list[Discovery]:
         """
         Deduplicate discoveries with existing scanner findings
@@ -1130,9 +1085,7 @@ def main():
     import argparse
     import sys
 
-    parser = argparse.ArgumentParser(
-        description="Spontaneous Security Discovery - Find issues beyond scanner rules"
-    )
+    parser = argparse.ArgumentParser(description="Spontaneous Security Discovery - Find issues beyond scanner rules")
     parser.add_argument("path", help="Path to analyze")
     parser.add_argument("--architecture", default="backend-api", help="Architecture type")
     parser.add_argument("--output", help="Output file (JSON)")
@@ -1160,10 +1113,7 @@ def main():
     # Run discovery
     discovery_engine = SpontaneousDiscovery(llm_manager=None)
     discoveries = discovery_engine.discover(
-        files=files,
-        existing_findings=[],
-        architecture=args.architecture,
-        max_files_analyze=args.max_files
+        files=files, existing_findings=[], architecture=args.architecture, max_files_analyze=args.max_files
     )
 
     # Output results
@@ -1180,12 +1130,12 @@ def main():
                         "evidence": d.evidence,
                         "remediation": d.remediation,
                         "cwe_id": d.cwe_id,
-                        "affected_files": d.affected_files
+                        "affected_files": d.affected_files,
                     }
                     for d in discoveries
                 ],
                 f,
-                indent=2
+                indent=2,
             )
         print(f"Results written to {args.output}")
     else:

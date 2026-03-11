@@ -90,10 +90,7 @@ def run_phase6_reporting(
 
     # --- Apply severity filter ---
     if severity_filter:
-        all_findings = [
-            f for f in all_findings
-            if f.severity.lower() in [s.lower() for s in severity_filter]
-        ]
+        all_findings = [f for f in all_findings if f.severity.lower() in [s.lower() for s in severity_filter]]
 
     # --- Assemble result ---
     result = HybridScanResult(
@@ -126,6 +123,7 @@ def run_phase6_reporting(
 # ------------------------------------------------------------------
 # Internal helpers
 # ------------------------------------------------------------------
+
 
 def _generate_disclosure_report(
     *,

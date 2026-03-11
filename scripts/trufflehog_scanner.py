@@ -125,7 +125,9 @@ class TruffleHogScanner:
         logger.info("   brew install trufflehog")
         logger.info("")
         logger.info("   Linux/macOS (Binary):")
-        logger.info("   curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh -s -- -b /usr/local/bin")
+        logger.info(
+            "   curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh -s -- -b /usr/local/bin"
+        )
         logger.info("")
         logger.info("   Docker:")
         logger.info("   docker pull trufflesecurity/trufflehog:latest")
@@ -221,10 +223,7 @@ class TruffleHogScanner:
             filtered_stderr = "\n".join(
                 line
                 for line in stderr_lines
-                if not any(
-                    kw in line.lower()
-                    for kw in ["new version", "update available", "upgrade"]
-                )
+                if not any(kw in line.lower() for kw in ["new version", "update available", "upgrade"])
             ).strip()
 
             # TruffleHog returns exit code 183 if secrets are found

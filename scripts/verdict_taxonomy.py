@@ -37,7 +37,7 @@ class VerdictType(Enum):
             VerdictType.UNCERTAIN: "Uncertain (Needs Review)",
             VerdictType.LIKELY_FALSE_POSITIVE: "Likely False Positive",
             VerdictType.FALSE_POSITIVE: "False Positive",
-            VerdictType.NEEDS_REVIEW: "Needs Manual Review"
+            VerdictType.NEEDS_REVIEW: "Needs Manual Review",
         }[self]
 
     def get_priority(self) -> int:
@@ -48,7 +48,7 @@ class VerdictType(Enum):
             VerdictType.UNCERTAIN: 3,
             VerdictType.NEEDS_REVIEW: 4,
             VerdictType.LIKELY_FALSE_POSITIVE: 5,
-            VerdictType.FALSE_POSITIVE: 6
+            VerdictType.FALSE_POSITIVE: 6,
         }[self]
 
     def get_confidence_range(self) -> tuple[float, float]:
@@ -59,13 +59,14 @@ class VerdictType(Enum):
             VerdictType.UNCERTAIN: (0.4, 0.7),
             VerdictType.LIKELY_FALSE_POSITIVE: (0.2, 0.4),
             VerdictType.FALSE_POSITIVE: (0.0, 0.2),
-            VerdictType.NEEDS_REVIEW: (0.0, 1.0)  # Any confidence if analysis failed
+            VerdictType.NEEDS_REVIEW: (0.0, 1.0),  # Any confidence if analysis failed
         }[self]
 
 
 @dataclass
 class VerdictMetadata:
     """Additional metadata for verdict decisions"""
+
     confidence: float
     reasoning: str
     review_reason: Optional[str] = None  # Why uncertain/needs review
@@ -85,10 +86,7 @@ class VerdictClassifier:
 
     @classmethod
     def classify_verdict(
-        cls,
-        confidence: float,
-        analysis_complete: bool = True,
-        severity: str = "medium"
+        cls, confidence: float, analysis_complete: bool = True, severity: str = "medium"
     ) -> VerdictType:
         """
         Classify finding into verdict category
@@ -162,10 +160,7 @@ class VerdictClassifier:
     @classmethod
     def should_auto_suppress(cls, verdict: VerdictType, confidence: float) -> bool:
         """Determine if finding can be auto-suppressed"""
-        return (
-            verdict == VerdictType.FALSE_POSITIVE and
-            confidence <= 0.2
-        )
+        return verdict == VerdictType.FALSE_POSITIVE and confidence <= 0.2
 
     @classmethod
     def should_block_deployment(cls, verdict: VerdictType, severity: str) -> bool:
@@ -181,11 +176,7 @@ class VerdictClassifier:
 
 
 def create_verdict_with_metadata(
-    confidence: float,
-    analysis_complete: bool,
-    severity: str,
-    reasoning: str,
-    review_reason: Optional[str] = None
+    confidence: float, analysis_complete: bool, severity: str, reasoning: str, review_reason: Optional[str] = None
 ) -> tuple[VerdictType, VerdictMetadata]:
     """
     Create verdict with full metadata
@@ -206,7 +197,7 @@ def create_verdict_with_metadata(
         confidence=confidence,
         reasoning=reasoning,
         review_reason=review_reason,
-        recommended_action=VerdictClassifier.get_recommended_action(verdict, severity)
+        recommended_action=VerdictClassifier.get_recommended_action(verdict, severity),
     )
 
     return verdict, metadata

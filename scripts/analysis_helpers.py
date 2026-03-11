@@ -58,7 +58,7 @@ class ContextTracker:
             "start_time": time.time(),
             "components": [],
             "total_chars": 0,
-            "estimated_tokens": 0
+            "estimated_tokens": 0,
         }
         logger.info(f"📊 Context Phase Started: {phase_name}")
 
@@ -81,7 +81,7 @@ class ContextTracker:
             "name": component_name,
             "chars": char_count,
             "tokens_estimate": token_estimate,
-            "metadata": metadata or {}
+            "metadata": metadata or {},
         }
 
         self.current_phase["components"].append(component)
@@ -101,7 +101,9 @@ class ContextTracker:
         self.current_phase["duration_seconds"] = duration
 
         logger.info(f"✅ Context Phase Complete: {self.current_phase['name']}")
-        logger.info(f"   Total: {self.current_phase['total_chars']:,} chars, ~{self.current_phase['estimated_tokens']:,} tokens")
+        logger.info(
+            f"   Total: {self.current_phase['total_chars']:,} chars, ~{self.current_phase['estimated_tokens']:,} tokens"
+        )
         logger.info(f"   Components: {len(self.current_phase['components'])}")
 
         self.phases.append(self.current_phase)
@@ -122,10 +124,10 @@ class ContextTracker:
                     "name": p["name"],
                     "chars": p["total_chars"],
                     "tokens_estimate": p["estimated_tokens"],
-                    "components": len(p["components"])
+                    "components": len(p["components"]),
                 }
                 for p in self.phases
-            ]
+            ],
         }
 
     def detect_contradictions(self, new_instructions: str, existing_context: str) -> list:
@@ -157,7 +159,9 @@ class ContextTracker:
             # Check for overlapping terms
             overlap = set(matches1) & set(matches2)
             if overlap:
-                warnings.append(f"Potential contradiction: existing context mentions '{pattern1}' while new instructions mention '{pattern2}' for: {overlap}")
+                warnings.append(
+                    f"Potential contradiction: existing context mentions '{pattern1}' while new instructions mention '{pattern2}' for: {overlap}"
+                )
 
         return warnings
 
@@ -205,11 +209,15 @@ class FindingSummarizer:
 
         # Overall stats
         summary_parts.append(f"**Summary**: {len(findings)} total findings")
-        summary_parts.append(f"- Critical: {severity_counts['critical']}, High: {severity_counts['high']}, Medium: {severity_counts['medium']}, Low: {severity_counts['low']}")
+        summary_parts.append(
+            f"- Critical: {severity_counts['critical']}, High: {severity_counts['high']}, Medium: {severity_counts['medium']}, Low: {severity_counts['low']}"
+        )
 
         # Category breakdown
         if category_counts:
-            category_str = ", ".join([f"{cat}: {count}" for cat, count in sorted(category_counts.items(), key=lambda x: x[1], reverse=True)])
+            category_str = ", ".join(
+                [f"{cat}: {count}" for cat, count in sorted(category_counts.items(), key=lambda x: x[1], reverse=True)]
+            )
             summary_parts.append(f"- Categories: {category_str}")
 
         # Top findings (critical and high only)
@@ -313,7 +321,7 @@ class AgentOutputValidator:
             "valid": True,
             "warnings": [],
             "errors": [],
-            "metrics": {}
+            "metrics": {},
         }
 
         # Check minimum length
@@ -336,7 +344,7 @@ class AgentOutputValidator:
             validation["warnings"].append("Minimal markdown structure (< 2 headers)")
 
         # Check for code references (file:line format)
-        code_refs = re.findall(r'`[^`]+\.\w+:\d+`', output)
+        code_refs = re.findall(r"`[^`]+\.\w+:\d+`", output)
         validation["metrics"]["code_references"] = len(code_refs)
 
         if len(code_refs) == 0:
@@ -352,26 +360,13 @@ class AgentOutputValidator:
             validation["warnings"].append("No severity markers found")
 
         # Check for empty findings (agent found nothing)
-        empty_indicators = [
-            "no issues found",
-            "no findings",
-            "no problems detected",
-            "0 issues",
-            "clean codebase"
-        ]
+        empty_indicators = ["no issues found", "no findings", "no problems detected", "0 issues", "clean codebase"]
 
         is_empty = any(indicator in output.lower() for indicator in empty_indicators)
         validation["metrics"]["appears_empty"] = is_empty
 
         # Check for generic/template responses
-        template_indicators = [
-            "[insert",
-            "[add",
-            "[describe",
-            "TODO:",
-            "FIXME:",
-            "placeholder"
-        ]
+        template_indicators = ["[insert", "[add", "[describe", "TODO:", "FIXME:", "placeholder"]
 
         has_templates = any(indicator in output.lower() for indicator in template_indicators)
         if has_templates:
@@ -415,7 +410,7 @@ class AgentOutputValidator:
             "valid_outputs": valid,
             "invalid_outputs": total - valid,
             "total_warnings": sum(len(v["warnings"]) for v in self.validation_history),
-            "total_errors": sum(len(v["errors"]) for v in self.validation_history)
+            "total_errors": sum(len(v["errors"]) for v in self.validation_history),
         }
 
 
@@ -482,14 +477,16 @@ class TimeoutManager:
             duration: Execution duration in seconds
             completed: Whether agent completed successfully
         """
-        self.execution_history.append({
-            "agent": agent_name,
-            "duration": duration,
-            "completed": completed,
-            "timeout": self.get_timeout(agent_name),
-            "exceeded_timeout": duration > self.get_timeout(agent_name),
-            "timestamp": time.time()
-        })
+        self.execution_history.append(
+            {
+                "agent": agent_name,
+                "duration": duration,
+                "completed": completed,
+                "timeout": self.get_timeout(agent_name),
+                "exceeded_timeout": duration > self.get_timeout(agent_name),
+                "timestamp": time.time(),
+            }
+        )
 
     def get_summary(self) -> dict:
         """Get execution summary
@@ -509,7 +506,7 @@ class TimeoutManager:
             "completed": completed,
             "timeout_exceeded": timeouts,
             "avg_duration": sum(e["duration"] for e in self.execution_history) / total,
-            "max_duration": max(e["duration"] for e in self.execution_history)
+            "max_duration": max(e["duration"] for e in self.execution_history),
         }
 
 
@@ -544,13 +541,10 @@ class CodebaseChunker:
 
         # Sort files: priority first, then by size
         priority_set = set(priority_files or [])
-        sorted_files = sorted(
-            files,
-            key=lambda f: (f['path'] not in priority_set, len(f.get('content', '')))
-        )
+        sorted_files = sorted(files, key=lambda f: (f["path"] not in priority_set, len(f.get("content", ""))))
 
         for file_info in sorted_files:
-            file_size = len(file_info.get('content', ''))
+            file_size = len(file_info.get("content", ""))
 
             # If adding this file would exceed chunk size, start new chunk
             if current_chunk["size"] + file_size > self.max_chunk_size and current_chunk["files"]:
@@ -562,7 +556,7 @@ class CodebaseChunker:
             current_chunk["size"] += file_size
 
             # Mark chunk as priority if it contains priority files
-            if file_info['path'] in priority_set:
+            if file_info["path"] in priority_set:
                 current_chunk["priority"] = True
 
         # Add last chunk
@@ -586,7 +580,7 @@ class CodebaseChunker:
             "total_files": sum(len(c["files"]) for c in chunks),
             "total_size": sum(c["size"] for c in chunks),
             "avg_chunk_size": sum(c["size"] for c in chunks) / len(chunks) if chunks else 0,
-            "max_chunk_size": max(c["size"] for c in chunks) if chunks else 0
+            "max_chunk_size": max(c["size"] for c in chunks) if chunks else 0,
         }
 
 
@@ -611,13 +605,13 @@ class ContextCleanup:
         Returns:
             Text with duplicates removed
         """
-        lines = text.split('\n')
+        lines = text.split("\n")
         seen = set()
         unique_lines = []
 
         for line in lines:
             # Keep empty lines and headers
-            if not line.strip() or line.strip().startswith('#'):
+            if not line.strip() or line.strip().startswith("#"):
                 unique_lines.append(line)
                 continue
 
@@ -626,7 +620,7 @@ class ContextCleanup:
                 seen.add(line)
                 unique_lines.append(line)
 
-        return '\n'.join(unique_lines)
+        return "\n".join(unique_lines)
 
     def compress_whitespace(self, text: str) -> str:
         """Compress excessive whitespace
@@ -638,12 +632,12 @@ class ContextCleanup:
             Text with compressed whitespace
         """
         # Replace multiple blank lines with max 2
-        text = re.sub(r'\n{3,}', '\n\n', text)
+        text = re.sub(r"\n{3,}", "\n\n", text)
 
         # Remove trailing whitespace
-        lines = [line.rstrip() for line in text.split('\n')]
+        lines = [line.rstrip() for line in text.split("\n")]
 
-        return '\n'.join(lines)
+        return "\n".join(lines)
 
     def remove_comments(self, text: str, language: str = None) -> str:
         """Remove code comments to reduce token usage
@@ -657,15 +651,15 @@ class ContextCleanup:
         """
         # Generic comment removal (works for most languages)
         # Remove single-line comments
-        text = re.sub(r'//.*$', '', text, flags=re.MULTILINE)
-        text = re.sub(r'#.*$', '', text, flags=re.MULTILINE)
+        text = re.sub(r"//.*$", "", text, flags=re.MULTILINE)
+        text = re.sub(r"#.*$", "", text, flags=re.MULTILINE)
 
         # Remove multi-line comments (/* */ style)
-        text = re.sub(r'/\*.*?\*/', '', text, flags=re.DOTALL)
+        text = re.sub(r"/\*.*?\*/", "", text, flags=re.DOTALL)
 
         return text
 
-    def extract_signatures_only(self, code: str, language: str = 'python') -> str:
+    def extract_signatures_only(self, code: str, language: str = "python") -> str:
         """Extract only function/class signatures, removing implementation
 
         Args:
@@ -675,17 +669,22 @@ class ContextCleanup:
         Returns:
             Code with only signatures
         """
-        if language == 'python':
+        if language == "python":
             # Extract class and function definitions
-            lines = code.split('\n')
+            lines = code.split("\n")
             signatures = []
 
             for line in lines:
                 stripped = line.strip()
-                if stripped.startswith('class ') or stripped.startswith('def ') or stripped.startswith('async def ') or stripped.startswith('@'):
+                if (
+                    stripped.startswith("class ")
+                    or stripped.startswith("def ")
+                    or stripped.startswith("async def ")
+                    or stripped.startswith("@")
+                ):
                     signatures.append(line)
 
-            return '\n'.join(signatures)
+            return "\n".join(signatures)
 
         # For other languages, return as-is for now
         return code

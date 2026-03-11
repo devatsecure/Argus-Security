@@ -40,6 +40,7 @@ class CodeLocation:
         start_line: Start line of the enclosing scope
         end_line: End line of the enclosing scope
     """
+
     file_path: str
     line_number: int
     function_name: Optional[str] = None
@@ -106,7 +107,7 @@ class ASTDeduplicator:
             function_name=None,
             class_name=None,
             start_line=line_bucket,
-            end_line=line_bucket + 9
+            end_line=line_bucket + 9,
         )
 
     def _is_parseable(self, file_path: str) -> bool:
@@ -119,11 +120,11 @@ class ASTDeduplicator:
             True if file is parseable, False otherwise
         """
         return (
-            file_path.endswith(".py") or
-            file_path.endswith(".js") or
-            file_path.endswith(".jsx") or
-            file_path.endswith(".ts") or
-            file_path.endswith(".tsx")
+            file_path.endswith(".py")
+            or file_path.endswith(".js")
+            or file_path.endswith(".jsx")
+            or file_path.endswith(".ts")
+            or file_path.endswith(".tsx")
         )
 
     def _parse_location(self, file_path: str, line_number: int) -> Optional[CodeLocation]:
@@ -183,7 +184,7 @@ class ASTDeduplicator:
                     function_name=func_name,
                     class_name=class_name,
                     start_line=start_line,
-                    end_line=end_line
+                    end_line=end_line,
                 )
 
         except FileNotFoundError:
@@ -194,10 +195,7 @@ class ASTDeduplicator:
         return None
 
     def _find_enclosing_node(
-        self,
-        tree: ast.AST,
-        line_number: int,
-        parent_class: Optional[str] = None
+        self, tree: ast.AST, line_number: int, parent_class: Optional[str] = None
     ) -> Optional[tuple[Optional[str], Optional[str], int, int]]:
         """
         Find enclosing function/class for a line using AST traversal
@@ -216,19 +214,17 @@ class ASTDeduplicator:
             Tuple of (function_name, class_name, start_line, end_line) or None
         """
         best_match = None
-        best_range = float('inf')  # Track smallest enclosing range
+        best_range = float("inf")  # Track smallest enclosing range
 
         for node in ast.walk(tree):
             # Check class definitions
             if isinstance(node, ast.ClassDef):
-                if hasattr(node, 'lineno') and hasattr(node, 'end_lineno'):
+                if hasattr(node, "lineno") and hasattr(node, "end_lineno"):
                     if node.lineno <= line_number <= (node.end_lineno or node.lineno):
                         node_range = (node.end_lineno or node.lineno) - node.lineno
 
                         # Recurse to find function within class (innermost match)
-                        inner_result = self._find_function_in_class(
-                            node, line_number, node.name
-                        )
+                        inner_result = self._find_function_in_class(node, line_number, node.name)
                         if inner_result:
                             inner_range = inner_result[3] - inner_result[2]
                             if inner_range < best_range:
@@ -241,7 +237,7 @@ class ASTDeduplicator:
 
             # Check function definitions at module level
             elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                if hasattr(node, 'lineno') and hasattr(node, 'end_lineno'):
+                if hasattr(node, "lineno") and hasattr(node, "end_lineno"):
                     if node.lineno <= line_number <= (node.end_lineno or node.lineno):
                         node_range = (node.end_lineno or node.lineno) - node.lineno
                         if node_range < best_range:
@@ -251,10 +247,7 @@ class ASTDeduplicator:
         return best_match
 
     def _find_function_in_class(
-        self,
-        class_node: ast.ClassDef,
-        line_number: int,
-        class_name: str
+        self, class_node: ast.ClassDef, line_number: int, class_name: str
     ) -> Optional[tuple[str, str, int, int]]:
         """Find function within a class (handles methods)
 
@@ -267,11 +260,11 @@ class ASTDeduplicator:
             Tuple of (function_name, class_name, start_line, end_line) or None
         """
         best_match = None
-        best_range = float('inf')
+        best_range = float("inf")
 
         for node in class_node.body:
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                if hasattr(node, 'lineno') and hasattr(node, 'end_lineno'):
+                if hasattr(node, "lineno") and hasattr(node, "end_lineno"):
                     if node.lineno <= line_number <= (node.end_lineno or node.lineno):
                         node_range = (node.end_lineno or node.lineno) - node.lineno
                         if node_range < best_range:
@@ -320,10 +313,10 @@ class ASTDeduplicator:
 
             for i, line in enumerate(lines, start=1):
                 # Count braces to track scope
-                brace_depth += line.count('{') - line.count('}')
+                brace_depth += line.count("{") - line.count("}")
 
                 # Detect class declaration
-                class_match = re.search(r'class\s+(\w+)', line)
+                class_match = re.search(r"class\s+(\w+)", line)
                 if class_match:
                     current_class = class_match.group(1)
                     class_start = i
@@ -332,10 +325,10 @@ class ASTDeduplicator:
                 # Detect function/method declaration
                 # Patterns: function foo(), const foo = () =>, async function foo(), foo() {
                 func_patterns = [
-                    r'(?:async\s+)?function\s+(\w+)',  # function foo()
-                    r'(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?\(',  # const foo = (
-                    r'(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?(?:\([^)]*\)|[^\s]+)\s*=>',  # const foo = () =>
-                    r'^\s*(?:async\s+)?(\w+)\s*\([^)]*\)\s*\{',  # method shorthand: foo() {
+                    r"(?:async\s+)?function\s+(\w+)",  # function foo()
+                    r"(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?\(",  # const foo = (
+                    r"(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s*)?(?:\([^)]*\)|[^\s]+)\s*=>",  # const foo = () =>
+                    r"^\s*(?:async\s+)?(\w+)\s*\([^)]*\)\s*\{",  # method shorthand: foo() {
                 ]
 
                 for pattern in func_patterns:
@@ -357,7 +350,7 @@ class ASTDeduplicator:
                             function_name=current_function,
                             class_name=current_class,
                             start_line=function_start,
-                            end_line=function_end
+                            end_line=function_end,
                         )
                     elif current_class:
                         # In class but not in function
@@ -368,7 +361,7 @@ class ASTDeduplicator:
                             function_name=None,
                             class_name=current_class,
                             start_line=class_start,
-                            end_line=class_end
+                            end_line=class_end,
                         )
 
                 # Reset function context if we've exited the scope
@@ -408,20 +401,16 @@ class ASTDeduplicator:
                 return len(lines)
 
             line = lines[i - 1]  # Convert to 0-indexed
-            brace_depth += line.count('{') - line.count('}')
+            brace_depth += line.count("{") - line.count("}")
 
             # Found closing brace at same depth
-            if brace_depth <= start_depth and '}' in line and i > start_line:
+            if brace_depth <= start_depth and "}" in line and i > start_line:
                 return i
 
         # If we didn't find end, estimate conservatively
         return min(start_line + 50, len(lines))
 
-    def create_dedup_key(
-        self,
-        finding: dict,
-        use_code_hash: bool = False
-    ) -> str:
+    def create_dedup_key(self, finding: dict, use_code_hash: bool = False) -> str:
         """
         Create de-duplication key for finding using AST context
 

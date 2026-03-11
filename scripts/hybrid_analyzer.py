@@ -153,7 +153,7 @@ except ImportError:
     _AGENT_CHAIN_OK = False
 
 try:
-    from autofix_pr_generator import AutoFixPRGenerator, ClosedLoopOrchestrator
+    from autofix_pr_generator import AutoFixPRGenerator
 
     _AUTOFIX_OK = True
 except ImportError:
@@ -657,9 +657,7 @@ class HybridSecurityAnalyzer:
         if self.config.get("enable_agent_chain_discovery", False) and _AGENT_CHAIN_OK and self.ai_client:
             try:
                 self.agent_chain_discovery = AgentChainDiscovery(
-                    llm_call=self.ai_client.call_llm_api
-                    if hasattr(self.ai_client, "call_llm_api")
-                    else None,
+                    llm_call=self.ai_client.call_llm_api if hasattr(self.ai_client, "call_llm_api") else None,
                 )
                 logger.info("Agent-driven chain discovery initialized")
             except Exception as e:
@@ -681,11 +679,7 @@ class HybridSecurityAnalyzer:
             except Exception as e:
                 logger.warning("AutoFix PR generator not available: %s", e)
 
-        if (
-            self.config.get("enable_live_validation", False)
-            and _LIVE_VALIDATION_OK
-            and self.dast_target_url
-        ):
+        if self.config.get("enable_live_validation", False) and _LIVE_VALIDATION_OK and self.dast_target_url:
             try:
                 self.live_validator = SastDastValidator(
                     target_url=self.dast_target_url,
@@ -1382,24 +1376,24 @@ class HybridSecurityAnalyzer:
 
         return get_enabled_tools(
             {
-                "enable_semgrep": self.enable_semgrep,
-                "enable_trivy": self.enable_trivy,
-                "enable_checkov": self.enable_checkov,
-                "enable_api_security": self.enable_api_security,
-                "enable_dast": self.enable_dast,
-                "enable_supply_chain": self.enable_supply_chain,
-                "enable_fuzzing": self.enable_fuzzing,
-                "enable_threat_intel": self.enable_threat_intel,
-                "enable_remediation": self.enable_remediation,
-                "enable_runtime_security": self.enable_runtime_security,
-                "enable_regression_testing": self.enable_regression_testing,
-                "enable_ai_enrichment": self.enable_ai_enrichment,
-                "enable_gitleaks": self.enable_gitleaks,
-                "enable_nuclei_templates": self.enable_nuclei_templates,
-                "enable_zap_baseline": self.enable_zap_baseline,
-                "ai_client": self.ai_client,
-                "enable_argus": self.enable_argus,
-                "enable_sandbox": self.enable_sandbox,
+                "enable_semgrep": getattr(self, "enable_semgrep", False),
+                "enable_trivy": getattr(self, "enable_trivy", False),
+                "enable_checkov": getattr(self, "enable_checkov", False),
+                "enable_api_security": getattr(self, "enable_api_security", False),
+                "enable_dast": getattr(self, "enable_dast", False),
+                "enable_supply_chain": getattr(self, "enable_supply_chain", False),
+                "enable_fuzzing": getattr(self, "enable_fuzzing", False),
+                "enable_threat_intel": getattr(self, "enable_threat_intel", False),
+                "enable_remediation": getattr(self, "enable_remediation", False),
+                "enable_runtime_security": getattr(self, "enable_runtime_security", False),
+                "enable_regression_testing": getattr(self, "enable_regression_testing", False),
+                "enable_ai_enrichment": getattr(self, "enable_ai_enrichment", False),
+                "enable_gitleaks": getattr(self, "enable_gitleaks", False),
+                "enable_nuclei_templates": getattr(self, "enable_nuclei_templates", False),
+                "enable_zap_baseline": getattr(self, "enable_zap_baseline", False),
+                "ai_client": getattr(self, "ai_client", None),
+                "enable_argus": getattr(self, "enable_argus", False),
+                "enable_sandbox": getattr(self, "enable_sandbox", False),
             }
         )
 

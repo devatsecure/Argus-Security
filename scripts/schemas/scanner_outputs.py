@@ -18,15 +18,17 @@ from pydantic import BaseModel, Field, RootModel, field_validator
 
 # ========== Semgrep SARIF Output ==========
 
+
 class SARIFLocation(BaseModel):
     """SARIF physical location"""
+
     uri: str = Field(..., min_length=1, description="File path")
     startLine: Optional[int] = Field(default=None, ge=1)  # noqa: N815
     startColumn: Optional[int] = Field(default=None, ge=1)  # noqa: N815
     endLine: Optional[int] = Field(default=None, ge=1)  # noqa: N815
     endColumn: Optional[int] = Field(default=None, ge=1)  # noqa: N815
 
-    @field_validator('uri')
+    @field_validator("uri")
     @classmethod
     def validate_uri_not_empty(cls, v: str) -> str:
         """Ensure URI is not empty"""
@@ -37,12 +39,14 @@ class SARIFLocation(BaseModel):
 
 class SARIFPhysicalLocation(BaseModel):
     """SARIF physical location wrapper"""
+
     artifactLocation: dict[str, Any] = Field(default_factory=dict)  # noqa: N815
     region: dict[str, Any] = Field(default_factory=dict)
 
 
 class SARIFResult(BaseModel):
     """SARIF result item"""
+
     ruleId: str = Field(..., min_length=1)  # noqa: N815
     level: str = Field(default="warning")
     message: dict[str, Any] = Field(default_factory=dict)
@@ -51,16 +55,18 @@ class SARIFResult(BaseModel):
 
 class SARIFRun(BaseModel):
     """SARIF run"""
+
     tool: dict[str, Any] = Field(default_factory=dict)
     results: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class SemgrepOutput(BaseModel):
     """Semgrep SARIF 2.1.0 output format"""
+
     version: str = Field(default="2.1.0")
     runs: list[dict[str, Any]] = Field(default_factory=list)
 
-    @field_validator('runs')
+    @field_validator("runs")
     @classmethod
     def validate_runs_structure(cls, v: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Validate runs have expected structure"""
@@ -76,8 +82,10 @@ class SemgrepOutput(BaseModel):
 
 # ========== Trivy Output ==========
 
+
 class TrivyVulnerability(BaseModel):
     """Trivy vulnerability"""
+
     VulnerabilityID: str = Field(..., min_length=1)
     PkgName: str = Field(default="")
     InstalledVersion: str = Field(default="")
@@ -90,7 +98,7 @@ class TrivyVulnerability(BaseModel):
     CVSS: dict[str, Any] = Field(default_factory=dict)
     CweIDs: list[str] = Field(default_factory=list)
 
-    @field_validator('VulnerabilityID')
+    @field_validator("VulnerabilityID")
     @classmethod
     def validate_vuln_id(cls, v: str) -> str:
         """Ensure vulnerability ID is not empty"""
@@ -101,13 +109,14 @@ class TrivyVulnerability(BaseModel):
 
 class TrivyResult(BaseModel):
     """Trivy scan result for a target"""
+
     Target: str = Field(..., min_length=1, description="Scan target (file/image)")
     Class: Optional[str] = Field(default=None)
     Type: Optional[str] = Field(default=None)
     Vulnerabilities: list[dict[str, Any]] = Field(default_factory=list)
     Misconfigurations: list[dict[str, Any]] = Field(default_factory=list)
 
-    @field_validator('Target')
+    @field_validator("Target")
     @classmethod
     def validate_target_not_empty(cls, v: str) -> str:
         """Ensure target is not empty"""
@@ -115,7 +124,7 @@ class TrivyResult(BaseModel):
             raise ValueError("Target cannot be empty")
         return v
 
-    @field_validator('Vulnerabilities')
+    @field_validator("Vulnerabilities")
     @classmethod
     def validate_vulnerabilities_are_dicts(cls, v: list[Any]) -> list[dict[str, Any]]:
         """Ensure vulnerabilities are dictionaries, not strings"""
@@ -134,13 +143,14 @@ class TrivyOutput(BaseModel):
     Fixes AttributeError: 'str' object has no attribute 'get'
     by ensuring Vulnerabilities is always a list of dicts
     """
+
     SchemaVersion: Optional[int] = Field(default=None)
     ArtifactName: Optional[str] = Field(default=None)
     ArtifactType: Optional[str] = Field(default=None)
     Results: list[dict[str, Any]] = Field(default_factory=list)
     Metadata: dict[str, Any] = Field(default_factory=dict)
 
-    @field_validator('Results')
+    @field_validator("Results")
     @classmethod
     def validate_results_structure(cls, v: list[Any]) -> list[dict[str, Any]]:
         """Validate Results have expected structure"""
@@ -169,8 +179,10 @@ class TrivyOutput(BaseModel):
 
 # ========== TruffleHog Output ==========
 
+
 class TruffleHogSourceMetadata(BaseModel):
     """TruffleHog source metadata"""
+
     file: Optional[str] = Field(default=None)
     line: Optional[int] = Field(default=None, ge=1)
     commit: Optional[str] = Field(default=None)
@@ -180,6 +192,7 @@ class TruffleHogSourceMetadata(BaseModel):
 
 class TruffleHogFinding(BaseModel):
     """TruffleHog finding"""
+
     SourceMetadata: dict[str, Any] = Field(default_factory=dict)
     SourceID: Optional[int] = Field(default=None)
     SourceType: Optional[int] = Field(default=None)
@@ -191,7 +204,7 @@ class TruffleHogFinding(BaseModel):
     RawV2: Optional[str] = Field(default=None)
     Redacted: Optional[str] = Field(default=None)
 
-    @field_validator('SourceMetadata')
+    @field_validator("SourceMetadata")
     @classmethod
     def validate_source_metadata_is_dict(cls, v: Any) -> dict[str, Any]:
         """
@@ -207,9 +220,10 @@ class TruffleHogFinding(BaseModel):
 
 class TruffleHogOutput(RootModel[list[dict[str, Any]]]):
     """TruffleHog JSON output format (array of findings)"""
+
     root: list[dict[str, Any]] = Field(default_factory=list)
 
-    @field_validator('root')
+    @field_validator("root")
     @classmethod
     def validate_findings_structure(cls, v: list[Any]) -> list[dict[str, Any]]:
         """Validate each finding has expected structure"""
@@ -229,8 +243,10 @@ class TruffleHogOutput(RootModel[list[dict[str, Any]]]):
 
 # ========== Gitleaks Output ==========
 
+
 class GitleaksFinding(BaseModel):
     """Gitleaks finding"""
+
     Description: str = Field(default="")
     StartLine: Optional[int] = Field(default=None, ge=1)
     EndLine: Optional[int] = Field(default=None, ge=1)
@@ -248,7 +264,7 @@ class GitleaksFinding(BaseModel):
     Tags: list[str] = Field(default_factory=list)
     RuleID: str = Field(default="unknown")
 
-    @field_validator('File')
+    @field_validator("File")
     @classmethod
     def validate_file_not_empty(cls, v: str) -> str:
         """
@@ -262,9 +278,10 @@ class GitleaksFinding(BaseModel):
 
 class GitleaksOutput(RootModel[list[dict[str, Any]]]):
     """Gitleaks JSON output format (array of findings)"""
+
     root: list[dict[str, Any]] = Field(default_factory=list)
 
-    @field_validator('root')
+    @field_validator("root")
     @classmethod
     def validate_findings_have_files(cls, v: list[Any]) -> list[dict[str, Any]]:
         """Validate each finding has a valid file path"""
@@ -285,8 +302,10 @@ class GitleaksOutput(RootModel[list[dict[str, Any]]]):
 
 # ========== Checkov Output ==========
 
+
 class CheckovFinding(BaseModel):
     """Checkov finding"""
+
     check_id: str = Field(..., min_length=1)
     check_name: Optional[str] = Field(default=None)
     check_result: dict[str, Any] = Field(default_factory=dict)
@@ -300,6 +319,7 @@ class CheckovFinding(BaseModel):
 
 class CheckovOutput(BaseModel):
     """Checkov JSON output format"""
+
     check_type: Optional[str] = Field(default=None)
     results: dict[str, Any] = Field(default_factory=dict)
     summary: dict[str, Any] = Field(default_factory=dict)
@@ -309,8 +329,10 @@ class CheckovOutput(BaseModel):
 
 # ========== Nuclei Output ==========
 
+
 class NucleiFinding(BaseModel):
     """Nuclei finding"""
+
     template: str = Field(..., min_length=1)
     template_id: str = Field(..., min_length=1)
     template_url: Optional[str] = Field(default=None)
@@ -327,13 +349,16 @@ class NucleiFinding(BaseModel):
 
 class NucleiOutput(RootModel[list[dict[str, Any]]]):
     """Nuclei JSON-lines output (array of findings)"""
+
     root: list[dict[str, Any]] = Field(default_factory=list)
 
 
 # ========== Falco Output ==========
 
+
 class FalcoOutput(BaseModel):
     """Falco output_fields"""
+
     time: str = Field(..., description="Event timestamp")
     rule: str = Field(..., min_length=1, description="Rule name")
     priority: str = Field(..., description="Priority level")
@@ -346,7 +371,7 @@ class FalcoOutput(BaseModel):
     proc_cmdline: Optional[str] = Field(default=None)
     fd_name: Optional[str] = Field(default=None)
 
-    @field_validator('rule')
+    @field_validator("rule")
     @classmethod
     def validate_rule_not_empty(cls, v: str) -> str:
         """
@@ -357,7 +382,7 @@ class FalcoOutput(BaseModel):
             raise ValueError("Rule name cannot be empty")
         return v
 
-    @field_validator('priority')
+    @field_validator("priority")
     @classmethod
     def validate_priority(cls, v: str) -> str:
         """Validate priority is a known level"""
@@ -375,9 +400,10 @@ class FalcoOutput(BaseModel):
 
 class FalcoEventsOutput(RootModel[list[dict[str, Any]]]):
     """Falco JSON output (array of events)"""
+
     root: list[dict[str, Any]] = Field(default_factory=list)
 
-    @field_validator('root')
+    @field_validator("root")
     @classmethod
     def validate_events_structure(cls, v: list[Any]) -> list[dict[str, Any]]:
         """Validate each event has expected structure"""

@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 class SubprocessError(Exception):
     """Custom exception for subprocess failures"""
+
     pass
 
 
@@ -27,7 +28,7 @@ def run_command_safe(
     timeout: int = 300,
     check: bool = True,
     capture_output: bool = True,
-    env: Optional[dict] = None
+    env: Optional[dict] = None,
 ) -> subprocess.CompletedProcess:
     """
     Run command safely without shell=True
@@ -84,15 +85,13 @@ def run_command_safe(
             text=True,
             env=env,
             # CRITICAL: Never use shell=True - it's a security vulnerability
-            shell=False
+            shell=False,
         )
 
         if result.returncode == 0:
             logger.debug(f"Command succeeded: {sanitized_cmd[0]}")
         else:
-            logger.warning(
-                f"Command exited with code {result.returncode}: {sanitized_cmd[0]}"
-            )
+            logger.warning(f"Command exited with code {result.returncode}: {sanitized_cmd[0]}")
 
         return result
 
@@ -101,9 +100,7 @@ def run_command_safe(
         raise
 
     except subprocess.CalledProcessError as e:
-        logger.error(
-            f"Command failed with exit code {e.returncode}: {sanitized_cmd[0]}"
-        )
+        logger.error(f"Command failed with exit code {e.returncode}: {sanitized_cmd[0]}")
         if e.stderr:
             logger.error(f"stderr: {e.stderr[:500]}")  # Limit error output
         raise
@@ -114,10 +111,7 @@ def run_command_safe(
 
 
 def run_command_with_retry(
-    command: list[str],
-    max_retries: int = 3,
-    retry_delay: float = 1.0,
-    **kwargs
+    command: list[str], max_retries: int = 3, retry_delay: float = 1.0, **kwargs
 ) -> subprocess.CompletedProcess:
     """
     Run command with retry logic
@@ -144,24 +138,16 @@ def run_command_with_retry(
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
             last_error = e
             if attempt < max_retries - 1:
-                logger.warning(
-                    f"Command failed (attempt {attempt + 1}/{max_retries}), "
-                    f"retrying in {retry_delay}s..."
-                )
+                logger.warning(f"Command failed (attempt {attempt + 1}/{max_retries}), retrying in {retry_delay}s...")
                 time.sleep(retry_delay)
             else:
                 logger.error(f"Command failed after {max_retries} attempts")
 
-    raise SubprocessError(
-        f"Command failed after {max_retries} attempts: {command[0]}"
-    ) from last_error
+    raise SubprocessError(f"Command failed after {max_retries} attempts: {command[0]}") from last_error
 
 
 def run_command_streaming(
-    command: list[str],
-    cwd: Optional[Path] = None,
-    timeout: Optional[int] = None,
-    callback: Optional[callable] = None
+    command: list[str], cwd: Optional[Path] = None, timeout: Optional[int] = None, callback: Optional[callable] = None
 ) -> tuple[int, str, str]:
     """
     Run command with streaming output
@@ -200,12 +186,12 @@ def run_command_streaming(
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            shell=False  # NEVER use shell=True
+            shell=False,  # NEVER use shell=True
         )
 
         # Read stdout
         if process.stdout:
-            for line in iter(process.stdout.readline, ''):
+            for line in iter(process.stdout.readline, ""):
                 if not line:
                     break
                 line = line.rstrip()
@@ -220,7 +206,7 @@ def run_command_streaming(
         if process.stderr:
             stderr_lines = process.stderr.read().splitlines()
 
-        return process.returncode, '\n'.join(stdout_lines), '\n'.join(stderr_lines)
+        return process.returncode, "\n".join(stdout_lines), "\n".join(stderr_lines)
 
     except subprocess.TimeoutExpired:
         if process:
@@ -244,11 +230,7 @@ def check_command_exists(command: str) -> bool:
             print("Git is installed")
     """
     try:
-        result = run_command_safe(
-            ["which", command],
-            check=False,
-            capture_output=True
-        )
+        result = run_command_safe(["which", command], check=False, capture_output=True)
         return result.returncode == 0
     except Exception:
         return False
@@ -270,12 +252,7 @@ def get_command_version(command: str, version_flag: str = "--version") -> Option
         # Returns: "git version 2.39.0"
     """
     try:
-        result = run_command_safe(
-            [command, version_flag],
-            check=False,
-            capture_output=True,
-            timeout=5
-        )
+        result = run_command_safe([command, version_flag], check=False, capture_output=True, timeout=5)
         if result.returncode == 0:
             return result.stdout.strip()
         return None
@@ -303,16 +280,20 @@ def _sanitize_command(command: list[str]) -> list[str]:
 
     # Sensitive argument names
     sensitive_flags = {
-        "--api-key", "--token", "--password", "--secret",
-        "--bearer", "--auth", "--credentials", "-H",
-        "--header", "--Authorization"
+        "--api-key",
+        "--token",
+        "--password",
+        "--secret",
+        "--bearer",
+        "--auth",
+        "--credentials",
+        "-H",
+        "--header",
+        "--Authorization",
     }
 
     # Sensitive patterns in values
-    sensitive_patterns = [
-        "api_key=", "token=", "password=", "secret=",
-        "bearer ", "authorization:", "apikey="
-    ]
+    sensitive_patterns = ["api_key=", "token=", "password=", "secret=", "bearer ", "authorization:", "apikey="]
 
     for _i, arg in enumerate(command):
         if skip_next:
@@ -328,10 +309,7 @@ def _sanitize_command(command: list[str]) -> list[str]:
 
         # Check if argument contains sensitive pattern
         arg_lower = arg.lower()
-        contains_sensitive = any(
-            pattern.lower() in arg_lower
-            for pattern in sensitive_patterns
-        )
+        contains_sensitive = any(pattern.lower() in arg_lower for pattern in sensitive_patterns)
 
         if contains_sensitive and "=" in arg:
             # Redact value but keep key (e.g., "api_key=value" -> "api_key=***REDACTED***")
@@ -367,11 +345,7 @@ def parse_command_string(command_str: str) -> list[str]:
         raise ValueError(f"Failed to parse command string: {e}") from e
 
 
-def run_git_command(
-    args: list[str],
-    repo_path: Optional[Path] = None,
-    **kwargs
-) -> subprocess.CompletedProcess:
+def run_git_command(args: list[str], repo_path: Optional[Path] = None, **kwargs) -> subprocess.CompletedProcess:
     """
     Run a git command safely
 

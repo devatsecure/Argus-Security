@@ -10,6 +10,7 @@ Usage:
         code = config.generate_totp()
     steps = config.render_login_flow()
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -33,14 +34,14 @@ VALID_SEVERITIES = {"critical", "high", "medium", "low", "info"}
 
 # Security patterns to block in config values
 DANGEROUS_PATTERNS = [
-    r"\.\./",           # path traversal
-    r"\.\.\\",          # path traversal (windows)
-    r"<script",         # XSS
-    r"javascript:",     # XSS
-    r"\$\(",            # command substitution
-    r"`",               # backtick command substitution
-    r";\s*rm\s",        # command injection
-    r"\|\s*sh",         # pipe to shell
+    r"\.\./",  # path traversal
+    r"\.\.\\",  # path traversal (windows)
+    r"<script",  # XSS
+    r"javascript:",  # XSS
+    r"\$\(",  # command substitution
+    r"`",  # backtick command substitution
+    r";\s*rm\s",  # command injection
+    r"\|\s*sh",  # pipe to shell
 ]
 
 
@@ -101,9 +102,7 @@ class DASTAuthConfig:
         msg = struct.pack(">Q", time_step)
         hmac_hash = hmac.new(key, msg, hashlib.sha1).digest()
         offset = hmac_hash[-1] & 0x0F
-        truncated = (
-            struct.unpack(">I", hmac_hash[offset : offset + 4])[0] & 0x7FFFFFFF
-        )
+        truncated = struct.unpack(">I", hmac_hash[offset : offset + 4])[0] & 0x7FFFFFFF
         code = truncated % 1_000_000
         return f"{code:06d}"
 
@@ -164,9 +163,7 @@ def validate_config_security(config_dict: dict[str, Any]) -> list[str]:
         if isinstance(value, str):
             for pattern in DANGEROUS_PATTERNS:
                 if re.search(pattern, value, re.IGNORECASE):
-                    errors.append(
-                        f"Dangerous pattern in '{key}': matches '{pattern}'"
-                    )
+                    errors.append(f"Dangerous pattern in '{key}': matches '{pattern}'")
         elif isinstance(value, dict):
             for k, v in value.items():
                 _check_value(f"{key}.{k}", v)
@@ -210,17 +207,12 @@ def load_dast_auth_config(config_path: str) -> DASTAuthConfig:
     # Security validation
     security_errors = validate_config_security(raw)
     if security_errors:
-        raise ValueError(
-            f"Security validation failed: {'; '.join(security_errors)}"
-        )
+        raise ValueError(f"Security validation failed: {'; '.join(security_errors)}")
 
     # Validate login_type
     login_type = raw.get("login_type", "none")
     if login_type not in VALID_LOGIN_TYPES:
-        raise ValueError(
-            f"Invalid login_type: {login_type}. "
-            f"Must be one of: {VALID_LOGIN_TYPES}"
-        )
+        raise ValueError(f"Invalid login_type: {login_type}. Must be one of: {VALID_LOGIN_TYPES}")
 
     return DASTAuthConfig(
         login_type=login_type,

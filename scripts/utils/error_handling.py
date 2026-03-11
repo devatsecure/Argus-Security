@@ -90,9 +90,7 @@ class CircuitBreaker:
         self.last_failure_time: Optional[datetime] = None
         self.state = CircuitState.CLOSED
 
-        logger.debug(
-            f"Circuit breaker initialized: threshold={failure_threshold}, timeout={timeout}s"
-        )
+        logger.debug(f"Circuit breaker initialized: threshold={failure_threshold}, timeout={timeout}s")
 
     def call(self, func: Callable[..., T], *args: Any, **kwargs: Any) -> T:
         """
@@ -179,9 +177,7 @@ class CircuitBreaker:
         self.failure_count += 1
         self.last_failure_time = datetime.now()
 
-        logger.warning(
-            f"Circuit breaker failure count: {self.failure_count}/{self.failure_threshold}"
-        )
+        logger.warning(f"Circuit breaker failure count: {self.failure_count}/{self.failure_threshold}")
 
         if self.failure_count >= self.failure_threshold:
             if self.state != CircuitState.OPEN:
@@ -210,9 +206,7 @@ class CircuitBreaker:
             "state": self.state.value,
             "failure_count": self.failure_count,
             "success_count": self.success_count,
-            "last_failure": self.last_failure_time.isoformat()
-            if self.last_failure_time
-            else None,
+            "last_failure": self.last_failure_time.isoformat() if self.last_failure_time else None,
         }
 
 
@@ -258,9 +252,7 @@ def retry_with_backoff(
 
                     if attempt < max_retries:
                         # Calculate delay with exponential backoff
-                        delay = min(
-                            initial_delay * (exponential_base**attempt), max_delay
-                        )
+                        delay = min(initial_delay * (exponential_base**attempt), max_delay)
 
                         logger.warning(
                             f"Attempt {attempt + 1}/{max_retries + 1} failed for {func.__name__}: "
@@ -273,9 +265,7 @@ def retry_with_backoff(
                             try:
                                 on_retry(e, attempt + 1)
                             except Exception as callback_error:
-                                logger.error(
-                                    f"Error in retry callback: {callback_error}"
-                                )
+                                logger.error(f"Error in retry callback: {callback_error}")
 
                         time.sleep(delay)
                     else:
@@ -288,9 +278,7 @@ def retry_with_backoff(
             if last_exception:
                 raise last_exception
             else:
-                raise RuntimeError(
-                    f"Function {func.__name__} failed without raising an exception"
-                )
+                raise RuntimeError(f"Function {func.__name__} failed without raising an exception")
 
         return wrapper
 
@@ -504,8 +492,7 @@ class RateLimiter:
             wait_time = self.time_window - (now - oldest_call)
 
             logger.warning(
-                f"Rate limit reached ({self.max_calls} calls per {self.time_window}s). "
-                f"Waiting {wait_time:.1f}s..."
+                f"Rate limit reached ({self.max_calls} calls per {self.time_window}s). Waiting {wait_time:.1f}s..."
             )
 
             time.sleep(wait_time)
@@ -565,9 +552,7 @@ def handle_malformed_data(
 if __name__ == "__main__":
     import logging
 
-    logging.basicConfig(
-        level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
-    )
+    logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s")
 
     print("=== Testing Circuit Breaker ===")
     breaker = CircuitBreaker(failure_threshold=3, timeout=5)

@@ -135,9 +135,7 @@ class PhaseGate:
             )
 
         if not isinstance(output, dict):
-            errors.append(
-                f"Phase output must be a dict, got {type(output).__name__}"
-            )
+            errors.append(f"Phase output must be a dict, got {type(output).__name__}")
             return GateDecision(
                 should_proceed=not self._strict,
                 reason="Invalid output type",
@@ -164,10 +162,7 @@ class PhaseGate:
             reports = output.get("agent_reports", {})
             min_count = schema["min_agents"]
             if isinstance(reports, dict) and len(reports) < min_count:
-                errors.append(
-                    f"Expected at least {min_count} agent report(s), "
-                    f"got {len(reports)}"
-                )
+                errors.append(f"Expected at least {min_count} agent report(s), got {len(reports)}")
             # Validate report content
             if isinstance(reports, dict):
                 report_errors = self.validate_agent_reports(reports)
@@ -175,13 +170,9 @@ class PhaseGate:
 
         if errors:
             should_proceed = not self._strict
-            reason = (
-                f"{len(errors)} validation error(s) in phase '{phase_name}'"
-            )
+            reason = f"{len(errors)} validation error(s) in phase '{phase_name}'"
             if should_proceed:
-                logger.warning(
-                    "Phase gate: %s (continuing in lenient mode)", reason
-                )
+                logger.warning("Phase gate: %s (continuing in lenient mode)", reason)
             else:
                 logger.error("Phase gate BLOCKED: %s", reason)
             for err in errors:
@@ -237,10 +228,6 @@ class PhaseGate:
         """
         errors: list[str] = []
         for agent_name, report in reports.items():
-            if not report or (
-                isinstance(report, str) and len(report.strip()) < 10
-            ):
-                errors.append(
-                    f"Agent report '{agent_name}' is empty or too short"
-                )
+            if not report or (isinstance(report, str) and len(report.strip()) < 10):
+                errors.append(f"Agent report '{agent_name}' is empty or too short")
         return errors

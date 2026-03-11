@@ -84,13 +84,13 @@ def run_semgrep(scanner: Any, target_path: str, logger: logging.Logger) -> list[
             # Semgrep scanner returns dict with 'findings' key
             findings_list = []
             if isinstance(semgrep_results, dict):
-                findings_list = semgrep_results.get('findings', [])
+                findings_list = semgrep_results.get("findings", [])
             elif isinstance(semgrep_results, list):
                 findings_list = semgrep_results
 
             for result in findings_list:
                 # SemgrepScanner returns: rule_id, file_path, start_line, message
-                rule_id = result.get('rule_id', 'unknown')
+                rule_id = result.get("rule_id", "unknown")
                 finding = HybridFinding(
                     finding_id=f"semgrep-{rule_id}",
                     source_tool="semgrep",
@@ -199,7 +199,7 @@ def run_api_security(scanner: Any, target_path: str, logger: logging.Logger) -> 
 
         # Convert to HybridFinding format
         # API scanner returns APIScanResult object with findings attribute
-        if hasattr(api_result, 'findings'):
+        if hasattr(api_result, "findings"):
             for api_finding in api_result.findings:
                 finding = HybridFinding(
                     finding_id=api_finding.finding_id,
@@ -246,12 +246,22 @@ def run_api_security(scanner: Any, target_path: str, logger: logging.Logger) -> 
 def _discover_openapi_spec(target_path: str, logger: logging.Logger) -> str | None:
     """Auto-discover OpenAPI/Swagger spec files in the target directory."""
     import glob as glob_mod
+
     spec_patterns = [
-        "openapi.json", "openapi.yaml", "openapi.yml",
-        "swagger.json", "swagger.yaml", "swagger.yml",
-        "**/openapi.json", "**/openapi.yaml", "**/openapi.yml",
-        "**/swagger.json", "**/swagger.yaml", "**/swagger.yml",
-        "api-spec.*", "api-docs.*",
+        "openapi.json",
+        "openapi.yaml",
+        "openapi.yml",
+        "swagger.json",
+        "swagger.yaml",
+        "swagger.yml",
+        "**/openapi.json",
+        "**/openapi.yaml",
+        "**/openapi.yml",
+        "**/swagger.json",
+        "**/swagger.yaml",
+        "**/swagger.yml",
+        "api-spec.*",
+        "api-docs.*",
     ]
     for pattern in spec_patterns:
         matches = glob_mod.glob(os.path.join(target_path, pattern), recursive=True)
@@ -336,9 +346,7 @@ def run_dast(
 
         # Log agent health from the orchestrator result
         if dast_result.agents_failed:
-            logger.warning(
-                "   DAST: Some agents failed: %s", ", ".join(dast_result.agents_failed)
-            )
+            logger.warning("   DAST: Some agents failed: %s", ", ".join(dast_result.agents_failed))
 
     except Exception as e:
         logger.error("DAST orchestrator scan failed: %s", e)
@@ -366,7 +374,9 @@ def run_supply_chain(scanner: Any, target_path: str, logger: logging.Logger) -> 
                     severity=normalize_severity(sc_threat.threat_level.value),
                     category="supply-chain",
                     title=f"Supply Chain Threat: {sc_threat.package_name} ({', '.join(sc_threat.threat_types)})",
-                    description="\n".join(sc_threat.evidence) if sc_threat.evidence else f"Detected threats: {', '.join(sc_threat.threat_types)}",
+                    description="\n".join(sc_threat.evidence)
+                    if sc_threat.evidence
+                    else f"Detected threats: {', '.join(sc_threat.threat_types)}",
                     file_path=sc_threat.change_info.file_path if sc_threat.change_info else target_path,
                     line_number=None,
                     cwe_id=None,
@@ -461,9 +471,7 @@ def run_threat_intel(enricher: Any, findings: list[HybridFinding], logger: loggi
                     # Add EPSS score to description
                     epss_score = getattr(threat_context, "epss_score", None) or 0.0
                     if epss_score > 0.5:
-                        finding.description = (
-                            f"[EPSS: {epss_score:.1%} exploit probability] {finding.description}"
-                        )
+                        finding.description = f"[EPSS: {epss_score:.1%} exploit probability] {finding.description}"
 
                     # Add exploit availability info
                     exploit_available = getattr(threat_context, "exploit_available", False)
@@ -511,17 +519,12 @@ def run_remediation(engine: Any, findings: list[HybridFinding], logger: logging.
                 # Add code patch if available
                 code_patch = getattr(suggestion, "code_patch", None)
                 if code_patch:
-                    finding.description = (
-                        f"{finding.description}\n\n"
-                        f"**Suggested Fix:**\n```\n{code_patch}\n```"
-                    )
+                    finding.description = f"{finding.description}\n\n**Suggested Fix:**\n```\n{code_patch}\n```"
 
                 # Add testing recommendations
                 testing_recs = getattr(suggestion, "testing_recommendations", None)
                 if testing_recs:
-                    finding.references.append(
-                        f"Testing: {testing_recs}"
-                    )
+                    finding.references.append(f"Testing: {testing_recs}")
 
             remediated.append(finding)
 
@@ -533,7 +536,9 @@ def run_remediation(engine: Any, findings: list[HybridFinding], logger: logging.
     return remediated
 
 
-def run_runtime_security(monitor: Any, target_path: str, logger: logging.Logger, monitoring_duration: int) -> list[HybridFinding]:
+def run_runtime_security(
+    monitor: Any, target_path: str, logger: logging.Logger, monitoring_duration: int
+) -> list[HybridFinding]:
     """Run Container Runtime Security Monitoring using Falco-based monitor_realtime()."""
     findings = []
 
@@ -546,7 +551,7 @@ def run_runtime_security(monitor: Any, target_path: str, logger: logging.Logger,
         )
 
         # Convert ThreatAlert objects to HybridFinding format
-        for alert in (alerts or []):
+        for alert in alerts or []:
             finding = HybridFinding(
                 finding_id=f"runtime-{getattr(alert, 'alert_id', 'unknown')}",
                 source_tool="runtime-security",
@@ -568,7 +573,9 @@ def run_runtime_security(monitor: Any, target_path: str, logger: logging.Logger,
     return findings
 
 
-def run_regression_testing(tester: Any, target_path: str, current_findings: list[HybridFinding], logger: logging.Logger) -> list[HybridFinding]:
+def run_regression_testing(
+    tester: Any, target_path: str, current_findings: list[HybridFinding], logger: logging.Logger
+) -> list[HybridFinding]:
     """Run Security Regression Testing to detect reappearance of fixed vulnerabilities"""
     findings = []
 
@@ -652,8 +659,7 @@ def run_gitleaks(scanner: Any, target_path: str, logger: logging.Logger) -> list
                 title=f"Secret detected: {description}",
                 description=(
                     f"Gitleaks detected a potential {description} secret "
-                    f"in {file_path}"
-                    + (f" (commit {f.get('commit', '')[:8]})" if f.get("commit") else "")
+                    f"in {file_path}" + (f" (commit {f.get('commit', '')[:8]})" if f.get("commit") else "")
                 ),
                 file_path=file_path,
                 line_number=f.get("start_line"),

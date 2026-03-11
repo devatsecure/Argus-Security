@@ -195,18 +195,18 @@ class BaseAgentPersona(ABC):
         prompt = f"""Analyze this security finding from your specialized perspective.
 
 **Finding Details:**
-- ID: {finding.get('id', 'unknown')}
-- Origin: {finding.get('origin', 'unknown')}
-- File: {finding.get('path', 'unknown')}
-- Line: {finding.get('line', 'N/A')}
-- Severity: {finding.get('severity', 'unknown')}
-- Rule: {finding.get('rule_id', 'unknown')} - {finding.get('rule_name', '')}
-- Category: {finding.get('category', 'unknown')}
-- CWE: {finding.get('cwe', 'N/A')}
-- CVE: {finding.get('cve', 'N/A')}
+- ID: {finding.get("id", "unknown")}
+- Origin: {finding.get("origin", "unknown")}
+- File: {finding.get("path", "unknown")}
+- Line: {finding.get("line", "N/A")}
+- Severity: {finding.get("severity", "unknown")}
+- Rule: {finding.get("rule_id", "unknown")} - {finding.get("rule_name", "")}
+- Category: {finding.get("category", "unknown")}
+- CWE: {finding.get("cwe", "N/A")}
+- CVE: {finding.get("cve", "N/A")}
 
 **Evidence:**
-{json.dumps(finding.get('evidence', {}), indent=2)}
+{json.dumps(finding.get("evidence", {}), indent=2)}
 """
 
         if context:
@@ -233,7 +233,7 @@ Provide your analysis in this JSON format:
         """Build prompt for discussion round"""
         prompt = f"""You are participating in a multi-agent discussion about this finding.
 
-**Finding:** {finding.get('id', 'unknown')} - {finding.get('rule_name', '')}
+**Finding:** {finding.get("id", "unknown")} - {finding.get("rule_name", "")}
 
 **Other Agents' Opinions:**
 """
@@ -244,8 +244,8 @@ Provide your analysis in this JSON format:
 - **{opinion.agent_name}** ({opinion.persona_type}):
   - Decision: {opinion.analysis.decision} (confidence: {opinion.analysis.confidence:.2f})
   - Reasoning: {opinion.analysis.reasoning}
-  - Key Evidence: {', '.join(opinion.analysis.key_evidence)}
-  - Concerns: {', '.join(opinion.analysis.concerns)}
+  - Key Evidence: {", ".join(opinion.analysis.key_evidence)}
+  - Concerns: {", ".join(opinion.analysis.concerns)}
 """
 
         prompt += """
@@ -321,6 +321,7 @@ class SecretHunterAgent(BaseAgentPersona):
 - Assess severity based on secret type and exposure
 
 Be conservative but accurate. Many "secrets" are actually test fixtures, examples, or public client IDs that don't need protection."""
+
 
 class FalsePositiveFilterAgent(BaseAgentPersona):
     """Specialized in identifying false positives"""
@@ -576,7 +577,9 @@ class CollaborativeReasoning:
 
         return opinions, max_rounds
 
-    def _build_consensus(self, finding_id: str, opinions: list[AgentOpinion], discussion_rounds: int) -> CollaborativeVerdict:
+    def _build_consensus(
+        self, finding_id: str, opinions: list[AgentOpinion], discussion_rounds: int
+    ) -> CollaborativeVerdict:
         """
         Build consensus from agent opinions
 
@@ -687,7 +690,9 @@ class CollaborativeReasoning:
         comment_lower = discussion_comment.lower()
         return any(indicator in comment_lower for indicator in reconsider_indicators)
 
-    def _build_combined_reasoning(self, opinions: list[AgentOpinion], final_decision: str, resolution_method: str) -> str:
+    def _build_combined_reasoning(
+        self, opinions: list[AgentOpinion], final_decision: str, resolution_method: str
+    ) -> str:
         """Build combined reasoning from all agents"""
         reasoning_parts = [f"**Decision:** {final_decision}", f"**Resolution:** {resolution_method}", ""]
 
@@ -705,7 +710,9 @@ class CollaborativeReasoning:
             reasoning_parts.append(f"**{decision.upper()} ({len(agents_with_decision)} agents):**")
             for opinion in agents_with_decision:
                 confidence_str = f"confidence: {opinion.analysis.confidence:.2f}"
-                reasoning_parts.append(f"- {opinion.agent_name}: {opinion.analysis.reasoning[:150]}... ({confidence_str})")
+                reasoning_parts.append(
+                    f"- {opinion.agent_name}: {opinion.analysis.reasoning[:150]}... ({confidence_str})"
+                )
 
         return "\n".join(reasoning_parts)
 

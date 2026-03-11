@@ -34,6 +34,7 @@ CLAUDE_SONNET_OUTPUT_PRICE_PER_1M = 15.0  # $15 per 1M output tokens
 @dataclass
 class TokenUsage:
     """Token usage tracking for LLM calls"""
+
     input_tokens: int = 0
     output_tokens: int = 0
 
@@ -42,15 +43,12 @@ class TokenUsage:
         return self.input_tokens + self.output_tokens
 
     def to_dict(self) -> dict[str, int]:
-        return {
-            "input": self.input_tokens,
-            "output": self.output_tokens,
-            "total": self.total_tokens
-        }
+        return {"input": self.input_tokens, "output": self.output_tokens, "total": self.total_tokens}
 
 
 class DeepAnalysisPhase(Enum):
     """Individual deep analysis modules that can be enabled/disabled"""
+
     SEMANTIC_CODE_TWIN = "semantic"
     PROACTIVE_SCANNER = "proactive"
     TAINT_ANALYSIS = "taint"
@@ -59,6 +57,7 @@ class DeepAnalysisPhase(Enum):
 
 class DeepAnalysisMode(Enum):
     """Progressive rollout modes for Deep Analysis Engine"""
+
     OFF = "off"  # Skip Phase 2.7 entirely (default for backwards compatibility)
     SEMANTIC_ONLY = "semantic-only"  # Only Semantic Code Twin
     CONSERVATIVE = "conservative"  # Semantic + Proactive Scanner
@@ -99,6 +98,7 @@ class DeepAnalysisMode(Enum):
 @dataclass
 class DeepAnalysisConfig:
     """Configuration for Deep Analysis Engine with safety controls"""
+
     mode: DeepAnalysisMode = DeepAnalysisMode.OFF
     enabled_phases: list[DeepAnalysisPhase] = field(default_factory=list)
     max_files: int = 50  # UPDATED: More conservative default (was 100)
@@ -133,6 +133,7 @@ class DeepAnalysisConfig:
 @dataclass
 class DeepAnalysisResult:
     """Result from deep analysis phase with safety tracking and benchmarking"""
+
     phase: DeepAnalysisPhase
     findings: list[dict] = field(default_factory=list)
     files_analyzed: int = 0
@@ -167,6 +168,7 @@ class DeepAnalysisResult:
 @dataclass
 class CostEstimate:
     """Cost estimation for dry-run mode"""
+
     total_files: int
     files_to_analyze: int
     estimated_tokens: int
@@ -247,6 +249,7 @@ class DeepAnalysisEngine:
 
     def _setup_timeout(self):
         """Setup timeout timer for analysis"""
+
         def _timeout_handler():
             if not self._analysis_complete.is_set():
                 logger.error(f"⏰ TIMEOUT: Analysis exceeded {self.config.timeout_seconds}s limit")
@@ -281,8 +284,8 @@ class DeepAnalysisEngine:
         # Warn at 80% threshold
         if not self._cost_warning_shown and projected_cost >= ceiling * 0.8:
             logger.warning(
-                f"⚠️  COST WARNING: Approaching ceiling (${ projected_cost:.2f} / ${ceiling:.2f} = "
-                f"{projected_cost/ceiling*100:.0f}%)"
+                f"⚠️  COST WARNING: Approaching ceiling (${projected_cost:.2f} / ${ceiling:.2f} = "
+                f"{projected_cost / ceiling * 100:.0f}%)"
             )
             self._cost_warning_shown = True
 
@@ -326,9 +329,9 @@ class DeepAnalysisEngine:
         # Input: $3/MTok, Output: $15/MTok
         cost_per_1k_tokens = {
             DeepAnalysisPhase.SEMANTIC_CODE_TWIN: 0.03,  # Lighter analysis
-            DeepAnalysisPhase.PROACTIVE_SCANNER: 0.05,   # Medium complexity
-            DeepAnalysisPhase.TAINT_ANALYSIS: 0.08,      # Heavy analysis
-            DeepAnalysisPhase.ZERO_DAY_HUNTER: 0.10,     # Most complex
+            DeepAnalysisPhase.PROACTIVE_SCANNER: 0.05,  # Medium complexity
+            DeepAnalysisPhase.TAINT_ANALYSIS: 0.08,  # Heavy analysis
+            DeepAnalysisPhase.ZERO_DAY_HUNTER: 0.10,  # Most complex
         }
 
         # Time per phase (seconds per file)
@@ -399,8 +402,7 @@ class DeepAnalysisEngine:
         estimate = self.estimate_cost(repo_path)
         if estimate.estimated_cost_usd > self.config.cost_ceiling:
             logger.warning(
-                f"⚠️  Estimated cost ${estimate.estimated_cost_usd:.2f} exceeds ceiling "
-                f"${self.config.cost_ceiling:.2f}"
+                f"⚠️  Estimated cost ${estimate.estimated_cost_usd:.2f} exceeds ceiling ${self.config.cost_ceiling:.2f}"
             )
             logger.warning("   Consider reducing --max-files-deep-analysis or increasing --deep-analysis-cost-ceiling")
             return []
@@ -461,13 +463,10 @@ class DeepAnalysisEngine:
                 continue
             filtered.append(f)
 
-        return filtered[:self.config.max_files]
+        return filtered[: self.config.max_files]
 
     def _run_phase(
-        self,
-        phase: DeepAnalysisPhase,
-        repo_path: str,
-        existing_findings: Optional[list[dict]] = None
+        self, phase: DeepAnalysisPhase, repo_path: str, existing_findings: Optional[list[dict]] = None
     ) -> DeepAnalysisResult:
         """
         Run a specific deep analysis phase
@@ -503,7 +502,9 @@ class DeepAnalysisEngine:
                 result = self._hunt_zero_days(repo_path, existing_findings)
 
             result.execution_time = time.time() - start_time
-            logger.info(f"   ✓ {result.files_analyzed} files, {len(result.findings)} findings, {result.execution_time:.1f}s")
+            logger.info(
+                f"   ✓ {result.files_analyzed} files, {len(result.findings)} findings, {result.execution_time:.1f}s"
+            )
 
         except Exception as e:
             logger.error(f"   ✗ Error in {phase.value}: {e}")
@@ -638,14 +639,14 @@ class DeepAnalysisEngine:
 
         # Print each phase
         for result in self.results:
-            phase_name = result.phase.value.replace('_', ' ').title()
+            phase_name = result.phase.value.replace("_", " ").title()
             time_str = f"{result.execution_time:.1f}s"
 
             # Token tracking
             tokens_in = result.token_usage.input_tokens
             tokens_out = result.token_usage.output_tokens
             if tokens_in > 0 or tokens_out > 0:
-                tokens_str = f"{tokens_in//1000}K / {tokens_out//1000}K"
+                tokens_str = f"{tokens_in // 1000}K / {tokens_out // 1000}K"
                 cost_str = f"${result.actual_cost:.3f}"
             else:
                 # Use estimated cost if no actual token data
@@ -666,7 +667,7 @@ class DeepAnalysisEngine:
 
         total_time_str = f"{total_time:.1f}s"
         if total_input > 0 or total_output > 0:
-            total_tokens_str = f"{total_input//1000}K / {total_output//1000}K"
+            total_tokens_str = f"{total_input // 1000}K / {total_output // 1000}K"
             total_cost_str = f"${total_actual_cost:.3f}"
         else:
             total_tokens_str = "N/A"
@@ -683,7 +684,9 @@ class DeepAnalysisEngine:
         print(f"   Files analyzed: {files_analyzed_total}")
         print(f"   Total tokens: {total_input + total_output:,}")
         if total_findings > 0:
-            avg_cost_per_finding = total_actual_cost / total_findings if total_actual_cost > 0 else self.total_cost / total_findings
+            avg_cost_per_finding = (
+                total_actual_cost / total_findings if total_actual_cost > 0 else self.total_cost / total_findings
+            )
             print(f"   Avg cost per finding: ${avg_cost_per_finding:.4f}")
 
         # Phase breakdown

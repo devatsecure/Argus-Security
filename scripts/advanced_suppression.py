@@ -129,9 +129,7 @@ class AdvancedSuppressionManager:
             List of parsed ``SuppressionRule`` objects.
         """
         if yaml is None:
-            logger.error(
-                "PyYAML is not installed. Install it with: pip install pyyaml"
-            )
+            logger.error("PyYAML is not installed. Install it with: pip install pyyaml")
             return []
 
         file_path = path or self.config_path
@@ -176,9 +174,7 @@ class AdvancedSuppressionManager:
         logger.info("Loaded %d suppression rules from %s", len(rules), file_path)
         return rules
 
-    def save_rules(
-        self, rules: list[SuppressionRule], path: str | None = None
-    ) -> None:
+    def save_rules(self, rules: list[SuppressionRule], path: str | None = None) -> None:
         """Write suppression rules to a YAML file.
 
         Args:
@@ -186,9 +182,7 @@ class AdvancedSuppressionManager:
             path: Destination path. Falls back to ``self.config_path``.
         """
         if yaml is None:
-            logger.error(
-                "PyYAML is not installed. Install it with: pip install pyyaml"
-            )
+            logger.error("PyYAML is not installed. Install it with: pip install pyyaml")
             return
 
         file_path = path or self.config_path
@@ -405,9 +399,7 @@ class AdvancedSuppressionManager:
     # VEX integration
     # ------------------------------------------------------------------
 
-    def add_vex_rules(
-        self, vex_statements: list[dict]
-    ) -> list[SuppressionRule]:
+    def add_vex_rules(self, vex_statements: list[dict]) -> list[SuppressionRule]:
         """Convert VEX ``not_affected`` statements to suppression rules.
 
         Expected VEX statement format::
@@ -549,9 +541,7 @@ class AdvancedSuppressionManager:
     # Audit helpers
     # ------------------------------------------------------------------
 
-    def get_expired_rules(
-        self, rules: list[SuppressionRule] | None = None
-    ) -> list[SuppressionRule]:
+    def get_expired_rules(self, rules: list[SuppressionRule] | None = None) -> list[SuppressionRule]:
         """Return all rules that have passed their expiration date.
 
         Args:

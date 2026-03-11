@@ -22,6 +22,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 class Severity(str, Enum):
     """Standard severity levels"""
+
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
@@ -31,6 +32,7 @@ class Severity(str, Enum):
 
 class Category(str, Enum):
     """Finding category/source"""
+
     SAST = "SAST"
     SECRETS = "SECRETS"
     DEPS = "DEPS"
@@ -44,6 +46,7 @@ class Category(str, Enum):
 
 class AssetType(str, Enum):
     """Type of asset being scanned"""
+
     CODE = "code"
     IMAGE = "image"
     IAC = "iac"
@@ -54,6 +57,7 @@ class AssetType(str, Enum):
 
 class Reachability(str, Enum):
     """Code reachability status"""
+
     YES = "yes"
     NO = "no"
     UNKNOWN = "unknown"
@@ -61,6 +65,7 @@ class Reachability(str, Enum):
 
 class Exploitability(str, Enum):
     """Exploit difficulty"""
+
     TRIVIAL = "trivial"
     MODERATE = "moderate"
     COMPLEX = "complex"
@@ -70,6 +75,7 @@ class Exploitability(str, Enum):
 
 class SecretVerified(str, Enum):
     """Secret verification status"""
+
     TRUE = "true"
     FALSE = "false"
     NA = "na"
@@ -77,6 +83,7 @@ class SecretVerified(str, Enum):
 
 class ServiceTier(str, Enum):
     """Service exposure tier"""
+
     PUBLIC = "public"
     INTERNAL = "internal"
     PRIVATE = "private"
@@ -84,6 +91,7 @@ class ServiceTier(str, Enum):
 
 class FindingStatus(str, Enum):
     """Finding lifecycle status"""
+
     OPEN = "open"
     TRIAGED = "triaged"
     ACCEPTED = "accepted"
@@ -134,67 +142,28 @@ class UnifiedFinding(BaseModel):
     stride: Optional[str] = Field(default=None, description="STRIDE threat category")
 
     # ========== Evidence ==========
-    evidence: dict[str, Any] = Field(
-        default_factory=dict,
-        description="Evidence data (message, snippet, etc.)"
-    )
-    references: list[str] = Field(
-        default_factory=list,
-        description="Reference URLs"
-    )
+    evidence: dict[str, Any] = Field(default_factory=dict, description="Evidence data (message, snippet, etc.)")
+    references: list[str] = Field(default_factory=list, description="Reference URLs")
 
     # ========== Enrichment ==========
-    reachability: Reachability = Field(
-        default=Reachability.UNKNOWN,
-        description="Code reachability status"
-    )
-    exploitability: Exploitability = Field(
-        default=Exploitability.UNKNOWN,
-        description="Exploit difficulty"
-    )
-    secret_verified: SecretVerified = Field(
-        default=SecretVerified.NA,
-        description="Secret verification status"
-    )
+    reachability: Reachability = Field(default=Reachability.UNKNOWN, description="Code reachability status")
+    exploitability: Exploitability = Field(default=Exploitability.UNKNOWN, description="Exploit difficulty")
+    secret_verified: SecretVerified = Field(default=SecretVerified.NA, description="Secret verification status")
 
     # ========== Ownership ==========
     owner_team: Optional[str] = Field(default=None, description="Owning team")
-    service_tier: ServiceTier = Field(
-        default=ServiceTier.INTERNAL,
-        description="Service exposure tier"
-    )
+    service_tier: ServiceTier = Field(default=ServiceTier.INTERNAL, description="Service exposure tier")
 
     # ========== Computed Risk ==========
-    risk_score: float = Field(
-        default=0.0,
-        ge=0.0,
-        le=10.0,
-        description="Computed risk score"
-    )
+    risk_score: float = Field(default=0.0, ge=0.0, le=10.0, description="Computed risk score")
 
     # ========== Noise & Intelligence ==========
-    noise_score: float = Field(
-        default=0.0,
-        ge=0.0,
-        le=1.0,
-        description="False positive probability"
-    )
-    false_positive_probability: float = Field(
-        default=0.0,
-        ge=0.0,
-        le=1.0,
-        description="ML-based FP prediction"
-    )
+    noise_score: float = Field(default=0.0, ge=0.0, le=1.0, description="False positive probability")
+    false_positive_probability: float = Field(default=0.0, ge=0.0, le=1.0, description="ML-based FP prediction")
     historical_fix_rate: float = Field(
-        default=0.0,
-        ge=0.0,
-        le=1.0,
-        description="Historical fix rate for similar findings"
+        default=0.0, ge=0.0, le=1.0, description="Historical fix rate for similar findings"
     )
-    correlation_group_id: Optional[str] = Field(
-        default=None,
-        description="Links related findings"
-    )
+    correlation_group_id: Optional[str] = Field(default=None, description="Links related findings")
 
     # ========== Business Context ==========
     business_context: dict[str, Any] = Field(
@@ -203,7 +172,7 @@ class UnifiedFinding(BaseModel):
             "exposure": "internal",
             "data_classification": "public",
         },
-        description="Business context metadata"
+        description="Business context metadata",
     )
 
     # ========== Suppression ==========
@@ -214,41 +183,26 @@ class UnifiedFinding(BaseModel):
     # ========== Auto-fix ==========
     auto_fixable: bool = Field(default=False, description="Can be auto-fixed")
     fix_suggestion: Optional[str] = Field(default=None, description="Fix suggestion")
-    fix_confidence: float = Field(
-        default=0.0,
-        ge=0.0,
-        le=1.0,
-        description="Fix confidence score"
-    )
+    fix_confidence: float = Field(default=0.0, ge=0.0, le=1.0, description="Fix confidence score")
 
     # ========== Timestamps ==========
     first_seen_at: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat(),
-        description="First seen timestamp"
+        default_factory=lambda: datetime.now(timezone.utc).isoformat(), description="First seen timestamp"
     )
     last_seen_at: str = Field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat(),
-        description="Last seen timestamp"
+        default_factory=lambda: datetime.now(timezone.utc).isoformat(), description="Last seen timestamp"
     )
 
     # ========== Status ==========
-    status: FindingStatus = Field(
-        default=FindingStatus.OPEN,
-        description="Finding lifecycle status"
-    )
+    status: FindingStatus = Field(default=FindingStatus.OPEN, description="Finding lifecycle status")
 
     # ========== Metadata ==========
     llm_enriched: bool = Field(default=False, description="LLM enriched")
-    confidence: float = Field(
-        default=1.0,
-        ge=0.0,
-        le=1.0,
-        description="Finding confidence"
-    )
+    confidence: float = Field(default=1.0, ge=0.0, le=1.0, description="Finding confidence")
 
     # ========== Validators ==========
 
-    @field_validator('path')
+    @field_validator("path")
     @classmethod
     def validate_path_not_empty(cls, v: Path) -> Path:
         """Ensure path is not empty or current directory"""
@@ -256,7 +210,7 @@ class UnifiedFinding(BaseModel):
             raise ValueError("Path cannot be empty or '.'")
         return v
 
-    @field_validator('id', 'origin', 'repo', 'commit_sha', 'branch')
+    @field_validator("id", "origin", "repo", "commit_sha", "branch")
     @classmethod
     def validate_not_empty(cls, v: str) -> str:
         """Ensure required string fields are not empty"""
@@ -264,7 +218,7 @@ class UnifiedFinding(BaseModel):
             raise ValueError("Field cannot be empty")
         return v
 
-    @field_validator('cve')
+    @field_validator("cve")
     @classmethod
     def validate_cve_format(cls, v: Optional[str]) -> Optional[str]:
         """Validate CVE format"""
@@ -272,7 +226,7 @@ class UnifiedFinding(BaseModel):
             raise ValueError(f"Invalid CVE format: {v}. Must start with 'CVE-'")
         return v
 
-    @field_validator('cwe')
+    @field_validator("cwe")
     @classmethod
     def validate_cwe_format(cls, v: Optional[str]) -> Optional[str]:
         """Validate CWE format"""
@@ -280,7 +234,7 @@ class UnifiedFinding(BaseModel):
             raise ValueError(f"Invalid CWE format: {v}. Must start with 'CWE-'")
         return v
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def calculate_risk_if_zero(self):
         """Auto-calculate risk score if not set"""
         if self.risk_score == 0.0:

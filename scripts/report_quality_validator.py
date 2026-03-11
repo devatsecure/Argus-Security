@@ -36,16 +36,14 @@ from pathlib import Path
 from typing import Any
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class QualityCheck:
     """Individual quality check result"""
+
     name: str
     passed: bool
     points_awarded: int
@@ -56,6 +54,7 @@ class QualityCheck:
 @dataclass
 class FindingQualityReport:
     """Quality report for a single finding"""
+
     finding_id: str
     finding_title: str
     checks: list[QualityCheck] = field(default_factory=list)
@@ -88,17 +87,18 @@ class FindingQualityReport:
                     "name": c.name,
                     "passed": c.passed,
                     "points": f"{c.points_awarded}/{c.max_points}",
-                    "message": c.message
+                    "message": c.message,
                 }
                 for c in self.checks
             ],
-            "issues": self.issues
+            "issues": self.issues,
         }
 
 
 @dataclass
 class ValidationReport:
     """Overall validation report for all findings"""
+
     timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     total_findings: int = 0
     passed_findings: int = 0
@@ -131,9 +131,7 @@ class ValidationReport:
         if self.total_findings == 0:
             self.warnings.append("No findings to validate - this may indicate an empty report")
         if self.failed_findings > 0:
-            self.warnings.append(
-                f"{self.failed_findings}/{self.total_findings} findings failed quality checks"
-            )
+            self.warnings.append(f"{self.failed_findings}/{self.total_findings} findings failed quality checks")
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization"""
@@ -143,11 +141,11 @@ class ValidationReport:
                 "total_findings": self.total_findings,
                 "passed": self.passed_findings,
                 "failed": self.failed_findings,
-                "overall_passed": self.overall_passed
+                "overall_passed": self.overall_passed,
             },
             "critical_blockers": self.critical_blockers,
             "warnings": self.warnings,
-            "finding_reports": [fr.to_dict() for fr in self.finding_reports]
+            "finding_reports": [fr.to_dict() for fr in self.finding_reports],
         }
 
 
@@ -198,31 +196,32 @@ class ReportQualityValidator:
         finding_id = finding.get("id", f"finding-{index}")
         finding_title = finding.get("title", finding.get("message", "Untitled Finding"))
 
-        report = FindingQualityReport(
-            finding_id=finding_id,
-            finding_title=finding_title
-        )
+        report = FindingQualityReport(finding_id=finding_id, finding_title=finding_title)
 
         # Check 1: File path validation
         file_path = finding.get("file_path", finding.get("path", ""))
         file_path_str = str(file_path).lower().strip()
 
         if file_path and file_path_str not in self.INVALID_PATHS and len(file_path_str) > 1:
-            report.add_check(QualityCheck(
-                name="file_path",
-                passed=True,
-                points_awarded=self.POINTS_FILE_PATH,
-                max_points=self.POINTS_FILE_PATH,
-                message="File path is present and valid"
-            ))
+            report.add_check(
+                QualityCheck(
+                    name="file_path",
+                    passed=True,
+                    points_awarded=self.POINTS_FILE_PATH,
+                    max_points=self.POINTS_FILE_PATH,
+                    message="File path is present and valid",
+                )
+            )
         else:
-            report.add_check(QualityCheck(
-                name="file_path",
-                passed=False,
-                points_awarded=0,
-                max_points=self.POINTS_FILE_PATH,
-                message=f"CRITICAL: File path is empty, invalid, or 'unknown' (got: '{file_path_str}')"
-            ))
+            report.add_check(
+                QualityCheck(
+                    name="file_path",
+                    passed=False,
+                    points_awarded=0,
+                    max_points=self.POINTS_FILE_PATH,
+                    message=f"CRITICAL: File path is empty, invalid, or 'unknown' (got: '{file_path_str}')",
+                )
+            )
 
         # Check 2: Line number validation
         # Dependency scanners (trivy, supply-chain) report CVEs against lock files
@@ -232,49 +231,59 @@ class ReportQualityValidator:
         is_dependency_finding = source_tool in ("trivy", "supply-chain") or finding.get("cve_id")
 
         if line_number is not None and isinstance(line_number, int) and line_number > 0:
-            report.add_check(QualityCheck(
-                name="line_number",
-                passed=True,
-                points_awarded=self.POINTS_LINE_NUMBER,
-                max_points=self.POINTS_LINE_NUMBER,
-                message="Line number is present and valid"
-            ))
+            report.add_check(
+                QualityCheck(
+                    name="line_number",
+                    passed=True,
+                    points_awarded=self.POINTS_LINE_NUMBER,
+                    max_points=self.POINTS_LINE_NUMBER,
+                    message="Line number is present and valid",
+                )
+            )
         elif is_dependency_finding:
-            report.add_check(QualityCheck(
-                name="line_number",
-                passed=True,
-                points_awarded=self.POINTS_LINE_NUMBER,
-                max_points=self.POINTS_LINE_NUMBER,
-                message="Line number exempt (dependency/CVE finding)"
-            ))
+            report.add_check(
+                QualityCheck(
+                    name="line_number",
+                    passed=True,
+                    points_awarded=self.POINTS_LINE_NUMBER,
+                    max_points=self.POINTS_LINE_NUMBER,
+                    message="Line number exempt (dependency/CVE finding)",
+                )
+            )
         else:
-            report.add_check(QualityCheck(
-                name="line_number",
-                passed=False,
-                points_awarded=0,
-                max_points=self.POINTS_LINE_NUMBER,
-                message=f"CRITICAL: Line number is null, missing, or invalid (got: {line_number})"
-            ))
+            report.add_check(
+                QualityCheck(
+                    name="line_number",
+                    passed=False,
+                    points_awarded=0,
+                    max_points=self.POINTS_LINE_NUMBER,
+                    message=f"CRITICAL: Line number is null, missing, or invalid (got: {line_number})",
+                )
+            )
 
         # Check 3: Title validation
         title = finding.get("title", finding.get("message", "")).lower().strip()
 
         if title and not any(invalid in title for invalid in self.INVALID_TITLES):
-            report.add_check(QualityCheck(
-                name="title",
-                passed=True,
-                points_awarded=self.POINTS_TITLE,
-                max_points=self.POINTS_TITLE,
-                message="Title is meaningful and descriptive"
-            ))
+            report.add_check(
+                QualityCheck(
+                    name="title",
+                    passed=True,
+                    points_awarded=self.POINTS_TITLE,
+                    max_points=self.POINTS_TITLE,
+                    message="Title is meaningful and descriptive",
+                )
+            )
         else:
-            report.add_check(QualityCheck(
-                name="title",
-                passed=False,
-                points_awarded=0,
-                max_points=self.POINTS_TITLE,
-                message=f"Title is generic or 'Unknown Issue' (got: '{title}')"
-            ))
+            report.add_check(
+                QualityCheck(
+                    name="title",
+                    passed=False,
+                    points_awarded=0,
+                    max_points=self.POINTS_TITLE,
+                    message=f"Title is generic or 'Unknown Issue' (got: '{title}')",
+                )
+            )
 
         # Check 4: Description validation
         description = finding.get("description", finding.get("evidence", {}).get("message", ""))
@@ -283,41 +292,49 @@ class ReportQualityValidator:
         description = str(description).strip()
 
         if len(description) >= self.MIN_DESCRIPTION_LENGTH:
-            report.add_check(QualityCheck(
-                name="description",
-                passed=True,
-                points_awarded=self.POINTS_DESCRIPTION,
-                max_points=self.POINTS_DESCRIPTION,
-                message=f"Description is detailed ({len(description)} chars)"
-            ))
+            report.add_check(
+                QualityCheck(
+                    name="description",
+                    passed=True,
+                    points_awarded=self.POINTS_DESCRIPTION,
+                    max_points=self.POINTS_DESCRIPTION,
+                    message=f"Description is detailed ({len(description)} chars)",
+                )
+            )
         else:
-            report.add_check(QualityCheck(
-                name="description",
-                passed=False,
-                points_awarded=0,
-                max_points=self.POINTS_DESCRIPTION,
-                message=f"Description too short ({len(description)} chars, need >= {self.MIN_DESCRIPTION_LENGTH})"
-            ))
+            report.add_check(
+                QualityCheck(
+                    name="description",
+                    passed=False,
+                    points_awarded=0,
+                    max_points=self.POINTS_DESCRIPTION,
+                    message=f"Description too short ({len(description)} chars, need >= {self.MIN_DESCRIPTION_LENGTH})",
+                )
+            )
 
         # Check 5: Severity validation
         severity = finding.get("severity", "").lower().strip()
 
         if severity and severity in self.VALID_SEVERITIES:
-            report.add_check(QualityCheck(
-                name="severity",
-                passed=True,
-                points_awarded=self.POINTS_SEVERITY,
-                max_points=self.POINTS_SEVERITY,
-                message=f"Severity is set to '{severity}'"
-            ))
+            report.add_check(
+                QualityCheck(
+                    name="severity",
+                    passed=True,
+                    points_awarded=self.POINTS_SEVERITY,
+                    max_points=self.POINTS_SEVERITY,
+                    message=f"Severity is set to '{severity}'",
+                )
+            )
         else:
-            report.add_check(QualityCheck(
-                name="severity",
-                passed=False,
-                points_awarded=0,
-                max_points=self.POINTS_SEVERITY,
-                message=f"Severity is missing or invalid (got: '{severity}')"
-            ))
+            report.add_check(
+                QualityCheck(
+                    name="severity",
+                    passed=False,
+                    points_awarded=0,
+                    max_points=self.POINTS_SEVERITY,
+                    message=f"Severity is missing or invalid (got: '{severity}')",
+                )
+            )
 
         # Finalize the report
         report.finalize(self.threshold)
@@ -528,39 +545,25 @@ Quality Scoring (0-100):
   - description >= 50 chars: +15 points
   - severity set: +15 points
   - THRESHOLD: Score must be >= 80 to pass
-        """
+        """,
     )
 
-    parser.add_argument(
-        "report_file",
-        type=Path,
-        help="Path to JSON report file to validate"
-    )
+    parser.add_argument("report_file", type=Path, help="Path to JSON report file to validate")
 
     parser.add_argument(
         "--threshold",
         type=int,
         default=ReportQualityValidator.PASS_THRESHOLD,
-        help=f"Quality score threshold (default: {ReportQualityValidator.PASS_THRESHOLD})"
+        help=f"Quality score threshold (default: {ReportQualityValidator.PASS_THRESHOLD})",
     )
 
     parser.add_argument(
-        "--output",
-        type=Path,
-        help="Path to save validation report (default: <report_file>_quality_report.json)"
+        "--output", type=Path, help="Path to save validation report (default: <report_file>_quality_report.json)"
     )
 
-    parser.add_argument(
-        "--warn-only",
-        action="store_true",
-        help="Only warn about quality issues, don't fail"
-    )
+    parser.add_argument("--warn-only", action="store_true", help="Only warn about quality issues, don't fail")
 
-    parser.add_argument(
-        "--quiet",
-        action="store_true",
-        help="Suppress console output, only return exit code"
-    )
+    parser.add_argument("--quiet", action="store_true", help="Suppress console output, only return exit code")
 
     args = parser.parse_args()
 

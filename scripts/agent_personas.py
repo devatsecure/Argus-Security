@@ -54,15 +54,15 @@ class AgentAnalysis:
         """Convert to dictionary with verdict metadata"""
         result = asdict(self)
         if self.verdict_type:
-            result['verdict_type'] = self.verdict_type.value
-            result['verdict_display_name'] = self.verdict_type.get_display_name()
-            result['verdict_priority'] = self.verdict_type.get_priority()
+            result["verdict_type"] = self.verdict_type.value
+            result["verdict_display_name"] = self.verdict_type.get_display_name()
+            result["verdict_priority"] = self.verdict_type.get_priority()
         if self.verdict_metadata:
-            result['verdict_metadata'] = {
-                'confidence': self.verdict_metadata.confidence,
-                'reasoning': self.verdict_metadata.reasoning,
-                'review_reason': self.verdict_metadata.review_reason,
-                'recommended_action': self.verdict_metadata.recommended_action
+            result["verdict_metadata"] = {
+                "confidence": self.verdict_metadata.confidence,
+                "reasoning": self.verdict_metadata.reasoning,
+                "review_reason": self.verdict_metadata.review_reason,
+                "recommended_action": self.verdict_metadata.recommended_action,
             }
         return result
 
@@ -176,9 +176,7 @@ Your Expertise: {", ".join(self.expertise)}
         analysis_complete = "analysis incomplete" not in response.lower()
         severity = finding.get("severity", "medium") if finding else "medium"
 
-        verdict_type = VerdictClassifier.classify_verdict(
-            confidence, analysis_complete, severity
-        )
+        verdict_type = VerdictClassifier.classify_verdict(confidence, analysis_complete, severity)
 
         # Extract reasoning (look for reasoning section)
         reasoning = ""
@@ -203,9 +201,7 @@ Your Expertise: {", ".join(self.expertise)}
         if verdict_type in [VerdictType.UNCERTAIN, VerdictType.NEEDS_REVIEW]:
             # Try to extract why uncertain
             uncertain_match = re.search(
-                r"uncertain because:?\s*(.+?)(?=\n\n|\nevidence:|\nrecommendations:|$)",
-                response,
-                re.IGNORECASE
+                r"uncertain because:?\s*(.+?)(?=\n\n|\nevidence:|\nrecommendations:|$)", response, re.IGNORECASE
             )
             if uncertain_match:
                 review_reason = uncertain_match.group(1).strip()
@@ -216,7 +212,7 @@ Your Expertise: {", ".join(self.expertise)}
             confidence=confidence,
             reasoning=reasoning,
             review_reason=review_reason,
-            recommended_action=VerdictClassifier.get_recommended_action(verdict_type, severity)
+            recommended_action=VerdictClassifier.get_recommended_action(verdict_type, severity),
         )
 
         # Extract evidence (bullet points or numbered lists)
@@ -266,7 +262,7 @@ Your Expertise: {", ".join(self.expertise)}
             recommendations=recommendations,
             risk_factors=risk_factors,
             verdict_type=verdict_type,  # NEW
-            verdict_metadata=verdict_metadata  # NEW
+            verdict_metadata=verdict_metadata,  # NEW
         )
 
     def _call_llm(self, prompt: str, max_tokens: int = 1000) -> str:
@@ -650,13 +646,13 @@ class FalsePositiveFilter(BaseAgentPersona):
         # First try enhanced detector
         enhanced_result = self.enhanced_detector.analyze(finding)
         if enhanced_result:
-            logger.debug(f"Enhanced FP detector result: {enhanced_result.category}, FP={enhanced_result.is_false_positive}, confidence={enhanced_result.confidence}")
+            logger.debug(
+                f"Enhanced FP detector result: {enhanced_result.category}, FP={enhanced_result.is_false_positive}, confidence={enhanced_result.confidence}"
+            )
 
             # Evaluate suppression policy
             if enhanced_result.is_false_positive:
-                suppression_decision = self.suppression_policy.evaluate_suppression(
-                    enhanced_result, finding
-                )
+                suppression_decision = self.suppression_policy.evaluate_suppression(enhanced_result, finding)
 
                 if suppression_decision.can_suppress:
                     logger.info(f"✅ Suppression approved: {suppression_decision.reasoning}")
@@ -665,9 +661,7 @@ class FalsePositiveFilter(BaseAgentPersona):
                         confidence=enhanced_result.confidence,
                         verdict="false_positive",
                         reasoning=enhanced_result.reasoning,
-                        evidence=enhanced_result.evidence + [
-                            f"Policy: {suppression_decision.reasoning}"
-                        ],
+                        evidence=enhanced_result.evidence + [f"Policy: {suppression_decision.reasoning}"],
                         recommendations=["No action needed - false positive"],
                     )
                 else:
@@ -682,7 +676,11 @@ class FalsePositiveFilter(BaseAgentPersona):
                     verdict="false_positive" if enhanced_result.is_false_positive else "confirmed",
                     reasoning=enhanced_result.reasoning,
                     evidence=enhanced_result.evidence,
-                    recommendations=["No action needed - false positive" if enhanced_result.is_false_positive else "Address security issue"],
+                    recommendations=[
+                        "No action needed - false positive"
+                        if enhanced_result.is_false_positive
+                        else "Address security issue"
+                    ],
                 )
 
         base_context = self._build_base_prompt(finding)
@@ -1047,7 +1045,7 @@ def build_consensus(analyses: list[AgentAnalysis]) -> dict[str, Any]:
         "uncertain": 0,
         "needs_review": 0,
         "likely_fp": 0,
-        "false_positive": 0
+        "false_positive": 0,
     }
     total_confidence = 0.0
     all_evidence = []

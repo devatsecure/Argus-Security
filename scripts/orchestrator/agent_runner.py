@@ -459,7 +459,9 @@ You have access to the following threat model for this codebase:
 
     # Determine parallel execution mode
     _enable_parallel = config.get("enable_parallel_agents", True)
-    enable_parallel = str(_enable_parallel).lower() == "true" if not isinstance(_enable_parallel, bool) else _enable_parallel
+    enable_parallel = (
+        str(_enable_parallel).lower() == "true" if not isinstance(_enable_parallel, bool) else _enable_parallel
+    )
     parallel_workers = int(config.get("parallel_agent_workers", 3))
 
     if enable_parallel:

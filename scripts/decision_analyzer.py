@@ -26,12 +26,7 @@ class DecisionPattern:
     """Represents a discovered pattern in AI decisions"""
 
     def __init__(
-        self,
-        pattern_type: str,
-        description: str,
-        frequency: int,
-        confidence: float,
-        examples: list[dict[str, Any]]
+        self, pattern_type: str, description: str, frequency: int, confidence: float, examples: list[dict[str, Any]]
     ):
         """
         Initialize decision pattern
@@ -57,7 +52,7 @@ class DecisionPattern:
             "frequency": self.frequency,
             "confidence": self.confidence,
             "example_count": len(self.examples),
-            "examples": self.examples[:3]  # Include first 3 examples
+            "examples": self.examples[:3],  # Include first 3 examples
         }
 
 
@@ -74,10 +69,7 @@ class DecisionAnalyzer:
         self.decision_log_path = Path(decision_log_path)
 
     def load_decisions(
-        self,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
-        scanner: Optional[str] = None
+        self, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None, scanner: Optional[str] = None
     ) -> list[dict[str, Any]]:
         """
         Load decisions from log file with optional filtering
@@ -104,16 +96,12 @@ class DecisionAnalyzer:
 
                         # Apply filters
                         if start_date:
-                            decision_time = datetime.fromisoformat(
-                                decision.get("timestamp", "")
-                            )
+                            decision_time = datetime.fromisoformat(decision.get("timestamp", ""))
                             if decision_time < start_date:
                                 continue
 
                         if end_date:
-                            decision_time = datetime.fromisoformat(
-                                decision.get("timestamp", "")
-                            )
+                            decision_time = datetime.fromisoformat(decision.get("timestamp", ""))
                             if decision_time > end_date:
                                 continue
 
@@ -248,39 +236,46 @@ class DecisionAnalyzer:
 
         # Pattern 1: Test file suppressions
         test_file_suppressions = [
-            d for d in decisions
+            d
+            for d in decisions
             if d.get("decision") == "suppress"
-            and any(keyword in d.get("reasoning", "").lower()
-                    for keyword in ["test", "spec", "fixture", "mock"])
+            and any(keyword in d.get("reasoning", "").lower() for keyword in ["test", "spec", "fixture", "mock"])
         ]
 
         if test_file_suppressions:
             avg_confidence = sum(d.get("confidence", 0) for d in test_file_suppressions) / len(test_file_suppressions)
-            patterns.append(DecisionPattern(
-                pattern_type="test_file_suppression",
-                description="AI consistently suppresses findings in test files",
-                frequency=len(test_file_suppressions),
-                confidence=avg_confidence,
-                examples=test_file_suppressions[:5]
-            ))
+            patterns.append(
+                DecisionPattern(
+                    pattern_type="test_file_suppression",
+                    description="AI consistently suppresses findings in test files",
+                    frequency=len(test_file_suppressions),
+                    confidence=avg_confidence,
+                    examples=test_file_suppressions[:5],
+                )
+            )
 
         # Pattern 2: Documentation suppressions
         doc_suppressions = [
-            d for d in decisions
+            d
+            for d in decisions
             if d.get("decision") == "suppress"
-            and any(keyword in d.get("reasoning", "").lower()
-                    for keyword in ["documentation", "example", "readme", "comment"])
+            and any(
+                keyword in d.get("reasoning", "").lower()
+                for keyword in ["documentation", "example", "readme", "comment"]
+            )
         ]
 
         if doc_suppressions:
             avg_confidence = sum(d.get("confidence", 0) for d in doc_suppressions) / len(doc_suppressions)
-            patterns.append(DecisionPattern(
-                pattern_type="documentation_suppression",
-                description="AI consistently suppresses findings in documentation",
-                frequency=len(doc_suppressions),
-                confidence=avg_confidence,
-                examples=doc_suppressions[:5]
-            ))
+            patterns.append(
+                DecisionPattern(
+                    pattern_type="documentation_suppression",
+                    description="AI consistently suppresses findings in documentation",
+                    frequency=len(doc_suppressions),
+                    confidence=avg_confidence,
+                    examples=doc_suppressions[:5],
+                )
+            )
 
         # Pattern 3: High confidence suppressions by finding type
         by_finding_type = defaultdict(list)
@@ -291,13 +286,15 @@ class DecisionAnalyzer:
         for finding_type, type_decisions in by_finding_type.items():
             if len(type_decisions) >= 5:  # At least 5 occurrences
                 avg_confidence = sum(d.get("confidence", 0) for d in type_decisions) / len(type_decisions)
-                patterns.append(DecisionPattern(
-                    pattern_type="high_confidence_type_suppression",
-                    description=f"AI confidently suppresses {finding_type} findings",
-                    frequency=len(type_decisions),
-                    confidence=avg_confidence,
-                    examples=type_decisions[:5]
-                ))
+                patterns.append(
+                    DecisionPattern(
+                        pattern_type="high_confidence_type_suppression",
+                        description=f"AI confidently suppresses {finding_type} findings",
+                        frequency=len(type_decisions),
+                        confidence=avg_confidence,
+                        examples=type_decisions[:5],
+                    )
+                )
 
         # Pattern 4: Common reasoning phrases
         reasoning_phrases = Counter()
@@ -315,25 +312,24 @@ class DecisionAnalyzer:
         for phrase, count in reasoning_phrases.most_common(5):
             if count >= 3:
                 phrase_decisions = [
-                    d for d in decisions
+                    d
+                    for d in decisions
                     if d.get("decision") == "suppress" and phrase.replace("_", " ") in d.get("reasoning", "").lower()
                 ]
                 avg_confidence = sum(d.get("confidence", 0) for d in phrase_decisions) / len(phrase_decisions)
-                patterns.append(DecisionPattern(
-                    pattern_type=f"reasoning_{phrase}",
-                    description=f"AI frequently cites '{phrase.replace('_', ' ')}' as suppression reason",
-                    frequency=count,
-                    confidence=avg_confidence,
-                    examples=phrase_decisions[:5]
-                ))
+                patterns.append(
+                    DecisionPattern(
+                        pattern_type=f"reasoning_{phrase}",
+                        description=f"AI frequently cites '{phrase.replace('_', ' ')}' as suppression reason",
+                        frequency=count,
+                        confidence=avg_confidence,
+                        examples=phrase_decisions[:5],
+                    )
+                )
 
         return patterns
 
-    def suggest_improvements(
-        self,
-        analysis: dict[str, Any],
-        patterns: list[DecisionPattern]
-    ) -> list[str]:
+    def suggest_improvements(self, analysis: dict[str, Any], patterns: list[DecisionPattern]) -> list[str]:
         """
         Recommend new heuristics based on decision patterns
 
@@ -382,11 +378,7 @@ class DecisionAnalyzer:
 
         return suggestions
 
-    def generate_report(
-        self,
-        decisions: Optional[list[dict[str, Any]]] = None,
-        output_format: str = "text"
-    ) -> str:
+    def generate_report(self, decisions: Optional[list[dict[str, Any]]] = None, output_format: str = "text") -> str:
         """
         Generate comprehensive analysis report
 
@@ -432,7 +424,7 @@ class DecisionAnalyzer:
             f"Suppression Rate:   {analysis['suppression_rate']:.1f}%",
             f"Escalation Rate:    {analysis['escalation_rate']:.1f}%",
             f"Avg Confidence:     {analysis['avg_confidence']:.3f}",
-            f"Low Confidence:     {analysis['low_confidence_count']} ({analysis['low_confidence_count']/analysis['total_decisions']*100:.1f}%)",
+            f"Low Confidence:     {analysis['low_confidence_count']} ({analysis['low_confidence_count'] / analysis['total_decisions'] * 100:.1f}%)",
             "",
             "=" * 80,
             "CONFIDENCE DISTRIBUTION",
@@ -444,12 +436,14 @@ class DecisionAnalyzer:
             bar = "█" * int(pct / 2)  # Visual bar chart
             report_lines.append(f"{bucket}: {count:3d} ({pct:5.1f}%) {bar}")
 
-        report_lines.extend([
-            "",
-            "=" * 80,
-            "BY SCANNER",
-            "=" * 80,
-        ])
+        report_lines.extend(
+            [
+                "",
+                "=" * 80,
+                "BY SCANNER",
+                "=" * 80,
+            ]
+        )
 
         for scanner, stats in analysis["by_scanner"].items():
             suppress_pct = (stats["suppress"] / stats["total"] * 100) if stats["total"] > 0 else 0
@@ -459,17 +453,17 @@ class DecisionAnalyzer:
                 f"{stats['escalate']:3d} escalated"
             )
 
-        report_lines.extend([
-            "",
-            "=" * 80,
-            "BY FINDING TYPE",
-            "=" * 80,
-        ])
+        report_lines.extend(
+            [
+                "",
+                "=" * 80,
+                "BY FINDING TYPE",
+                "=" * 80,
+            ]
+        )
 
         for finding_type, stats in sorted(
-            analysis["by_finding_type"].items(),
-            key=lambda x: x[1]["total"],
-            reverse=True
+            analysis["by_finding_type"].items(), key=lambda x: x[1]["total"], reverse=True
         )[:10]:  # Top 10
             suppress_pct = (stats["suppress"] / stats["total"] * 100) if stats["total"] > 0 else 0
             report_lines.append(
@@ -478,36 +472,44 @@ class DecisionAnalyzer:
             )
 
         if patterns:
-            report_lines.extend([
-                "",
-                "=" * 80,
-                "DISCOVERED PATTERNS",
-                "=" * 80,
-            ])
+            report_lines.extend(
+                [
+                    "",
+                    "=" * 80,
+                    "DISCOVERED PATTERNS",
+                    "=" * 80,
+                ]
+            )
 
             for i, pattern in enumerate(patterns, 1):
-                report_lines.extend([
-                    f"\n{i}. {pattern.description}",
-                    f"   Type: {pattern.pattern_type}",
-                    f"   Frequency: {pattern.frequency}",
-                    f"   Confidence: {pattern.confidence:.3f}",
-                ])
+                report_lines.extend(
+                    [
+                        f"\n{i}. {pattern.description}",
+                        f"   Type: {pattern.pattern_type}",
+                        f"   Frequency: {pattern.frequency}",
+                        f"   Confidence: {pattern.confidence:.3f}",
+                    ]
+                )
 
         if suggestions:
-            report_lines.extend([
-                "",
-                "=" * 80,
-                "IMPROVEMENT SUGGESTIONS",
-                "=" * 80,
-            ])
+            report_lines.extend(
+                [
+                    "",
+                    "=" * 80,
+                    "IMPROVEMENT SUGGESTIONS",
+                    "=" * 80,
+                ]
+            )
 
             for i, suggestion in enumerate(suggestions, 1):
                 report_lines.append(f"{i}. {suggestion}")
 
-        report_lines.extend([
-            "",
-            "=" * 80,
-        ])
+        report_lines.extend(
+            [
+                "",
+                "=" * 80,
+            ]
+        )
 
         return "\n".join(report_lines)
 
@@ -516,29 +518,11 @@ def main():
     """CLI interface for decision analysis"""
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Analyze AI triage decision quality"
-    )
-    parser.add_argument(
-        "--log-file",
-        default=".argus-cache/decisions.jsonl",
-        help="Path to decision log file"
-    )
-    parser.add_argument(
-        "--scanner",
-        help="Filter decisions from specific scanner"
-    )
-    parser.add_argument(
-        "--days",
-        type=int,
-        help="Analyze decisions from last N days"
-    )
-    parser.add_argument(
-        "--format",
-        choices=["text", "json"],
-        default="text",
-        help="Output format"
-    )
+    parser = argparse.ArgumentParser(description="Analyze AI triage decision quality")
+    parser.add_argument("--log-file", default=".argus-cache/decisions.jsonl", help="Path to decision log file")
+    parser.add_argument("--scanner", help="Filter decisions from specific scanner")
+    parser.add_argument("--days", type=int, help="Analyze decisions from last N days")
+    parser.add_argument("--format", choices=["text", "json"], default="text", help="Output format")
 
     args = parser.parse_args()
 
@@ -549,10 +533,7 @@ def main():
     if args.days:
         start_date = datetime.now() - timedelta(days=args.days)
 
-    decisions = analyzer.load_decisions(
-        start_date=start_date,
-        scanner=args.scanner
-    )
+    decisions = analyzer.load_decisions(start_date=start_date, scanner=args.scanner)
 
     # Generate report
     report = analyzer.generate_report(decisions, output_format=args.format)

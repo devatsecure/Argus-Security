@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 class VulnerabilityVerdict(Enum):
     """IRIS analysis verdict"""
+
     TRUE_POSITIVE = "true_positive"
     FALSE_POSITIVE = "false_positive"
     UNCERTAIN = "uncertain"
@@ -35,6 +36,7 @@ class IRISAnalysis:
     """
     Result of IRIS semantic analysis
     """
+
     verdict: VulnerabilityVerdict
     confidence: float  # 0.0-1.0
 
@@ -72,11 +74,7 @@ class IRISAnalysis:
             "impact_severity": self.impact_severity,
             "reasoning_steps": self.reasoning_steps,
             "code_semantics": self.code_semantics,
-            "token_usage": {
-                "input": self.input_tokens,
-                "output": self.output_tokens,
-                "cost_usd": self.cost_usd
-            }
+            "token_usage": {"input": self.input_tokens, "output": self.output_tokens, "cost_usd": self.cost_usd},
         }
 
 
@@ -85,6 +83,7 @@ class IRISFinding:
     """
     Enhanced finding with IRIS semantic analysis
     """
+
     original_finding_id: str
     iris_verified: bool
     iris_analysis: Optional[IRISAnalysis] = None
@@ -139,10 +138,7 @@ class IRISAnalyzer:
         logger.info(f"IRIS Analyzer initialized (confidence threshold: {confidence_threshold})")
 
     def analyze_finding(
-        self,
-        finding: dict[str, Any],
-        code_context: str,
-        repo_context: Optional[dict[str, Any]] = None
+        self, finding: dict[str, Any], code_context: str, repo_context: Optional[dict[str, Any]] = None
     ) -> IRISFinding:
         """
         Perform IRIS-style semantic analysis on a finding
@@ -169,9 +165,9 @@ class IRISAnalyzer:
             analysis = self._parse_llm_response(response)
 
             # Track token usage
-            if hasattr(response, 'usage'):
-                analysis.input_tokens = getattr(response.usage, 'input_tokens', 0)
-                analysis.output_tokens = getattr(response.usage, 'output_tokens', 0)
+            if hasattr(response, "usage"):
+                analysis.input_tokens = getattr(response.usage, "input_tokens", 0)
+                analysis.output_tokens = getattr(response.usage, "output_tokens", 0)
                 analysis.cost_usd = self._calculate_cost(response)
                 self.total_cost += analysis.cost_usd
 
@@ -190,18 +186,15 @@ class IRISAnalyzer:
 
             # Create IRIS finding
             iris_finding = IRISFinding(
-                original_finding_id=finding.get('id', 'unknown'),
+                original_finding_id=finding.get("id", "unknown"),
                 iris_verified=iris_verified,
                 iris_analysis=analysis,
                 semantic_confidence=analysis.confidence,
                 exploitability_score=self._calculate_exploitability(analysis),
-                business_impact=analysis.impact_severity
+                business_impact=analysis.impact_severity,
             )
 
-            logger.info(
-                f"IRIS analysis complete: {analysis.verdict.value} "
-                f"(confidence: {analysis.confidence:.2f})"
-            )
+            logger.info(f"IRIS analysis complete: {analysis.verdict.value} (confidence: {analysis.confidence:.2f})")
 
             return iris_finding
 
@@ -210,16 +203,11 @@ class IRISAnalyzer:
 
             # Return unverified finding on error
             return IRISFinding(
-                original_finding_id=finding.get('id', 'unknown'),
-                iris_verified=False,
-                iris_analysis=None
+                original_finding_id=finding.get("id", "unknown"), iris_verified=False, iris_analysis=None
             )
 
     def _build_iris_prompt(
-        self,
-        finding: dict[str, Any],
-        code_context: str,
-        repo_context: Optional[dict[str, Any]]
+        self, finding: dict[str, Any], code_context: str, repo_context: Optional[dict[str, Any]]
     ) -> str:
         """
         Build IRIS-style multi-step reasoning prompt
@@ -228,17 +216,17 @@ class IRISAnalyzer:
         """
 
         # Extract finding metadata
-        finding_type = finding.get('type', 'UNKNOWN')
-        severity = finding.get('severity', 'UNKNOWN')
-        cwe_id = finding.get('cwe_id', 'N/A')
-        description = finding.get('description', 'No description')
-        file_path = finding.get('file_path', 'unknown')
-        line_number = finding.get('line_number', 0)
+        finding_type = finding.get("type", "UNKNOWN")
+        severity = finding.get("severity", "UNKNOWN")
+        cwe_id = finding.get("cwe_id", "N/A")
+        description = finding.get("description", "No description")
+        file_path = finding.get("file_path", "unknown")
+        line_number = finding.get("line_number", 0)
 
         # Repository context (if available)
         frameworks = []
         if repo_context:
-            frameworks = repo_context.get('frameworks', [])
+            frameworks = repo_context.get("frameworks", [])
 
         frameworks_str = ", ".join(frameworks) if frameworks else "None detected"
 
@@ -328,10 +316,10 @@ Respond with ONLY the JSON object, no additional text."""
         """
         try:
             # Extract content from response
-            if hasattr(response, 'content'):
+            if hasattr(response, "content"):
                 # Anthropic format
                 content = response.content[0].text if isinstance(response.content, list) else response.content
-            elif hasattr(response, 'choices'):
+            elif hasattr(response, "choices"):
                 # OpenAI format
                 content = response.choices[0].message.content
             else:
@@ -349,16 +337,16 @@ Respond with ONLY the JSON object, no additional text."""
             # Create IRISAnalysis from parsed data
             analysis = IRISAnalysis(
                 verdict=VulnerabilityVerdict.UNCERTAIN,  # Will be determined by confidence
-                confidence=float(data.get('confidence', 0.5)),
-                data_flow_analysis=data.get('data_flow_analysis', ''),
-                vulnerability_assessment=data.get('vulnerability_assessment', ''),
-                impact_analysis=data.get('impact_analysis', ''),
-                attack_vector=data.get('attack_vector'),
-                preconditions=data.get('preconditions', []),
-                exploitation_complexity=data.get('exploitation_complexity', 'UNKNOWN'),
-                impact_severity=data.get('impact_severity', 'UNKNOWN'),
-                reasoning_steps=data.get('reasoning_steps', []),
-                code_semantics=data.get('code_semantics', {})
+                confidence=float(data.get("confidence", 0.5)),
+                data_flow_analysis=data.get("data_flow_analysis", ""),
+                vulnerability_assessment=data.get("vulnerability_assessment", ""),
+                impact_analysis=data.get("impact_analysis", ""),
+                attack_vector=data.get("attack_vector"),
+                preconditions=data.get("preconditions", []),
+                exploitation_complexity=data.get("exploitation_complexity", "UNKNOWN"),
+                impact_severity=data.get("impact_severity", "UNKNOWN"),
+                reasoning_steps=data.get("reasoning_steps", []),
+                code_semantics=data.get("code_semantics", {}),
             )
 
             return analysis
@@ -373,7 +361,7 @@ Respond with ONLY the JSON object, no additional text."""
                 confidence=0.0,
                 data_flow_analysis="Parse error - could not analyze",
                 vulnerability_assessment="Parse error",
-                impact_analysis="Parse error"
+                impact_analysis="Parse error",
             )
 
         except Exception as e:
@@ -383,7 +371,7 @@ Respond with ONLY the JSON object, no additional text."""
                 confidence=0.0,
                 data_flow_analysis="Error during analysis",
                 vulnerability_assessment="Error",
-                impact_analysis="Error"
+                impact_analysis="Error",
             )
 
     def _calculate_cost(self, response: Any) -> float:
@@ -396,12 +384,12 @@ Respond with ONLY the JSON object, no additional text."""
         Returns:
             Cost in USD
         """
-        if not hasattr(response, 'usage'):
+        if not hasattr(response, "usage"):
             return 0.0
 
         usage = response.usage
-        input_tokens = getattr(usage, 'input_tokens', 0)
-        output_tokens = getattr(usage, 'output_tokens', 0)
+        input_tokens = getattr(usage, "input_tokens", 0)
+        output_tokens = getattr(usage, "output_tokens", 0)
 
         # Pricing (approximate, update as needed)
         # Claude Sonnet 4.5: $3/MTok input, $15/MTok output
@@ -448,12 +436,8 @@ Respond with ONLY the JSON object, no additional text."""
             "false_positives": self.false_positives,
             "uncertain": self.total_findings_analyzed - self.true_positives - self.false_positives,
             "total_cost_usd": round(self.total_cost, 2),
-            "average_cost_per_finding": round(
-                self.total_cost / max(self.total_findings_analyzed, 1), 4
-            ),
-            "true_positive_rate": round(
-                self.true_positives / max(self.total_findings_analyzed, 1), 2
-            )
+            "average_cost_per_finding": round(self.total_cost / max(self.total_findings_analyzed, 1), 4),
+            "true_positive_rate": round(self.true_positives / max(self.total_findings_analyzed, 1), 2),
         }
 
 
@@ -474,7 +458,7 @@ def load_code_context(file_path: str, line_number: int, lines_before: int = 20, 
         if not os.path.exists(file_path):
             return f"# File not found: {file_path}"
 
-        with open(file_path, encoding='utf-8', errors='ignore') as f:
+        with open(file_path, encoding="utf-8", errors="ignore") as f:
             lines = f.readlines()
 
         # Calculate range

@@ -83,6 +83,7 @@ class ScannerRegistry:
         """Load built-in scanners from scripts/scanners/ directory"""
         try:
             import sys
+
             scripts_dir = Path(__file__).parent
             if str(scripts_dir) not in sys.path:
                 sys.path.insert(0, str(scripts_dir))
@@ -109,13 +110,27 @@ class ScannerRegistry:
                     scanner_class = getattr(module, class_name)
 
                     # Accept scanners with scan(), analyze(), or any scan-like method
-                    scan_methods = ("scan", "scan_file", "scan_filesystem", "scan_container_image",
-                                    "analyze", "analyze_project", "analyze_package_behavior",
-                                    "fuzz_function", "fuzz_api", "enrich_findings", "enrich_cve",
-                                    "suggest_fix", "generate_batch_fixes",
-                                    "monitor_realtime", "analyze_log_file",
-                                    "generate_regression_test", "run_all_tests",
-                                    "check_typosquatting", "check_openssf_scorecard")
+                    scan_methods = (
+                        "scan",
+                        "scan_file",
+                        "scan_filesystem",
+                        "scan_container_image",
+                        "analyze",
+                        "analyze_project",
+                        "analyze_package_behavior",
+                        "fuzz_function",
+                        "fuzz_api",
+                        "enrich_findings",
+                        "enrich_cve",
+                        "suggest_fix",
+                        "generate_batch_fixes",
+                        "monitor_realtime",
+                        "analyze_log_file",
+                        "generate_regression_test",
+                        "run_all_tests",
+                        "check_typosquatting",
+                        "check_openssf_scorecard",
+                    )
                     if any(hasattr(scanner_class, m) for m in scan_methods):
                         self._scanners[scanner_name] = scanner_class
                         logger.debug(f"Loaded built-in scanner: {scanner_name}")
@@ -154,10 +169,7 @@ class ScannerRegistry:
                     continue
 
                 # Load module from file
-                spec = importlib.util.spec_from_file_location(
-                    plugin_file.stem,
-                    resolved_file
-                )
+                spec = importlib.util.spec_from_file_location(plugin_file.stem, resolved_file)
                 module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(module)
 
@@ -168,14 +180,12 @@ class ScannerRegistry:
                         continue
 
                     # Check if it has scan method
-                    if hasattr(obj, 'scan') and callable(obj.scan):
+                    if hasattr(obj, "scan") and callable(obj.scan):
                         scanner_name = getattr(obj, "SCANNER_NAME", name.lower())
 
                         # Don't override built-in scanners
                         if scanner_name in self._scanners:
-                            logger.warning(
-                                f"Plugin scanner '{scanner_name}' conflicts with built-in, skipping"
-                            )
+                            logger.warning(f"Plugin scanner '{scanner_name}' conflicts with built-in, skipping")
                             continue
 
                         self._scanners[scanner_name] = obj
@@ -238,7 +248,7 @@ class ScannerRegistry:
             instance = scanner_class(**init_kwargs)
 
             # Check if scanner is available
-            if hasattr(instance, 'is_available') and not instance.is_available():
+            if hasattr(instance, "is_available") and not instance.is_available():
                 logger.warning(f"Scanner {name} is not available (missing dependencies or binary)")
                 return None
 
@@ -294,22 +304,14 @@ def main():
     """CLI interface for scanner registry"""
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Manage Argus scanner registry"
-    )
-    parser.add_argument(
-        "--plugin-dir",
-        help="Plugin directory path"
-    )
+    parser = argparse.ArgumentParser(description="Manage Argus scanner registry")
+    parser.add_argument("--plugin-dir", help="Plugin directory path")
 
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
 
     # List scanners
     list_parser = subparsers.add_parser("list", help="List available scanners")
-    list_parser.add_argument(
-        "--capability",
-        help="Filter by capability (e.g., secrets, sast, cve)"
-    )
+    list_parser.add_argument("--capability", help="Filter by capability (e.g., secrets, sast, cve)")
 
     # Show scanner info
     info_parser = subparsers.add_parser("info", help="Show scanner information")
@@ -352,7 +354,7 @@ def main():
             print(f"❌ Scanner not found: {args.scanner_name}")
             return 1
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"SCANNER INFORMATION: {args.scanner_name}")
         print("=" * 60)
         print(f"Name:                {info['name']}")

@@ -21,12 +21,12 @@ class ChainVisualizer:
     def __init__(self):
         """Initialize visualizer"""
         self.color_map = {
-            'critical': '\033[91m',  # Red
-            'high': '\033[93m',      # Yellow
-            'medium': '\033[94m',    # Blue
-            'low': '\033[92m',       # Green
-            'info': '\033[90m',      # Gray
-            'reset': '\033[0m',      # Reset
+            "critical": "\033[91m",  # Red
+            "high": "\033[93m",  # Yellow
+            "medium": "\033[94m",  # Blue
+            "low": "\033[92m",  # Green
+            "info": "\033[90m",  # Gray
+            "reset": "\033[0m",  # Reset
         }
 
     def generate_markdown_report(self, chains_data: dict, output_file: str):
@@ -41,7 +41,7 @@ class ChainVisualizer:
 
         # Executive Summary
         md.append("## 📊 Executive Summary\n")
-        stats = chains_data['statistics']
+        stats = chains_data["statistics"]
         md.append(f"- **Total Vulnerabilities Analyzed:** {chains_data['total_vulnerabilities']}")
         md.append(f"- **Attack Chains Discovered:** {chains_data['total_chains']}")
         md.append(f"- **Critical Chains:** {stats.get('critical_chains', 0)}")
@@ -54,31 +54,35 @@ class ChainVisualizer:
         md.append("## 🎯 Risk Distribution\n")
         md.append("| Exploitability | Count |")
         md.append("|----------------|-------|")
-        for exploitability, count in stats.get('by_exploitability', {}).items():
+        for exploitability, count in stats.get("by_exploitability", {}).items():
             md.append(f"| {exploitability.title()} | {count} |")
         md.append("")
 
         # Detailed Chains
         md.append("## 🔗 Discovered Attack Chains\n")
 
-        for i, chain in enumerate(chains_data['chains'][:10], 1):  # Top 10
+        for i, chain in enumerate(chains_data["chains"][:10], 1):  # Top 10
             md.append(f"### Chain #{i}: Risk Score {chain['risk_score']:.1f}/10.0\n")
 
             # Chain metadata
-            md.append(f"**Exploitability:** `{chain['exploitability']}` | "
-                     f"**Complexity:** `{chain['complexity']}` | "
-                     f"**Est. Exploit Time:** `{chain.get('estimated_exploit_time', 'Unknown')}`\n")
+            md.append(
+                f"**Exploitability:** `{chain['exploitability']}` | "
+                f"**Complexity:** `{chain['complexity']}` | "
+                f"**Est. Exploit Time:** `{chain.get('estimated_exploit_time', 'Unknown')}`\n"
+            )
 
             # Amplification info
-            md.append(f"**Base Risk:** {chain['base_risk']:.1f} → "
-                     f"**Amplified Risk:** {chain['risk_score']:.1f} "
-                     f"(×{chain['amplification_factor']:.2f} multiplier)\n")
+            md.append(
+                f"**Base Risk:** {chain['base_risk']:.1f} → "
+                f"**Amplified Risk:** {chain['risk_score']:.1f} "
+                f"(×{chain['amplification_factor']:.2f} multiplier)\n"
+            )
 
             # Attack scenario
             md.append("#### 🎭 Attack Scenario\n")
             md.append("```")
-            for j, vuln in enumerate(chain['vulnerabilities'], 1):
-                arrow = "    ↓" if j < len(chain['vulnerabilities']) else ""
+            for j, vuln in enumerate(chain["vulnerabilities"], 1):
+                arrow = "    ↓" if j < len(chain["vulnerabilities"]) else ""
                 md.append(f"Step {j}: {vuln['category']} [{vuln['severity'].upper()}]")
                 md.append(f"  📁 File: {vuln['file_path']}")
                 md.append(f"  📝 {vuln['title']}")
@@ -87,7 +91,7 @@ class ChainVisualizer:
             md.append("```\n")
 
             # Final impact
-            if chain.get('final_impact'):
+            if chain.get("final_impact"):
                 md.append(f"**💥 Final Impact:** {chain['final_impact']}\n")
 
             # Remediation priority
@@ -99,8 +103,8 @@ class ChainVisualizer:
         output_path = Path(output_file)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(output_path, 'w') as f:
-            f.write('\n'.join(md))
+        with open(output_path, "w") as f:
+            f.write("\n".join(md))
 
         logger.info(f"   📄 Markdown report saved to: {output_path}")
 
@@ -112,7 +116,7 @@ class ChainVisualizer:
         print("=" * 80)
 
         # Statistics
-        stats = chains_data['statistics']
+        stats = chains_data["statistics"]
         print("\n📊 Statistics:")
         print(f"   Total Vulnerabilities: {chains_data['total_vulnerabilities']}")
         print(f"   Attack Chains Found: {chains_data['total_chains']}")
@@ -125,32 +129,38 @@ class ChainVisualizer:
         print(f"\n🔗 Top {min(max_chains, len(chains_data['chains']))} Attack Chains:")
         print("=" * 80)
 
-        for i, chain in enumerate(chains_data['chains'][:max_chains], 1):
+        for i, chain in enumerate(chains_data["chains"][:max_chains], 1):
             self._print_chain(i, chain)
 
     def _print_chain(self, index: int, chain: dict):
         """Print a single chain"""
-        risk_color = self._get_risk_color(chain['risk_score'])
+        risk_color = self._get_risk_color(chain["risk_score"])
 
         print(f"\n{risk_color}Chain #{index}: Risk {chain['risk_score']:.1f}/10.0{self.color_map['reset']}")
-        print(f"Exploitability: {chain['exploitability'].title()} | "
-              f"Complexity: {chain['complexity'].title()} | "
-              f"Time: {chain.get('estimated_exploit_time', 'Unknown')}")
-        print(f"Amplification: {chain['base_risk']:.1f} → {chain['risk_score']:.1f} "
-              f"(×{chain['amplification_factor']:.2f})")
+        print(
+            f"Exploitability: {chain['exploitability'].title()} | "
+            f"Complexity: {chain['complexity'].title()} | "
+            f"Time: {chain.get('estimated_exploit_time', 'Unknown')}"
+        )
+        print(
+            f"Amplification: {chain['base_risk']:.1f} → {chain['risk_score']:.1f} "
+            f"(×{chain['amplification_factor']:.2f})"
+        )
 
         print("\n🎭 Attack Flow:")
-        for j, vuln in enumerate(chain['vulnerabilities'], 1):
-            severity_color = self._get_severity_color(vuln['severity'])
-            arrow = "    ↓" if j < len(chain['vulnerabilities']) else ""
+        for j, vuln in enumerate(chain["vulnerabilities"], 1):
+            severity_color = self._get_severity_color(vuln["severity"])
+            arrow = "    ↓" if j < len(chain["vulnerabilities"]) else ""
 
-            print(f"  {severity_color}Step {j}: {vuln['category']} [{vuln['severity'].upper()}]{self.color_map['reset']}")
+            print(
+                f"  {severity_color}Step {j}: {vuln['category']} [{vuln['severity'].upper()}]{self.color_map['reset']}"
+            )
             print(f"  📁 {vuln['file_path']}")
             print(f"  📝 {vuln['title'][:70]}...")
             if arrow:
                 print(arrow)
 
-        if chain.get('final_impact'):
+        if chain.get("final_impact"):
             print(f"\n💥 Impact: {chain['final_impact']}")
 
         print("-" * 80)
@@ -162,17 +172,17 @@ class ChainVisualizer:
     def _get_risk_color(self, risk_score: float) -> str:
         """Get color based on risk score"""
         if risk_score >= 9.0:
-            return self.color_map['critical']
+            return self.color_map["critical"]
         elif risk_score >= 7.0:
-            return self.color_map['high']
+            return self.color_map["high"]
         elif risk_score >= 5.0:
-            return self.color_map['medium']
+            return self.color_map["medium"]
         else:
-            return self.color_map['low']
+            return self.color_map["low"]
 
     def _get_severity_color(self, severity: str) -> str:
         """Get color based on severity"""
-        return self.color_map.get(severity.lower(), self.color_map['reset'])
+        return self.color_map.get(severity.lower(), self.color_map["reset"])
 
     def generate_ascii_graph(self, chain: dict) -> str:
         """Generate ASCII art graph for a chain"""
@@ -182,14 +192,14 @@ class ChainVisualizer:
         lines.append(f"│ Attack Chain: Risk {chain['risk_score']:.1f}/10.0")
         lines.append("└─────────────────────────────────────────┘")
 
-        for i, vuln in enumerate(chain['vulnerabilities']):
+        for i, vuln in enumerate(chain["vulnerabilities"]):
             # Vulnerability box
             lines.append("│")
             lines.append(f"├─▶ [{vuln['severity'].upper()}] {vuln['category']}")
             lines.append(f"│   📁 {vuln['file_path']}")
 
             # Arrow to next
-            if i < len(chain['vulnerabilities']) - 1:
+            if i < len(chain["vulnerabilities"]) - 1:
                 lines.append("│")
                 lines.append("▼")
 
@@ -202,42 +212,42 @@ class ChainVisualizer:
         """Generate JSON summary suitable for dashboards"""
 
         summary = {
-            'metadata': {
-                'timestamp': chains_data['timestamp'],
-                'duration_seconds': chains_data['duration_seconds'],
+            "metadata": {
+                "timestamp": chains_data["timestamp"],
+                "duration_seconds": chains_data["duration_seconds"],
             },
-            'summary': {
-                'total_vulnerabilities': chains_data['total_vulnerabilities'],
-                'total_chains': chains_data['total_chains'],
-                'critical_chains': chains_data['statistics'].get('critical_chains', 0),
-                'high_risk_chains': chains_data['statistics'].get('high_chains', 0),
+            "summary": {
+                "total_vulnerabilities": chains_data["total_vulnerabilities"],
+                "total_chains": chains_data["total_chains"],
+                "critical_chains": chains_data["statistics"].get("critical_chains", 0),
+                "high_risk_chains": chains_data["statistics"].get("high_chains", 0),
             },
-            'top_chains': [
+            "top_chains": [
                 {
-                    'chain_id': chain['chain_id'],
-                    'risk_score': chain['risk_score'],
-                    'exploitability': chain['exploitability'],
-                    'complexity': chain['complexity'],
-                    'chain_length': chain['chain_length'],
-                    'final_impact': chain.get('final_impact', ''),
-                    'vulnerabilities': [
+                    "chain_id": chain["chain_id"],
+                    "risk_score": chain["risk_score"],
+                    "exploitability": chain["exploitability"],
+                    "complexity": chain["complexity"],
+                    "chain_length": chain["chain_length"],
+                    "final_impact": chain.get("final_impact", ""),
+                    "vulnerabilities": [
                         {
-                            'category': v['category'],
-                            'severity': v['severity'],
-                            'file': v['file_path'],
+                            "category": v["category"],
+                            "severity": v["severity"],
+                            "file": v["file_path"],
                         }
-                        for v in chain['vulnerabilities']
-                    ]
+                        for v in chain["vulnerabilities"]
+                    ],
                 }
-                for chain in chains_data['chains'][:10]
+                for chain in chains_data["chains"][:10]
             ],
-            'statistics': chains_data['statistics'],
+            "statistics": chains_data["statistics"],
         }
 
         output_path = Path(output_file)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(output_path, 'w') as f:
+        with open(output_path, "w") as f:
             json.dump(summary, f, indent=2)
 
         logger.info(f"   📊 JSON summary saved to: {output_path}")
@@ -248,11 +258,11 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Vulnerability Chain Visualizer")
-    parser.add_argument('--input', '-i', required=True, help='Input chains JSON file')
-    parser.add_argument('--output-md', help='Output Markdown report file')
-    parser.add_argument('--output-json', help='Output JSON summary file')
-    parser.add_argument('--console', action='store_true', help='Print to console')
-    parser.add_argument('--max-chains', type=int, default=5, help='Max chains to show')
+    parser.add_argument("--input", "-i", required=True, help="Input chains JSON file")
+    parser.add_argument("--output-md", help="Output Markdown report file")
+    parser.add_argument("--output-json", help="Output JSON summary file")
+    parser.add_argument("--console", action="store_true", help="Print to console")
+    parser.add_argument("--max-chains", type=int, default=5, help="Max chains to show")
 
     args = parser.parse_args()
 

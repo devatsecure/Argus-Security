@@ -30,6 +30,7 @@ __all__ = ["DisclosureGenerator", "DisclosureReport"]
 @dataclass
 class DisclosureReport:
     """Generated disclosure report"""
+
     private_report: str
     public_safe_report: str
     repo_owner: str
@@ -72,15 +73,15 @@ class DisclosureGenerator:
         """Extract owner and repo name from GitHub URL"""
         # Handle various GitHub URL formats
         patterns = [
-            r'github\.com[/:]([^/]+)/([^/\.]+)',
-            r'^([^/]+)/([^/]+)$',  # owner/repo format
+            r"github\.com[/:]([^/]+)/([^/\.]+)",
+            r"^([^/]+)/([^/]+)$",  # owner/repo format
         ]
 
         for pattern in patterns:
             match = re.search(pattern, url)
             if match:
                 self.repo_owner = match.group(1)
-                self.repo_name = match.group(2).replace('.git', '')
+                self.repo_name = match.group(2).replace(".git", "")
                 return
 
         logger.warning(f"Could not parse repo URL: {url}")
@@ -89,26 +90,26 @@ class DisclosureGenerator:
         """Remove machine-specific path prefixes"""
         # Common temp/private path prefixes to remove
         prefixes = [
-            r'/private/tmp/[^/]+/',
-            r'/tmp/[^/]+/',
-            r'/var/folders/[^/]+/[^/]+/[^/]+/',
-            r'/Users/[^/]+/[^/]+/',
-            r'C:\\Users\\[^\\]+\\',
+            r"/private/tmp/[^/]+/",
+            r"/tmp/[^/]+/",
+            r"/var/folders/[^/]+/[^/]+/[^/]+/",
+            r"/Users/[^/]+/[^/]+/",
+            r"C:\\Users\\[^\\]+\\",
         ]
 
         result = path
         for prefix in prefixes:
-            result = re.sub(prefix, '', result)
+            result = re.sub(prefix, "", result)
 
         return result
 
     def _check_repo_security_options(self) -> dict:
         """Check what security reporting options are available"""
         options = {
-            'has_security_policy': False,
-            'has_discussions': False,
-            'has_private_reporting': False,
-            'security_email': None,
+            "has_security_policy": False,
+            "has_discussions": False,
+            "has_private_reporting": False,
+            "security_email": None,
         }
 
         if not self.repo_owner or not self.repo_name:
@@ -117,29 +118,45 @@ class DisclosureGenerator:
         try:
             # Check for SECURITY.md
             result = subprocess.run(
-                ['gh', 'api', f'repos/{self.repo_owner}/{self.repo_name}/contents/SECURITY.md'],
-                capture_output=True, text=True, timeout=10
+                ["gh", "api", f"repos/{self.repo_owner}/{self.repo_name}/contents/SECURITY.md"],
+                capture_output=True,
+                text=True,
+                timeout=10,
             )
-            options['has_security_policy'] = result.returncode == 0
+            options["has_security_policy"] = result.returncode == 0
 
             # Check repo features
             result = subprocess.run(
-                ['gh', 'api', f'repos/{self.repo_owner}/{self.repo_name}',
-                 '--jq', '{has_discussions: .has_discussions, has_issues: .has_issues}'],
-                capture_output=True, text=True, timeout=10
+                [
+                    "gh",
+                    "api",
+                    f"repos/{self.repo_owner}/{self.repo_name}",
+                    "--jq",
+                    "{has_discussions: .has_discussions, has_issues: .has_issues}",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=10,
             )
             if result.returncode == 0:
                 data = json.loads(result.stdout)
-                options['has_discussions'] = data.get('has_discussions', False)
+                options["has_discussions"] = data.get("has_discussions", False)
 
             # Check for private vulnerability reporting
             result = subprocess.run(
-                ['gh', 'api', f'repos/{self.repo_owner}/{self.repo_name}',
-                 '--jq', '.security_and_analysis.secret_scanning.status // "disabled"'],
-                capture_output=True, text=True, timeout=10
+                [
+                    "gh",
+                    "api",
+                    f"repos/{self.repo_owner}/{self.repo_name}",
+                    "--jq",
+                    '.security_and_analysis.secret_scanning.status // "disabled"',
+                ],
+                capture_output=True,
+                text=True,
+                timeout=10,
             )
             # Private reporting is usually enabled if security features are on
-            options['has_private_reporting'] = 'enabled' in result.stdout.lower()
+            options["has_private_reporting"] = "enabled" in result.stdout.lower()
 
         except Exception as e:
             logger.warning(f"Could not check repo security options: {e}")
@@ -157,16 +174,21 @@ class DisclosureGenerator:
         dependency_findings = []
 
         for finding in findings:
-            source = finding.get('source_tool', finding.get('source', ''))
-            file_path = finding.get('file_path', finding.get('file', ''))
+            source = finding.get("source_tool", finding.get("source", ""))
+            file_path = finding.get("file_path", finding.get("file", ""))
 
             # Dependency findings are from Trivy scanning lockfiles
-            is_dependency = (
-                source.lower() == 'trivy' or
-                any(lock in file_path.lower() for lock in [
-                    'lock', 'package.json', 'requirements', 'pyproject.toml',
-                    'cargo.toml', 'go.mod', 'gemfile'
-                ])
+            is_dependency = source.lower() == "trivy" or any(
+                lock in file_path.lower()
+                for lock in [
+                    "lock",
+                    "package.json",
+                    "requirements",
+                    "pyproject.toml",
+                    "cargo.toml",
+                    "go.mod",
+                    "gemfile",
+                ]
             )
 
             if is_dependency:
@@ -178,16 +200,10 @@ class DisclosureGenerator:
 
     def _get_high_severity_findings(self, findings: list) -> list:
         """Filter to only high/critical findings"""
-        return [
-            f for f in findings
-            if f.get('severity', '').lower() in ['critical', 'high']
-        ]
+        return [f for f in findings if f.get("severity", "").lower() in ["critical", "high"]]
 
     def _generate_private_report(
-        self,
-        code_findings: list,
-        dependency_findings: list,
-        reporter_name: str = "[Your Name/Organization]"
+        self, code_findings: list, dependency_findings: list, reporter_name: str = "[Your Name/Organization]"
     ) -> str:
         """Generate full private disclosure report"""
 
@@ -195,9 +211,9 @@ class DisclosureGenerator:
         followup_date = today + timedelta(days=14)
         public_date = today + timedelta(days=30)
 
-        report = f"""# Security Vulnerability Report: {self.repo_name or 'Target Repository'}
+        report = f"""# Security Vulnerability Report: {self.repo_name or "Target Repository"}
 
-**Date**: {today.strftime('%Y-%m-%d')}
+**Date**: {today.strftime("%Y-%m-%d")}
 **Reporter**: {reporter_name}
 **Severity**: High (CVSS estimated 7.0-8.0)
 
@@ -219,16 +235,16 @@ We are reporting this privately to allow time for patches before any public disc
 
         if code_findings:
             for i, finding in enumerate(code_findings, 1):
-                title = finding.get('title', finding.get('rule_id', 'Unknown Issue'))
-                file_path = self._sanitize_path(finding.get('file_path', finding.get('file', 'Unknown')))
-                line = finding.get('line_number', finding.get('line', ''))
-                description = finding.get('description', finding.get('message', ''))
-                cwe = finding.get('cwe_id', finding.get('cwe', ''))
-                recommendation = finding.get('recommendation', '')
+                title = finding.get("title", finding.get("rule_id", "Unknown Issue"))
+                file_path = self._sanitize_path(finding.get("file_path", finding.get("file", "Unknown")))
+                line = finding.get("line_number", finding.get("line", ""))
+                description = finding.get("description", finding.get("message", ""))
+                cwe = finding.get("cwe_id", finding.get("cwe", ""))
+                recommendation = finding.get("recommendation", "")
 
                 report += f"""### {i}. {title}
 
-**File**: `{file_path}`{f' (line {line})' if line else ''}
+**File**: `{file_path}`{f" (line {line})" if line else ""}
 """
                 if cwe:
                     report += f"**CWE**: {cwe}\n"
@@ -254,8 +270,8 @@ We are reporting this privately to allow time for patches before any public disc
 
         if dependency_findings:
             # Group by severity
-            high_deps = [f for f in dependency_findings if f.get('severity', '').lower() in ['critical', 'high']]
-            medium_deps = [f for f in dependency_findings if f.get('severity', '').lower() == 'medium']
+            high_deps = [f for f in dependency_findings if f.get("severity", "").lower() in ["critical", "high"]]
+            medium_deps = [f for f in dependency_findings if f.get("severity", "").lower() == "medium"]
 
             if high_deps:
                 report += "### High/Critical Priority\n\n"
@@ -263,12 +279,12 @@ We are reporting this privately to allow time for patches before any public disc
                 report += "|---------|---------|-------|-----|\n"
 
                 for finding in high_deps[:10]:  # Limit to top 10
-                    title = finding.get('title', '')
-                    cve = finding.get('cve_id', finding.get('cve', 'N/A'))
+                    title = finding.get("title", "")
+                    cve = finding.get("cve_id", finding.get("cve", "N/A"))
                     # Try to extract package info from title
-                    package = title.split(' in ')[-1] if ' in ' in title else title[:30]
-                    recommendation = finding.get('recommendation', '')
-                    fixed = 'See advisory' if not recommendation else recommendation.split()[-1]
+                    package = title.split(" in ")[-1] if " in " in title else title[:30]
+                    recommendation = finding.get("recommendation", "")
+                    fixed = "See advisory" if not recommendation else recommendation.split()[-1]
 
                     report += f"| {package} | - | {fixed} | {cve} |\n"
 
@@ -286,9 +302,9 @@ We are reporting this privately to allow time for patches before any public disc
 
 | Date | Action |
 |------|--------|
-| {today.strftime('%Y-%m-%d')} | Initial private report sent |
-| {followup_date.strftime('%Y-%m-%d')} | Follow-up if no response (14 days) |
-| {public_date.strftime('%Y-%m-%d')} | Coordinated public disclosure (30 days) |
+| {today.strftime("%Y-%m-%d")} | Initial private report sent |
+| {followup_date.strftime("%Y-%m-%d")} | Follow-up if no response (14 days) |
+| {public_date.strftime("%Y-%m-%d")} | Coordinated public disclosure (30 days) |
 
 We're happy to extend timelines if patches are in progress.
 
@@ -305,26 +321,26 @@ Please reply to confirm receipt. We can provide additional details or clarificat
 
         return report
 
-    def _generate_public_safe_report(
-        self,
-        code_findings: list,
-        dependency_findings: list
-    ) -> str:
+    def _generate_public_safe_report(self, code_findings: list, dependency_findings: list) -> str:
         """Generate high-level public report without exploit details"""
 
         # Count by category
-        sum(1 for f in code_findings if 'api' in f.get('source_tool', '').lower())
-        auth_issues = sum(1 for f in code_findings if any(
-            kw in f.get('title', '').lower() + f.get('description', '').lower()
-            for kw in ['auth', 'idor', 'authorization', 'permission']
-        ))
+        sum(1 for f in code_findings if "api" in f.get("source_tool", "").lower())
+        auth_issues = sum(
+            1
+            for f in code_findings
+            if any(
+                kw in f.get("title", "").lower() + f.get("description", "").lower()
+                for kw in ["auth", "idor", "authorization", "permission"]
+            )
+        )
 
         # Get unique affected packages
         packages = set()
         for f in dependency_findings:
-            title = f.get('title', '')
-            if ' in ' in title:
-                packages.add(title.split(' in ')[-1].split()[0])
+            title = f.get("title", "")
+            if " in " in title:
+                packages.add(title.split(" in ")[-1].split()[0])
 
         report = """# [Security] Potential security improvements identified
 
@@ -374,10 +390,7 @@ Please let us know the preferred contact method for security-related discussions
         return report
 
     def generate(
-        self,
-        findings: list,
-        output_dir: Optional[str] = None,
-        reporter_name: str = "[Your Name/Organization]"
+        self, findings: list, output_dir: Optional[str] = None, reporter_name: str = "[Your Name/Organization]"
     ) -> DisclosureReport:
         """
         Generate disclosure reports from findings.
@@ -403,19 +416,15 @@ Please let us know the preferred contact method for security-related discussions
         logger.info(f"  Dependency CVEs: {len(dependency_findings)}")
 
         # Generate reports
-        private_report = self._generate_private_report(
-            code_findings, dependency_findings, reporter_name
-        )
-        public_report = self._generate_public_safe_report(
-            code_findings, dependency_findings
-        )
+        private_report = self._generate_private_report(code_findings, dependency_findings, reporter_name)
+        public_report = self._generate_public_safe_report(code_findings, dependency_findings)
 
         # Calculate timeline
         today = datetime.now()
         timeline = {
-            'reported': today.strftime('%Y-%m-%d'),
-            'followup': (today + timedelta(days=14)).strftime('%Y-%m-%d'),
-            'public_disclosure': (today + timedelta(days=30)).strftime('%Y-%m-%d'),
+            "reported": today.strftime("%Y-%m-%d"),
+            "followup": (today + timedelta(days=14)).strftime("%Y-%m-%d"),
+            "public_disclosure": (today + timedelta(days=30)).strftime("%Y-%m-%d"),
         }
 
         # Save if output dir specified
@@ -423,8 +432,8 @@ Please let us know the preferred contact method for security-related discussions
             output_path = Path(output_dir)
             output_path.mkdir(parents=True, exist_ok=True)
 
-            private_path = output_path / 'DISCLOSURE_PRIVATE.md'
-            public_path = output_path / 'ISSUE_PUBLIC_SAFE.md'
+            private_path = output_path / "DISCLOSURE_PRIVATE.md"
+            public_path = output_path / "ISSUE_PUBLIC_SAFE.md"
 
             private_path.write_text(private_report)
             public_path.write_text(public_report)
@@ -435,19 +444,18 @@ Please let us know the preferred contact method for security-related discussions
         return DisclosureReport(
             private_report=private_report,
             public_safe_report=public_report,
-            repo_owner=self.repo_owner or '',
-            repo_name=self.repo_name or '',
-            has_security_policy=security_options['has_security_policy'],
-            has_discussions=security_options['has_discussions'],
-            has_private_reporting=security_options['has_private_reporting'],
+            repo_owner=self.repo_owner or "",
+            repo_name=self.repo_name or "",
+            has_security_policy=security_options["has_security_policy"],
+            has_discussions=security_options["has_discussions"],
+            has_private_reporting=security_options["has_private_reporting"],
             high_findings=high_findings,
             dependency_findings=dependency_findings,
             disclosure_timeline=timeline,
         )
 
     def create_github_discussion(
-        self,
-        title: str = "Security Contact Request - Potential vulnerabilities to report"
+        self, title: str = "Security Contact Request - Potential vulnerabilities to report"
     ) -> Optional[str]:
         """
         Create a GitHub Discussion to request security contact.
@@ -462,15 +470,23 @@ Please let us know the preferred contact method for security-related discussions
         try:
             # Get repository ID
             result = subprocess.run(
-                ['gh', 'api', 'graphql', '-f', f'''query{{
+                [
+                    "gh",
+                    "api",
+                    "graphql",
+                    "-f",
+                    f'''query{{
                     repository(owner: "{self.repo_owner}", name: "{self.repo_name}") {{
                         id
                         discussionCategories(first: 10) {{
                             nodes {{ id name slug }}
                         }}
                     }}
-                }}'''],
-                capture_output=True, text=True, timeout=30
+                }}''',
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
             )
 
             if result.returncode != 0:
@@ -478,14 +494,14 @@ Please let us know the preferred contact method for security-related discussions
                 return None
 
             data = json.loads(result.stdout)
-            repo_id = data['data']['repository']['id']
+            repo_id = data["data"]["repository"]["id"]
 
             # Find General category
-            categories = data['data']['repository']['discussionCategories']['nodes']
+            categories = data["data"]["repository"]["discussionCategories"]["nodes"]
             category_id = None
             for cat in categories:
-                if cat['slug'] in ['general', 'q-a', 'ideas']:
-                    category_id = cat['id']
+                if cat["slug"] in ["general", "q-a", "ideas"]:
+                    category_id = cat["id"]
                     break
 
             if not category_id:
@@ -513,11 +529,16 @@ Thank you for your time!
 *This is a good-faith security report. No exploit details are included in this message.*"""
 
             # Escape for GraphQL
-            body_escaped = body.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
+            body_escaped = body.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
             title_escaped = title.replace('"', '\\"')
 
             result = subprocess.run(
-                ['gh', 'api', 'graphql', '-f', f'''mutation{{
+                [
+                    "gh",
+                    "api",
+                    "graphql",
+                    "-f",
+                    f'''mutation{{
                     createDiscussion(input: {{
                         repositoryId: "{repo_id}"
                         categoryId: "{category_id}"
@@ -526,8 +547,11 @@ Thank you for your time!
                     }}) {{
                         discussion {{ url number }}
                     }}
-                }}'''],
-                capture_output=True, text=True, timeout=30
+                }}''',
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
             )
 
             if result.returncode != 0:
@@ -535,7 +559,7 @@ Thank you for your time!
                 return None
 
             data = json.loads(result.stdout)
-            url = data['data']['createDiscussion']['discussion']['url']
+            url = data["data"]["createDiscussion"]["discussion"]["url"]
             logger.info(f"Created discussion: {url}")
             return url
 
@@ -546,42 +570,33 @@ Thank you for your time!
 
 def main():
     """CLI entry point"""
-    parser = argparse.ArgumentParser(
-        description="Generate responsible disclosure reports from Argus findings"
-    )
-    parser.add_argument('--input', '-i', required=True, help='Input findings JSON file')
-    parser.add_argument('--output', '-o', help='Output directory for reports')
-    parser.add_argument('--repo', '-r', help='GitHub repository URL or owner/name')
-    parser.add_argument('--reporter', default='Security Researcher', help='Reporter name/org')
-    parser.add_argument('--create-discussion', action='store_true', help='Create GitHub discussion')
-    parser.add_argument('--verbose', '-v', action='store_true', help='Verbose output')
+    parser = argparse.ArgumentParser(description="Generate responsible disclosure reports from Argus findings")
+    parser.add_argument("--input", "-i", required=True, help="Input findings JSON file")
+    parser.add_argument("--output", "-o", help="Output directory for reports")
+    parser.add_argument("--repo", "-r", help="GitHub repository URL or owner/name")
+    parser.add_argument("--reporter", default="Security Researcher", help="Reporter name/org")
+    parser.add_argument("--create-discussion", action="store_true", help="Create GitHub discussion")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
 
     args = parser.parse_args()
 
     # Configure logging
     log_level = logging.DEBUG if args.verbose else logging.INFO
-    logging.basicConfig(
-        level=log_level,
-        format='%(asctime)s - %(levelname)s - %(message)s'
-    )
+    logging.basicConfig(level=log_level, format="%(asctime)s - %(levelname)s - %(message)s")
 
     # Load findings
     with open(args.input) as f:
         data = json.load(f)
-        findings = data.get('findings', data) if isinstance(data, dict) else data
+        findings = data.get("findings", data) if isinstance(data, dict) else data
 
     # Generate reports
     generator = DisclosureGenerator(repo_url=args.repo)
-    report = generator.generate(
-        findings=findings,
-        output_dir=args.output,
-        reporter_name=args.reporter
-    )
+    report = generator.generate(findings=findings, output_dir=args.output, reporter_name=args.reporter)
 
     # Print summary
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("DISCLOSURE REPORT GENERATED")
-    print('='*60)
+    print("=" * 60)
     print(f"Repository: {report.repo_owner}/{report.repo_name}")
     print(f"Security Policy: {'Yes' if report.has_security_policy else 'No'}")
     print(f"Discussions Enabled: {'Yes' if report.has_discussions else 'No'}")
@@ -603,7 +618,7 @@ def main():
         else:
             print("\nDiscussions not enabled for this repository")
 
-    print('='*60)
+    print("=" * 60)
 
     return 0
 

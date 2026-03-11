@@ -27,16 +27,14 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class AuditRun:
     """Summary of a dual-audit execution"""
+
     id: str
     timestamp: str
     repo: str
@@ -55,6 +53,7 @@ class AuditRun:
 @dataclass
 class FindingComparison:
     """Detailed comparison of a single finding"""
+
     id: str
     audit_run_id: str
     finding_id: str
@@ -72,6 +71,7 @@ class FindingComparison:
 @dataclass
 class DriftEvent:
     """Detected change in evaluation criteria"""
+
     id: str
     timestamp: str
     audit_run_id: str
@@ -88,6 +88,7 @@ class DriftEvent:
 @dataclass
 class Alert:
     """Alert for anomalies or threshold violations"""
+
     id: str
     timestamp: str
     audit_run_id: str
@@ -111,7 +112,7 @@ class AuditMonitor:
         db_path: str = ".argus/audit_monitor.db",
         agreement_threshold: float = 0.75,
         drift_sensitivity: float = 0.15,
-        enable_cleanup: bool = True
+        enable_cleanup: bool = True,
     ):
         """
         Initialize audit monitor
@@ -227,29 +228,17 @@ class AuditMonitor:
         )
 
         # Indexes for performance
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_audit_runs_timestamp ON audit_runs(timestamp)"
-        )
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_audit_runs_repo ON audit_runs(repo)"
-        )
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_findings_comparison_audit ON findings_comparison(audit_run_id)"
-        )
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_drift_events_audit ON drift_events(audit_run_id)"
-        )
-        cursor.execute(
-            "CREATE INDEX IF NOT EXISTS idx_alerts_timestamp ON alerts(timestamp)"
-        )
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_audit_runs_timestamp ON audit_runs(timestamp)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_audit_runs_repo ON audit_runs(repo)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_findings_comparison_audit ON findings_comparison(audit_run_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_drift_events_audit ON drift_events(audit_run_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_alerts_timestamp ON alerts(timestamp)")
 
         conn.commit()
         conn.close()
 
     def store_audit_run(
-        self,
-        audit_run: AuditRun,
-        findings_comparisons: list[FindingComparison]
+        self, audit_run: AuditRun, findings_comparisons: list[FindingComparison]
     ) -> tuple[bool, Optional[str]]:
         """
         Store audit run and detailed findings comparison
@@ -288,8 +277,8 @@ class AuditMonitor:
                     audit_run.agreement_rate,
                     audit_run.average_score_difference,
                     json.dumps(audit_run.severity_distribution),
-                    json.dumps(audit_run.metadata)
-                )
+                    json.dumps(audit_run.metadata),
+                ),
             )
 
             # Store findings comparisons
@@ -314,17 +303,14 @@ class AuditMonitor:
                         finding.codex_verdict,
                         finding.severity,
                         finding.category,
-                        json.dumps(finding.metadata)
-                    )
+                        json.dumps(finding.metadata),
+                    ),
                 )
 
             conn.commit()
             conn.close()
 
-            logger.info(
-                f"Stored audit run {audit_run.id} with "
-                f"{len(findings_comparisons)} findings comparisons"
-            )
+            logger.info(f"Stored audit run {audit_run.id} with {len(findings_comparisons)} findings comparisons")
 
             # Perform analysis
             self._analyze_audit_run(audit_run.id)
@@ -394,9 +380,7 @@ class AuditMonitor:
 
             # 1. Category Distribution Drift
             categories_current = self._get_category_distribution(audit_run_id)
-            categories_historical = self._get_category_distribution_aggregate(
-                [r.id for r in history[:-1]]
-            )
+            categories_historical = self._get_category_distribution_aggregate([r.id for r in history[:-1]])
 
             for category, current_pct in categories_current.items():
                 historical_pct = categories_historical.get(category, 0.0)
@@ -413,21 +397,17 @@ class AuditMonitor:
                             old_value=historical_pct,
                             new_value=current_pct,
                             change_magnitude=diff,
-                            statistical_significance=self._calculate_significance(
-                                history, category
-                            ),
+                            statistical_significance=self._calculate_significance(history, category),
                             confidence=1.0 - (diff / 1.0),
                             description=(
                                 f"Category '{category}' distribution shifted from "
                                 f"{historical_pct:.1%} to {current_pct:.1%}"
-                            )
+                            ),
                         )
                     )
 
             # 2. Severity Weighting Drift
-            severity_agreement_current = self._get_severity_agreement_correlation(
-                audit_run_id
-            )
+            severity_agreement_current = self._get_severity_agreement_correlation(audit_run_id)
             severity_agreement_historical = self._get_severity_agreement_correlation_aggregate(
                 [r.id for r in history[:-1]]
             )
@@ -452,15 +432,13 @@ class AuditMonitor:
                             description=(
                                 f"Agreement rate for '{severity}' severity shifted from "
                                 f"{corr_historical:.1%} to {corr_current:.1%}"
-                            )
+                            ),
                         )
                     )
 
             # 3. Score Distribution Drift (Kolmogorov-Smirnov-inspired)
             score_diff_current = self._get_score_differences(audit_run_id)
-            score_diff_historical = self._get_score_differences_aggregate(
-                [r.id for r in history[:-1]]
-            )
+            score_diff_historical = self._get_score_differences_aggregate([r.id for r in history[:-1]])
 
             if score_diff_current and score_diff_historical:
                 mean_current = statistics.mean(score_diff_current)
@@ -478,14 +456,11 @@ class AuditMonitor:
                             old_value=mean_historical,
                             new_value=mean_current,
                             change_magnitude=diff,
-                            statistical_significance=self._ks_statistic(
-                                score_diff_current, score_diff_historical
-                            ),
+                            statistical_significance=self._ks_statistic(score_diff_current, score_diff_historical),
                             confidence=1.0 - min(1.0, diff / 2.0),
                             description=(
-                                f"Average score difference shifted from "
-                                f"{mean_historical:.3f} to {mean_current:.3f}"
-                            )
+                                f"Average score difference shifted from {mean_historical:.3f} to {mean_current:.3f}"
+                            ),
                         )
                     )
 
@@ -510,10 +485,7 @@ class AuditMonitor:
             cursor = conn.cursor()
 
             # Get all score differences
-            cursor.execute(
-                "SELECT score_difference FROM findings_comparison WHERE audit_run_id = ?",
-                (audit_run_id,)
-            )
+            cursor.execute("SELECT score_difference FROM findings_comparison WHERE audit_run_id = ?", (audit_run_id,))
             score_diffs = [row[0] for row in cursor.fetchall()]
 
             if len(score_diffs) < 4:
@@ -538,7 +510,7 @@ class AuditMonitor:
                        severity, category FROM findings_comparison
                 WHERE audit_run_id = ? AND (score_difference > ? OR score_difference < ?)
                 """,
-                (audit_run_id, upper_bound, lower_bound)
+                (audit_run_id, upper_bound, lower_bound),
             )
 
             outliers = [
@@ -550,7 +522,7 @@ class AuditMonitor:
                     "score_difference": row[4],
                     "severity": row[5],
                     "category": row[6],
-                    "bound_exceeded": "upper" if row[4] > upper_bound else "lower"
+                    "bound_exceeded": "upper" if row[4] > upper_bound else "lower",
                 }
                 for row in cursor.fetchall()
             ]
@@ -581,25 +553,17 @@ class AuditMonitor:
                 metadata={
                     "repo": audit_run.repo,
                     "agreed_findings": audit_run.agreed_findings_count,
-                    "total_findings": (
-                        audit_run.argus_findings_count + audit_run.codex_only_count
-                    )
-                }
+                    "total_findings": (audit_run.argus_findings_count + audit_run.codex_only_count),
+                },
             )
 
             self._store_alert(alert)
-            logger.warning(
-                f"Agreement alert generated: {audit_run.repo} has {audit_run.agreement_rate:.1%} agreement"
-            )
+            logger.warning(f"Agreement alert generated: {audit_run.repo} has {audit_run.agreement_rate:.1%} agreement")
 
         except Exception as e:
             logger.error(f"Error generating agreement alert: {e}")
 
-    def _generate_outlier_alerts(
-        self,
-        audit_run_id: str,
-        outliers: list[dict[str, Any]]
-    ) -> None:
+    def _generate_outlier_alerts(self, audit_run_id: str, outliers: list[dict[str, Any]]) -> None:
         """Generate alerts for outlier findings"""
         try:
             for outlier in outliers[:5]:  # Limit to 5 alerts per run
@@ -620,8 +584,8 @@ class AuditMonitor:
                         "argus_score": outlier["argus_score"],
                         "codex_score": outlier["codex_score"],
                         "severity": outlier["severity"],
-                        "category": outlier["category"]
-                    }
+                        "category": outlier["category"],
+                    },
                 )
 
                 self._store_alert(alert)
@@ -658,8 +622,8 @@ class AuditMonitor:
                         event.change_magnitude,
                         event.statistical_significance,
                         event.confidence,
-                        event.description
-                    )
+                        event.description,
+                    ),
                 )
 
             conn.commit()
@@ -693,8 +657,8 @@ class AuditMonitor:
                     alert.metric_name,
                     alert.metric_value,
                     alert.threshold,
-                    json.dumps(alert.metadata)
-                )
+                    json.dumps(alert.metadata),
+                ),
             )
 
             conn.commit()
@@ -730,19 +694,14 @@ class AuditMonitor:
                 agreement_rate=row["agreement_rate"],
                 average_score_difference=row["average_score_difference"],
                 severity_distribution=json.loads(row["severity_distribution"]),
-                metadata=json.loads(row["metadata"])
+                metadata=json.loads(row["metadata"]),
             )
 
         except Exception as e:
             logger.error(f"Error retrieving audit run: {e}")
             return None
 
-    def get_audit_history(
-        self,
-        repo: Optional[str] = None,
-        days: int = 30,
-        limit: int = 100
-    ) -> list[AuditRun]:
+    def get_audit_history(self, repo: Optional[str] = None, days: int = 30, limit: int = 100) -> list[AuditRun]:
         """
         Get historical audit runs
 
@@ -759,9 +718,7 @@ class AuditMonitor:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
 
-            cutoff_date = (
-                datetime.now(timezone.utc) - timedelta(days=days)
-            ).isoformat()
+            cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
 
             if repo:
                 cursor.execute(
@@ -770,7 +727,7 @@ class AuditMonitor:
                     WHERE repo = ? AND timestamp >= ?
                     ORDER BY timestamp DESC LIMIT ?
                     """,
-                    (repo, cutoff_date, limit)
+                    (repo, cutoff_date, limit),
                 )
             else:
                 cursor.execute(
@@ -779,7 +736,7 @@ class AuditMonitor:
                     WHERE timestamp >= ?
                     ORDER BY timestamp DESC LIMIT ?
                     """,
-                    (cutoff_date, limit)
+                    (cutoff_date, limit),
                 )
 
             rows = cursor.fetchall()
@@ -799,7 +756,7 @@ class AuditMonitor:
                     agreement_rate=row["agreement_rate"],
                     average_score_difference=row["average_score_difference"],
                     severity_distribution=json.loads(row["severity_distribution"]),
-                    metadata=json.loads(row["metadata"])
+                    metadata=json.loads(row["metadata"]),
                 )
                 for row in rows
             ]
@@ -808,11 +765,7 @@ class AuditMonitor:
             logger.error(f"Error retrieving audit history: {e}")
             return []
 
-    def get_agreement_trend(
-        self,
-        repo: Optional[str] = None,
-        days: int = 30
-    ) -> list[dict[str, Any]]:
+    def get_agreement_trend(self, repo: Optional[str] = None, days: int = 30) -> list[dict[str, Any]]:
         """
         Get agreement rate trend data
 
@@ -823,9 +776,7 @@ class AuditMonitor:
             conn = sqlite3.connect(str(self.db_path))
             cursor = conn.cursor()
 
-            cutoff_date = (
-                datetime.now(timezone.utc) - timedelta(days=days)
-            ).isoformat()
+            cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
 
             if repo:
                 cursor.execute(
@@ -834,7 +785,7 @@ class AuditMonitor:
                     WHERE repo = ? AND timestamp >= ?
                     ORDER BY timestamp ASC
                     """,
-                    (repo, cutoff_date)
+                    (repo, cutoff_date),
                 )
             else:
                 cursor.execute(
@@ -843,23 +794,16 @@ class AuditMonitor:
                     WHERE timestamp >= ?
                     ORDER BY timestamp ASC
                     """,
-                    (cutoff_date,)
+                    (cutoff_date,),
                 )
 
-            return [
-                {"timestamp": row[0], "agreement_rate": row[1]}
-                for row in cursor.fetchall()
-            ]
+            return [{"timestamp": row[0], "agreement_rate": row[1]} for row in cursor.fetchall()]
 
         except Exception as e:
             logger.error(f"Error retrieving agreement trend: {e}")
             return []
 
-    def get_active_alerts(
-        self,
-        severity: Optional[str] = None,
-        limit: int = 50
-    ) -> list[Alert]:
+    def get_active_alerts(self, severity: Optional[str] = None, limit: int = 50) -> list[Alert]:
         """
         Get unacknowledged alerts
 
@@ -882,7 +826,7 @@ class AuditMonitor:
                     WHERE acknowledged = 0 AND severity = ?
                     ORDER BY timestamp DESC LIMIT ?
                     """,
-                    (severity, limit)
+                    (severity, limit),
                 )
             else:
                 cursor.execute(
@@ -891,7 +835,7 @@ class AuditMonitor:
                     WHERE acknowledged = 0
                     ORDER BY timestamp DESC LIMIT ?
                     """,
-                    (limit,)
+                    (limit,),
                 )
 
             rows = cursor.fetchall()
@@ -908,7 +852,7 @@ class AuditMonitor:
                     metric_name=row["metric_name"],
                     metric_value=row["metric_value"],
                     threshold=row["threshold"],
-                    metadata=json.loads(row["metadata"])
+                    metadata=json.loads(row["metadata"]),
                 )
                 for row in rows
             ]
@@ -918,10 +862,7 @@ class AuditMonitor:
             return []
 
     def get_recent_drift_events(
-        self,
-        audit_run_id: Optional[str] = None,
-        days: int = 7,
-        limit: int = 50
+        self, audit_run_id: Optional[str] = None, days: int = 7, limit: int = 50
     ) -> list[DriftEvent]:
         """
         Get recent drift detection events
@@ -939,9 +880,7 @@ class AuditMonitor:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
 
-            cutoff_date = (
-                datetime.now(timezone.utc) - timedelta(days=days)
-            ).isoformat()
+            cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
 
             if audit_run_id:
                 cursor.execute(
@@ -950,7 +889,7 @@ class AuditMonitor:
                     WHERE audit_run_id = ? AND timestamp >= ?
                     ORDER BY timestamp DESC LIMIT ?
                     """,
-                    (audit_run_id, cutoff_date, limit)
+                    (audit_run_id, cutoff_date, limit),
                 )
             else:
                 cursor.execute(
@@ -959,7 +898,7 @@ class AuditMonitor:
                     WHERE timestamp >= ?
                     ORDER BY timestamp DESC LIMIT ?
                     """,
-                    (cutoff_date, limit)
+                    (cutoff_date, limit),
                 )
 
             rows = cursor.fetchall()
@@ -977,7 +916,7 @@ class AuditMonitor:
                     change_magnitude=row["change_magnitude"],
                     statistical_significance=row["statistical_significance"],
                     confidence=row["confidence"],
-                    description=row["description"]
+                    description=row["description"],
                 )
                 for row in rows
             ]
@@ -986,11 +925,7 @@ class AuditMonitor:
             logger.error(f"Error retrieving drift events: {e}")
             return []
 
-    def generate_dashboard_metrics(
-        self,
-        repo: Optional[str] = None,
-        days: int = 30
-    ) -> dict[str, Any]:
+    def generate_dashboard_metrics(self, repo: Optional[str] = None, days: int = 30) -> dict[str, Any]:
         """
         Generate metrics for visualization dashboard
 
@@ -1005,27 +940,18 @@ class AuditMonitor:
             history = self.get_audit_history(repo=repo, days=days)
 
             if not history:
-                return {
-                    "status": "no_data",
-                    "message": "No audit runs found"
-                }
+                return {"status": "no_data", "message": "No audit runs found"}
 
             # Current metrics
             current_run = history[0]
 
             # Calculate trend
             agreement_rates = [r.agreement_rate for r in history]
-            agreement_trend = (
-                agreement_rates[0] - agreement_rates[-1]
-                if len(agreement_rates) > 1
-                else 0
-            )
+            agreement_trend = agreement_rates[0] - agreement_rates[-1] if len(agreement_rates) > 1 else 0
 
             # Drift summary
             drift_events = self.get_recent_drift_events(days=days, limit=100)
-            high_confidence_drift = [
-                d for d in drift_events if d.confidence > 0.7
-            ]
+            high_confidence_drift = [d for d in drift_events if d.confidence > 0.7]
 
             # Alerts summary
             active_alerts = self.get_active_alerts()
@@ -1035,9 +961,11 @@ class AuditMonitor:
 
             # Aggregate statistics
             avg_agreement = statistics.mean(agreement_rates) if agreement_rates else 0.0
-            avg_score_diff = statistics.mean(
-                [r.average_score_difference for r in history if r.average_score_difference]
-            ) if history else 0.0
+            avg_score_diff = (
+                statistics.mean([r.average_score_difference for r in history if r.average_score_difference])
+                if history
+                else 0.0
+            )
 
             return {
                 "status": "ok",
@@ -1045,10 +973,8 @@ class AuditMonitor:
                     "current_agreement_rate": current_run.agreement_rate,
                     "average_agreement_rate": avg_agreement,
                     "agreement_trend": agreement_trend,
-                    "agreement_within_threshold": (
-                        current_run.agreement_rate >= self.agreement_threshold
-                    ),
-                    "average_score_difference": avg_score_diff
+                    "agreement_within_threshold": (current_run.agreement_rate >= self.agreement_threshold),
+                    "average_score_difference": avg_score_diff,
                 },
                 "current_run": {
                     "id": current_run.id,
@@ -1059,28 +985,26 @@ class AuditMonitor:
                     "agreed_findings": current_run.agreed_findings_count,
                     "argus_only": current_run.argus_only_count,
                     "codex_only": current_run.codex_only_count,
-                    "severity_distribution": current_run.severity_distribution
+                    "severity_distribution": current_run.severity_distribution,
                 },
                 "trends": {
                     "agreement_rates": agreement_rates[-7:],  # Last 7 runs
                     "audit_count": len(history),
-                    "time_span_days": days
+                    "time_span_days": days,
                 },
                 "drift": {
                     "total_events": len(drift_events),
                     "high_confidence_events": len(high_confidence_drift),
-                    "recent_events": [asdict(e) for e in drift_events[:5]]
+                    "recent_events": [asdict(e) for e in drift_events[:5]],
                 },
                 "alerts": {
                     "active_count": len(active_alerts),
                     "by_type": alerts_by_type,
-                    "recent_alerts": [asdict(a) for a in active_alerts[:5]]
+                    "recent_alerts": [asdict(a) for a in active_alerts[:5]],
                 },
                 "health_score": self._calculate_health_score(
-                    current_run.agreement_rate,
-                    len(high_confidence_drift),
-                    len(active_alerts)
-                )
+                    current_run.agreement_rate, len(high_confidence_drift), len(active_alerts)
+                ),
             }
 
         except Exception as e:
@@ -1093,10 +1017,7 @@ class AuditMonitor:
             conn = sqlite3.connect(str(self.db_path))
             cursor = conn.cursor()
 
-            cursor.execute(
-                "UPDATE alerts SET acknowledged = 1 WHERE id = ?",
-                (alert_id,)
-            )
+            cursor.execute("UPDATE alerts SET acknowledged = 1 WHERE id = ?", (alert_id,))
 
             conn.commit()
             conn.close()
@@ -1121,15 +1042,10 @@ class AuditMonitor:
             conn = sqlite3.connect(str(self.db_path))
             cursor = conn.cursor()
 
-            cutoff_date = (
-                datetime.now(timezone.utc) - timedelta(days=keep_days)
-            ).isoformat()
+            cutoff_date = (datetime.now(timezone.utc) - timedelta(days=keep_days)).isoformat()
 
             # Get audit runs to delete
-            cursor.execute(
-                "SELECT id FROM audit_runs WHERE timestamp < ?",
-                (cutoff_date,)
-            )
+            cursor.execute("SELECT id FROM audit_runs WHERE timestamp < ?", (cutoff_date,))
             audit_ids = [row[0] for row in cursor.fetchall()]
 
             if not audit_ids:
@@ -1162,7 +1078,7 @@ class AuditMonitor:
 
             cursor.execute(
                 "SELECT category, COUNT(*) FROM findings_comparison WHERE audit_run_id = ? GROUP BY category",
-                (audit_run_id,)
+                (audit_run_id,),
             )
             counts = dict(cursor.fetchall())
             conn.close()
@@ -1174,10 +1090,7 @@ class AuditMonitor:
             logger.error(f"Error calculating category distribution: {e}")
             return {}
 
-    def _get_category_distribution_aggregate(
-        self,
-        audit_run_ids: list[str]
-    ) -> dict[str, float]:
+    def _get_category_distribution_aggregate(self, audit_run_ids: list[str]) -> dict[str, float]:
         """Get aggregated category distribution"""
         try:
             all_dists = [self._get_category_distribution(aid) for aid in audit_run_ids]
@@ -1189,10 +1102,7 @@ class AuditMonitor:
             for dist in all_dists:
                 all_categories.update(dist.keys())
 
-            return {
-                cat: statistics.mean([d.get(cat, 0.0) for d in all_dists])
-                for cat in all_categories
-            }
+            return {cat: statistics.mean([d.get(cat, 0.0) for d in all_dists]) for cat in all_categories}
 
         except Exception as e:
             logger.error(f"Error calculating aggregated category distribution: {e}")
@@ -1209,7 +1119,7 @@ class AuditMonitor:
                 SELECT severity, AVG(agreed) FROM findings_comparison
                 WHERE audit_run_id = ? GROUP BY severity
                 """,
-                (audit_run_id,)
+                (audit_run_id,),
             )
 
             return dict(cursor.fetchall())
@@ -1218,16 +1128,10 @@ class AuditMonitor:
             logger.error(f"Error calculating severity agreement correlation: {e}")
             return {}
 
-    def _get_severity_agreement_correlation_aggregate(
-        self,
-        audit_run_ids: list[str]
-    ) -> dict[str, float]:
+    def _get_severity_agreement_correlation_aggregate(self, audit_run_ids: list[str]) -> dict[str, float]:
         """Get aggregated severity-agreement correlation"""
         try:
-            correlations = [
-                self._get_severity_agreement_correlation(aid)
-                for aid in audit_run_ids
-            ]
+            correlations = [self._get_severity_agreement_correlation(aid) for aid in audit_run_ids]
             if not correlations:
                 return {}
 
@@ -1235,10 +1139,7 @@ class AuditMonitor:
             for corr in correlations:
                 all_severities.update(corr.keys())
 
-            return {
-                sev: statistics.mean([c.get(sev, 0.5) for c in correlations])
-                for sev in all_severities
-            }
+            return {sev: statistics.mean([c.get(sev, 0.5) for c in correlations]) for sev in all_severities}
 
         except Exception as e:
             logger.error(f"Error calculating aggregated severity correlation: {e}")
@@ -1250,10 +1151,7 @@ class AuditMonitor:
             conn = sqlite3.connect(str(self.db_path))
             cursor = conn.cursor()
 
-            cursor.execute(
-                "SELECT score_difference FROM findings_comparison WHERE audit_run_id = ?",
-                (audit_run_id,)
-            )
+            cursor.execute("SELECT score_difference FROM findings_comparison WHERE audit_run_id = ?", (audit_run_id,))
 
             return [row[0] for row in cursor.fetchall()]
 
@@ -1264,11 +1162,7 @@ class AuditMonitor:
     def _get_score_differences_aggregate(self, audit_run_ids: list[str]) -> list[float]:
         """Get all score differences across multiple audit runs"""
         try:
-            return [
-                score
-                for audit_id in audit_run_ids
-                for score in self._get_score_differences(audit_id)
-            ]
+            return [score for audit_id in audit_run_ids for score in self._get_score_differences(audit_id)]
 
         except Exception as e:
             logger.error(f"Error getting aggregated score differences: {e}")
@@ -1281,10 +1175,7 @@ class AuditMonitor:
                 return 0.0
 
             # Simple metric: based on standard deviation
-            category_agreements = [
-                self._get_category_distribution(r.id).get(category, 0.0)
-                for r in history
-            ]
+            category_agreements = [self._get_category_distribution(r.id).get(category, 0.0) for r in history]
 
             if not category_agreements or len(category_agreements) < 2:
                 return 0.0
@@ -1324,12 +1215,7 @@ class AuditMonitor:
             logger.error(f"Error calculating K-S statistic: {e}")
             return 0.0
 
-    def _calculate_health_score(
-        self,
-        agreement_rate: float,
-        drift_event_count: int,
-        alert_count: int
-    ) -> float:
+    def _calculate_health_score(self, agreement_rate: float, drift_event_count: int, alert_count: int) -> float:
         """
         Calculate overall system health score (0-100)
 
@@ -1359,6 +1245,7 @@ class AuditMonitor:
     def _generate_id(prefix: str) -> str:
         """Generate unique ID with prefix"""
         import uuid
+
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
         unique_part = str(uuid.uuid4())[:8]
         return f"{prefix}-{timestamp}-{unique_part}"
@@ -1366,11 +1253,7 @@ class AuditMonitor:
 
 if __name__ == "__main__":
     # Example usage and testing
-    monitor = AuditMonitor(
-        db_path=".argus/audit_monitor.db",
-        agreement_threshold=0.75,
-        drift_sensitivity=0.15
-    )
+    monitor = AuditMonitor(db_path=".argus/audit_monitor.db", agreement_threshold=0.75, drift_sensitivity=0.15)
 
     # Example audit run
     example_run = AuditRun(
@@ -1385,13 +1268,8 @@ if __name__ == "__main__":
         codex_only_count=7,
         agreement_rate=0.84,
         average_score_difference=0.18,
-        severity_distribution={
-            "critical": 5,
-            "high": 12,
-            "medium": 18,
-            "low": 7
-        },
-        metadata={"branch": "main", "commit": "abc123"}
+        severity_distribution={"critical": 5, "high": 12, "medium": 18, "low": 7},
+        metadata={"branch": "main", "commit": "abc123"},
     )
 
     # Example findings comparisons
@@ -1408,7 +1286,7 @@ if __name__ == "__main__":
             codex_verdict="likely_valid",
             severity="high",
             category="SAST",
-            metadata={"rule": "sql-injection"}
+            metadata={"rule": "sql-injection"},
         ),
         FindingComparison(
             id=AuditMonitor._generate_id("finding"),
@@ -1422,8 +1300,8 @@ if __name__ == "__main__":
             codex_verdict="uncertain",
             severity="medium",
             category="SAST",
-            metadata={"rule": "hardcoded-password"}
-        )
+            metadata={"rule": "hardcoded-password"},
+        ),
     ]
 
     # Store example data

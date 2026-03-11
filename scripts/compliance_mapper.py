@@ -121,15 +121,27 @@ class ComplianceMapper:
         # CWE-287: Improper Authentication
         "CWE-287": [
             {"control_id": "IA-2", "control_title": "Identification and Authentication", "framework": "nist_800_53"},
-            {"control_id": "8.3", "control_title": "Strong Authentication for Users and Admins", "framework": "pci_dss_4"},
-            {"control_id": "A07:2021", "control_title": "Identification and Authentication Failures", "framework": "owasp_top10_2021"},
+            {
+                "control_id": "8.3",
+                "control_title": "Strong Authentication for Users and Admins",
+                "framework": "pci_dss_4",
+            },
+            {
+                "control_id": "A07:2021",
+                "control_title": "Identification and Authentication Failures",
+                "framework": "owasp_top10_2021",
+            },
             {"control_id": "CC6.1", "control_title": "Logical and Physical Access Controls", "framework": "soc2"},
         ],
         # CWE-798: Hard-coded Credentials
         "CWE-798": [
             {"control_id": "IA-5", "control_title": "Authenticator Management", "framework": "nist_800_53"},
             {"control_id": "8.6", "control_title": "Authentication Mechanism Management", "framework": "pci_dss_4"},
-            {"control_id": "A07:2021", "control_title": "Identification and Authentication Failures", "framework": "owasp_top10_2021"},
+            {
+                "control_id": "A07:2021",
+                "control_title": "Identification and Authentication Failures",
+                "framework": "owasp_top10_2021",
+            },
             {"control_id": "CC6.1", "control_title": "Logical and Physical Access Controls", "framework": "soc2"},
         ],
         # CWE-200: Information Exposure
@@ -147,7 +159,11 @@ class ComplianceMapper:
         # CWE-502: Deserialization of Untrusted Data
         "CWE-502": [
             {"control_id": "SI-10", "control_title": "Information Input Validation", "framework": "nist_800_53"},
-            {"control_id": "A08:2021", "control_title": "Software and Data Integrity Failures", "framework": "owasp_top10_2021"},
+            {
+                "control_id": "A08:2021",
+                "control_title": "Software and Data Integrity Failures",
+                "framework": "owasp_top10_2021",
+            },
         ],
         # CWE-918: Server-Side Request Forgery (SSRF)
         "CWE-918": [
@@ -162,14 +178,22 @@ class ComplianceMapper:
         # CWE-327: Broken Cryptography
         "CWE-327": [
             {"control_id": "SC-13", "control_title": "Cryptographic Protection", "framework": "nist_800_53"},
-            {"control_id": "4.2", "control_title": "Protect Cardholder Data with Strong Cryptography", "framework": "pci_dss_4"},
+            {
+                "control_id": "4.2",
+                "control_title": "Protect Cardholder Data with Strong Cryptography",
+                "framework": "pci_dss_4",
+            },
             {"control_id": "A02:2021", "control_title": "Cryptographic Failures", "framework": "owasp_top10_2021"},
         ],
         # CWE-306: Missing Authentication for Critical Function
         "CWE-306": [
             {"control_id": "AC-3", "control_title": "Access Enforcement", "framework": "nist_800_53"},
             {"control_id": "7.2", "control_title": "Access Controls for System Components", "framework": "pci_dss_4"},
-            {"control_id": "A07:2021", "control_title": "Identification and Authentication Failures", "framework": "owasp_top10_2021"},
+            {
+                "control_id": "A07:2021",
+                "control_title": "Identification and Authentication Failures",
+                "framework": "owasp_top10_2021",
+            },
         ],
         # CWE-862: Missing Authorization
         "CWE-862": [
@@ -185,16 +209,40 @@ class ComplianceMapper:
         # CWE-1035: Vulnerable Third-Party Dependency
         "CWE-1035": [
             {"control_id": "SI-2", "control_title": "Flaw Remediation", "framework": "nist_800_53"},
-            {"control_id": "6.3", "control_title": "Security Vulnerabilities Are Identified and Addressed", "framework": "pci_dss_4"},
-            {"control_id": "A06:2021", "control_title": "Vulnerable and Outdated Components", "framework": "owasp_top10_2021"},
-            {"control_id": "5.3.1", "control_title": "Minimize Container Image Vulnerabilities", "framework": "cis_kubernetes"},
-            {"control_id": "A.12.6.1", "control_title": "Management of Technical Vulnerabilities", "framework": "iso_27001"},
+            {
+                "control_id": "6.3",
+                "control_title": "Security Vulnerabilities Are Identified and Addressed",
+                "framework": "pci_dss_4",
+            },
+            {
+                "control_id": "A06:2021",
+                "control_title": "Vulnerable and Outdated Components",
+                "framework": "owasp_top10_2021",
+            },
+            {
+                "control_id": "5.3.1",
+                "control_title": "Minimize Container Image Vulnerabilities",
+                "framework": "cis_kubernetes",
+            },
+            {
+                "control_id": "A.12.6.1",
+                "control_title": "Management of Technical Vulnerabilities",
+                "framework": "iso_27001",
+            },
         ],
         # CWE-937: Known Vulnerable Component
         "CWE-937": [
             {"control_id": "SI-2", "control_title": "Flaw Remediation", "framework": "nist_800_53"},
-            {"control_id": "6.3", "control_title": "Security Vulnerabilities Are Identified and Addressed", "framework": "pci_dss_4"},
-            {"control_id": "A06:2021", "control_title": "Vulnerable and Outdated Components", "framework": "owasp_top10_2021"},
+            {
+                "control_id": "6.3",
+                "control_title": "Security Vulnerabilities Are Identified and Addressed",
+                "framework": "pci_dss_4",
+            },
+            {
+                "control_id": "A06:2021",
+                "control_title": "Vulnerable and Outdated Components",
+                "framework": "owasp_top10_2021",
+            },
         ],
     }
 
@@ -206,7 +254,11 @@ class ComplianceMapper:
         "secrets": [
             {"control_id": "IA-5", "control_title": "Authenticator Management", "framework": "nist_800_53"},
             {"control_id": "8.6", "control_title": "Authentication Mechanism Management", "framework": "pci_dss_4"},
-            {"control_id": "A07:2021", "control_title": "Identification and Authentication Failures", "framework": "owasp_top10_2021"},
+            {
+                "control_id": "A07:2021",
+                "control_title": "Identification and Authentication Failures",
+                "framework": "owasp_top10_2021",
+            },
             {"control_id": "CC6.1", "control_title": "Logical and Physical Access Controls", "framework": "soc2"},
             {"control_id": "A.9.4.3", "control_title": "Password Management System", "framework": "iso_27001"},
         ],
@@ -218,24 +270,60 @@ class ComplianceMapper:
         ],
         "dependency": [
             {"control_id": "SI-2", "control_title": "Flaw Remediation", "framework": "nist_800_53"},
-            {"control_id": "6.3", "control_title": "Security Vulnerabilities Are Identified and Addressed", "framework": "pci_dss_4"},
-            {"control_id": "A06:2021", "control_title": "Vulnerable and Outdated Components", "framework": "owasp_top10_2021"},
-            {"control_id": "5.3.1", "control_title": "Minimize Container Image Vulnerabilities", "framework": "cis_kubernetes"},
-            {"control_id": "A.12.6.1", "control_title": "Management of Technical Vulnerabilities", "framework": "iso_27001"},
+            {
+                "control_id": "6.3",
+                "control_title": "Security Vulnerabilities Are Identified and Addressed",
+                "framework": "pci_dss_4",
+            },
+            {
+                "control_id": "A06:2021",
+                "control_title": "Vulnerable and Outdated Components",
+                "framework": "owasp_top10_2021",
+            },
+            {
+                "control_id": "5.3.1",
+                "control_title": "Minimize Container Image Vulnerabilities",
+                "framework": "cis_kubernetes",
+            },
+            {
+                "control_id": "A.12.6.1",
+                "control_title": "Management of Technical Vulnerabilities",
+                "framework": "iso_27001",
+            },
         ],
         "iac": [
             {"control_id": "CM-6", "control_title": "Configuration Settings", "framework": "nist_800_53"},
-            {"control_id": "2.2", "control_title": "System Components Are Configured Securely", "framework": "pci_dss_4"},
+            {
+                "control_id": "2.2",
+                "control_title": "System Components Are Configured Securely",
+                "framework": "pci_dss_4",
+            },
             {"control_id": "A05:2021", "control_title": "Security Misconfiguration", "framework": "owasp_top10_2021"},
             {"control_id": "5.1.1", "control_title": "RBAC and Least Privilege", "framework": "cis_kubernetes"},
-            {"control_id": "A.14.2.5", "control_title": "Secure System Engineering Principles", "framework": "iso_27001"},
+            {
+                "control_id": "A.14.2.5",
+                "control_title": "Secure System Engineering Principles",
+                "framework": "iso_27001",
+            },
         ],
         "container": [
             {"control_id": "CM-7", "control_title": "Least Functionality", "framework": "nist_800_53"},
-            {"control_id": "6.3", "control_title": "Security Vulnerabilities Are Identified and Addressed", "framework": "pci_dss_4"},
+            {
+                "control_id": "6.3",
+                "control_title": "Security Vulnerabilities Are Identified and Addressed",
+                "framework": "pci_dss_4",
+            },
             {"control_id": "A05:2021", "control_title": "Security Misconfiguration", "framework": "owasp_top10_2021"},
-            {"control_id": "5.3.1", "control_title": "Minimize Container Image Vulnerabilities", "framework": "cis_kubernetes"},
-            {"control_id": "A.12.6.1", "control_title": "Management of Technical Vulnerabilities", "framework": "iso_27001"},
+            {
+                "control_id": "5.3.1",
+                "control_title": "Minimize Container Image Vulnerabilities",
+                "framework": "cis_kubernetes",
+            },
+            {
+                "control_id": "A.12.6.1",
+                "control_title": "Management of Technical Vulnerabilities",
+                "framework": "iso_27001",
+            },
         ],
     }
 
@@ -246,12 +334,20 @@ class ComplianceMapper:
     _SEVERITY_DEFAULTS: dict[str, list[dict[str, str]]] = {
         "critical": [
             {"control_id": "SI-2", "control_title": "Flaw Remediation", "framework": "nist_800_53"},
-            {"control_id": "6.3", "control_title": "Security Vulnerabilities Are Identified and Addressed", "framework": "pci_dss_4"},
+            {
+                "control_id": "6.3",
+                "control_title": "Security Vulnerabilities Are Identified and Addressed",
+                "framework": "pci_dss_4",
+            },
             {"control_id": "CC7.2", "control_title": "Monitoring and Detection", "framework": "soc2"},
         ],
         "high": [
             {"control_id": "SI-2", "control_title": "Flaw Remediation", "framework": "nist_800_53"},
-            {"control_id": "6.3", "control_title": "Security Vulnerabilities Are Identified and Addressed", "framework": "pci_dss_4"},
+            {
+                "control_id": "6.3",
+                "control_title": "Security Vulnerabilities Are Identified and Addressed",
+                "framework": "pci_dss_4",
+            },
         ],
     }
 
@@ -295,14 +391,10 @@ class ComplianceMapper:
         if frameworks is None:
             self.frameworks = list(self.SUPPORTED_FRAMEWORKS)
         else:
-            self.frameworks = [
-                f for f in frameworks if f in self.SUPPORTED_FRAMEWORKS
-            ]
+            self.frameworks = [f for f in frameworks if f in self.SUPPORTED_FRAMEWORKS]
             unsupported = set(frameworks) - set(self.SUPPORTED_FRAMEWORKS)
             if unsupported:
-                logger.warning(
-                    "Ignoring unsupported frameworks: %s", sorted(unsupported)
-                )
+                logger.warning("Ignoring unsupported frameworks: %s", sorted(unsupported))
 
         logger.info(
             "ComplianceMapper initialized with frameworks: %s",
@@ -410,13 +502,9 @@ class ComplianceMapper:
                 )
 
         if mappings:
-            logger.debug(
-                "Finding %s mapped to %d controls", finding_id, len(mappings)
-            )
+            logger.debug("Finding %s mapped to %d controls", finding_id, len(mappings))
         else:
-            logger.debug(
-                "Finding %s produced no compliance mappings", finding_id
-            )
+            logger.debug("Finding %s produced no compliance mappings", finding_id)
 
         return mappings
 
@@ -447,9 +535,7 @@ class ComplianceMapper:
     # Report generation
     # ------------------------------------------------------------------
 
-    def generate_report(
-        self, findings: list[dict], framework: str
-    ) -> ComplianceReport:
+    def generate_report(self, findings: list[dict], framework: str) -> ComplianceReport:
         """Generate a compliance report for a single framework.
 
         Args:
@@ -460,9 +546,7 @@ class ComplianceMapper:
             A :class:`ComplianceReport` with coverage statistics.
         """
         if framework not in self.frameworks:
-            logger.warning(
-                "Framework %s is not in configured frameworks", framework
-            )
+            logger.warning("Framework %s is not in configured frameworks", framework)
             return ComplianceReport(
                 framework=framework,
                 total_controls=0,
@@ -476,26 +560,18 @@ class ComplianceMapper:
         all_mappings = self.map_findings(findings)
         return self._build_report(framework, all_mappings)
 
-    def _build_report(
-        self, framework: str, all_mappings: list[ComplianceMapping]
-    ) -> ComplianceReport:
+    def _build_report(self, framework: str, all_mappings: list[ComplianceMapping]) -> ComplianceReport:
         """Build a report for *framework* from pre-computed mappings."""
         # Filter mappings for the requested framework.
-        framework_mappings = [
-            m for m in all_mappings if m.framework == framework
-        ]
+        framework_mappings = [m for m in all_mappings if m.framework == framework]
 
         # Unique failing control IDs in this framework.
-        failing_control_ids: set[str] = {
-            m.control_id for m in framework_mappings if m.status == "fail"
-        }
+        failing_control_ids: set[str] = {m.control_id for m in framework_mappings if m.status == "fail"}
 
         total_controls = self._FRAMEWORK_TOTAL_CONTROLS.get(framework, 10)
         failing_count = len(failing_control_ids)
         passing_count = max(0, total_controls - failing_count)
-        coverage = (
-            (passing_count / total_controls * 100.0) if total_controls > 0 else 0.0
-        )
+        coverage = (passing_count / total_controls * 100.0) if total_controls > 0 else 0.0
 
         return ComplianceReport(
             framework=framework,
@@ -507,9 +583,7 @@ class ComplianceMapper:
             generated_at=self._now_iso(),
         )
 
-    def generate_all_reports(
-        self, findings: list[dict]
-    ) -> list[ComplianceReport]:
+    def generate_all_reports(self, findings: list[dict]) -> list[ComplianceReport]:
         """Generate compliance reports for every configured framework.
 
         Computes mappings once and reuses across all frameworks.
@@ -521,10 +595,7 @@ class ComplianceMapper:
             A list of :class:`ComplianceReport` instances, one per framework.
         """
         all_mappings = self.map_findings(findings)
-        reports = [
-            self._build_report(framework, all_mappings)
-            for framework in self.frameworks
-        ]
+        reports = [self._build_report(framework, all_mappings) for framework in self.frameworks]
         logger.info("Generated %d compliance reports", len(reports))
         return reports
 
@@ -544,9 +615,7 @@ class ComplianceMapper:
         Returns:
             A Markdown string.
         """
-        display_name = self._FRAMEWORK_DISPLAY_NAMES.get(
-            report.framework, report.framework
-        )
+        display_name = self._FRAMEWORK_DISPLAY_NAMES.get(report.framework, report.framework)
 
         lines: list[str] = []
         lines.append(f"## {display_name} Compliance Report")
@@ -587,19 +656,14 @@ class ComplianceMapper:
                 lines.append("| Control ID | Control Title | CWE | Severity | Finding |")
                 lines.append("|------------|---------------|-----|----------|---------|")
                 for _cid, m in sorted(seen_controls.items()):
-                    lines.append(
-                        f"| {m.control_id} | {m.control_title} "
-                        f"| {m.cwe_id} | {m.severity} | {m.finding_id} |"
-                    )
+                    lines.append(f"| {m.control_id} | {m.control_title} | {m.cwe_id} | {m.severity} | {m.finding_id} |")
                 lines.append("")
 
         # -- Recommendations --
         lines.append("### Recommendations")
         lines.append("")
         if report.failing_controls == 0:
-            lines.append(
-                "No failing controls detected. Maintain current security posture."
-            )
+            lines.append("No failing controls detected. Maintain current security posture.")
         elif report.coverage_percentage >= 80:
             lines.append(
                 f"- Address the {report.failing_controls} failing "
@@ -613,21 +677,13 @@ class ComplianceMapper:
                 f"{report.failing_controls} of {report.total_controls} "
                 f"controls are failing."
             )
-            lines.append(
-                "- Immediate remediation is recommended for critical "
-                "and high severity findings."
-            )
-            lines.append(
-                "- Consider conducting a full compliance readiness "
-                "assessment."
-            )
+            lines.append("- Immediate remediation is recommended for critical and high severity findings.")
+            lines.append("- Consider conducting a full compliance readiness assessment.")
         lines.append("")
 
         return "\n".join(lines)
 
-    def render_all_markdown(
-        self, reports: list[ComplianceReport]
-    ) -> str:
+    def render_all_markdown(self, reports: list[ComplianceReport]) -> str:
         """Combine all framework reports into a single Markdown document.
 
         Args:
@@ -648,13 +704,8 @@ class ComplianceMapper:
         sections.append("| Framework | Coverage | Passing | Failing |")
         sections.append("|-----------|----------|---------|---------|")
         for r in reports:
-            display = self._FRAMEWORK_DISPLAY_NAMES.get(
-                r.framework, r.framework
-            )
-            sections.append(
-                f"| {display} | {r.coverage_percentage}% "
-                f"| {r.passing_controls} | {r.failing_controls} |"
-            )
+            display = self._FRAMEWORK_DISPLAY_NAMES.get(r.framework, r.framework)
+            sections.append(f"| {display} | {r.coverage_percentage}% | {r.passing_controls} | {r.failing_controls} |")
         sections.append("")
         sections.append("---")
         sections.append("")
@@ -671,9 +722,7 @@ class ComplianceMapper:
     # Summary / dashboard data
     # ------------------------------------------------------------------
 
-    def get_summary(
-        self, reports: list[ComplianceReport]
-    ) -> dict:
+    def get_summary(self, reports: list[ComplianceReport]) -> dict:
         """Return a concise summary dict suitable for dashboards.
 
         Args:

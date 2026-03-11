@@ -136,9 +136,7 @@ class FindingMatcher:
         self.match_threshold = match_threshold
 
     def match_findings(
-        self,
-        argus_findings: list[dict[str, Any]],
-        codex_findings: list[dict[str, Any]]
+        self, argus_findings: list[dict[str, Any]], codex_findings: list[dict[str, Any]]
     ) -> tuple[list[tuple[dict, dict]], list[dict], list[dict]]:
         """Match findings between two sets based on similarity
 
@@ -170,10 +168,7 @@ class FindingMatcher:
             else:
                 unmatched_argus.append(agent_finding)
 
-        unmatched_codex = [
-            f for idx, f in enumerate(codex_findings)
-            if idx not in matched_codex_indices
-        ]
+        unmatched_codex = [f for idx, f in enumerate(codex_findings) if idx not in matched_codex_indices]
 
         return matched_pairs, unmatched_argus, unmatched_codex
 
@@ -254,6 +249,7 @@ class PairwiseJudge:
         elif self.judge_model == "openai":
             try:
                 import openai
+
                 self.judge_llm = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
                 logger.info("✅ Judge initialized with OpenAI GPT")
             except Exception as e:
@@ -269,9 +265,7 @@ class PairwiseJudge:
         before_sleep=before_sleep_log(logger, logging.WARNING),
     )
     def compare_matched_findings(
-        self,
-        argus_finding: dict[str, Any],
-        codex_finding: dict[str, Any]
+        self, argus_finding: dict[str, Any], codex_finding: dict[str, Any]
     ) -> PairwiseComparison:
         """Compare two matched findings and return detailed comparison
 
@@ -287,19 +281,14 @@ class PairwiseJudge:
         response = self._get_judge_response(comparison_prompt)
 
         # Parse judge response and extract scores
-        comparison = self._parse_judge_response(
-            response,
-            argus_finding,
-            codex_finding,
-            "matched"
-        )
+        comparison = self._parse_judge_response(response, argus_finding, codex_finding, "matched")
 
         return comparison
 
     def compare_unmatched_finding(
         self,
         finding: dict[str, Any],
-        tool_name: str  # "argus" or "codex"
+        tool_name: str,  # "argus" or "codex"
     ) -> PairwiseComparison:
         """Evaluate an unmatched finding (found by only one tool)
 
@@ -315,40 +304,32 @@ class PairwiseJudge:
         response = self._get_judge_response(evaluation_prompt)
 
         # Parse response and extract evaluation
-        comparison = self._parse_evaluation_response(
-            response,
-            finding,
-            tool_name
-        )
+        comparison = self._parse_evaluation_response(response, finding, tool_name)
 
         return comparison
 
-    def _build_comparison_prompt(
-        self,
-        argus_finding: dict[str, Any],
-        codex_finding: dict[str, Any]
-    ) -> str:
+    def _build_comparison_prompt(self, argus_finding: dict[str, Any], codex_finding: dict[str, Any]) -> str:
         """Build prompt for comparing two matched findings"""
         prompt = f"""You are a security expert evaluating two security analysis reports.
 Both tools found a similar security issue. Your job is to compare their analyses and determine which one is better.
 
 ARGUS FINDING (Anthropic Claude):
-File: {argus_finding.get('path', 'unknown')}
-Severity: {argus_finding.get('severity', 'unknown')}
-Rule: {argus_finding.get('rule_id', argus_finding.get('rule_name', 'unknown'))}
-Message: {argus_finding.get('message', 'unknown')}
-Evidence: {json.dumps(argus_finding.get('evidence', {}), indent=2)}
-References: {json.dumps(argus_finding.get('references', []))}
-Confidence: {argus_finding.get('confidence', 'unknown')}
+File: {argus_finding.get("path", "unknown")}
+Severity: {argus_finding.get("severity", "unknown")}
+Rule: {argus_finding.get("rule_id", argus_finding.get("rule_name", "unknown"))}
+Message: {argus_finding.get("message", "unknown")}
+Evidence: {json.dumps(argus_finding.get("evidence", {}), indent=2)}
+References: {json.dumps(argus_finding.get("references", []))}
+Confidence: {argus_finding.get("confidence", "unknown")}
 
 CODEX FINDING (Independent Analysis):
-File: {codex_finding.get('path', 'unknown')}
-Severity: {codex_finding.get('severity', 'unknown')}
-Rule: {codex_finding.get('rule_id', codex_finding.get('rule_name', 'unknown'))}
-Message: {codex_finding.get('message', 'unknown')}
-Evidence: {json.dumps(codex_finding.get('evidence', {}), indent=2)}
-References: {json.dumps(codex_finding.get('references', []))}
-Confidence: {codex_finding.get('confidence', 'unknown')}
+File: {codex_finding.get("path", "unknown")}
+Severity: {codex_finding.get("severity", "unknown")}
+Rule: {codex_finding.get("rule_id", codex_finding.get("rule_name", "unknown"))}
+Message: {codex_finding.get("message", "unknown")}
+Evidence: {json.dumps(codex_finding.get("evidence", {}), indent=2)}
+References: {json.dumps(codex_finding.get("references", []))}
+Confidence: {codex_finding.get("confidence", "unknown")}
 
 EVALUATION CRITERIA:
 1. Coverage (1-5): How comprehensive is the analysis? Does it explain context, impact, and scope?
@@ -396,13 +377,13 @@ RESPOND WITH JSON ONLY, no other text:
         prompt = f"""You are a security expert evaluating a security finding found by {tool_label}.
 
 FINDING TO EVALUATE:
-File: {finding.get('path', 'unknown')}
-Severity: {finding.get('severity', 'unknown')}
-Rule: {finding.get('rule_id', finding.get('rule_name', 'unknown'))}
-Message: {finding.get('message', 'unknown')}
-Evidence: {json.dumps(finding.get('evidence', {}), indent=2)}
-References: {json.dumps(finding.get('references', []))}
-Confidence: {finding.get('confidence', 'unknown')}
+File: {finding.get("path", "unknown")}
+Severity: {finding.get("severity", "unknown")}
+Rule: {finding.get("rule_id", finding.get("rule_name", "unknown"))}
+Message: {finding.get("message", "unknown")}
+Evidence: {json.dumps(finding.get("evidence", {}), indent=2)}
+References: {json.dumps(finding.get("references", []))}
+Confidence: {finding.get("confidence", "unknown")}
 
 EVALUATION CRITERIA (1-5 scale):
 1. Validity: Is this a real security issue or a false positive?
@@ -436,8 +417,7 @@ RESPOND WITH JSON ONLY:
         """Get response from judge LLM"""
         if self.judge_model == "anthropic":
             return self.judge_llm.generate(
-                prompt,
-                system_prompt="You are an expert security analyst. Always respond with valid JSON."
+                prompt, system_prompt="You are an expert security analyst. Always respond with valid JSON."
             )
         elif self.judge_model == "openai":
             response = self.judge_llm.chat.completions.create(
@@ -449,16 +429,13 @@ RESPOND WITH JSON ONLY:
             return response.choices[0].message.content
 
     def _parse_judge_response(
-        self,
-        response: str,
-        argus_finding: dict[str, Any],
-        codex_finding: dict[str, Any],
-        match_type: str
+        self, response: str, argus_finding: dict[str, Any], codex_finding: dict[str, Any], match_type: str
     ) -> PairwiseComparison:
         """Parse judge response into PairwiseComparison"""
         try:
             # Extract JSON from response
             import re
+
             json_match = re.search(r"\{.*\}", response, re.DOTALL)
             data = json.loads(json_match.group()) if json_match else json.loads(response)
 
@@ -484,7 +461,7 @@ RESPOND WITH JSON ONLY:
                 coverage_score=(argus_scores.get("coverage", 0) + codex_scores.get("coverage", 0)) / 2,
                 accuracy_score=(argus_scores.get("accuracy", 0) + codex_scores.get("accuracy", 0)) / 2,
                 actionability_score=(argus_scores.get("actionability", 0) + codex_scores.get("actionability", 0)) / 2,
-                confidence=float(data.get("confidence", 0.9))
+                confidence=float(data.get("confidence", 0.9)),
             )
 
             return comparison
@@ -501,18 +478,14 @@ RESPOND WITH JSON ONLY:
                 codex_score=3,
                 winner="tie",
                 judge_reasoning=f"Unable to parse judge response: {response[:200]}",
-                confidence=0.3
+                confidence=0.3,
             )
 
-    def _parse_evaluation_response(
-        self,
-        response: str,
-        finding: dict[str, Any],
-        tool_name: str
-    ) -> PairwiseComparison:
+    def _parse_evaluation_response(self, response: str, finding: dict[str, Any], tool_name: str) -> PairwiseComparison:
         """Parse evaluation response for unmatched finding"""
         try:
             import re
+
             json_match = re.search(r"\{.*\}", response, re.DOTALL)
             data = json.loads(json_match.group()) if json_match else json.loads(response)
 
@@ -521,12 +494,18 @@ RESPOND WITH JSON ONLY:
                     finding_id=finding.get("id", f"argus_{datetime.now().timestamp()}"),
                     argus_finding=finding,
                     match_type="argus_only",
-                    argus_score=int(sum(data.get("validity_score", 0) + data.get("coverage_score", 0) +
-                                           data.get("actionability_score", 0)) / 3),
+                    argus_score=int(
+                        sum(
+                            data.get("validity_score", 0)
+                            + data.get("coverage_score", 0)
+                            + data.get("actionability_score", 0)
+                        )
+                        / 3
+                    ),
                     codex_score=0,
                     winner="argus" if data.get("likely_real") else "codex",
                     judge_reasoning=data.get("reasoning", ""),
-                    confidence=float(data.get("confidence", 0.9))
+                    confidence=float(data.get("confidence", 0.9)),
                 )
             else:
                 comparison = PairwiseComparison(
@@ -534,11 +513,17 @@ RESPOND WITH JSON ONLY:
                     codex_finding=finding,
                     match_type="codex_only",
                     argus_score=0,
-                    codex_score=int(sum(data.get("validity_score", 0) + data.get("coverage_score", 0) +
-                                        data.get("actionability_score", 0)) / 3),
+                    codex_score=int(
+                        sum(
+                            data.get("validity_score", 0)
+                            + data.get("coverage_score", 0)
+                            + data.get("actionability_score", 0)
+                        )
+                        / 3
+                    ),
                     winner="codex" if data.get("likely_real") else "argus",
                     judge_reasoning=data.get("reasoning", ""),
-                    confidence=float(data.get("confidence", 0.9))
+                    confidence=float(data.get("confidence", 0.9)),
                 )
 
             return comparison
@@ -553,7 +538,7 @@ RESPOND WITH JSON ONLY:
                 argus_score=3 if tool_name == "argus" else 0,
                 codex_score=3 if tool_name == "codex" else 0,
                 winner="tie",
-                confidence=0.3
+                confidence=0.3,
             )
 
 
@@ -565,7 +550,7 @@ class PairwiseComparator:
         argus_findings: list[dict[str, Any]],
         codex_findings: list[dict[str, Any]],
         judge_model: str = "anthropic",
-        match_threshold: float = 0.7
+        match_threshold: float = 0.7,
     ):
         """Initialize comparator
 
@@ -590,18 +575,15 @@ class PairwiseComparator:
         Returns:
             PairwiseAggregation with results
         """
-        logger.info(f"\n{'='*80}")
+        logger.info(f"\n{'=' * 80}")
         logger.info("Pairwise Comparison Analysis")
         logger.info(f"Argus Findings: {len(self.argus_findings)}")
         logger.info(f"Codex Findings: {len(self.codex_findings)}")
-        logger.info(f"{'='*80}\n")
+        logger.info(f"{'=' * 80}\n")
 
         # Step 1: Match findings
         logger.info("Step 1: Matching findings between Argus and Codex...")
-        matched_pairs, argus_only, codex_only = self.matcher.match_findings(
-            self.argus_findings,
-            self.codex_findings
-        )
+        matched_pairs, argus_only, codex_only = self.matcher.match_findings(self.argus_findings, self.codex_findings)
         logger.info(f"  Matched pairs: {len(matched_pairs)}")
         logger.info(f"  Argus only: {len(argus_only)}")
         logger.info(f"  Codex only: {len(codex_only)}\n")
@@ -630,7 +612,7 @@ class PairwiseComparator:
                         match_type="matched",
                         winner="tie",
                         judge_reasoning=f"Comparison failed: {str(e)}",
-                        confidence=0.0
+                        confidence=0.0,
                     )
                 )
 
@@ -752,18 +734,16 @@ class ComparisonReportGenerator:
 
     @staticmethod
     def generate_json_report(
-        comparisons: list[PairwiseComparison],
-        aggregation: PairwiseAggregation,
-        output_file: str
+        comparisons: list[PairwiseComparison], aggregation: PairwiseAggregation, output_file: str
     ) -> str:
         """Generate JSON report"""
         report = {
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "aggregation": asdict(aggregation),
-            "comparisons": [c.to_dict() for c in comparisons]
+            "comparisons": [c.to_dict() for c in comparisons],
         }
 
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             json.dump(report, f, indent=2, default=str)
 
         logger.info(f"✅ JSON report written to {output_file}")
@@ -771,9 +751,7 @@ class ComparisonReportGenerator:
 
     @staticmethod
     def generate_markdown_report(
-        comparisons: list[PairwiseComparison],
-        aggregation: PairwiseAggregation,
-        output_file: str
+        comparisons: list[PairwiseComparison], aggregation: PairwiseAggregation, output_file: str
     ) -> str:
         """Generate Markdown report"""
         report = f"""# Pairwise Comparison Analysis Report
@@ -788,7 +766,7 @@ Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 ### Key Metrics
 | Metric | Argus | Codex |
 |--------|----------|-------|
-| **Wins** | {aggregation.argus_wins} ({aggregation.argus_win_rate*100:.1f}%) | {aggregation.codex_wins} ({aggregation.codex_win_rate*100:.1f}%) |
+| **Wins** | {aggregation.argus_wins} ({aggregation.argus_win_rate * 100:.1f}%) | {aggregation.codex_wins} ({aggregation.codex_win_rate * 100:.1f}%) |
 | **Average Score** | {aggregation.avg_argus_score:.1f}/5 | {aggregation.avg_codex_score:.1f}/5 |
 | **Coverage** | {aggregation.avg_argus_coverage:.1f}/5 | {aggregation.avg_codex_coverage:.1f}/5 |
 | **Accuracy** | {aggregation.avg_argus_accuracy:.1f}/5 | {aggregation.avg_codex_accuracy:.1f}/5 |
@@ -833,7 +811,7 @@ Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
         report += "\n---\n\n## Analysis Summary\n\n"
         report += ComparisonReportGenerator._generate_analysis_summary(aggregation, comparisons)
 
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             f.write(report)
 
         logger.info(f"✅ Markdown report written to {output_file}")
@@ -868,7 +846,7 @@ Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
                 text += f"- File: {comp.codex_finding.get('path', 'unknown')}\n"
 
         text += f"\n**Winner**: {comp.winner.upper()}\n"
-        text += f"**Confidence**: {comp.confidence*100:.0f}%\n\n"
+        text += f"**Confidence**: {comp.confidence * 100:.0f}%\n\n"
 
         if comp.judge_reasoning:
             text += f"**Judge Reasoning**:\n{comp.judge_reasoning}\n\n"
@@ -897,7 +875,7 @@ Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
         if aggregation.overall_winner == "argus":
             summary += "### Argus Advantage\n\n"
             summary += f"Argus won {aggregation.argus_wins} out of {aggregation.total_comparisons} comparisons "
-            summary += f"({aggregation.argus_win_rate*100:.1f}%), with an average score of {aggregation.avg_argus_score:.1f}/5.\n\n"
+            summary += f"({aggregation.argus_win_rate * 100:.1f}%), with an average score of {aggregation.avg_argus_score:.1f}/5.\n\n"
             summary += "**Strengths**:\n"
             summary += f"- Higher coverage score ({aggregation.avg_argus_coverage:.1f}/5)\n"
             summary += f"- Better accuracy assessment ({aggregation.avg_argus_accuracy:.1f}/5)\n"
@@ -905,7 +883,7 @@ Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
         elif aggregation.overall_winner == "codex":
             summary += "### Codex Advantage\n\n"
             summary += f"Codex won {aggregation.codex_wins} out of {aggregation.total_comparisons} comparisons "
-            summary += f"({aggregation.codex_win_rate*100:.1f}%), with an average score of {aggregation.avg_codex_score:.1f}/5.\n\n"
+            summary += f"({aggregation.codex_win_rate * 100:.1f}%), with an average score of {aggregation.avg_codex_score:.1f}/5.\n\n"
             summary += "**Strengths**:\n"
             summary += f"- Higher coverage score ({aggregation.avg_codex_coverage:.1f}/5)\n"
             summary += f"- Better accuracy assessment ({aggregation.avg_codex_accuracy:.1f}/5)\n"
@@ -917,7 +895,7 @@ Generated: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
         # Coverage analysis
         summary += "### Coverage Analysis\n\n"
-        summary += f"- Matched findings: {aggregation.matched_findings} ({aggregation.matched_findings/max(aggregation.total_comparisons, 1)*100:.1f}%)\n"
+        summary += f"- Matched findings: {aggregation.matched_findings} ({aggregation.matched_findings / max(aggregation.total_comparisons, 1) * 100:.1f}%)\n"
         summary += f"- Argus unique: {aggregation.argus_only} findings\n"
         summary += f"- Codex unique: {aggregation.codex_only} findings\n\n"
 
@@ -953,45 +931,28 @@ def load_findings(file_path: str) -> list[dict[str, Any]]:
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Run pairwise comparison of Argus vs Codex findings"
-    )
-    parser.add_argument(
-        "--argus-findings",
-        required=True,
-        help="Path to Argus findings JSON file"
-    )
-    parser.add_argument(
-        "--codex-findings",
-        required=True,
-        help="Path to Codex findings JSON file"
-    )
+    parser = argparse.ArgumentParser(description="Run pairwise comparison of Argus vs Codex findings")
+    parser.add_argument("--argus-findings", required=True, help="Path to Argus findings JSON file")
+    parser.add_argument("--codex-findings", required=True, help="Path to Codex findings JSON file")
     parser.add_argument(
         "--output",
         default="pairwise_comparison_report.json",
-        help="Output file path for comparison report (default: pairwise_comparison_report.json)"
+        help="Output file path for comparison report (default: pairwise_comparison_report.json)",
     )
-    parser.add_argument(
-        "--output-markdown",
-        help="Optional output path for markdown report"
-    )
+    parser.add_argument("--output-markdown", help="Optional output path for markdown report")
     parser.add_argument(
         "--judge-model",
         choices=["anthropic", "openai"],
         default="anthropic",
-        help="Which AI model to use as judge (default: anthropic)"
+        help="Which AI model to use as judge (default: anthropic)",
     )
     parser.add_argument(
         "--match-threshold",
         type=float,
         default=0.7,
-        help="Similarity threshold for matching findings (0-1, default: 0.7)"
+        help="Similarity threshold for matching findings (0-1, default: 0.7)",
     )
-    parser.add_argument(
-        "--max-comparisons",
-        type=int,
-        help="Max number of comparisons to run (for cost limiting)"
-    )
+    parser.add_argument("--max-comparisons", type=int, help="Max number of comparisons to run (for cost limiting)")
 
     args = parser.parse_args()
 
@@ -1009,33 +970,25 @@ def main():
         argus_findings=argus_findings,
         codex_findings=codex_findings,
         judge_model=args.judge_model,
-        match_threshold=args.match_threshold
+        match_threshold=args.match_threshold,
     )
 
     aggregation = comparator.run_comparison(max_comparisons=args.max_comparisons)
 
     # Generate reports
     logger.info("\nGenerating reports...")
-    ComparisonReportGenerator.generate_json_report(
-        comparator.comparisons,
-        aggregation,
-        args.output
-    )
+    ComparisonReportGenerator.generate_json_report(comparator.comparisons, aggregation, args.output)
 
     if args.output_markdown:
-        ComparisonReportGenerator.generate_markdown_report(
-            comparator.comparisons,
-            aggregation,
-            args.output_markdown
-        )
+        ComparisonReportGenerator.generate_markdown_report(comparator.comparisons, aggregation, args.output_markdown)
 
     # Print summary
-    logger.info(f"\n{'='*80}")
+    logger.info(f"\n{'=' * 80}")
     logger.info("PAIRWISE COMPARISON COMPLETE")
-    logger.info(f"{'='*80}")
+    logger.info(f"{'=' * 80}")
     logger.info(f"\nWinner: {aggregation.overall_winner.upper()}")
-    logger.info(f"Argus: {aggregation.avg_argus_score:.1f}/5 ({aggregation.argus_win_rate*100:.0f}% win rate)")
-    logger.info(f"Codex: {aggregation.avg_codex_score:.1f}/5 ({aggregation.codex_win_rate*100:.0f}% win rate)")
+    logger.info(f"Argus: {aggregation.avg_argus_score:.1f}/5 ({aggregation.argus_win_rate * 100:.0f}% win rate)")
+    logger.info(f"Codex: {aggregation.avg_codex_score:.1f}/5 ({aggregation.codex_win_rate * 100:.0f}% win rate)")
     logger.info(f"\nMatched Findings: {aggregation.matched_findings}")
     logger.info(f"Argus Only: {aggregation.argus_only}")
     logger.info(f"Codex Only: {aggregation.codex_only}")

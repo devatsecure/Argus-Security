@@ -25,9 +25,9 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import threading
 import urllib.parse
-import re
 import urllib.request
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -62,18 +62,12 @@ class EPSSScore:
     def __post_init__(self) -> None:
         """Validate score ranges after initialization."""
         if not 0.0 <= self.epss_score <= 1.0:
-            raise ValueError(
-                f"epss_score must be between 0.0 and 1.0, got {self.epss_score}"
-            )
+            raise ValueError(f"epss_score must be between 0.0 and 1.0, got {self.epss_score}")
         if not 0.0 <= self.percentile <= 1.0:
-            raise ValueError(
-                f"percentile must be between 0.0 and 1.0, got {self.percentile}"
-            )
+            raise ValueError(f"percentile must be between 0.0 and 1.0, got {self.percentile}")
         valid_categories = {"critical", "high", "medium", "low"}
         if self.risk_category not in valid_categories:
-            raise ValueError(
-                f"risk_category must be one of {valid_categories}, got '{self.risk_category}'"
-            )
+            raise ValueError(f"risk_category must be one of {valid_categories}, got '{self.risk_category}'")
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
@@ -87,9 +81,7 @@ class EPSSScore:
             epss_score=float(data["epss_score"]),
             percentile=float(data["percentile"]),
             risk_category=data["risk_category"],
-            fetched_at=data.get(
-                "fetched_at", datetime.now(timezone.utc).isoformat()
-            ),
+            fetched_at=data.get("fetched_at", datetime.now(timezone.utc).isoformat()),
         )
 
 
@@ -104,9 +96,7 @@ class EPSSCache:
         ttl_hours: Time-to-live for cache entries in hours.
     """
 
-    def __init__(
-        self, cache_dir: str = ".argus-cache", ttl_hours: int = 24
-    ) -> None:
+    def __init__(self, cache_dir: str = ".argus-cache", ttl_hours: int = 24) -> None:
         """Initialize the EPSS cache.
 
         Args:
@@ -338,9 +328,7 @@ class EPSSScorer:
 
             with urllib.request.urlopen(request, timeout=self.timeout) as response:
                 if response.status != 200:
-                    logger.warning(
-                        "EPSS API returned status %d", response.status
-                    )
+                    logger.warning("EPSS API returned status %d", response.status)
                     return results
 
                 body = response.read().decode("utf-8")
@@ -415,9 +403,7 @@ class EPSSScorer:
                 uncached.append(cve_id)
 
         if not uncached:
-            logger.info(
-                "All %d CVEs found in EPSS cache", len(results)
-            )
+            logger.info("All %d CVEs found in EPSS cache", len(results))
             return results
 
         logger.info(
@@ -466,11 +452,7 @@ class EPSSScorer:
             return findings
 
         # Collect CVE IDs from findings
-        cve_ids = [
-            f["cve_id"]
-            for f in findings
-            if f.get("cve_id")
-        ]
+        cve_ids = [f["cve_id"] for f in findings if f.get("cve_id")]
 
         if not cve_ids:
             logger.debug("No CVE IDs found in findings, skipping EPSS enrichment")
@@ -532,18 +514,14 @@ class EPSSScorer:
             "low": 0,
         }
         for score in scores.values():
-            by_category[score.risk_category] = (
-                by_category.get(score.risk_category, 0) + 1
-            )
+            by_category[score.risk_category] = by_category.get(score.risk_category, 0) + 1
 
         # Average score
         all_scores = [s.epss_score for s in scores.values()]
         average_score = sum(all_scores) / len(all_scores)
 
         # Top 5 highest risk
-        sorted_scores = sorted(
-            scores.values(), key=lambda s: s.epss_score, reverse=True
-        )
+        sorted_scores = sorted(scores.values(), key=lambda s: s.epss_score, reverse=True)
         highest_risk = [
             {
                 "cve_id": s.cve_id,

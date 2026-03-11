@@ -41,9 +41,7 @@ logger = logging.getLogger(__name__)
 # Allowed finding statuses
 # ---------------------------------------------------------------------------
 
-VALID_STATUSES = frozenset(
-    {"open", "fixed", "false_positive", "accepted_risk", "wont_fix"}
-)
+VALID_STATUSES = frozenset({"open", "fixed", "false_positive", "accepted_risk", "wont_fix"})
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -380,9 +378,7 @@ class FindingsStore:
                     list(current_fingerprints),
                 )
             else:
-                cur.execute(
-                    "SELECT COUNT(*) AS cnt FROM findings WHERE status = 'open'"
-                )
+                cur.execute("SELECT COUNT(*) AS cnt FROM findings WHERE status = 'open'")
             fixed_since_last = cur.fetchone()["cnt"]
 
             # Record scan history
@@ -471,9 +467,7 @@ class FindingsStore:
                     "UPDATE findings SET status = 'fixed', fix_verified = 1 WHERE id = ?",
                     (finding_id,),
                 )
-                logger.info(
-                    "Finding %s marked as fixed (verified by retest)", finding_id
-                )
+                logger.info("Finding %s marked as fixed (verified by retest)", finding_id)
             else:
                 logger.info(
                     "Fix recorded for finding %s (pending retest verification)",
@@ -493,9 +487,7 @@ class FindingsStore:
             ValueError: If *status* is not a recognized value.
         """
         if status not in VALID_STATUSES:
-            raise ValueError(
-                f"Invalid status '{status}'. Must be one of: {sorted(VALID_STATUSES)}"
-            )
+            raise ValueError(f"Invalid status '{status}'. Must be one of: {sorted(VALID_STATUSES)}")
         with self._lock:
             cur = self._conn.cursor()
             cur.execute(
@@ -550,9 +542,7 @@ class FindingsStore:
             ``True`` if a previously fixed finding matches this fingerprint.
         """
         cur = self._conn.cursor()
-        cur.execute(
-            "SELECT status FROM findings WHERE fingerprint = ?", (fingerprint,)
-        )
+        cur.execute("SELECT status FROM findings WHERE fingerprint = ?", (fingerprint,))
         row = cur.fetchone()
         if row is None:
             return False
@@ -652,16 +642,11 @@ class FindingsStore:
         """
         if vuln_type:
             total_query = "SELECT COUNT(*) AS cnt FROM findings WHERE vuln_type = ?"
-            fp_query = (
-                "SELECT COUNT(*) AS cnt FROM findings "
-                "WHERE vuln_type = ? AND status = 'false_positive'"
-            )
+            fp_query = "SELECT COUNT(*) AS cnt FROM findings WHERE vuln_type = ? AND status = 'false_positive'"
             params: list[Any] = [vuln_type]
         else:
             total_query = "SELECT COUNT(*) AS cnt FROM findings"
-            fp_query = (
-                "SELECT COUNT(*) AS cnt FROM findings WHERE status = 'false_positive'"
-            )
+            fp_query = "SELECT COUNT(*) AS cnt FROM findings WHERE status = 'false_positive'"
             params = []
 
         cur = self._conn.cursor()

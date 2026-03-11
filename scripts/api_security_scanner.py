@@ -148,24 +148,24 @@ class APISecurityScanner:
         ],
         # GraphQL
         "graphql": [
-            r'type\s+Query\s*{',
-            r'type\s+Mutation\s*{',
-            r'schema\s*{',
+            r"type\s+Query\s*{",
+            r"type\s+Mutation\s*{",
+            r"schema\s*{",
         ],
     }
 
     # Auth detection patterns
     AUTH_PATTERNS = [
-        r'@login_required',
-        r'@require_auth',
-        r'@authenticated',
-        r'@permission_required',
-        r'@PreAuthorize',
-        r'@Secured',
-        r'middleware.*auth',
-        r'authenticate\(',
-        r'requireAuth\(',
-        r'verifyToken\(',
+        r"@login_required",
+        r"@require_auth",
+        r"@authenticated",
+        r"@permission_required",
+        r"@PreAuthorize",
+        r"@Secured",
+        r"middleware.*auth",
+        r"authenticate\(",
+        r"requireAuth\(",
+        r"verifyToken\(",
     ]
 
     def __init__(self, config: Optional[dict] = None):
@@ -346,9 +346,7 @@ class APISecurityScanner:
             for pattern in patterns:
                 for match in re.finditer(pattern, content, re.MULTILINE):
                     line_number = content[: match.start()].count("\n") + 1
-                    endpoint = self._parse_endpoint_match(
-                        match, file_path, line_number, framework, lines
-                    )
+                    endpoint = self._parse_endpoint_match(match, file_path, line_number, framework, lines)
                     if endpoint:
                         endpoints.append(endpoint)
 
@@ -402,7 +400,7 @@ class APISecurityScanner:
             if framework in ["flask", "django"]:
                 path = groups[0]
                 methods_str = groups[1] if len(groups) > 1 and groups[1] else "GET"
-                methods = [m.strip().strip('"\'') for m in methods_str.split(",")]
+                methods = [m.strip().strip("\"'") for m in methods_str.split(",")]
                 method = methods[0] if methods else "GET"
             elif framework in ["fastapi", "express", "gin", "echo"]:
                 method = groups[0].upper() if groups[0] else "GET"
@@ -466,15 +464,15 @@ class APISecurityScanner:
         for i in range(line_number, min(len(lines), line_number + 5)):
             if i < len(lines):
                 # Python: def function_name
-                match = re.search(r'def\s+(\w+)\s*\(', lines[i])
+                match = re.search(r"def\s+(\w+)\s*\(", lines[i])
                 if match:
                     return match.group(1)
                 # JavaScript: function name or const name =
-                match = re.search(r'(?:function|const|let|var)\s+(\w+)\s*[=\(]', lines[i])
+                match = re.search(r"(?:function|const|let|var)\s+(\w+)\s*[=\(]", lines[i])
                 if match:
                     return match.group(1)
                 # Java: public void methodName
-                match = re.search(r'(?:public|private|protected)\s+\w+\s+(\w+)\s*\(', lines[i])
+                match = re.search(r"(?:public|private|protected)\s+\w+\s+(\w+)\s*\(", lines[i])
                 if match:
                     return match.group(1)
         return "unknown"
@@ -484,13 +482,13 @@ class APISecurityScanner:
         parameters = []
 
         # Flask/FastAPI style: /users/<id> or /users/{id}
-        for match in re.finditer(r'[<{](\w+):?(\w*)[>}]', path):
+        for match in re.finditer(r"[<{](\w+):?(\w*)[>}]", path):
             param_name = match.group(1)
             param_type = match.group(2) or "string"
             parameters.append({"name": param_name, "type": param_type, "location": "path"})
 
         # Express style: /users/:id
-        for match in re.finditer(r':(\w+)', path):
+        for match in re.finditer(r":(\w+)", path):
             param_name = match.group(1)
             parameters.append({"name": param_name, "type": "string", "location": "path"})
 
@@ -513,14 +511,12 @@ class APISecurityScanner:
         for endpoint in endpoints:
             # Check for ID parameters in path
             has_id_param = any(
-                p["name"] in ["id", "user_id", "account_id", "order_id", "object_id"]
-                for p in endpoint.parameters
+                p["name"] in ["id", "user_id", "account_id", "order_id", "object_id"] for p in endpoint.parameters
             )
 
             # Check for dynamic parameters that could be IDs
             has_dynamic_param = any(
-                re.search(r'(id|uuid|key|token)', p["name"], re.IGNORECASE)
-                for p in endpoint.parameters
+                re.search(r"(id|uuid|key|token)", p["name"], re.IGNORECASE) for p in endpoint.parameters
             )
 
             if (has_id_param or has_dynamic_param) and not endpoint.auth_required:
@@ -630,9 +626,7 @@ class APISecurityScanner:
 
         return findings
 
-    def _test_broken_object_property_auth(
-        self, endpoints: list[APIEndpoint]
-    ) -> list[APISecurityFinding]:
+    def _test_broken_object_property_auth(self, endpoints: list[APIEndpoint]) -> list[APISecurityFinding]:
         """
         API3:2023 - Broken Object Property Level Authorization
 
@@ -672,9 +666,7 @@ class APISecurityScanner:
 
         return findings
 
-    def _test_unrestricted_resource_consumption(
-        self, endpoints: list[APIEndpoint]
-    ) -> list[APISecurityFinding]:
+    def _test_unrestricted_resource_consumption(self, endpoints: list[APIEndpoint]) -> list[APISecurityFinding]:
         """
         API4:2023 - Unrestricted Resource Consumption
 
@@ -719,9 +711,7 @@ class APISecurityScanner:
 
         return findings
 
-    def _test_broken_function_level_auth(
-        self, endpoints: list[APIEndpoint]
-    ) -> list[APISecurityFinding]:
+    def _test_broken_function_level_auth(self, endpoints: list[APIEndpoint]) -> list[APISecurityFinding]:
         """
         API5:2023 - Broken Function Level Authorization
 
@@ -737,9 +727,7 @@ class APISecurityScanner:
             handler_lower = endpoint.handler_function.lower()
 
             # Check for admin/privileged patterns
-            is_privileged = any(
-                pattern in path_lower or pattern in handler_lower for pattern in admin_patterns
-            )
+            is_privileged = any(pattern in path_lower or pattern in handler_lower for pattern in admin_patterns)
 
             # DELETE endpoints are always privileged
             if endpoint.method.upper() == "DELETE":
@@ -776,9 +764,7 @@ class APISecurityScanner:
 
         return findings
 
-    def _test_unrestricted_business_flows(
-        self, endpoints: list[APIEndpoint]
-    ) -> list[APISecurityFinding]:
+    def _test_unrestricted_business_flows(self, endpoints: list[APIEndpoint]) -> list[APISecurityFinding]:
         """
         API6:2023 - Unrestricted Access to Sensitive Business Flows
 
@@ -833,9 +819,7 @@ class APISecurityScanner:
 
         return findings
 
-    def _test_server_side_request_forgery(
-        self, endpoints: list[APIEndpoint]
-    ) -> list[APISecurityFinding]:
+    def _test_server_side_request_forgery(self, endpoints: list[APIEndpoint]) -> list[APISecurityFinding]:
         """
         API7:2023 - Server Side Request Forgery (SSRF)
 
@@ -849,8 +833,7 @@ class APISecurityScanner:
         for endpoint in endpoints:
             # Check parameters
             has_url_param = any(
-                any(ssrf_param in p["name"].lower() for ssrf_param in ssrf_params)
-                for p in endpoint.parameters
+                any(ssrf_param in p["name"].lower() for ssrf_param in ssrf_params) for p in endpoint.parameters
             )
 
             # Check path patterns
@@ -888,9 +871,7 @@ class APISecurityScanner:
 
         return findings
 
-    def _test_security_misconfiguration(
-        self, endpoints: list[APIEndpoint]
-    ) -> list[APISecurityFinding]:
+    def _test_security_misconfiguration(self, endpoints: list[APIEndpoint]) -> list[APISecurityFinding]:
         """
         API8:2023 - Security Misconfiguration
 
@@ -936,9 +917,7 @@ class APISecurityScanner:
 
         return findings
 
-    def _test_improper_inventory_management(
-        self, endpoints: list[APIEndpoint]
-    ) -> list[APISecurityFinding]:
+    def _test_improper_inventory_management(self, endpoints: list[APIEndpoint]) -> list[APISecurityFinding]:
         """
         API9:2023 - Improper Inventory Management
 
@@ -950,14 +929,14 @@ class APISecurityScanner:
         versions = set()
         for endpoint in endpoints:
             # Extract version from path (e.g., /api/v1/users, /v2/products)
-            version_match = re.search(r'/v(\d+(?:\.\d+)?)', endpoint.path)
+            version_match = re.search(r"/v(\d+(?:\.\d+)?)", endpoint.path)
             if version_match:
                 versions.add(version_match.group(1))
 
         # If multiple versions detected, flag for review
         if len(versions) > 1:
             # Find oldest version endpoints
-            sorted_versions = sorted(versions, key=lambda x: float(x) if '.' in x else int(x))
+            sorted_versions = sorted(versions, key=lambda x: float(x) if "." in x else int(x))
             old_version = sorted_versions[0]
 
             for endpoint in endpoints:
@@ -992,9 +971,7 @@ class APISecurityScanner:
 
         return findings
 
-    def _test_unsafe_api_consumption(
-        self, endpoints: list[APIEndpoint]
-    ) -> list[APISecurityFinding]:
+    def _test_unsafe_api_consumption(self, endpoints: list[APIEndpoint]) -> list[APISecurityFinding]:
         """
         API10:2023 - Unsafe Consumption of APIs
 
@@ -1136,9 +1113,7 @@ class APISecurityScanner:
                 if "type Query" in content or "type Mutation" in content:
                     findings.append(
                         APISecurityFinding(
-                            finding_id=self._generate_finding_id_from_file(
-                                str(file_path), "GQL_FIELD_DUP"
-                            ),
+                            finding_id=self._generate_finding_id_from_file(str(file_path), "GQL_FIELD_DUP"),
                             owasp_category="API4:2023",
                             vulnerability_type="GraphQL Field Duplication DoS",
                             severity="MEDIUM",
@@ -1154,9 +1129,7 @@ class APISecurityScanner:
                             framework="graphql",
                             cwe_id="CWE-770",
                             recommendation="Limit field duplication (e.g., max 10 of the same field).",
-                            references=[
-                                "https://cheatsheetseries.owasp.org/cheatsheets/GraphQL_Cheat_Sheet.html"
-                            ],
+                            references=["https://cheatsheetseries.owasp.org/cheatsheets/GraphQL_Cheat_Sheet.html"],
                             confidence=0.5,
                         )
                     )
@@ -1298,9 +1271,7 @@ Supported Frameworks:
         )
 
         # Exit with error code if critical or high severity findings
-        critical_high = result.findings_by_severity.get("CRITICAL", 0) + result.findings_by_severity.get(
-            "HIGH", 0
-        )
+        critical_high = result.findings_by_severity.get("CRITICAL", 0) + result.findings_by_severity.get("HIGH", 0)
 
         if critical_high > 0:
             logger.warning(f"Found {critical_high} critical/high severity API security issues")

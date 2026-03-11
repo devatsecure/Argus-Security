@@ -91,8 +91,7 @@ class FixVersionTracker:
 
         if installed_parts is None or fixed_parts is None:
             logger.debug(
-                "Cannot determine upgrade type: unparseable version "
-                "(installed=%s, fixed=%s)",
+                "Cannot determine upgrade type: unparseable version (installed=%s, fixed=%s)",
                 installed,
                 fixed,
             )
@@ -127,9 +126,7 @@ class FixVersionTracker:
             A formatted upgrade message string.
         """
         type_label = upgrade_type.value
-        base_msg = (
-            f"Upgrade {pkg_name} from {installed} to {fixed} ({type_label})"
-        )
+        base_msg = f"Upgrade {pkg_name} from {installed} to {fixed} ({type_label})"
 
         if upgrade_type == UpgradeType.MAJOR:
             return f"BREAKING: {base_msg}"
@@ -159,28 +156,16 @@ class FixVersionTracker:
             logger.debug("No package name found in finding: %s", cve_id)
             return None
 
-        installed = (
-            finding.get("installed_version")
-            or finding.get("version")
-            or ""
-        )
+        installed = finding.get("installed_version") or finding.get("version") or ""
 
-        fixed = (
-            finding.get("fixed_version")
-            or finding.get("fix_version")
-            or ""
-        )
+        fixed = finding.get("fixed_version") or finding.get("fix_version") or ""
 
         if not fixed:
-            logger.debug(
-                "No fix version available for %s in %s", cve_id, pkg_name
-            )
+            logger.debug("No fix version available for %s in %s", cve_id, pkg_name)
             return None
 
         upgrade_type = self.determine_upgrade_type(installed, fixed)
-        upgrade_message = self.generate_upgrade_message(
-            pkg_name, installed, fixed, upgrade_type
-        )
+        upgrade_message = self.generate_upgrade_message(pkg_name, installed, fixed, upgrade_type)
 
         is_direct = finding.get("is_direct_dependency", True)
         source = finding.get("source", "trivy")
@@ -237,15 +222,11 @@ class FixVersionTracker:
                 fixed = vuln.get("FixedVersion", "")
 
                 if not fixed:
-                    logger.debug(
-                        "No fix available for %s in %s", cve_id, pkg_name
-                    )
+                    logger.debug("No fix available for %s in %s", cve_id, pkg_name)
                     continue
 
                 upgrade_type = self.determine_upgrade_type(installed, fixed)
-                upgrade_message = self.generate_upgrade_message(
-                    pkg_name, installed, fixed, upgrade_type
-                )
+                upgrade_message = self.generate_upgrade_message(pkg_name, installed, fixed, upgrade_type)
 
                 fix_infos.append(
                     FixInfo(
@@ -260,9 +241,7 @@ class FixVersionTracker:
                     )
                 )
 
-        logger.info(
-            "Extracted %d fix versions from Trivy results", len(fix_infos)
-        )
+        logger.info("Extracted %d fix versions from Trivy results", len(fix_infos))
         return fix_infos
 
     def enrich_findings(

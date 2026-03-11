@@ -281,9 +281,7 @@ class HealthChecker:
 
         # Run version check
         try:
-            result = subprocess.run(
-                check_cmd.split(), capture_output=True, text=True, timeout=10, check=False
-            )
+            result = subprocess.run(check_cmd.split(), capture_output=True, text=True, timeout=10, check=False)
 
             if result.returncode != 0:
                 if optional:
@@ -433,9 +431,7 @@ class HealthChecker:
 
         # Check if Docker daemon is running
         try:
-            result = subprocess.run(
-                ["docker", "ps"], capture_output=True, text=True, timeout=10, check=False
-            )
+            result = subprocess.run(["docker", "ps"], capture_output=True, text=True, timeout=10, check=False)
 
             if result.returncode == 0:
                 # Count running containers
@@ -719,13 +715,9 @@ def main():
         description="Argus Security Action - Health Check",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument(
-        "--config", type=Path, help="Path to external-tools.yml config file", default=None
-    )
+    parser.add_argument("--config", type=Path, help="Path to external-tools.yml config file", default=None)
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose output")
-    parser.add_argument(
-        "--output", type=Path, help="Save report to JSON file", default=None
-    )
+    parser.add_argument("--output", type=Path, help="Save report to JSON file", default=None)
 
     args = parser.parse_args()
 

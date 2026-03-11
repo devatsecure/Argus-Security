@@ -25,7 +25,6 @@ Usage:
 
 from __future__ import annotations
 
-import json
 import logging
 import re
 import ssl
@@ -33,8 +32,8 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from dataclasses import asdict, dataclass, field
-from typing import Any, Optional
+from dataclasses import asdict, dataclass
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -48,12 +47,12 @@ DEFAULT_ALLOWED_ENVIRONMENTS = ["staging", "preview", "development", "testing"]
 
 # Private/internal IP ranges that should be blocked by default
 _PRIVATE_IP_PATTERNS = [
-    re.compile(r"^127\."),                           # loopback
-    re.compile(r"^10\."),                            # 10.0.0.0/8
-    re.compile(r"^172\.(1[6-9]|2[0-9]|3[01])\."),   # 172.16.0.0/12
-    re.compile(r"^192\.168\."),                      # 192.168.0.0/16
-    re.compile(r"^169\.254\."),                      # link-local
-    re.compile(r"^0\."),                             # current network
+    re.compile(r"^127\."),  # loopback
+    re.compile(r"^10\."),  # 10.0.0.0/8
+    re.compile(r"^172\.(1[6-9]|2[0-9]|3[01])\."),  # 172.16.0.0/12
+    re.compile(r"^192\.168\."),  # 192.168.0.0/16
+    re.compile(r"^169\.254\."),  # link-local
+    re.compile(r"^0\."),  # current network
 ]
 
 _LOCALHOST_HOSTNAMES = {"localhost", "localhost.localdomain", "ip6-localhost"}
@@ -108,7 +107,7 @@ _SUCCESS_INDICATORS: dict[str, list[str]] = {
     "sqli": [],  # shares with sql-injection, handled in code
     "xss": [
         "<script>alert(1)</script>",
-        'onerror=alert(1)>',
+        "onerror=alert(1)>",
     ],
     "ssrf": [
         "ami-",
@@ -245,8 +244,7 @@ class SastDastValidator:
         self.auth_headers = auth_headers or {}
         self.timeout = timeout
         self.allowed_environments = (
-            allowed_environments if allowed_environments is not None
-            else list(DEFAULT_ALLOWED_ENVIRONMENTS)
+            allowed_environments if allowed_environments is not None else list(DEFAULT_ALLOWED_ENVIRONMENTS)
         )
 
         if not self._validate_target_url(self.target_url):
@@ -276,9 +274,7 @@ class SastDastValidator:
             ValidationResult with validated=True if vulnerability confirmed,
             validation_method='not_applicable' if no test could be generated.
         """
-        finding_id = str(
-            finding.get("id", finding.get("finding_id", f"unknown-{id(finding)}"))
-        )
+        finding_id = str(finding.get("id", finding.get("finding_id", f"unknown-{id(finding)}")))
 
         test_case = self._generate_test_case(finding)
         if test_case is None:
@@ -421,9 +417,7 @@ class SastDastValidator:
             TestCase if the vulnerability type is mappable, None otherwise.
         """
         vuln_type = finding.get("vuln_type", "").lower().strip()
-        finding_id = str(
-            finding.get("id", finding.get("finding_id", f"unknown-{id(finding)}"))
-        )
+        finding_id = str(finding.get("id", finding.get("finding_id", f"unknown-{id(finding)}")))
 
         endpoint = self._infer_endpoint(finding)
         if endpoint is None:
@@ -431,7 +425,7 @@ class SastDastValidator:
 
         full_url = f"{self.target_url}{endpoint}"
         method = finding.get("method", "GET").upper()
-        parameter = finding.get("parameter", "input")
+        _ = finding.get("parameter", "input")  # reserved for future param-based payloads
 
         if vuln_type in ("sql-injection", "sqli"):
             return TestCase(
@@ -815,17 +809,14 @@ class SastDastValidator:
         # Block private IP ranges
         for pattern in _PRIVATE_IP_PATTERNS:
             if pattern.match(hostname):
-                logger.warning(
-                    "Target URL points to private/internal IP: %s", url
-                )
+                logger.warning("Target URL points to private/internal IP: %s", url)
                 return False
 
         # Check if the environment is allowed
         is_production = "production" in hostname or "prod" in hostname.split(".")
         if is_production and "production" not in self.allowed_environments:
             logger.warning(
-                "Target URL appears to be production and 'production' is not "
-                "in allowed_environments: %s",
+                "Target URL appears to be production and 'production' is not in allowed_environments: %s",
                 url,
             )
             return False

@@ -323,7 +323,7 @@ def test_{test_name}_fix_verification():
         """Generate JavaScript Jest template"""
         payloads = self._get_test_payloads(vuln_type)
 
-        return f'''
+        return f"""
 describe('{test_name} - {vuln_type}', () => {{
     /**
      * Test exploitation of {vuln_type} vulnerability
@@ -362,7 +362,7 @@ describe('{test_name} - {vuln_type}', () => {{
         }}
     }});
 }});
-'''
+"""
 
     def _clean_test_code(self, code: str) -> str:
         """
@@ -463,7 +463,7 @@ describe('{test_name} - {vuln_type}', () => {{
             code_snippet = finding.get("code_snippet", "")
             if "import " in code_snippet and "from " in code_snippet:
                 language_hints["python"] += 0.5
-            if ("require(" in code_snippet or "import {" in code_snippet or "import *" in code_snippet):
+            if "require(" in code_snippet or "import {" in code_snippet or "import *" in code_snippet:
                 language_hints["javascript"] += 0.5
 
         # Return language with highest score, default to python
@@ -493,7 +493,7 @@ def base_url():
     return "http://localhost:8000"  # Configure as needed
 '''
         else:  # javascript
-            return '''
+            return """
 const request = require('supertest');
 const app = require('../app');  // Adjust path to your app
 
@@ -509,7 +509,7 @@ describe('Security Tests - Generated', () => {
     });
 
     // Individual tests follow...
-'''
+"""
 
     def _generate_imports(self, language: str, framework: str) -> list[str]:
         """Generate import statements"""
@@ -597,7 +597,7 @@ def test_{test_name}():
             vulnerable_function(malicious_input)
 '''
         else:
-            return f'''
+            return f"""
 test('regression: {vuln_type} vulnerability remains fixed - {finding_id}', async () => {{
     /**
      * Regression test: Ensure {vuln_type} vulnerability remains fixed
@@ -619,7 +619,7 @@ test('regression: {vuln_type} vulnerability remains fixed - {finding_id}', async
         await expect(vulnerableFunction(maliciousInput)).rejects.toThrow();
     }}
 }});
-'''
+"""
 
     def print_stats(self):
         """Print generation statistics"""

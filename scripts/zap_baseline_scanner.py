@@ -29,7 +29,7 @@ from pathlib import Path
 from typing import Optional
 
 try:
-    import defusedxml.ElementTree as ET  # Prefer defusedxml to prevent XXE attacks
+    import defusedxml.ElementTree as ET  # noqa: N817 — ET is standard alias for ElementTree
 except ImportError:
     try:
         import xml.etree.ElementTree as ET

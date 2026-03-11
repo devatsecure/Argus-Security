@@ -25,7 +25,7 @@ import json
 import logging
 import re
 from collections import defaultdict
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Callable, Optional
 
@@ -153,9 +153,7 @@ class AgentChainDiscovery:
 
         prompt = self._build_discovery_prompt(batch, app_context)
 
-        logger.info(
-            "Sending %d findings to LLM for chain discovery", len(batch)
-        )
+        logger.info("Sending %d findings to LLM for chain discovery", len(batch))
 
         try:
             response = self.llm_call(prompt)
@@ -209,9 +207,7 @@ class AgentChainDiscovery:
         context_section = ""
         if app_context:
             ctx_lines = [f"- {k}: {v}" for k, v in app_context.items()]
-            context_section = (
-                "\nApplication Context:\n" + "\n".join(ctx_lines) + "\n"
-            )
+            context_section = "\nApplication Context:\n" + "\n".join(ctx_lines) + "\n"
 
         prompt = (
             "You are an expert penetration tester analyzing security findings "
@@ -255,9 +251,7 @@ class AgentChainDiscovery:
 
         # Strip markdown code fences if present
         cleaned = response.strip()
-        code_block_match = re.search(
-            r"```(?:json)?\s*\n?(.*?)```", cleaned, re.DOTALL
-        )
+        code_block_match = re.search(r"```(?:json)?\s*\n?(.*?)```", cleaned, re.DOTALL)
         if code_block_match:
             cleaned = code_block_match.group(1).strip()
 
@@ -268,9 +262,7 @@ class AgentChainDiscovery:
             return []
 
         if not isinstance(data, list):
-            logger.warning(
-                "Expected JSON array from LLM, got %s", type(data).__name__
-            )
+            logger.warning("Expected JSON array from LLM, got %s", type(data).__name__)
             return []
 
         chains: list[AttackChain] = []
@@ -280,15 +272,11 @@ class AgentChainDiscovery:
                 if chain is not None:
                     chains.append(chain)
             except Exception:
-                logger.warning(
-                    "Skipping invalid chain at index %d", idx, exc_info=True
-                )
+                logger.warning("Skipping invalid chain at index %d", idx, exc_info=True)
 
         return chains
 
-    def _validate_chain_item(
-        self, item: dict, idx: int
-    ) -> Optional[AttackChain]:
+    def _validate_chain_item(self, item: dict, idx: int) -> Optional[AttackChain]:
         """Validate and convert a single chain dict to an AttackChain.
 
         Args:
@@ -485,9 +473,7 @@ class CrossComponentAnalyzer:
                 risks.extend(pair_risks)
 
         if risks:
-            logger.info(
-                "Found %d cross-component risks", len(risks)
-            )
+            logger.info("Found %d cross-component risks", len(risks))
         else:
             logger.info("No dangerous cross-component combinations detected")
 
@@ -549,10 +535,7 @@ class CrossComponentAnalyzer:
         risks: list[dict] = []
 
         def _extract_ids(flist: list[dict]) -> list[str]:
-            return [
-                str(f.get("id", f.get("rule_id", "unknown")))
-                for f in flist
-            ]
+            return [str(f.get("id", f.get("rule_id", "unknown"))) for f in flist]
 
         for pair in _DANGEROUS_PAIRS:
             pair_set = {pair["a"], pair["b"]}
@@ -616,7 +599,7 @@ if __name__ == "__main__":
         "    risks = analyzer.analyze(findings)\n"
         "\n"
         "    for risk in risks:\n"
-        '        print(f"{risk[\'risk_type\']}: {risk[\'component_a\']} + {risk[\'component_b\']}")\n'
+        "        print(f\"{risk['risk_type']}: {risk['component_a']} + {risk['component_b']}\")\n"
         "\n"
         "This module complements vulnerability_chaining_engine.py (14 static\n"
         "rules) with LLM-powered reasoning to discover novel attack paths\n"

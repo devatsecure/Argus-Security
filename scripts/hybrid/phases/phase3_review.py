@@ -74,6 +74,7 @@ def run_phase3_review(
 # Core review logic (extracted from HybridSecurityAnalyzer._run_argus_review)
 # ------------------------------------------------------------------
 
+
 def _run_argus_review(
     *,
     findings: list[HybridFinding],
@@ -178,7 +179,9 @@ def _run_argus_review(
     reduction_pct = ((len(findings) - len(enhanced_findings)) / len(findings) * 100) if findings else 0
     logger.info(
         "   Multi-agent review complete: %d/%d findings validated (%.1f%% reduction)",
-        len(enhanced_findings), len(findings), reduction_pct,
+        len(enhanced_findings),
+        len(findings),
+        reduction_pct,
     )
 
     return enhanced_findings

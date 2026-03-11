@@ -141,6 +141,7 @@ def run_phase2_enrichment(
 # Internal helpers
 # ------------------------------------------------------------------
 
+
 def _run_spontaneous_discovery(
     *,
     all_findings: list[HybridFinding],

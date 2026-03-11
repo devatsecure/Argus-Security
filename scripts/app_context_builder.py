@@ -122,19 +122,13 @@ class ApplicationContext:
         if self.iac_files:
             tf_count = sum(1 for f in self.iac_files if f.endswith((".tf", ".tfvars")))
             docker_count = sum(
-                1
-                for f in self.iac_files
-                if "dockerfile" in os.path.basename(f).lower()
-                or f.endswith((".dockerfile",))
+                1 for f in self.iac_files if "dockerfile" in os.path.basename(f).lower() or f.endswith((".dockerfile",))
             )
-            compose_count = sum(
-                1 for f in self.iac_files if "docker-compose" in os.path.basename(f).lower()
-            )
+            compose_count = sum(1 for f in self.iac_files if "docker-compose" in os.path.basename(f).lower())
             k8s_count = sum(
                 1
                 for f in self.iac_files
-                if f.endswith((".yml", ".yaml"))
-                and "docker-compose" not in os.path.basename(f).lower()
+                if f.endswith((".yml", ".yaml")) and "docker-compose" not in os.path.basename(f).lower()
             )
             parts: list[str] = []
             if tf_count:
@@ -195,9 +189,7 @@ class AppContextBuilder:
         language = self._detect_language()
         framework = self._detect_framework(language)
         iac_files = self._find_iac_files()
-        has_dockerfile = any(
-            "dockerfile" in os.path.basename(f).lower() for f in iac_files
-        )
+        has_dockerfile = any("dockerfile" in os.path.basename(f).lower() for f in iac_files)
 
         ctx = ApplicationContext(
             language=language,
@@ -305,15 +297,9 @@ class AppContextBuilder:
     def _detect_js_framework(self) -> str:
         """Detect JavaScript / TypeScript frameworks."""
         # File-based indicators (fast).
-        if any(
-            (self._root / name).is_file()
-            for name in ("next.config.js", "next.config.mjs", "next.config.ts")
-        ):
+        if any((self._root / name).is_file() for name in ("next.config.js", "next.config.mjs", "next.config.ts")):
             return "nextjs"
-        if any(
-            (self._root / name).is_file()
-            for name in ("nuxt.config.js", "nuxt.config.ts")
-        ):
+        if any((self._root / name).is_file() for name in ("nuxt.config.js", "nuxt.config.ts")):
             return "nuxt"
         if (self._root / "angular.json").is_file():
             return "angular"
@@ -451,8 +437,7 @@ class AppContextBuilder:
             except (json.JSONDecodeError, OSError):
                 data = {}
             all_deps = " ".join(
-                list(data.get("dependencies", {}).keys())
-                + list(data.get("devDependencies", {}).keys())
+                list(data.get("dependencies", {}).keys()) + list(data.get("devDependencies", {}).keys())
             )
             if "jsonwebtoken" in all_deps or "jose" in all_deps:
                 return "jwt"
@@ -506,8 +491,7 @@ class AppContextBuilder:
             except (json.JSONDecodeError, OSError):
                 data = {}
             deps_str = " ".join(
-                list(data.get("dependencies", {}).keys())
-                + list(data.get("devDependencies", {}).keys())
+                list(data.get("dependencies", {}).keys()) + list(data.get("devDependencies", {}).keys())
             )
             if "aws-sdk" in deps_str or "@aws-sdk" in deps_str:
                 indicators.append(("aws", deps_str))
@@ -705,17 +689,11 @@ class AppContextBuilder:
         """Detect common middleware usage across all recognised languages."""
         middleware_patterns: dict[str, re.Pattern] = {
             "cors": re.compile(r"\bcors\b|\bCORS\b|\baccess-control-allow-origin\b", re.IGNORECASE),
-            "rate_limiting": re.compile(
-                r"\brate.?limit\b|\bthrottle\b|\bRateLimit\b", re.IGNORECASE
-            ),
-            "auth": re.compile(
-                r"\bauth.?middleware\b|\bauthenticate\b|\bisAuthenticated\b", re.IGNORECASE
-            ),
+            "rate_limiting": re.compile(r"\brate.?limit\b|\bthrottle\b|\bRateLimit\b", re.IGNORECASE),
+            "auth": re.compile(r"\bauth.?middleware\b|\bauthenticate\b|\bisAuthenticated\b", re.IGNORECASE),
             "helmet": re.compile(r"\bhelmet\b", re.IGNORECASE),
             "csrf": re.compile(r"\bcsrf\b|\bcsurf\b|\bCSRFMiddleware\b", re.IGNORECASE),
-            "logging": re.compile(
-                r"\blogging.?middleware\b|\bmorgan\b|\brequest.?log\b", re.IGNORECASE
-            ),
+            "logging": re.compile(r"\blogging.?middleware\b|\bmorgan\b|\brequest.?log\b", re.IGNORECASE),
             "compression": re.compile(r"\bcompression\b|\bgzip\b|\bGZipMiddleware\b", re.IGNORECASE),
             "body_parser": re.compile(r"\bbody-parser\b|\bbodyParser\b", re.IGNORECASE),
         }

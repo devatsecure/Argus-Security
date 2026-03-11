@@ -17,11 +17,13 @@ __all__ = [
 
 class ArgusError(Exception):
     """Base exception for all Argus-related errors"""
+
     pass
 
 
 class CostLimitExceededError(ArgusError):
     """Raised when cost limit would be exceeded by an operation"""
+
     pass
 
 
@@ -31,9 +33,11 @@ CostLimitExceeded = CostLimitExceededError
 
 class ScannerError(ArgusError):
     """Raised when a security scanner fails"""
+
     pass
 
 
 class ValidationError(ArgusError):
     """Raised when validation of findings or output fails"""
+
     pass

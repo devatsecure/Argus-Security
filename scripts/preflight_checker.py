@@ -36,10 +36,7 @@ except ImportError:
     sys.exit(1)
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -78,7 +75,7 @@ class PreFlightChecker:
             "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "report_path": str(self.report_path),
             "user": os.environ.get("USER", "unknown"),
-            "passed": False
+            "passed": False,
         }
 
     def _find_repo_root(self) -> Path:
@@ -121,18 +118,9 @@ class PreFlightChecker:
         """Get default checklist configuration"""
         return {
             "automated_checks": [
-                {
-                    "name": "Quality score ≥ 80",
-                    "validator": "quality_score_validator"
-                },
-                {
-                    "name": "All findings have file paths",
-                    "validator": "file_path_validator"
-                },
-                {
-                    "name": "All findings have line numbers",
-                    "validator": "line_number_validator"
-                }
+                {"name": "Quality score ≥ 80", "validator": "quality_score_validator"},
+                {"name": "All findings have file paths", "validator": "file_path_validator"},
+                {"name": "All findings have line numbers", "validator": "line_number_validator"},
             ],
             "manual_checks": [
                 "Security contact identified?",
@@ -140,8 +128,8 @@ class PreFlightChecker:
                 "90-day timeline agreed with maintainers?",
                 "Human reviewed report for quality and accuracy?",
                 "Test report readability (can a developer action it)?",
-                "Confirmed this is NOT a public security disclosure?"
-            ]
+                "Confirmed this is NOT a public security disclosure?",
+            ],
         }
 
     # ===== AUTOMATED VALIDATORS =====
@@ -175,8 +163,9 @@ class PreFlightChecker:
                     missing_paths.append(i + 1)
 
             if missing_paths:
-                return False, f"Findings missing file paths: {missing_paths[:5]}" + \
-                    (f" (+{len(missing_paths)-5} more)" if len(missing_paths) > 5 else "")
+                return False, f"Findings missing file paths: {missing_paths[:5]}" + (
+                    f" (+{len(missing_paths) - 5} more)" if len(missing_paths) > 5 else ""
+                )
 
             return True, f"All {len(findings)} findings have file paths"
         except Exception as e:
@@ -197,8 +186,9 @@ class PreFlightChecker:
                     missing_lines.append(i + 1)
 
             if missing_lines:
-                return False, f"Findings missing line numbers: {missing_lines[:5]}" + \
-                    (f" (+{len(missing_lines)-5} more)" if len(missing_lines) > 5 else "")
+                return False, f"Findings missing line numbers: {missing_lines[:5]}" + (
+                    f" (+{len(missing_lines) - 5} more)" if len(missing_lines) > 5 else ""
+                )
 
             return True, f"All {len(findings)} findings have line numbers"
         except Exception as e:
@@ -219,8 +209,9 @@ class PreFlightChecker:
                     missing_severity.append(i + 1)
 
             if missing_severity:
-                return False, f"Findings missing valid severity: {missing_severity[:5]}" + \
-                    (f" (+{len(missing_severity)-5} more)" if len(missing_severity) > 5 else "")
+                return False, f"Findings missing valid severity: {missing_severity[:5]}" + (
+                    f" (+{len(missing_severity) - 5} more)" if len(missing_severity) > 5 else ""
+                )
 
             return True, f"All {len(findings)} findings have valid severity"
         except Exception as e:
@@ -234,12 +225,7 @@ class PreFlightChecker:
 
             # Use shlex.split for safe command parsing — never shell=True
             args = shlex.split(cmd)
-            result = subprocess.run(
-                args,
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
+            result = subprocess.run(args, capture_output=True, text=True, timeout=30)
 
             if result.returncode == 0:
                 return True, f"Command passed: {result.stdout.strip()}"
@@ -258,9 +244,9 @@ class PreFlightChecker:
         Returns:
             True if all checks passed, False otherwise
         """
-        logger.info("\n" + "="*70)
+        logger.info("\n" + "=" * 70)
         logger.info("AUTOMATED CHECKS")
-        logger.info("="*70 + "\n")
+        logger.info("=" * 70 + "\n")
 
         all_passed = True
 
@@ -276,7 +262,7 @@ class PreFlightChecker:
                     "quality_score_validator": self._validate_quality_score,
                     "file_path_validator": self._validate_file_paths,
                     "line_number_validator": self._validate_line_numbers,
-                    "severity_validator": self._validate_severity_assigned
+                    "severity_validator": self._validate_severity_assigned,
                 }
 
                 if validator_name in validators:
@@ -291,11 +277,7 @@ class PreFlightChecker:
                 passed, message = False, "No validator or command specified"
 
             # Record result
-            self.results["automated_checks"].append({
-                "name": check_name,
-                "passed": passed,
-                "message": message
-            })
+            self.results["automated_checks"].append({"name": check_name, "passed": passed, "message": message})
 
             # Print result
             status = "✅ PASS" if passed else "❌ FAIL"
@@ -317,9 +299,9 @@ class PreFlightChecker:
             logger.warning("Skipping manual checks (non-interactive mode)")
             return True
 
-        logger.info("\n" + "="*70)
+        logger.info("\n" + "=" * 70)
         logger.info("MANUAL CHECKS (Human Confirmation Required)")
-        logger.info("="*70 + "\n")
+        logger.info("=" * 70 + "\n")
 
         all_confirmed = True
 
@@ -330,17 +312,11 @@ class PreFlightChecker:
                 response = input("  Confirm (yes/no): ").strip().lower()
 
                 if response in ["yes", "y"]:
-                    self.results["manual_checks"].append({
-                        "question": check_question,
-                        "confirmed": True
-                    })
+                    self.results["manual_checks"].append({"question": check_question, "confirmed": True})
                     logger.info("  ✅ Confirmed\n")
                     break
                 elif response in ["no", "n"]:
-                    self.results["manual_checks"].append({
-                        "question": check_question,
-                        "confirmed": False
-                    })
+                    self.results["manual_checks"].append({"question": check_question, "confirmed": False})
                     logger.warning("  ❌ NOT confirmed\n")
                     all_confirmed = False
                     break
@@ -415,9 +391,9 @@ class PreFlightChecker:
         Returns:
             True if all checks passed, False otherwise
         """
-        logger.info("\n" + "="*70)
+        logger.info("\n" + "=" * 70)
         logger.info("ARGUS SECURITY PRE-FLIGHT CHECKLIST")
-        logger.info("="*70)
+        logger.info("=" * 70)
         logger.info(f"Report: {self.report_path}\n")
 
         # Run automated checks
@@ -425,9 +401,9 @@ class PreFlightChecker:
 
         # If automated checks failed, don't proceed to manual checks
         if not automated_passed:
-            logger.error("\n" + "="*70)
+            logger.error("\n" + "=" * 70)
             logger.error("AUTOMATED CHECKS FAILED")
-            logger.error("="*70)
+            logger.error("=" * 70)
             logger.error("Fix the automated check failures before proceeding.\n")
 
             self.results["passed"] = False
@@ -443,14 +419,14 @@ class PreFlightChecker:
         self.results["passed"] = all_passed
 
         # Print summary
-        logger.info("\n" + "="*70)
+        logger.info("\n" + "=" * 70)
         if all_passed:
             logger.info("✅ PRE-FLIGHT CHECKLIST PASSED")
-            logger.info("="*70)
+            logger.info("=" * 70)
             logger.info("Report is approved for external submission.\n")
         else:
             logger.error("❌ PRE-FLIGHT CHECKLIST FAILED")
-            logger.error("="*70)
+            logger.error("=" * 70)
             logger.error("Report is NOT approved for external submission.\n")
 
         # Save results
@@ -470,33 +446,22 @@ Examples:
   python preflight_checker.py --report findings.json
   python preflight_checker.py --report findings.json --checklist custom.yml
   python preflight_checker.py --report findings.json --non-interactive
-        """
+        """,
     )
 
-    parser.add_argument(
-        "--report",
-        required=True,
-        help="Path to the JSON report file"
-    )
+    parser.add_argument("--report", required=True, help="Path to the JSON report file")
+
+    parser.add_argument("--checklist", help="Path to custom checklist YAML (default: .argus/preflight-checklist.yml)")
 
     parser.add_argument(
-        "--checklist",
-        help="Path to custom checklist YAML (default: .argus/preflight-checklist.yml)"
-    )
-
-    parser.add_argument(
-        "--non-interactive",
-        action="store_true",
-        help="Run in non-interactive mode (skip manual checks)"
+        "--non-interactive", action="store_true", help="Run in non-interactive mode (skip manual checks)"
     )
 
     args = parser.parse_args()
 
     # Create and run checker
     checker = PreFlightChecker(
-        report_path=args.report,
-        checklist_path=args.checklist,
-        non_interactive=args.non_interactive
+        report_path=args.report, checklist_path=args.checklist, non_interactive=args.non_interactive
     )
 
     passed = checker.run()

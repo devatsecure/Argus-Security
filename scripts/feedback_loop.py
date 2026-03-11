@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class FeedbackRecord:
     """Single feedback record for a finding verdict"""
+
     finding_id: str
     automated_verdict: str  # What the system predicted
     human_verdict: str  # What the human decided
@@ -34,6 +35,7 @@ class FeedbackRecord:
 @dataclass
 class PatternAccuracy:
     """Accuracy metrics for a specific suppression pattern"""
+
     pattern_id: str
     pattern_name: str
     total_samples: int
@@ -70,6 +72,7 @@ class PatternAccuracy:
 @dataclass
 class ConfidenceAdjustment:
     """Recommended confidence adjustment for a pattern"""
+
     pattern_id: str
     current_multiplier: float  # 1.0 = no adjustment
     recommended_multiplier: float
@@ -113,7 +116,7 @@ class FeedbackLoop:
         confidence: float,
         pattern_used: Optional[str],
         finding_category: str,
-        reasoning: str = ""
+        reasoning: str = "",
     ) -> FeedbackRecord:
         """
         Record human verdict for learning
@@ -151,7 +154,7 @@ class FeedbackLoop:
             timestamp=datetime.now().isoformat(),
             reasoning=reasoning,
             is_correct=is_correct,
-            error_type=error_type
+            error_type=error_type,
         )
 
         # Append to JSONL file
@@ -202,18 +205,14 @@ class FeedbackLoop:
                 true_positives=0,
                 false_positives=0,
                 true_negatives=0,
-                false_negatives=0
+                false_negatives=0,
             )
 
         # Calculate confusion matrix
-        tp = sum(1 for f in feedback
-                if f.automated_verdict == "confirmed" and f.human_verdict == "confirmed")
-        fp = sum(1 for f in feedback
-                if f.automated_verdict == "confirmed" and f.human_verdict == "false_positive")
-        tn = sum(1 for f in feedback
-                if f.automated_verdict == "false_positive" and f.human_verdict == "false_positive")
-        fn = sum(1 for f in feedback
-                if f.automated_verdict == "false_positive" and f.human_verdict == "confirmed")
+        tp = sum(1 for f in feedback if f.automated_verdict == "confirmed" and f.human_verdict == "confirmed")
+        fp = sum(1 for f in feedback if f.automated_verdict == "confirmed" and f.human_verdict == "false_positive")
+        tn = sum(1 for f in feedback if f.automated_verdict == "false_positive" and f.human_verdict == "false_positive")
+        fn = sum(1 for f in feedback if f.automated_verdict == "false_positive" and f.human_verdict == "confirmed")
 
         return PatternAccuracy(
             pattern_id=pattern_id,
@@ -222,13 +221,10 @@ class FeedbackLoop:
             true_positives=tp,
             false_positives=fp,
             true_negatives=tn,
-            false_negatives=fn
+            false_negatives=fn,
         )
 
-    def suggest_confidence_adjustments(
-        self,
-        min_samples: int = 10
-    ) -> list[ConfidenceAdjustment]:
+    def suggest_confidence_adjustments(self, min_samples: int = 10) -> list[ConfidenceAdjustment]:
         """
         Suggest confidence multiplier adjustments based on accuracy
 
@@ -251,29 +247,25 @@ class FeedbackLoop:
 
             # Calculate recommended multiplier based on accuracy
             current_multiplier = self._get_current_multiplier(pattern_id)
-            recommended_multiplier = self._calculate_recommended_multiplier(
-                accuracy, current_multiplier
-            )
+            recommended_multiplier = self._calculate_recommended_multiplier(accuracy, current_multiplier)
 
             # Generate reasoning
             reasoning = self._generate_adjustment_reasoning(accuracy, recommended_multiplier)
 
-            adjustments.append(ConfidenceAdjustment(
-                pattern_id=pattern_id,
-                current_multiplier=current_multiplier,
-                recommended_multiplier=recommended_multiplier,
-                reasoning=reasoning,
-                sample_size=accuracy.total_samples,
-                accuracy=accuracy.accuracy
-            ))
+            adjustments.append(
+                ConfidenceAdjustment(
+                    pattern_id=pattern_id,
+                    current_multiplier=current_multiplier,
+                    recommended_multiplier=recommended_multiplier,
+                    reasoning=reasoning,
+                    sample_size=accuracy.total_samples,
+                    accuracy=accuracy.accuracy,
+                )
+            )
 
         return adjustments
 
-    def _calculate_recommended_multiplier(
-        self,
-        accuracy: PatternAccuracy,
-        current_multiplier: float
-    ) -> float:
+    def _calculate_recommended_multiplier(self, accuracy: PatternAccuracy, current_multiplier: float) -> float:
         """
         Calculate recommended confidence multiplier
 
@@ -306,11 +298,7 @@ class FeedbackLoop:
         else:  # Poor accuracy
             return max(current_multiplier * 0.85, 0.7)
 
-    def _generate_adjustment_reasoning(
-        self,
-        accuracy: PatternAccuracy,
-        recommended_mult: float
-    ) -> str:
+    def _generate_adjustment_reasoning(self, accuracy: PatternAccuracy, recommended_mult: float) -> str:
         """Generate human-readable reasoning for adjustment"""
         parts = []
 
@@ -355,11 +343,7 @@ class FeedbackLoop:
         except (OSError, json.JSONDecodeError, KeyError):
             return 1.0
 
-    def apply_adjustments(
-        self,
-        adjustments: list[ConfidenceAdjustment],
-        dry_run: bool = True
-    ):
+    def apply_adjustments(self, adjustments: list[ConfidenceAdjustment], dry_run: bool = True):
         """
         Apply confidence adjustments
 
@@ -389,7 +373,7 @@ class FeedbackLoop:
                 "applied_at": datetime.now().isoformat(),
                 "reasoning": adj.reasoning,
                 "sample_size": adj.sample_size,
-                "accuracy": adj.accuracy
+                "accuracy": adj.accuracy,
             }
 
         # Save
@@ -418,5 +402,5 @@ class FeedbackLoop:
             "accuracy": correct / len(records) if records else 0.0,
             "false_negatives": false_negatives,
             "false_positives": false_positives,
-            "patterns_tracked": len(self._get_all_patterns())
+            "patterns_tracked": len(self._get_all_patterns()),
         }

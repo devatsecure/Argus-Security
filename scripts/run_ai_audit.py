@@ -815,6 +815,7 @@ def _run_enrichment_pipeline(findings, config, repo_path, metrics=None):
     License risk scoring runs separately via ``_run_license_scoring()``.
     """
     from enrichment_pipeline import run_enrichment_pipeline
+
     return run_enrichment_pipeline(findings, config, repo_path)
 
 
@@ -823,10 +824,7 @@ def _run_license_scoring(config, repo_path):
 
     Returns (license_risks, policy_violations) or ([], []).
     """
-    if not (
-        LICENSE_SCORING_AVAILABLE
-        and _parse_bool(config.get("enable_license_risk_scoring", True))
-    ):
+    if not (LICENSE_SCORING_AVAILABLE and _parse_bool(config.get("enable_license_risk_scoring", True))):
         return [], []
 
     try:
@@ -861,7 +859,9 @@ def _run_license_scoring(config, repo_path):
 
         logger.info(
             "License scoring: %d components, %d risks, %d violations",
-            len(components), len(risks), len(violations),
+            len(components),
+            len(risks),
+            len(violations),
         )
         print(f"   License scoring: {len(risks)} risks from {len(components)} components")
         if violations:
@@ -878,6 +878,7 @@ def _run_license_scoring(config, repo_path):
 # ---------------------------------------------------------------------------
 # AuditContext dataclass — shared state bag passed between phase functions
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class AuditContext:
@@ -976,7 +977,9 @@ def _setup_audit(repo_path, config, review_type="audit"):
     # Initialize phase gate for output validation between phases
     phase_gate = None
     enable_gating_val = config.get("enable_phase_gating", True)
-    enable_gating = enable_gating_val.lower() == "true" if isinstance(enable_gating_val, str) else bool(enable_gating_val)
+    enable_gating = (
+        enable_gating_val.lower() == "true" if isinstance(enable_gating_val, str) else bool(enable_gating_val)
+    )
     if enable_gating:
         strict_val = config.get("phase_gate_strict", False)
         strict = strict_val.lower() == "true" if isinstance(strict_val, str) else bool(strict_val)
@@ -1063,7 +1066,11 @@ def _run_scanner_phase(ctx: AuditContext) -> tuple[dict, dict]:
     # FEATURE: Heuristic Pre-Scanning (from real_multi_agent_review.py)
     # Scan files with lightweight pattern matching before expensive LLM calls
     enable_heuristics_val = config.get("enable_heuristics", "true")
-    enable_heuristics = enable_heuristics_val.lower() == "true" if isinstance(enable_heuristics_val, str) else bool(enable_heuristics_val)
+    enable_heuristics = (
+        enable_heuristics_val.lower() == "true"
+        if isinstance(enable_heuristics_val, str)
+        else bool(enable_heuristics_val)
+    )
     heuristic_results = {}
 
     if enable_heuristics:
@@ -1149,9 +1156,7 @@ def _run_scanner_phase(ctx: AuditContext) -> tuple[dict, dict]:
 
     # -- Phase gate: validate scanner orchestration output --
     if ctx.phase_gate is not None:
-        scanner_output = {
-            "findings": semgrep_results.get("findings", []) if semgrep_results else []
-        }
+        scanner_output = {"findings": semgrep_results.get("findings", []) if semgrep_results else []}
         gate_decision = ctx.phase_gate.validate("scanner_orchestration", scanner_output)
         if not gate_decision.should_proceed:
             logger.error("Phase gate blocked after scanner orchestration: %s", gate_decision.reason)
@@ -1188,11 +1193,13 @@ def _run_phase1_research(ctx: AuditContext) -> dict:
     if ctx.threat_model:
         threat_summary = f"""
 **Threat Model Available:**
-- {len(ctx.threat_model.get('threats', []))} threats identified
-- {len(ctx.threat_model.get('attack_surface', {}).get('entry_points', []))} entry points
-- {len(ctx.threat_model.get('assets', []))} critical assets
+- {len(ctx.threat_model.get("threats", []))} threats identified
+- {len(ctx.threat_model.get("attack_surface", {}).get("entry_points", []))} entry points
+- {len(ctx.threat_model.get("assets", []))} critical assets
 """
-        ctx.context_tracker.add_context("threat_model_summary", threat_summary, {"threats": len(ctx.threat_model.get('threats', []))})
+        ctx.context_tracker.add_context(
+            "threat_model_summary", threat_summary, {"threats": len(ctx.threat_model.get("threats", []))}
+        )
 
     research_prompt = f"""You are conducting initial research for a code audit.
 
@@ -1239,22 +1246,22 @@ Be concise. This is research, not detailed analysis."""
         # Parse research results
         try:
             # Extract JSON from response
-            json_match = re.search(r'```json\s*(\{.*?\})\s*```', research_result, re.DOTALL)
+            json_match = re.search(r"```json\s*(\{.*?\})\s*```", research_result, re.DOTALL)
             if json_match:
                 research_data = json.loads(json_match.group(1))
             else:
                 # Fallback: use all files
                 research_data = {
-                    "high_priority_files": [f['path'] for f in files[:10]],
+                    "high_priority_files": [f["path"] for f in files[:10]],
                     "focus_areas": ["security", "performance", "testing", "quality"],
-                    "rationale": "Using all files (JSON parsing failed)"
+                    "rationale": "Using all files (JSON parsing failed)",
                 }
         except Exception as e:
             logger.warning(f"Failed to parse research results: {e}")
             research_data = {
-                "high_priority_files": [f['path'] for f in files[:10]],
+                "high_priority_files": [f["path"] for f in files[:10]],
                 "focus_areas": ["security", "performance", "testing", "quality"],
-                "rationale": "Using all files (parsing error)"
+                "rationale": "Using all files (parsing error)",
             }
 
         print(f"   Priority files: {len(research_data.get('high_priority_files', []))}")
@@ -1263,9 +1270,9 @@ Be concise. This is research, not detailed analysis."""
     except Exception as e:
         logger.error(f"Research phase failed: {e}")
         research_data = {
-            "high_priority_files": [f['path'] for f in files],
+            "high_priority_files": [f["path"] for f in files],
             "focus_areas": ["security", "performance", "testing", "quality"],
-            "rationale": "Research phase failed, using all files"
+            "rationale": "Research phase failed, using all files",
         }
 
     return research_data
@@ -1368,12 +1375,11 @@ def _run_phase2_deep_analysis(ctx: AuditContext, findings_dict: dict) -> tuple[l
             deep_config = DeepAnalysisConfig(
                 mode=deep_mode,
                 enabled_phases=deep_mode.get_enabled_phases(),
-                max_files=int(ctx.config.get("deep_analysis_max_files",
-                                        os.getenv("DEEP_ANALYSIS_MAX_FILES", "50"))),
-                timeout_seconds=int(ctx.config.get("deep_analysis_timeout",
-                                               os.getenv("DEEP_ANALYSIS_TIMEOUT", "300"))),
-                cost_ceiling=float(ctx.config.get("deep_analysis_cost_ceiling",
-                                             os.getenv("DEEP_ANALYSIS_COST_CEILING", "5.0"))),
+                max_files=int(ctx.config.get("deep_analysis_max_files", os.getenv("DEEP_ANALYSIS_MAX_FILES", "50"))),
+                timeout_seconds=int(ctx.config.get("deep_analysis_timeout", os.getenv("DEEP_ANALYSIS_TIMEOUT", "300"))),
+                cost_ceiling=float(
+                    ctx.config.get("deep_analysis_cost_ceiling", os.getenv("DEEP_ANALYSIS_COST_CEILING", "5.0"))
+                ),
                 dry_run=ctx.config.get("deep_analysis_dry_run", "false").lower() == "true",
             )
 
@@ -1382,10 +1388,7 @@ def _run_phase2_deep_analysis(ctx: AuditContext, findings_dict: dict) -> tuple[l
 
             # Initialize engine
             deep_engine = DeepAnalysisEngine(
-                config=deep_config,
-                ai_client=ctx.client,
-                model=ctx.model,
-                enable_benchmarking=enable_benchmarking
+                config=deep_config, ai_client=ctx.client, model=ctx.model, enable_benchmarking=enable_benchmarking
             )
 
             # Run analysis
@@ -1398,12 +1401,14 @@ def _run_phase2_deep_analysis(ctx: AuditContext, findings_dict: dict) -> tuple[l
             context_findings = []
             for cat, items in findings_dict.items():
                 for item in items:
-                    context_findings.append({
-                        "category": cat,
-                        "severity": item.get("severity", "unknown"),
-                        "title": item.get("title", ""),
-                        "file": item.get("file", ""),
-                    })
+                    context_findings.append(
+                        {
+                            "category": cat,
+                            "severity": item.get("severity", "unknown"),
+                            "title": item.get("title", ""),
+                            "file": item.get("file", ""),
+                        }
+                    )
 
             deep_results = deep_engine.analyze(ctx.repo_path, context_findings)
 
@@ -1423,7 +1428,12 @@ def _run_phase2_deep_analysis(ctx: AuditContext, findings_dict: dict) -> tuple[l
                             "severity": finding.get("severity", "medium"),
                             "category": finding.get("type", category),  # Map 'type' to 'category'
                             "message": finding.get("title", ""),
-                            "file_path": finding.get("file", finding.get("files", ["unknown"])[0] if isinstance(finding.get("files"), list) else "unknown"),
+                            "file_path": finding.get(
+                                "file",
+                                finding.get("files", ["unknown"])[0]
+                                if isinstance(finding.get("files"), list)
+                                else "unknown",
+                            ),
                             "line_number": finding.get("line", 1),
                             "rule_id": f"{category.upper()}-{len(findings_dict[category]) + 1:03d}",
                             "description": finding.get("description", ""),
@@ -1431,8 +1441,9 @@ def _run_phase2_deep_analysis(ctx: AuditContext, findings_dict: dict) -> tuple[l
                         }
                         findings_dict[category].append(normalized_finding)
 
-            print(f"✅ Deep Analysis complete: {len(deep_analysis_findings)} findings, "
-                  f"${deep_engine.total_cost:.2f} cost")
+            print(
+                f"✅ Deep Analysis complete: {len(deep_analysis_findings)} findings, ${deep_engine.total_cost:.2f} cost"
+            )
 
             # Export detailed results
             deep_output = Path(ctx.repo_path) / "argus_deep_analysis_results.json"
@@ -1451,7 +1462,9 @@ def _run_phase2_deep_analysis(ctx: AuditContext, findings_dict: dict) -> tuple[l
     return deep_analysis_findings, findings_dict
 
 
-def _run_phase3_analysis(ctx: AuditContext, plan_summary: str, priority_files: list, findings_dict: dict) -> tuple[list, str, Any]:
+def _run_phase3_analysis(
+    ctx: AuditContext, plan_summary: str, priority_files: list, findings_dict: dict
+) -> tuple[list, str, Any]:
     """Phase 3: Detailed Implementation Analysis.
 
     Args:
@@ -1477,9 +1490,7 @@ def _run_phase3_analysis(ctx: AuditContext, plan_summary: str, priority_files: l
     ctx.context_tracker.add_context("analysis_plan", plan_summary, {"from_phase": 2})
 
     # Load audit instructions
-    audit_command_path = (
-        Path.home() / ".argus/profiles/default/commands/audit-codebase/multi-agent/audit-codebase.md"
-    )
+    audit_command_path = Path.home() / ".argus/profiles/default/commands/audit-codebase/multi-agent/audit-codebase.md"
     if audit_command_path.exists():
         with open(audit_command_path) as f:
             audit_instructions = f.read()
@@ -1623,9 +1634,7 @@ def _run_reporting(ctx: AuditContext, findings: list, report_file: Any) -> tuple
     # -- v2.0 Enrichment Pipeline --
     print("\n🔬 Running enrichment pipeline...")
     _run_license_scoring(config, repo_path)
-    findings, enrichment_meta = _run_enrichment_pipeline(
-        findings, config, repo_path, metrics
-    )
+    findings, enrichment_meta = _run_enrichment_pipeline(findings, config, repo_path, metrics)
 
     # Record finding metrics
     for finding in findings:
@@ -1701,7 +1710,7 @@ def _run_reporting(ctx: AuditContext, findings: list, report_file: Any) -> tuple
     print("\n📊 Context Management:")
     print(f"   Phases: {context_summary['total_phases']}")
     print(f"   Total tokens (estimated): ~{context_summary['total_tokens_estimate']:,}")
-    for phase in context_summary['phases']:
+    for phase in context_summary["phases"]:
         print(f"   - {phase['name']}: {phase['components']} components, ~{phase['tokens_estimate']:,} tokens")
 
     # Check fail-on conditions
@@ -1726,9 +1735,7 @@ def _run_reporting(ctx: AuditContext, findings: list, report_file: Any) -> tuple
                         should_fail = True
                 else:
                     # Check specific category:severity combination
-                    matching_findings = [
-                        f for f in findings if f["category"] == category and f["severity"] == severity
-                    ]
+                    matching_findings = [f for f in findings if f["category"] == category and f["severity"] == severity]
                     if matching_findings:
                         print(f"   ❌ FAIL: Found {len(matching_findings)} {category}:{severity} issues")
                         should_fail = True
@@ -1842,9 +1849,7 @@ def run_audit(repo_path, config, review_type="audit"):
         # -- v2.0 Enrichment Pipeline --
         print("\n🔬 Running enrichment pipeline...")
         _run_license_scoring(config, repo_path)
-        findings, enrichment_meta = _run_enrichment_pipeline(
-            findings, config, repo_path, ctx.metrics
-        )
+        findings, enrichment_meta = _run_enrichment_pipeline(findings, config, repo_path, ctx.metrics)
         json_output_meta = {"enrichment": enrichment_meta} if enrichment_meta else {}
 
         # Generate SARIF with metrics
@@ -1922,16 +1927,16 @@ def run_audit(repo_path, config, review_type="audit"):
         if validation_summary.get("total_validations", 0) > 0:
             print("\n📋 Output Validation:")
             print(f"   Valid outputs: {validation_summary['valid_outputs']}/{validation_summary['total_validations']}")
-            if validation_summary.get('total_warnings', 0) > 0:
+            if validation_summary.get("total_warnings", 0) > 0:
                 print(f"   ⚠️  Warnings: {validation_summary['total_warnings']}")
-            if validation_summary.get('invalid_outputs', 0) > 0:
+            if validation_summary.get("invalid_outputs", 0) > 0:
                 print(f"   ❌ Invalid: {validation_summary['invalid_outputs']}")
 
         if timeout_summary.get("total_executions", 0) > 0:
             print("\n⏱️  Timeout Management:")
             print(f"   Completed: {timeout_summary['completed']}/{timeout_summary['total_executions']}")
             print(f"   Avg duration: {timeout_summary['avg_duration']:.1f}s")
-            if timeout_summary.get('timeout_exceeded', 0) > 0:
+            if timeout_summary.get("timeout_exceeded", 0) > 0:
                 print(f"   ⚠️  Timeouts exceeded: {timeout_summary['timeout_exceeded']}")
 
         # Output for GitHub Actions
@@ -1960,7 +1965,10 @@ def run_audit(repo_path, config, review_type="audit"):
                     severity = severity.strip().lower()
 
                     if category == "any":
-                        if severity in ctx.metrics.metrics["findings"] and ctx.metrics.metrics["findings"][severity] > 0:
+                        if (
+                            severity in ctx.metrics.metrics["findings"]
+                            and ctx.metrics.metrics["findings"][severity] > 0
+                        ):
                             print(f"   ❌ FAIL: Found {ctx.metrics.metrics['findings'][severity]} {severity} issues")
                             should_fail = True
                     else:
@@ -1988,7 +1996,7 @@ def run_audit(repo_path, config, review_type="audit"):
         research_data = _run_phase1_research(ctx)
 
         # Compute priority files for Phases 2 & 3
-        priority_files = [f for f in ctx.files if f['path'] in research_data.get('high_priority_files', [])]
+        priority_files = [f for f in ctx.files if f["path"] in research_data.get("high_priority_files", [])]
         if not priority_files:
             priority_files = ctx.files[:10]  # Fallback
 
