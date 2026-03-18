@@ -171,6 +171,9 @@ def get_default_config() -> dict[str, Any]:
         # Live target validation
         "enable_live_validation": False,  # opt-in: requires dast_target_url
         "live_validation_environment": "staging",
+        # -- Skills knowledge integration --
+        "enable_skills_knowledge": False,  # opt-in: inject cybersecurity skills context into agent prompts
+        "skills_repo_path": "",  # path to cloned Anthropic-Cybersecurity-Skills repository
     }
 
 

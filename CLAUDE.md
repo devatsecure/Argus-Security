@@ -9,7 +9,7 @@ Argus Security runs a **6-phase security pipeline** combining traditional scanne
 ```
 Phase 1: Scanner Orchestration    → Semgrep, Trivy, Checkov, TruffleHog, Gitleaks (verified + pattern-based secrets)
 Phase 2: AI Enrichment            → Claude/OpenAI analysis, noise scoring, CWE mapping
-Phase 3: Multi-Agent Review       → 5 specialized AI personas analyze findings
+Phase 3: Multi-Agent Review       → 5 specialized AI personas analyze findings (+ optional cybersecurity skills knowledge)
 Phase 4: Sandbox Validation       → Docker-based exploit verification
 Phase 5: Policy Gates             → Rego/OPA pass/fail enforcement
 Phase 6: Reporting                → SARIF, JSON, Markdown outputs
@@ -25,6 +25,7 @@ Phase 6: Reporting                → SARIF, JSON, Markdown outputs
 - AutoFix PR generation with closed-loop find-fix-verify
 - SAST-to-DAST live validation against staging targets
 - Deployment-triggered scanning via GitHub Actions workflows
+- Cybersecurity skills knowledge injection (734 runbooks from Anthropic-Cybersecurity-Skills)
 
 ## Quick Start
 
@@ -54,6 +55,7 @@ python scripts/run_ai_audit.py --project-type backend-api
 | `scripts/run_ai_audit.py` | Fast AI code review (Semgrep + 2-3 LLM calls, GitHub Action) |
 | `scripts/config_loader.py` | All configuration + env vars |
 | `scripts/agent_personas.py` | Phase 3: multi-agent review |
+| `scripts/skills_knowledge.py` | Phase 3: cybersecurity skills context injection (734 runbooks) |
 | `scripts/sandbox_validator.py` | Phase 4: Docker validation |
 | `policy/rego/` | Phase 5: OPA policies |
 | `scripts/diff_impact_analyzer.py` | v3.0: Diff-intelligent scanner scoping |

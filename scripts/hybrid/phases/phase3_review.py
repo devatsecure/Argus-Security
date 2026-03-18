@@ -58,6 +58,7 @@ def run_phase3_review(
             ai_client=analyzer.ai_client,
             collaborative_reasoning=analyzer.collaborative_reasoning,
             enable_collaborative_reasoning=analyzer.enable_collaborative_reasoning,
+            skills_knowledge=getattr(analyzer, "skills_knowledge", None),
         )
         all_findings = enriched_findings
         logger.info("   Multi-agent persona review complete: %d findings reviewed", len(all_findings))
@@ -83,6 +84,7 @@ def _run_argus_review(
     ai_client: Any,
     collaborative_reasoning: Any | None,
     enable_collaborative_reasoning: bool,
+    skills_knowledge: Any | None = None,
 ) -> list[HybridFinding]:
     """Run multi-agent persona review on findings.
 
@@ -153,6 +155,8 @@ def _run_argus_review(
 
         else:
             agent = agent_personas.select_agent_for_finding(finding_dict, ai_client)
+            if skills_knowledge:
+                agent.skills_knowledge = skills_knowledge
             analysis = agent.analyze(finding_dict)
 
             if analysis.verdict == "false_positive":

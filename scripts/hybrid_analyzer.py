@@ -194,6 +194,13 @@ except ImportError:
     _ZAP_BASELINE_OK = False
 
 try:
+    from skills_knowledge import SkillsKnowledge
+
+    _SKILLS_KNOWLEDGE_OK = True
+except ImportError:
+    _SKILLS_KNOWLEDGE_OK = False
+
+try:
     from phase_gate import PhaseGate
 
     _PHASE_GATE_OK = True
@@ -382,6 +389,13 @@ class HybridSecurityAnalyzer:
                 logger.warning(f"⚠️  Could not load agent personas: {e}")
                 logger.info("   💡 Continuing without multi-agent personas")
                 self.enable_multi_agent = False
+
+        # Skills knowledge integration (enhances multi-agent personas with cybersecurity runbooks)
+        self.skills_knowledge = None
+        if _SKILLS_KNOWLEDGE_OK and self.config.get("enable_skills_knowledge", False):
+            self.skills_knowledge = SkillsKnowledge.from_config(self.config)
+            if self.skills_knowledge:
+                logger.info("✅ Skills knowledge loaded: %d cybersecurity skills available", self.skills_knowledge.index.total_skills)
 
         if self.enable_spontaneous_discovery and self.enable_ai_enrichment and self.ai_client:
             try:

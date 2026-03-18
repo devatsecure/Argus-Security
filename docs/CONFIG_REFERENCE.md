@@ -154,4 +154,13 @@ Source: `scripts/config_loader.get_default_config()` and `_ENV_MAPPINGS`.
 | fuzzing_duration | 300 | FUZZING_DURATION |
 | runtime_monitoring_duration | 60 | RUNTIME_MONITORING_DURATION |
 
+## Skills Knowledge Integration
+
+| Key | Default | Env var(s) |
+|-----|---------|------------|
+| enable_skills_knowledge | false | ARGUS_ENABLE_SKILLS_KNOWLEDGE |
+| skills_repo_path | "" | ARGUS_SKILLS_REPO_PATH |
+
+Injects cybersecurity runbook context from the [Anthropic-Cybersecurity-Skills](https://github.com/mukul975/Anthropic-Cybersecurity-Skills) repo into Phase 3 agent prompts. Clone the repo locally and set `skills_repo_path` to its path.
+
 For full env-to-key mapping and types, see `config_loader._ENV_MAPPINGS` and `build_unified_config()`.

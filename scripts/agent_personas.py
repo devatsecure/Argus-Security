@@ -83,6 +83,7 @@ class BaseAgentPersona(ABC):
         self.expertise = []
         self.focus_areas = []
         self.prompt_template = ""
+        self.skills_knowledge = None  # Optional: SkillsKnowledge instance for context injection
 
     @abstractmethod
     def analyze(self, finding: dict[str, Any]) -> AgentAnalysis:
@@ -134,6 +135,14 @@ Code Context:
 Your Role: {self.role}
 Your Expertise: {", ".join(self.expertise)}
 """
+        # Inject matching cybersecurity skills context if available
+        if self.skills_knowledge:
+            try:
+                skills_context = self.skills_knowledge.get_context_for_finding(finding)
+                context += skills_context
+            except Exception as e:
+                logger.debug("Skills knowledge lookup failed: %s", e)
+
         return context
 
     def _parse_llm_response(self, response: str, agent_name: str, finding: dict[str, Any] = None) -> AgentAnalysis:

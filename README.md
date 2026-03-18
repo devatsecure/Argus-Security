@@ -181,6 +181,7 @@ These modules enrich findings after scanner results are collected. All are wired
 | Proof-by-Exploitation | `enable_proof_by_exploitation` | Off | LLM-generated PoCs validated in Docker sandbox |
 | MCP Server | `enable_mcp_server` | Off | Expose Argus as MCP tools for Claude Code |
 | Temporal Orchestration | `enable_temporal` | Off | Durable workflow wrapping for crash recovery |
+| Skills Knowledge | `enable_skills_knowledge` | Off | Inject 734 cybersecurity runbooks as context into Phase 3 agent prompts |
 
 ### Continuous Security (v3.0)
 
@@ -198,6 +199,18 @@ These modules enrich findings after scanner results are collected. All are wired
 
 - **Post-Deploy Scan** (`.github/workflows/post-deploy-scan.yml`) — Triggers on successful deployments. Runs diff-scoped SAST + DAST against the deployment URL.
 - **Retest After Fix** (`.github/workflows/argus-retest.yml`) — Triggers when `argus/fix-*` branches merge. Re-scans to verify fixes hold, updates FindingsStore, posts results as PR comments.
+
+### Cybersecurity Skills Knowledge
+
+Integrates 734 cybersecurity runbooks from [Anthropic-Cybersecurity-Skills](https://github.com/mukul975/Anthropic-Cybersecurity-Skills) as additional context for Phase 3 agent personas. When an agent analyzes a finding, matching skills (selected by CWE, tags, and keyword scoring) are injected into the LLM prompt — giving agents expert procedures, verification steps, and tool-specific workflows.
+
+```bash
+# Enable skills knowledge
+export ARGUS_ENABLE_SKILLS_KNOWLEDGE=true
+export ARGUS_SKILLS_REPO_PATH=/path/to/Anthropic-Cybersecurity-Skills
+```
+
+Skills coverage: web-security, cloud-security, malware-analysis, incident-response, threat-hunting, container-security, identity-access-management, cryptography, and 15+ more subdomains.
 
 ---
 
