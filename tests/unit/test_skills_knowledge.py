@@ -177,6 +177,52 @@ class TestSkillMatcher:
 
 
 # ---------------------------------------------------------------------------
+# Auto-discovery tests
+# ---------------------------------------------------------------------------
+
+
+class TestAutoDiscovery:
+    def test_auto_discover_finds_sibling_repo(self, tmp_path, monkeypatch):
+        """Finds the repo as a sibling directory of the project root."""
+        # Simulate: project_root.parent / Anthropic-Cybersecurity-Skills / index.json
+        skills_dir = tmp_path / "Anthropic-Cybersecurity-Skills"
+        skills_dir.mkdir()
+        (skills_dir / "index.json").write_text(json.dumps(SAMPLE_INDEX))
+
+        # Patch __file__ so project_root.parent == tmp_path
+        fake_script = tmp_path / "Argus-Security" / "scripts" / "skills_knowledge.py"
+        fake_script.parent.mkdir(parents=True, exist_ok=True)
+        fake_script.touch()
+
+        import skills_knowledge as sk_mod
+        original_file = sk_mod.__file__
+        monkeypatch.setattr(sk_mod, "__file__", str(fake_script))
+        try:
+            result = SkillsKnowledge._auto_discover_repo()
+            assert result is not None
+            assert result == skills_dir
+        finally:
+            monkeypatch.setattr(sk_mod, "__file__", original_file)
+
+    def test_auto_discover_returns_none_when_not_found(self, tmp_path, monkeypatch):
+        """Returns None when no skills repo exists anywhere."""
+        fake_script = tmp_path / "project" / "scripts" / "sk.py"
+        fake_script.parent.mkdir(parents=True, exist_ok=True)
+        fake_script.touch()
+
+        import skills_knowledge as sk_mod
+        original_file = sk_mod.__file__
+        monkeypatch.setattr(sk_mod, "__file__", str(fake_script))
+        monkeypatch.setattr(Path, "home", lambda: tmp_path / "fakehome")
+        (tmp_path / "fakehome").mkdir(exist_ok=True)
+        try:
+            result = SkillsKnowledge._auto_discover_repo()
+            assert result is None
+        finally:
+            monkeypatch.setattr(sk_mod, "__file__", original_file)
+
+
+# ---------------------------------------------------------------------------
 # SkillsKnowledge tests
 # ---------------------------------------------------------------------------
 
@@ -187,14 +233,25 @@ class TestSkillsKnowledgeConfig:
         result = SkillsKnowledge.from_config(config)
         assert result is None
 
-    def test_from_config_no_path(self):
+    def test_from_config_no_path_no_autodiscover(self, monkeypatch):
+        """When no path given and auto-discovery finds nothing, returns None."""
+        monkeypatch.setattr(SkillsKnowledge, "_auto_discover_repo", staticmethod(lambda: None))
         config = {"enable_skills_knowledge": True, "skills_repo_path": ""}
         result = SkillsKnowledge.from_config(config)
         assert result is None
 
-    def test_from_config_valid(self, tmp_path):
+    def test_from_config_explicit_path(self, tmp_path):
         (tmp_path / "index.json").write_text(json.dumps(SAMPLE_INDEX))
         config = {"enable_skills_knowledge": True, "skills_repo_path": str(tmp_path)}
+        result = SkillsKnowledge.from_config(config)
+        assert result is not None
+        assert result.index.total_skills == 3
+
+    def test_from_config_auto_discover(self, tmp_path, monkeypatch):
+        """When no path given but auto-discovery finds the repo, loads it."""
+        (tmp_path / "index.json").write_text(json.dumps(SAMPLE_INDEX))
+        monkeypatch.setattr(SkillsKnowledge, "_auto_discover_repo", staticmethod(lambda: tmp_path))
+        config = {"enable_skills_knowledge": True, "skills_repo_path": ""}
         result = SkillsKnowledge.from_config(config)
         assert result is not None
         assert result.index.total_skills == 3
@@ -203,6 +260,13 @@ class TestSkillsKnowledgeConfig:
         config = {"enable_skills_knowledge": True, "skills_repo_path": str(tmp_path)}
         result = SkillsKnowledge.from_config(config)
         assert result is None
+
+    def test_from_config_default_enabled(self, tmp_path):
+        """enable_skills_knowledge defaults to True when key is absent."""
+        (tmp_path / "index.json").write_text(json.dumps(SAMPLE_INDEX))
+        config = {"skills_repo_path": str(tmp_path)}
+        result = SkillsKnowledge.from_config(config)
+        assert result is not None
 
 
 class TestSkillContentLoader:

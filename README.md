@@ -181,7 +181,7 @@ These modules enrich findings after scanner results are collected. All are wired
 | Proof-by-Exploitation | `enable_proof_by_exploitation` | Off | LLM-generated PoCs validated in Docker sandbox |
 | MCP Server | `enable_mcp_server` | Off | Expose Argus as MCP tools for Claude Code |
 | Temporal Orchestration | `enable_temporal` | Off | Durable workflow wrapping for crash recovery |
-| Skills Knowledge | `enable_skills_knowledge` | Off | Inject 734 cybersecurity runbooks as context into Phase 3 agent prompts |
+| Skills Knowledge | `enable_skills_knowledge` | On | Inject 734 cybersecurity runbooks as context into Phase 3 agent prompts (auto-discovers repo) |
 
 ### Continuous Security (v3.0)
 
@@ -204,9 +204,13 @@ These modules enrich findings after scanner results are collected. All are wired
 
 Integrates 734 cybersecurity runbooks from [Anthropic-Cybersecurity-Skills](https://github.com/mukul975/Anthropic-Cybersecurity-Skills) as additional context for Phase 3 agent personas. When an agent analyzes a finding, matching skills (selected by CWE, tags, and keyword scoring) are injected into the LLM prompt — giving agents expert procedures, verification steps, and tool-specific workflows.
 
+**On by default.** Auto-discovers the repo in sibling directories, `~/Repos/`, or home directory. Just clone it nearby:
+
 ```bash
-# Enable skills knowledge
-export ARGUS_ENABLE_SKILLS_KNOWLEDGE=true
+# Clone next to Argus-Security — auto-discovered, no config needed
+git clone https://github.com/mukul975/Anthropic-Cybersecurity-Skills.git
+
+# Or set the path explicitly
 export ARGUS_SKILLS_REPO_PATH=/path/to/Anthropic-Cybersecurity-Skills
 ```
 

@@ -200,19 +200,68 @@ class SkillsKnowledge:
         self.matcher = SkillMatcher(self.index)
         self._content_cache: dict[str, Optional[str]] = {}
 
+    # Common names for the cybersecurity skills repo directory
+    _REPO_DIR_NAMES = [
+        "Anthropic-Cybersecurity-Skills",
+        "anthropic-cybersecurity-skills",
+        "cybersecurity-skills",
+    ]
+
+    @classmethod
+    def _auto_discover_repo(cls) -> Optional[Path]:
+        """Try to find the cybersecurity skills repo in common locations.
+
+        Search order:
+        1. Sibling directory of Argus project root
+        2. ~/Repos/
+        3. Home directory
+        """
+        search_roots = []
+
+        # Sibling of this project
+        project_root = Path(__file__).resolve().parent.parent
+        search_roots.append(project_root.parent)
+
+        # ~/Repos/
+        repos_dir = Path.home() / "Repos"
+        if repos_dir.is_dir():
+            search_roots.append(repos_dir)
+
+        # Home directory
+        search_roots.append(Path.home())
+
+        for root in search_roots:
+            for name in cls._REPO_DIR_NAMES:
+                candidate = root / name
+                if (candidate / "index.json").is_file():
+                    logger.debug("Auto-discovered skills repo at %s", candidate)
+                    return candidate
+
+        return None
+
     @classmethod
     def from_config(cls, config: dict[str, Any]) -> Optional["SkillsKnowledge"]:
-        """Create from Argus config dict. Returns None if disabled."""
-        if not config.get("enable_skills_knowledge", False):
+        """Create from Argus config dict. Returns None if disabled.
+
+        When skills_repo_path is not set, auto-discovers the repo in
+        sibling directories, ~/Repos/, or home directory.
+        """
+        if not config.get("enable_skills_knowledge", True):
             return None
+
         repo_path = config.get("skills_repo_path", "")
-        if not repo_path:
-            return None
-        repo_path = Path(repo_path)
+        if repo_path:
+            repo_path = Path(repo_path)
+        else:
+            repo_path = cls._auto_discover_repo()
+            if not repo_path:
+                logger.debug("Skills repo not found via auto-discovery, skipping")
+                return None
+
         index_path = repo_path / "index.json"
         index = SkillsIndex.from_path(index_path)
         if index.total_skills == 0:
-            logger.warning("Skills knowledge enabled but index is empty or missing")
+            logger.warning("Skills knowledge enabled but index is empty or missing at %s", index_path)
             return None
         logger.info("Loaded %d cybersecurity skills from %s", index.total_skills, index_path)
         return cls(index=index, repo_path=repo_path)
