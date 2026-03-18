@@ -8,11 +8,11 @@ Argus Security runs a **6-phase security pipeline** combining traditional scanne
 
 ```
 Phase 1: Scanner Orchestration    → Semgrep, Trivy, Checkov, TruffleHog, Gitleaks (verified + pattern-based secrets)
-Phase 2: AI Enrichment            → Claude/OpenAI analysis, noise scoring, CWE mapping
-Phase 3: Multi-Agent Review       → 5 specialized AI personas analyze findings (+ optional cybersecurity skills knowledge)
-Phase 4: Sandbox Validation       → Docker-based exploit verification
+Phase 2: AI Enrichment            → Claude/OpenAI analysis, noise scoring, CWE mapping + skills knowledge context
+Phase 3: Multi-Agent Review       → 5 specialized AI personas analyze findings + skills knowledge context
+Phase 4: Sandbox Validation       → Docker-based exploit verification + skill-based verification commands
 Phase 5: Policy Gates             → Rego/OPA pass/fail enforcement
-Phase 6: Reporting                → SARIF, JSON, Markdown outputs
+Phase 6: Reporting                → SARIF, JSON, Markdown outputs + related skills references per finding
 ```
 
 **Results:** 60-70% false positive reduction, +15-20% more findings via heuristic-based spontaneous discovery (regex pattern matching, not AI-powered).
@@ -25,7 +25,7 @@ Phase 6: Reporting                → SARIF, JSON, Markdown outputs
 - AutoFix PR generation with closed-loop find-fix-verify
 - SAST-to-DAST live validation against staging targets
 - Deployment-triggered scanning via GitHub Actions workflows
-- Cybersecurity skills knowledge injection (734 runbooks from Anthropic-Cybersecurity-Skills)
+- Cybersecurity skills knowledge (734 runbooks from Anthropic-Cybersecurity-Skills, auto-discovered, used in Phase 2/3/4/6)
 
 ## Quick Start
 
@@ -55,7 +55,7 @@ python scripts/run_ai_audit.py --project-type backend-api
 | `scripts/run_ai_audit.py` | Fast AI code review (Semgrep + 2-3 LLM calls, GitHub Action) |
 | `scripts/config_loader.py` | All configuration + env vars |
 | `scripts/agent_personas.py` | Phase 3: multi-agent review |
-| `scripts/skills_knowledge.py` | Phase 3: cybersecurity skills context injection (734 runbooks) |
+| `scripts/skills_knowledge.py` | Skills knowledge: index loading, matching, content injection, runbook extraction (734 skills, used in Phase 2/3/4/6) |
 | `scripts/sandbox_validator.py` | Phase 4: Docker validation |
 | `policy/rego/` | Phase 5: OPA policies |
 | `scripts/diff_impact_analyzer.py` | v3.0: Diff-intelligent scanner scoping |
@@ -74,4 +74,4 @@ Details moved to scoped rule files (auto-loaded when editing relevant files):
 - `docs/CONTINUOUS_SECURITY_TESTING_GUIDE.md` — v3.0 architecture and gap analysis
 - `docs/V3_CONTINUOUS_SECURITY_MODULES.md` — v3 module summary (diff scope, findings store, app context, autofix)
 - `docs/adrs/0004-v3-continuous-security.md` — ADR for v3 findings store / continuous security
-- `docs/CONFIG_REFERENCE.md` — All 47+ config keys and env vars
+- `docs/CONFIG_REFERENCE.md` — All 49+ config keys and env vars
