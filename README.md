@@ -218,6 +218,67 @@ Skills coverage: web-security, cloud-security, malware-analysis, incident-respon
 
 ---
 
+## Feature Matrix
+
+### ON by Default (runs automatically)
+
+| # | Feature | Config Key | What It Does |
+|---|---------|-----------|--------------|
+| 1 | Semgrep SAST | `enable_semgrep` | Code pattern scanning, 2000+ rules |
+| 2 | Trivy SCA | `enable_trivy` | CVE + dependency scanning |
+| 3 | Checkov IaC | `enable_checkov` | Terraform, K8s, CloudFormation misconfigs |
+| 4 | API Security | `enable_api_security` | API vulnerability scanning |
+| 5 | Supply Chain | `enable_supply_chain` | Supply chain attack detection |
+| 6 | Threat Intel | `enable_threat_intel` | Threat intelligence enrichment |
+| 7 | Remediation | `enable_remediation` | AI-generated fix suggestions |
+| 8 | Regression Testing | `enable_regression_testing` | Security regression checks |
+| 9 | Gitleaks | `enable_gitleaks` | Pattern-based secret detection |
+| 10 | Nuclei Templates | `enable_nuclei_templates` | Source-aware DAST template analysis |
+| 11 | Multi-Agent Review | `enable_multi_agent` | 5 specialized AI personas (Phase 3) |
+| 12 | Spontaneous Discovery | `enable_spontaneous_discovery` | Find issues beyond scanner rules (+15-20%) |
+| 13 | AI Enrichment | `enable_ai_enrichment` | Claude/OpenAI triage, CWE mapping |
+| 14 | Threat Modeling | `enable_threat_modeling` | STRIDE-based threat analysis |
+| 15 | Sandbox Validation | `enable_sandbox_validation` | Docker-based exploit verification |
+| 16 | Heuristics | `enable_heuristics` | Pre-LLM regex pattern matching |
+| 17 | Consensus | `enable_consensus` | Multi-agent consensus building |
+| 18 | IRIS Semantic | `enable_iris` | Research-proven semantic analysis (arXiv 2405.17238) |
+| 19 | Audit Trail | `enable_audit_trail` | Per-agent cost/duration tracking |
+| 20 | Smart Retry | `enable_smart_retry` | Classified retry strategies per error type |
+| 21 | Parallel Agents | `enable_parallel_agents` | Concurrent quality agents (~60% faster Phase 3) |
+| 22 | Phase Gating | `enable_phase_gating` | Schema validation between phases |
+| 23 | License Risk Scoring | `enable_license_risk_scoring` | 5-tier SPDX classification |
+| 24 | EPSS Scoring | `enable_epss_scoring` | FIRST.org exploit probability scores |
+| 25 | Fix Version Tracking | `enable_fix_version_tracking` | Semver upgrade paths |
+| 26 | VEX Support | `enable_vex` | OpenVEX, CycloneDX, CSAF parsing |
+| 27 | Vuln Deduplication | `enable_vuln_deduplication` | Cross-scanner merge |
+| 28 | Advanced Suppression | `enable_advanced_suppression` | `.argus-ignore.yml` with expiration |
+| 29 | Compliance Mapping | `enable_compliance_mapping` | NIST, PCI DSS, OWASP, SOC 2, ISO 27001 |
+| 30 | Quality Filter | `enable_quality_filter` | Post-Phase-3 low-confidence filtering |
+| 31 | Diff Scoping | `enable_diff_scoping` | Scope scanners to changed files |
+| 32 | Findings Store | `enable_findings_store` | SQLite cross-scan persistence + regression |
+| 33 | Cross-Component Analysis | `enable_cross_component_analysis` | Dangerous vuln combinations across boundaries |
+| 34 | App Context | `enable_app_context` | Auto-detect framework, auth, cloud, IaC |
+| 35 | Skills Knowledge | `enable_skills_knowledge` | 734 cybersecurity runbooks injected into agent prompts (auto-discovers repo) |
+
+### OFF by Default (opt-in required)
+
+| # | Feature | Config Key | Why Opt-in |
+|---|---------|-----------|------------|
+| 1 | DAST Scanning | `enable_dast` | Requires `dast_target_url` |
+| 2 | Fuzzing | `enable_fuzzing` | Resource intensive |
+| 3 | Runtime Security | `enable_runtime_security` | Requires Falco binary |
+| 4 | ZAP Baseline | `enable_zap_baseline` | Requires ZAP binary or Docker image |
+| 5 | MCP Server | `enable_mcp_server` | Exposes Argus as MCP tools |
+| 6 | Collaborative Reasoning | `enable_collaborative_reasoning` | Extra API cost (multi-round debate) |
+| 7 | Proof-by-Exploitation | `enable_proof_by_exploitation` | LLM-powered PoC generation + sandbox |
+| 8 | Temporal Orchestration | `enable_temporal` | Requires Temporal server |
+| 9 | Deep Analysis | `deep_analysis_mode` | Default `"off"`, extra cost |
+| 10 | AutoFix PR | `enable_autofix_pr` | Generates branches/PRs |
+| 11 | Agent Chain Discovery | `enable_agent_chain_discovery` | Extra LLM credits |
+| 12 | Live Validation | `enable_live_validation` | Requires `dast_target_url` + staging |
+
+---
+
 ## Audited Projects
 
 Argus has been used to scan real-world open-source projects. Table ordered by GitHub stars (descending).
