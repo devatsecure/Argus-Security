@@ -47,7 +47,8 @@ logger = logging.getLogger(__name__)
 
 
 def enrich_with_ai(
-    ai_client: Any, findings: list[HybridFinding], project_context: Optional[Any], logger: logging.Logger
+    ai_client: Any, findings: list[HybridFinding], project_context: Optional[Any], logger: logging.Logger,
+    skills_knowledge: Optional[Any] = None,
 ) -> list[HybridFinding]:
     """
     Enrich findings with AI analysis (Claude/OpenAI)
@@ -84,7 +85,8 @@ def enrich_with_ai(
 
         try:
             # Build prompt for AI analysis
-            prompt = build_enrichment_prompt(finding, project_context, finding.file_path, logger)
+            prompt = build_enrichment_prompt(finding, project_context, finding.file_path, logger,
+                                            skills_knowledge=skills_knowledge)
 
             # Call AI model
             response, _input_tokens, _output_tokens = ai_client.call_llm_api(
@@ -345,7 +347,8 @@ def analyze_xss_output_destination(finding: HybridFinding, target_path: str, log
 
 
 def build_enrichment_prompt(
-    finding: HybridFinding, project_context: Optional[Any], target_path: str, logger: logging.Logger
+    finding: HybridFinding, project_context: Optional[Any], target_path: str, logger: logging.Logger,
+    skills_knowledge: Optional[Any] = None,
 ) -> str:
     """
     Build prompt for AI to analyze a finding with project context
@@ -426,6 +429,23 @@ def build_enrichment_prompt(
 - This XSS finding is likely a FALSE POSITIVE for CLI tools
 - Downgrade severity to LOW or mark as false positive unless output reaches browser
 """
+
+    # Inject matching cybersecurity skills context if available
+    if skills_knowledge:
+        try:
+            finding_dict = {
+                "rule_id": finding.title or "",
+                "category": finding.category or "",
+                "severity": finding.severity or "",
+                "cwe_id": finding.cwe_id or "",
+                "path": finding.file_path or "",
+                "title": finding.title or "",
+            }
+            skills_context = skills_knowledge.get_context_for_finding(finding_dict)
+            if skills_context:
+                prompt += skills_context
+        except Exception as e:
+            logger.debug("Skills knowledge lookup failed in Phase 2: %s", e)
 
     prompt += """
 **Your Task:**

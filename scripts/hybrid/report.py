@@ -72,7 +72,8 @@ def get_enabled_tools(flags: dict[str, Any]) -> list[str]:
     return tools
 
 
-def save_results(result: HybridScanResult, output_dir: str, target_path: str) -> None:
+def save_results(result: HybridScanResult, output_dir: str, target_path: str,
+                  skills_knowledge: Any = None) -> None:
     """Save results in multiple formats.
 
     Args:
@@ -129,7 +130,7 @@ def save_results(result: HybridScanResult, output_dir: str, target_path: str) ->
 
     # Save Markdown report
     md_file = output_path / f"hybrid-scan-{timestamp}.md"
-    markdown_report = generate_markdown_report(result)
+    markdown_report = generate_markdown_report(result, skills_knowledge=skills_knowledge)
     with open(md_file, "w") as f:
         f.write(markdown_report)
     logger.info(f"💾 Markdown report: {md_file}")
@@ -206,7 +207,7 @@ def severity_to_sarif_level(severity: str) -> str:
     return mapping.get(severity.lower(), "warning")
 
 
-def generate_markdown_report(result: HybridScanResult) -> str:
+def generate_markdown_report(result: HybridScanResult, skills_knowledge: Any = None) -> str:
     """Generate human-readable Markdown report.
 
     Args:
@@ -273,6 +274,29 @@ def generate_markdown_report(result: HybridScanResult) -> str:
                 for ref in finding.references[:3]:
                     report.append(f"- {ref}\n")
                 report.append("\n")
+
+            # Add matched cybersecurity skill references
+            if skills_knowledge:
+                try:
+                    finding_dict = {
+                        "rule_id": finding.title or "",
+                        "category": finding.category or "",
+                        "severity": finding.severity,
+                        "cwe_id": finding.cwe_id or "",
+                        "path": finding.file_path or "",
+                        "title": finding.title or "",
+                    }
+                    matches = skills_knowledge.match_finding(finding_dict, max_results=2)
+                    if matches:
+                        report.append("**Related Skills**:\n")
+                        for skill in matches:
+                            report.append(
+                                f"- [{skill['name']}](skills/{skill['name']}/SKILL.md)"
+                                f" ({skill.get('subdomain', 'N/A')})\n"
+                            )
+                        report.append("\n")
+                except Exception:
+                    pass  # Non-critical, skip silently
 
             report.append("---\n\n")
 

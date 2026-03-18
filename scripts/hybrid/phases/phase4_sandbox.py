@@ -35,6 +35,7 @@ def run_phase4_sandbox(
     all_findings: list[HybridFinding],
     target_path: str,
     analyzer: Any,
+    skills_knowledge: Any | None = None,
 ) -> tuple[list[HybridFinding], float | None]:
     """Execute Phase 4 -- Docker sandbox validation.
 
@@ -67,6 +68,7 @@ def run_phase4_sandbox(
             target_path=target_path,
             sandbox_validator=analyzer.sandbox_validator,
             analyzer=analyzer,
+            skills_knowledge=skills_knowledge,
         )
         all_findings = validated_findings
 
@@ -96,6 +98,7 @@ def _run_sandbox_validation(
     target_path: str,
     sandbox_validator: Any,
     analyzer: Any = None,
+    skills_knowledge: Any | None = None,
 ) -> list[HybridFinding]:
     """Validate exploitable findings in Docker sandbox.
 
@@ -164,6 +167,37 @@ def _run_sandbox_validation(
         "   %d finding(s) meet sandbox validation criteria (critical/high, CVSS >= 7.0)",
         len(candidates),
     )
+
+    # Enrich candidates with skill-based verification commands
+    if skills_knowledge:
+        try:
+            from skills_knowledge import SkillRunbookExtractor
+            extractor = SkillRunbookExtractor()
+            for finding in candidates:
+                finding_dict = {
+                    "rule_id": finding.title or "",
+                    "category": finding.category or "",
+                    "severity": finding.severity or "",
+                    "cwe_id": finding.cwe_id or "",
+                    "path": finding.file_path or "",
+                    "title": finding.title or "",
+                }
+                matches = skills_knowledge.match_finding(finding_dict, max_results=1)
+                if matches:
+                    content = skills_knowledge.load_skill_content(matches[0]["name"], max_chars=3000)
+                    if content:
+                        verification_cmds = extractor.extract_verification(content)
+                        if verification_cmds:
+                            finding.description += (
+                                f"\n\n**Skill Verification Commands** (from {matches[0]['name']}):\n"
+                                + "\n".join(f"- `{cmd}`" for cmd in verification_cmds[:5])
+                            )
+                            logger.debug(
+                                "   Added %d verification commands from skill %s for %s",
+                                len(verification_cmds), matches[0]["name"], finding.finding_id,
+                            )
+        except Exception as e:
+            logger.debug("   Skills knowledge enrichment for Phase 4 failed: %s", e)
 
     # ----------------------------------------------------------------
     # Path A: Full proof-by-exploitation (LLM exploit gen + sandbox)

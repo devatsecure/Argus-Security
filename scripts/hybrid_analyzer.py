@@ -988,6 +988,7 @@ class HybridSecurityAnalyzer:
             all_findings=all_findings,
             target_path=target_path,
             analyzer=self,
+            skills_knowledge=self.skills_knowledge,
         )
         if p4_duration is not None:
             phase_timings["phase4_sandbox_validation"] = p4_duration
@@ -1348,7 +1349,8 @@ class HybridSecurityAnalyzer:
     def _enrich_with_ai(self, findings: list[HybridFinding]) -> list[HybridFinding]:
         from hybrid.ai_enrichment import enrich_with_ai
 
-        return enrich_with_ai(self.ai_client, findings, self.project_context, logger)
+        return enrich_with_ai(self.ai_client, findings, self.project_context, logger,
+                              skills_knowledge=self.skills_knowledge)
 
     def _enrich_with_iris(self, findings: list[HybridFinding], target_path: str) -> list[HybridFinding]:
         from hybrid.ai_enrichment import enrich_with_iris
@@ -1418,7 +1420,7 @@ class HybridSecurityAnalyzer:
     def _save_results(self, result: HybridScanResult, output_dir: str) -> None:
         from hybrid.report import save_results
 
-        save_results(result, output_dir, result.target_path)
+        save_results(result, output_dir, result.target_path, skills_knowledge=self.skills_knowledge)
 
     def _convert_to_sarif(self, result: HybridScanResult) -> dict:
         from hybrid.report import convert_to_sarif
@@ -1433,7 +1435,7 @@ class HybridSecurityAnalyzer:
     def _generate_markdown_report(self, result: HybridScanResult) -> str:
         from hybrid.report import generate_markdown_report
 
-        return generate_markdown_report(result)
+        return generate_markdown_report(result, skills_knowledge=self.skills_knowledge)
 
     def _print_summary(self, result: HybridScanResult) -> None:
         from hybrid.report import print_summary
