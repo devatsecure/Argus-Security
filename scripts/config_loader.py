@@ -59,6 +59,7 @@ def get_default_config() -> dict[str, Any]:
         "openai_api_key": "",
         "openrouter_api_key": "",
         "openrouter_model": "deepseek/deepseek-v3.2",
+        "openrouter_phase_models": {},  # Per-phase model routing: {"deep_analysis": "anthropic/claude-opus-4.6", ...}
         "ollama_endpoint": "",
         # -- Scanner toggles --
         "enable_semgrep": True,

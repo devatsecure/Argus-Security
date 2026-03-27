@@ -210,6 +210,15 @@ def main():
         "openai_api_key": os.getenv("OPENAI_API_KEY"),
         "openrouter_api_key": os.getenv("OPENROUTER_API_KEY"),
         "openrouter_model": os.getenv("OPENROUTER_MODEL", "deepseek/deepseek-v3.2"),
+        "openrouter_phase_models": {
+            k: v for k, v in {
+                "enrichment": os.getenv("OPENROUTER_MODEL_ENRICHMENT"),
+                "deep_analysis": os.getenv("OPENROUTER_MODEL_DEEP_ANALYSIS"),
+                "multi_agent": os.getenv("OPENROUTER_MODEL_MULTI_AGENT"),
+                "remediation": os.getenv("OPENROUTER_MODEL_REMEDIATION"),
+                "discovery": os.getenv("OPENROUTER_MODEL_DISCOVERY"),
+            }.items() if v
+        },
         "ollama_endpoint": os.getenv("OLLAMA_ENDPOINT"),
         "model": os.getenv("MODEL", "auto"),
         "anthropic_base_url": os.getenv("ANTHROPIC_BASE_URL"),

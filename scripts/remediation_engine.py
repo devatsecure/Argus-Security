@@ -548,7 +548,11 @@ Generate ONLY the JSON response, no markdown code blocks or additional text.
 """
 
         # Call LLM API
-        response_text, _input_tokens, _output_tokens = self.llm.call_llm_api(prompt, max_tokens=1500)
+        response_text, _input_tokens, _output_tokens = self.llm.call_llm_api(prompt, max_tokens=1500, phase="remediation")
+
+        # Guard against None responses (some models return None for certain prompts)
+        if not response_text:
+            raise ValueError("LLM returned empty/None response for fix generation")
 
         # Parse JSON response (handle markdown code blocks)
         response_text = re.sub(r"^```json\s*\n?", "", response_text.strip())

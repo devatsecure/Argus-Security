@@ -92,6 +92,16 @@ class LLMManager:
         "claude-cli": {"input": 0.0, "output": 0.0},  # Claude Code subscription: included
     }
 
+    # Per-phase model routing for OpenRouter (cheap models for bulk, premium for deep analysis)
+    # Config key: openrouter_phase_models (dict of phase -> model ID)
+    DEFAULT_PHASE_MODELS = {
+        "enrichment": None,       # Phase 2: use default model (cheap)
+        "deep_analysis": None,    # Phase 2.3 IRIS: use premium model if configured
+        "multi_agent": None,      # Phase 3: use default model (cheap, high volume)
+        "remediation": None,      # Phase 2.5: use premium model if configured
+        "discovery": None,        # Phase 2.6: use default model
+    }
+
     def __init__(self, config: dict = None):
         """Initialize LLM Manager
 
@@ -102,6 +112,12 @@ class LLMManager:
         self.client = None
         self.provider = None
         self.model = None
+
+        # Load per-phase model routing
+        self.phase_models = dict(self.DEFAULT_PHASE_MODELS)
+        configured = self.config.get("openrouter_phase_models", {})
+        if configured:
+            self.phase_models.update(configured)
 
         # Initialize feedback collector and cache manager for decision logging
         self.feedback_collector = None
@@ -531,6 +547,24 @@ class LLMManager:
             logger.debug(f"Could not log decision: {e}")
             return False
 
+    def _resolve_model(self, phase: str = "") -> str:
+        """Resolve which model to use for a given phase.
+
+        For OpenRouter, supports per-phase model routing so cheap models handle
+        bulk triage while premium models handle deep analysis and remediation.
+
+        Args:
+            phase: Pipeline phase name (enrichment, deep_analysis, multi_agent, remediation, discovery)
+
+        Returns:
+            Model ID to use
+        """
+        if phase and self.provider == "openrouter":
+            phase_model = self.phase_models.get(phase)
+            if phase_model:
+                return phase_model
+        return self.model
+
     def call_llm_api(
         self,
         prompt: str,
@@ -538,6 +572,7 @@ class LLMManager:
         circuit_breaker: "CostCircuitBreaker" = None,
         operation: str = "LLM call",
         few_shot_prefix: str = "",
+        phase: str = "",
     ) -> tuple:
         """Call LLM API with retry logic, cost enforcement, and few-shot learning
 
@@ -547,6 +582,7 @@ class LLMManager:
             circuit_breaker: Optional CostCircuitBreaker for cost enforcement
             operation: Description of operation for logging
             few_shot_prefix: Few-shot examples to prepend to prompt
+            phase: Pipeline phase for model routing (enrichment, deep_analysis, multi_agent, remediation, discovery)
 
         Returns:
             Tuple of (response_text, input_tokens, output_tokens)
@@ -558,6 +594,9 @@ class LLMManager:
         if self.client is None or self.provider is None:
             raise LLMException("LLM Manager not initialized. Call initialize() first.")
 
+        # Resolve model for this phase (may differ from self.model for OpenRouter routing)
+        active_model = self._resolve_model(phase)
+
         # Prepend few-shot examples if provided
         full_prompt = f"{few_shot_prefix}\n\n{prompt}" if few_shot_prefix else prompt
 
@@ -566,10 +605,14 @@ class LLMManager:
             estimated_cost = self.estimate_call_cost(len(full_prompt), max_tokens, self.provider)
             circuit_breaker.check_before_call(estimated_cost, self.provider, operation)
 
+        # Log model routing if different from default
+        if active_model != self.model:
+            logger.debug("Phase '%s' routed to model: %s (default: %s)", phase, active_model, self.model)
+
         try:
             if self.provider == "anthropic":
                 message = self.client.messages.create(
-                    model=self.model,
+                    model=active_model,
                     max_tokens=max_tokens,
                     messages=[{"role": "user", "content": full_prompt}],
                     timeout=300.0,  # 5 minute timeout
@@ -580,7 +623,7 @@ class LLMManager:
 
             elif self.provider in ["openai", "openrouter", "ollama"]:
                 response = self.client.chat.completions.create(
-                    model=self.model,
+                    model=active_model,
                     messages=[{"role": "user", "content": full_prompt}],
                     max_tokens=max_tokens,
                     timeout=300.0,  # 5 minute timeout
@@ -649,14 +692,14 @@ class LLMManager:
             )
             raise
 
-    def analyze(self, prompt: str, max_tokens: int = 4096) -> "LLMResponse":
+    def analyze(self, prompt: str, max_tokens: int = 4096, phase: str = "deep_analysis") -> "LLMResponse":
         """Analyze prompt and return an LLM response object.
 
         Convenience wrapper around call_llm_api that returns a response object
         compatible with IRISAnalyzer and other consumers that expect raw-API-style
         attributes (.content, .usage.input_tokens, .usage.output_tokens).
         """
-        text, inp, out = self.call_llm_api(prompt, max_tokens=max_tokens)
+        text, inp, out = self.call_llm_api(prompt, max_tokens=max_tokens, phase=phase)
         return LLMResponse(text=text, input_tokens=inp, output_tokens=out)
 
     def generate(self, user_prompt: str, system_prompt: str = "", max_tokens: int = 4096) -> str:

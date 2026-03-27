@@ -290,7 +290,7 @@ Your Expertise: {", ".join(self.expertise)}
                 logger.warning(f"{self.name}: LLM not initialized, skipping AI analysis")
                 return "LLM not available"
 
-            response_text, _, _ = self.llm.call_llm_api(prompt, max_tokens)
+            response_text, _, _ = self.llm.call_llm_api(prompt, max_tokens, phase="multi_agent")
             return response_text
         except Exception as e:
             logger.error(f"{self.name}: LLM call failed: {e}")

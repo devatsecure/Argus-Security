@@ -90,7 +90,8 @@ def enrich_with_ai(
 
             # Call AI model
             response, _input_tokens, _output_tokens = ai_client.call_llm_api(
-                prompt=prompt, max_tokens=1000, operation=f"Enrich finding {finding.finding_id}"
+                prompt=prompt, max_tokens=1000, operation=f"Enrich finding {finding.finding_id}",
+                phase="enrichment",
             )
 
             # Parse AI response
