@@ -67,6 +67,9 @@ def validate_config(config):
     elif provider == "openai":
         if not config.get("openai_api_key"):
             raise ValueError("OpenAI API key is required")
+    elif provider == "openrouter":
+        if not config.get("openrouter_api_key"):
+            raise ValueError("OpenRouter API key is required")
     elif provider not in ["auto", "ollama", "foundation-sec"]:
         raise ValueError(f"Invalid AI provider: {provider}")
 
@@ -86,6 +89,9 @@ def estimate_cost(files, max_tokens, provider):
     elif provider == "openai":
         input_cost = (estimated_input_tokens / 1_000_000) * 10.0
         output_cost = (estimated_output_tokens / 1_000_000) * 30.0
+    elif provider == "openrouter":
+        input_cost = (estimated_input_tokens / 1_000_000) * 0.14
+        output_cost = (estimated_output_tokens / 1_000_000) * 0.28
     else:  # ollama or other local models
         input_cost = 0.0
         output_cost = 0.0

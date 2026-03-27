@@ -165,11 +165,13 @@ def detect_ai_provider(config):
         return "anthropic"
     elif config.get("openai_api_key"):
         return "openai"
+    elif config.get("openrouter_api_key"):
+        return "openrouter"
     elif config.get("ollama_endpoint"):
         return "ollama"
     else:
         print("⚠️  No AI provider configured")
-        print("💡 Set one of: ANTHROPIC_API_KEY, OPENAI_API_KEY, or OLLAMA_ENDPOINT")
+        print("💡 Set one of: ANTHROPIC_API_KEY, OPENAI_API_KEY, OPENROUTER_API_KEY, or OLLAMA_ENDPOINT")
         return None
 
 
@@ -199,6 +201,25 @@ def get_ai_client(provider, config):
 
             print("🔑 Using OpenAI API endpoint")
             return OpenAI(api_key=api_key), "openai"
+        except ImportError:
+            print("❌ openai package not installed. Run: pip install openai")
+            sys.exit(2)
+
+    elif provider == "openrouter":
+        try:
+            from openai import OpenAI
+
+            api_key = config.get("openrouter_api_key")
+            if not api_key:
+                raise ValueError("OPENROUTER_API_KEY not set")
+
+            model = config.get("openrouter_model", "deepseek/deepseek-v3.2")
+            safe_model = str(model).split("/")[-1] if model else "unknown"
+            print(f"🔑 Using OpenRouter API (model: {safe_model})")
+            return OpenAI(
+                base_url="https://openrouter.ai/api/v1",
+                api_key=api_key,
+            ), "openrouter"
         except ImportError:
             print("❌ openai package not installed. Run: pip install openai")
             sys.exit(2)
@@ -236,6 +257,7 @@ def get_model_name(provider, config):
     defaults = {
         "anthropic": "claude-sonnet-4-5-20250929",
         "openai": "gpt-4-turbo-preview",
+        "openrouter": config.get("openrouter_model", "deepseek/deepseek-v3.2"),
         "ollama": "llama3.2:3b",
     }
 
@@ -639,6 +661,10 @@ def estimate_call_cost(prompt_length: int, max_output_tokens: int, provider: str
         # GPT-4: $10/1M input, $30/1M output
         input_cost = (estimated_input_tokens / 1_000_000) * 10.0
         output_cost = (estimated_output_tokens / 1_000_000) * 30.0
+    elif provider == "openrouter":
+        # DeepSeek V3.2: ~$0.14/1M input, $0.28/1M output (varies by model)
+        input_cost = (estimated_input_tokens / 1_000_000) * 0.14
+        output_cost = (estimated_output_tokens / 1_000_000) * 0.28
     else:
         # Foundation-Sec and Ollama: Free (local)
         input_cost = 0.0
@@ -682,7 +708,7 @@ def call_llm_api(client, provider, model, prompt, max_tokens, circuit_breaker=No
             input_tokens = message.usage.input_tokens
             output_tokens = message.usage.output_tokens
 
-        elif provider in ["openai", "ollama"]:
+        elif provider in ["openai", "openrouter", "ollama"]:
             response = client.chat.completions.create(
                 model=model,
                 messages=[{"role": "user", "content": prompt}],
@@ -725,6 +751,9 @@ def calculate_actual_cost(input_tokens: int, output_tokens: int, provider: str) 
     elif provider == "openai":
         input_cost = (input_tokens / 1_000_000) * 10.0
         output_cost = (output_tokens / 1_000_000) * 30.0
+    elif provider == "openrouter":
+        input_cost = (input_tokens / 1_000_000) * 0.14
+        output_cost = (output_tokens / 1_000_000) * 0.28
     else:
         # Ollama and other local models: Free
         input_cost = 0.0

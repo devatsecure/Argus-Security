@@ -651,9 +651,11 @@ Be specific with file paths and line numbers. Focus on actionable, real issues.
                 "duration_seconds": round(agent_duration, 2),
                 "input_tokens": input_tokens,
                 "output_tokens": output_tokens,
-                "cost_usd": round((input_tokens / 1_000_000) * 3.0 + (output_tokens / 1_000_000) * 15.0, 4)
-                if provider == "anthropic"
-                else 0,
+                "cost_usd": round(
+                    (input_tokens / 1_000_000) * (3.0 if provider == "anthropic" else 10.0 if provider == "openai" else 0.14 if provider == "openrouter" else 0.0)
+                    + (output_tokens / 1_000_000) * (15.0 if provider == "anthropic" else 30.0 if provider == "openai" else 0.28 if provider == "openrouter" else 0.0),
+                    4,
+                ),
                 "validation": validation,
                 "timeout_exceeded": exceeded,
             }
@@ -1057,9 +1059,11 @@ Generate the complete audit report as specified in your instructions.
             "duration_seconds": round(orchestrator_duration, 2),
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
-            "cost_usd": round((input_tokens / 1_000_000) * 3.0 + (output_tokens / 1_000_000) * 15.0, 4)
-            if provider == "anthropic"
-            else 0,
+            "cost_usd": round(
+                (input_tokens / 1_000_000) * (3.0 if provider == "anthropic" else 10.0 if provider == "openai" else 0.14 if provider == "openrouter" else 0.0)
+                + (output_tokens / 1_000_000) * (15.0 if provider == "anthropic" else 30.0 if provider == "openai" else 0.28 if provider == "openrouter" else 0.0),
+                4,
+            ),
         }
 
         print("   \u2705 Synthesis complete")

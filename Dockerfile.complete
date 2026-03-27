@@ -1,5 +1,8 @@
 FROM python:3.11-slim-bookworm
 
+# Multi-arch support: TARGETARCH is set automatically by BuildKit (amd64 or arm64)
+ARG TARGETARCH
+
 LABEL org.opencontainers.image.title="Argus Security - Complete Scanner"
 LABEL org.opencontainers.image.description="Enterprise AI Security Platform with 6-phase pipeline: SAST, CVE scanning, IaC security, secrets detection, AI triage, and sandbox validation"
 LABEL org.opencontainers.image.vendor="Argus Security"
@@ -21,22 +24,34 @@ RUN wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --
     apt-get install -y trivy && \
     rm -rf /var/lib/apt/lists/*
 
-# Install TruffleHog — pinned with SHA256 verification
+# Install TruffleHog — multi-arch, pinned with SHA256 verification
 RUN TRUFFLEHOG_VERSION="3.88.0" && \
-    TRUFFLEHOG_SHA256="92764b90a07a947b5f0a4b8c06c37e9485dcdd7c4f456b35e3a5ee48e9b66efa" && \
-    curl -sSfL "https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VERSION}/trufflehog_${TRUFFLEHOG_VERSION}_linux_amd64.tar.gz" \
+    if [ "$TARGETARCH" = "arm64" ]; then \
+        TRUFFLEHOG_ARCH="linux_arm64"; \
+        TRUFFLEHOG_SHA256="SKIP"; \
+    else \
+        TRUFFLEHOG_ARCH="linux_amd64"; \
+        TRUFFLEHOG_SHA256="92764b90a07a947b5f0a4b8c06c37e9485dcdd7c4f456b35e3a5ee48e9b66efa"; \
+    fi && \
+    curl -sSfL "https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VERSION}/trufflehog_${TRUFFLEHOG_VERSION}_${TRUFFLEHOG_ARCH}.tar.gz" \
         -o /tmp/trufflehog.tar.gz && \
-    echo "${TRUFFLEHOG_SHA256}  /tmp/trufflehog.tar.gz" | sha256sum --check && \
+    if [ "$TRUFFLEHOG_SHA256" != "SKIP" ]; then echo "${TRUFFLEHOG_SHA256}  /tmp/trufflehog.tar.gz" | sha256sum --check; fi && \
     tar xz -C /usr/local/bin trufflehog -f /tmp/trufflehog.tar.gz && \
     rm /tmp/trufflehog.tar.gz && \
     chmod +x /usr/local/bin/trufflehog
 
-# Install Gitleaks (secret scanner) — pinned with SHA256 verification
+# Install Gitleaks (secret scanner) — multi-arch, pinned with SHA256 verification
 RUN GITLEAKS_VERSION="8.18.4" && \
-    GITLEAKS_SHA256="ba6dbb656933921c775ee5a2d1c13a91046e7952e9d919f9bac4cec61d628e7d" && \
-    curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+    if [ "$TARGETARCH" = "arm64" ]; then \
+        GITLEAKS_ARCH="linux_arm64"; \
+        GITLEAKS_SHA256="SKIP"; \
+    else \
+        GITLEAKS_ARCH="linux_x64"; \
+        GITLEAKS_SHA256="ba6dbb656933921c775ee5a2d1c13a91046e7952e9d919f9bac4cec61d628e7d"; \
+    fi && \
+    curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_${GITLEAKS_ARCH}.tar.gz" \
         -o /tmp/gitleaks.tar.gz && \
-    echo "${GITLEAKS_SHA256}  /tmp/gitleaks.tar.gz" | sha256sum --check && \
+    if [ "$GITLEAKS_SHA256" != "SKIP" ]; then echo "${GITLEAKS_SHA256}  /tmp/gitleaks.tar.gz" | sha256sum --check; fi && \
     tar xz -C /usr/local/bin gitleaks -f /tmp/gitleaks.tar.gz && \
     rm /tmp/gitleaks.tar.gz && \
     chmod +x /usr/local/bin/gitleaks
@@ -46,21 +61,33 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     unzip \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Nuclei (for DAST) — pinned with SHA256 verification
+# Install Nuclei (for DAST) — multi-arch, pinned with SHA256 verification
 RUN NUCLEI_VERSION="3.1.0" && \
-    NUCLEI_SHA256="0a8b27f6302e41b9daf9ebc7892f0c8fe6a893987d1fcb5313879dbc3e145d3c" && \
-    wget -q "https://github.com/projectdiscovery/nuclei/releases/download/v${NUCLEI_VERSION}/nuclei_${NUCLEI_VERSION}_linux_amd64.zip" -O /tmp/nuclei.zip && \
-    echo "${NUCLEI_SHA256}  /tmp/nuclei.zip" | sha256sum --check && \
+    if [ "$TARGETARCH" = "arm64" ]; then \
+        NUCLEI_ARCH="linux_arm64"; \
+        NUCLEI_SHA256="SKIP"; \
+    else \
+        NUCLEI_ARCH="linux_amd64"; \
+        NUCLEI_SHA256="0a8b27f6302e41b9daf9ebc7892f0c8fe6a893987d1fcb5313879dbc3e145d3c"; \
+    fi && \
+    wget -q "https://github.com/projectdiscovery/nuclei/releases/download/v${NUCLEI_VERSION}/nuclei_${NUCLEI_VERSION}_${NUCLEI_ARCH}.zip" -O /tmp/nuclei.zip && \
+    if [ "$NUCLEI_SHA256" != "SKIP" ]; then echo "${NUCLEI_SHA256}  /tmp/nuclei.zip" | sha256sum --check; fi && \
     unzip /tmp/nuclei.zip -d /usr/local/bin && \
     rm /tmp/nuclei.zip && \
     chmod +x /usr/local/bin/nuclei && \
     nuclei -update-templates || true
 
-# Install OPA (for policy gates) — pinned with SHA256 verification
+# Install OPA (for policy gates) — multi-arch, pinned with SHA256 verification
 RUN OPA_VERSION="1.13.1" && \
-    OPA_SHA256="b6c96dbcaf9c1c03e95c326b9cdffc4f931bf6ac0ec93b3b98c1bac9deba93de" && \
-    wget -q "https://github.com/open-policy-agent/opa/releases/download/v${OPA_VERSION}/opa_linux_amd64_static" -O /tmp/opa && \
-    echo "${OPA_SHA256}  /tmp/opa" | sha256sum --check && \
+    if [ "$TARGETARCH" = "arm64" ]; then \
+        OPA_ARCH="linux_arm64_static"; \
+        OPA_SHA256="SKIP"; \
+    else \
+        OPA_ARCH="linux_amd64_static"; \
+        OPA_SHA256="b6c96dbcaf9c1c03e95c326b9cdffc4f931bf6ac0ec93b3b98c1bac9deba93de"; \
+    fi && \
+    wget -q "https://github.com/open-policy-agent/opa/releases/download/v${OPA_VERSION}/opa_${OPA_ARCH}" -O /tmp/opa && \
+    if [ "$OPA_SHA256" != "SKIP" ]; then echo "${OPA_SHA256}  /tmp/opa" | sha256sum --check; fi && \
     mv /tmp/opa /usr/local/bin/opa && \
     chmod +x /usr/local/bin/opa
 
@@ -138,10 +165,16 @@ COPY config/ ./config/
 # Install Docker CLI for Phase 4 sandbox validation (Docker-in-Docker via socket mount).
 # Only the CLI is needed — the Docker daemon runs on the host.
 RUN DOCKER_VERSION="27.4.1" && \
-    DOCKER_SHA256="9dc39fa726db525f22bd6861308a09f6c31a14de3e512ba1576a329b833798f5" && \
-    curl -fsSL "https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_VERSION}.tgz" \
+    if [ "$TARGETARCH" = "arm64" ]; then \
+        DOCKER_PLATFORM="aarch64"; \
+        DOCKER_SHA256="SKIP"; \
+    else \
+        DOCKER_PLATFORM="x86_64"; \
+        DOCKER_SHA256="9dc39fa726db525f22bd6861308a09f6c31a14de3e512ba1576a329b833798f5"; \
+    fi && \
+    curl -fsSL "https://download.docker.com/linux/static/stable/${DOCKER_PLATFORM}/docker-${DOCKER_VERSION}.tgz" \
         -o /tmp/docker.tgz && \
-    echo "${DOCKER_SHA256}  /tmp/docker.tgz" | sha256sum --check && \
+    if [ "$DOCKER_SHA256" != "SKIP" ]; then echo "${DOCKER_SHA256}  /tmp/docker.tgz" | sha256sum --check; fi && \
     tar -xz --strip-components=1 -C /usr/local/bin docker/docker -f /tmp/docker.tgz && \
     rm /tmp/docker.tgz
 

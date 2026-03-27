@@ -39,7 +39,7 @@ inputs:
     default: 'true'
   # AI Provider Configuration
   ai-provider:
-    description: 'AI provider to use: anthropic, openai, ollama, or auto'
+    description: 'AI provider to use: anthropic, openai, openrouter, ollama, or auto'
     required: false
     default: 'auto'
   anthropic-api-key:
@@ -50,6 +50,14 @@ inputs:
     description: 'OpenAI API key for GPT-4 analysis'
     required: false
     default: ''
+  openrouter-api-key:
+    description: 'OpenRouter API key for DeepSeek/Qwen/200+ models'
+    required: false
+    default: ''
+  openrouter-model:
+    description: 'OpenRouter model ID (e.g., deepseek/deepseek-v3.2, qwen/qwen3-235b-a22b)'
+    required: false
+    default: 'deepseek/deepseek-v3.2'
   semgrep-enabled:
     description: 'Enable Semgrep SAST scanning with 2,000+ security rules'
     required: false
@@ -528,6 +536,8 @@ runs:
         INPUT_AI_PROVIDER: ${{ inputs.ai-provider }}
         ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
         OPENAI_API_KEY: ${{ inputs.openai-api-key }}
+        OPENROUTER_API_KEY: ${{ inputs.openrouter-api-key }}
+        OPENROUTER_MODEL: ${{ inputs.openrouter-model }}
         SEMGREP_ENABLED: ${{ inputs.semgrep-enabled }}
         OLLAMA_ENDPOINT: ${{ inputs.ollama-endpoint }}
         INPUT_MODEL: ${{ inputs.model }}
@@ -691,6 +701,8 @@ runs:
         INPUT_AI_PROVIDER: ${{ inputs.ai-provider }}
         ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
         OPENAI_API_KEY: ${{ inputs.openai-api-key }}
+        OPENROUTER_API_KEY: ${{ inputs.openrouter-api-key }}
+        OPENROUTER_MODEL: ${{ inputs.openrouter-model }}
         OLLAMA_ENDPOINT: ${{ inputs.ollama-endpoint }}
         INPUT_MODEL: ${{ inputs.model }}
         # Scanner toggles (read by hybrid_analyzer via env vars)

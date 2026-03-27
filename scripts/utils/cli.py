@@ -78,7 +78,7 @@ class AgentOSArgumentParser(argparse.ArgumentParser):
         Add AI provider configuration arguments
 
         Adds:
-            --ai-provider: AI provider (anthropic, openai, ollama)
+            --ai-provider: AI provider (anthropic, openai, openrouter, ollama)
             --api-key: API key for AI provider
             --model: Specific model to use
             --no-ai: Disable AI verification
@@ -90,7 +90,7 @@ class AgentOSArgumentParser(argparse.ArgumentParser):
 
         ai_group.add_argument(
             "--ai-provider",
-            choices=["anthropic", "openai", "ollama", "auto"],
+            choices=["anthropic", "openai", "openrouter", "ollama", "auto"],
             default="auto",
             help="AI provider for intelligent analysis (default: auto)",
         )

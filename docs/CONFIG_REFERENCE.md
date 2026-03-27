@@ -15,6 +15,8 @@ Source: `scripts/config_loader.get_default_config()` and `_ENV_MAPPINGS`.
 | multi_agent_mode | single | MULTI_AGENT_MODE, INPUT_MULTI_AGENT_MODE |
 | anthropic_api_key | "" | ANTHROPIC_API_KEY |
 | openai_api_key | "" | OPENAI_API_KEY |
+| openrouter_api_key | "" | OPENROUTER_API_KEY |
+| openrouter_model | deepseek/deepseek-v3.2 | OPENROUTER_MODEL |
 | ollama_endpoint | "" | OLLAMA_ENDPOINT |
 
 ## Scanners

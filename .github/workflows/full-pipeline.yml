@@ -59,7 +59,7 @@ on:
         type: boolean
         default: true
       ai-provider:
-        description: 'AI provider (anthropic, openai, ollama, auto)'
+        description: 'AI provider (anthropic, openai, openrouter, ollama, auto)'
         required: false
         type: string
         default: 'auto'

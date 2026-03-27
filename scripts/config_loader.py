@@ -11,6 +11,8 @@ Usage:
 
 import logging
 import os
+import platform
+import subprocess
 from pathlib import Path
 from typing import Any, Optional
 
@@ -55,6 +57,8 @@ def get_default_config() -> dict[str, Any]:
         "multi_agent_mode": "single",
         "anthropic_api_key": "",
         "openai_api_key": "",
+        "openrouter_api_key": "",
+        "openrouter_model": "deepseek/deepseek-v3.2",
         "ollama_endpoint": "",
         # -- Scanner toggles --
         "enable_semgrep": True,
@@ -394,6 +398,8 @@ _ENV_MAPPINGS: list[tuple[tuple[str, ...], str, str]] = [
     (("MULTI_AGENT_MODE", "INPUT_MULTI_AGENT_MODE"), "multi_agent_mode", "str"),
     (("ANTHROPIC_API_KEY",), "anthropic_api_key", "str"),
     (("OPENAI_API_KEY",), "openai_api_key", "str"),
+    (("OPENROUTER_API_KEY",), "openrouter_api_key", "str"),
+    (("OPENROUTER_MODEL",), "openrouter_model", "str"),
     (("OLLAMA_ENDPOINT",), "ollama_endpoint", "str"),
     # Limits
     (("MAX_FILES", "INPUT_MAX_FILES"), "max_files", "int"),
@@ -540,6 +546,52 @@ def load_env_overrides() -> dict[str, Any]:
                     )
                 break  # first match wins
 
+    return overrides
+
+
+# ---------------------------------------------------------------------------
+# macOS Keychain fallback for API keys
+# ---------------------------------------------------------------------------
+
+# Mapping: config key -> Keychain service name
+_KEYCHAIN_MAPPINGS: dict[str, str] = {
+    "anthropic_api_key": "anthropic-api-key",
+    "openai_api_key": "openai-api-key",
+    "openrouter_api_key": "openrouter-api-key",
+}
+
+
+def _read_keychain(service: str) -> str | None:
+    """Read a secret from macOS Keychain. Returns None if not found or not on macOS."""
+    if platform.system() != "Darwin":
+        return None
+    try:
+        result = subprocess.run(
+            ["security", "find-generic-password", "-s", service, "-w"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return result.stdout.strip()
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+    return None
+
+
+def load_keychain_secrets(config: dict[str, Any]) -> dict[str, Any]:
+    """Fill in missing API keys from macOS Keychain.
+
+    Only keys that are empty/unset in the current config are looked up.
+    Returns a dict of overrides (may be empty).
+    """
+    overrides: dict[str, Any] = {}
+    for config_key, service_name in _KEYCHAIN_MAPPINGS.items():
+        if not config.get(config_key):
+            value = _read_keychain(service_name)
+            if value:
+                logger.debug("Loaded %s from macOS Keychain (service: %s)", config_key, service_name)
+                overrides[config_key] = value
     return overrides
 
 
@@ -784,6 +836,12 @@ def build_unified_config(
         config = deep_merge(config, env_overrides)
         logger.debug("Applied %d env-var overrides", len(env_overrides))
 
+    # -- Layer 4.5: macOS Keychain fallback for missing API keys --
+    keychain_overrides = load_keychain_secrets(config)
+    if keychain_overrides:
+        config = deep_merge(config, keychain_overrides)
+        logger.info("Loaded %d API key(s) from macOS Keychain", len(keychain_overrides))
+
     # -- Layer 5: CLI args --
     cli_overrides = extract_cli_overrides(cli_args)
     # Remove the internal _profile key if present
@@ -827,7 +885,7 @@ def list_available_profiles() -> list[str]:
 # Configuration validation
 # ---------------------------------------------------------------------------
 
-_VALID_AI_PROVIDERS = {"auto", "anthropic", "openai", "ollama", "foundation-sec"}
+_VALID_AI_PROVIDERS = {"auto", "anthropic", "openai", "openrouter", "ollama", "foundation-sec"}
 _VALID_MULTI_AGENT_MODES = {"single", "sequential", "parallel"}
 _VALID_DEEP_ANALYSIS_MODES = {"off", "semantic-only", "conservative", "full"}
 _VALID_EXPLOITABILITY_THRESHOLDS = {"none", "low", "moderate", "high", "critical"}
@@ -850,12 +908,14 @@ def validate_config(config: dict[str, Any]) -> list[str]:
         issues.append("ERROR: ai_provider is 'anthropic' but ANTHROPIC_API_KEY is not set.")
     if provider == "openai" and not config.get("openai_api_key"):
         issues.append("ERROR: ai_provider is 'openai' but OPENAI_API_KEY is not set.")
+    if provider == "openrouter" and not config.get("openrouter_api_key"):
+        issues.append("ERROR: ai_provider is 'openrouter' but OPENROUTER_API_KEY is not set.")
     if provider == "ollama" and not config.get("ollama_endpoint"):
         issues.append(
             "WARNING: ai_provider is 'ollama' but OLLAMA_ENDPOINT is not set. Defaulting to http://localhost:11434."
         )
     if provider == "auto":
-        has_any = config.get("anthropic_api_key") or config.get("openai_api_key") or config.get("ollama_endpoint")
+        has_any = config.get("anthropic_api_key") or config.get("openai_api_key") or config.get("openrouter_api_key") or config.get("ollama_endpoint")
         if not has_any:
             issues.append(
                 "WARNING: ai_provider is 'auto' but no API keys or endpoints are "

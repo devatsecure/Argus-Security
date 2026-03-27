@@ -6,6 +6,7 @@ Centralized management for all LLM/AI provider interactions.
 Supports multiple LLM providers:
 - Anthropic (Claude)
 - OpenAI (GPT-4)
+- OpenRouter (DeepSeek, Qwen, and 200+ models)
 - Ollama (local, self-hosted)
 
 Features:
@@ -67,6 +68,7 @@ class LLMManager:
     DEFAULT_MODELS = {
         "anthropic": "claude-sonnet-4-5-20250929",
         "openai": "gpt-4-turbo-preview",
+        "openrouter": "deepseek/deepseek-v3.2",
         "ollama": "llama3.2:3b",
         "claude-cli": "opus",
     }
@@ -85,6 +87,7 @@ class LLMManager:
     PRICING = {
         "anthropic": {"input": 3.0, "output": 15.0},  # Claude Sonnet 4.5: $3/1M input, $15/1M output
         "openai": {"input": 10.0, "output": 30.0},  # GPT-4: $10/1M input, $30/1M output
+        "openrouter": {"input": 0.14, "output": 0.28},  # DeepSeek V3.2: ~$0.14/1M input, $0.28/1M output
         "ollama": {"input": 0.0, "output": 0.0},  # Local inference: free
         "claude-cli": {"input": 0.0, "output": 0.0},  # Claude Code subscription: included
     }
@@ -185,11 +188,13 @@ class LLMManager:
             return provider
 
         # Auto-detect based on available API keys/config
-        # Priority: Anthropic (best for security) > OpenAI > Ollama (local)
+        # Priority: Anthropic (best for security) > OpenAI > OpenRouter > Ollama (local)
         if self.config.get("anthropic_api_key"):
             return "anthropic"
         elif self.config.get("openai_api_key"):
             return "openai"
+        elif self.config.get("openrouter_api_key"):
+            return "openrouter"
         elif self.config.get("ollama_endpoint"):
             return "ollama"
         elif self.config.get("claude_cli") or shutil.which("claude"):
@@ -197,7 +202,7 @@ class LLMManager:
         else:
             logger.warning("No AI provider configured")
             logger.info(
-                "Set one of: ANTHROPIC_API_KEY, OPENAI_API_KEY, OLLAMA_ENDPOINT, or use --ai-provider claude-cli"
+                "Set one of: ANTHROPIC_API_KEY, OPENAI_API_KEY, OPENROUTER_API_KEY, OLLAMA_ENDPOINT, or use --ai-provider claude-cli"
             )
             return None
 
@@ -280,6 +285,25 @@ class LLMManager:
                 logger.error("openai package not installed. Run: pip install openai")
                 raise
 
+        elif provider == "openrouter":
+            try:
+                from openai import OpenAI
+
+                api_key = self.config.get("openrouter_api_key")
+                if not api_key:
+                    raise ValueError("OPENROUTER_API_KEY not set")
+
+                model = self.config.get("openrouter_model", "deepseek/deepseek-v3.2")
+                safe_model = str(model).split("/")[-1] if model else "unknown"
+                logger.info(f"Using OpenRouter API (model: {safe_model})")
+                return OpenAI(
+                    base_url="https://openrouter.ai/api/v1",
+                    api_key=api_key,
+                ), "openrouter"
+            except ImportError:
+                logger.error("openai package not installed. Run: pip install openai")
+                raise
+
         elif provider == "ollama":
             try:
                 from openai import OpenAI
@@ -328,6 +352,10 @@ class LLMManager:
 
         if model != "auto":
             return model
+
+        # OpenRouter uses its own model config key
+        if provider == "openrouter":
+            return self.config.get("openrouter_model", self.DEFAULT_MODELS["openrouter"])
 
         return self.DEFAULT_MODELS.get(provider, self.DEFAULT_MODELS["anthropic"])
 
@@ -550,7 +578,7 @@ class LLMManager:
                 input_tokens = message.usage.input_tokens
                 output_tokens = message.usage.output_tokens
 
-            elif self.provider in ["openai", "ollama"]:
+            elif self.provider in ["openai", "openrouter", "ollama"]:
                 response = self.client.chat.completions.create(
                     model=self.model,
                     messages=[{"role": "user", "content": full_prompt}],

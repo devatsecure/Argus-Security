@@ -83,6 +83,10 @@ class ReviewMetrics:
             # GPT-4: $10/1M input, $30/1M output
             input_cost = (input_tokens / 1_000_000) * 10.0
             output_cost = (output_tokens / 1_000_000) * 30.0
+        elif provider == "openrouter":
+            # DeepSeek V3.2: ~$0.14/1M input, $0.28/1M output
+            input_cost = (input_tokens / 1_000_000) * 0.14
+            output_cost = (output_tokens / 1_000_000) * 0.28
         else:
             # Ollama and other local models: Free
             input_cost = 0.0

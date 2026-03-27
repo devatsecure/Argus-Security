@@ -151,7 +151,7 @@ def main():
         default=None,
         help="Enable IRIS semantic analysis (research-proven 2x improvement, arXiv 2405.17238)",
     )
-    parser.add_argument("--ai-provider", help="AI provider (anthropic, openai, ollama, claude-cli)")
+    parser.add_argument("--ai-provider", help="AI provider (anthropic, openai, openrouter, ollama, claude-cli)")
     parser.add_argument("--dast-target-url", help="Target URL for DAST scanning (required if --enable-dast)")
     parser.add_argument("--fuzzing-duration", type=int, default=300, help="Fuzzing duration in seconds (default: 300)")
     parser.add_argument(
@@ -205,9 +205,11 @@ def main():
 
     # Build config from environment
     config = {
-        "ai_provider": args.ai_provider or os.getenv("INPUT_AI_PROVIDER", "auto"),
+        "ai_provider": args.ai_provider or os.getenv("AI_PROVIDER") or os.getenv("INPUT_AI_PROVIDER", "auto"),
         "anthropic_api_key": os.getenv("ANTHROPIC_API_KEY"),
         "openai_api_key": os.getenv("OPENAI_API_KEY"),
+        "openrouter_api_key": os.getenv("OPENROUTER_API_KEY"),
+        "openrouter_model": os.getenv("OPENROUTER_MODEL", "deepseek/deepseek-v3.2"),
         "ollama_endpoint": os.getenv("OLLAMA_ENDPOINT"),
         "model": os.getenv("MODEL", "auto"),
         "anthropic_base_url": os.getenv("ANTHROPIC_BASE_URL"),
@@ -278,6 +280,43 @@ def main():
     dast_target_url = args.dast_target_url or os.getenv("DAST_TARGET_URL")
     fuzzing_duration = get_int_env("FUZZING_DURATION", args.fuzzing_duration)
     runtime_monitoring_duration = get_int_env("RUNTIME_MONITORING_DURATION", args.runtime_monitoring_duration)
+
+    # Populate config with all feature flags read by hybrid_analyzer via self.config
+    # These features don't have CLI args — they're controlled via env vars or config files
+    _config_features = [
+        "enable_skills_knowledge", "enable_diff_scoping", "enable_findings_store",
+        "enable_app_context", "enable_agent_chain_discovery", "enable_cross_component_analysis",
+        "enable_autofix_pr", "enable_live_validation", "enable_mcp_server", "enable_temporal",
+        "enable_heuristics", "enable_quality_filter", "enable_license_risk_scoring",
+        "enable_phase_gating", "enable_smart_retry", "enable_audit_trail",
+        "enable_epss_scoring", "enable_fix_version_tracking", "enable_vex",
+        "enable_vuln_deduplication", "enable_advanced_suppression", "enable_compliance_mapping",
+        "enable_consensus", "enable_parallel_agents", "enable_sandbox_validation",
+        "enable_iris", "enable_regression_testing", "enable_proof_by_exploitation",
+    ]
+    for feat in _config_features:
+        env_key = feat.upper()
+        env_val = os.getenv(env_key)
+        if env_val is not None:
+            config[feat] = env_val.lower() in ("true", "1", "yes")
+        elif feat not in config:
+            config[feat] = _defaults.get(feat, False)
+
+    # Also pass non-boolean config keys used by hybrid_analyzer
+    for key, env_key, default in [
+        ("findings_db_path", "FINDINGS_DB_PATH", ".argus/findings.db"),
+        ("deep_analysis_mode", "DEEP_ANALYSIS_MODE", "off"),
+        ("deep_analysis_max_files", "DEEP_ANALYSIS_MAX_FILES", "50"),
+        ("deep_analysis_timeout", "DEEP_ANALYSIS_TIMEOUT", "300"),
+        ("cost_limit", "COST_LIMIT", "1.0"),
+    ]:
+        env_val = os.getenv(env_key)
+        if env_val is not None:
+            config[key] = env_val
+        elif key not in config:
+            config[key] = default
+
+    config["project_path"] = args.target
 
     # Initialize analyzer
     analyzer = HybridSecurityAnalyzer(
