@@ -157,6 +157,13 @@ Your Expertise: {", ".join(self.expertise)}
         Returns:
             Structured AgentAnalysis
         """
+        # Guard against None responses from some models
+        if not response:
+            return AgentAnalysis(
+                agent_name=agent_name, verdict="needs_review", confidence=0.0,
+                reasoning="Model returned empty response", recommendations=[],
+            )
+
         # Extract confidence score first (needed for classification)
         confidence = 0.7  # default
         confidence_match = re.search(r"confidence:\s*(\d+(?:\.\d+)?)", response.lower())
