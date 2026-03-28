@@ -918,6 +918,45 @@ class HybridSecurityAnalyzer:
             except Exception as e:
                 logger.warning("Heuristic scanning failed (non-fatal): %s", e)
 
+        # -- PHASE 2.8: Whole-Repo LLM Review (finds what scanners miss) --
+        if self.config.get("enable_whole_repo_review", True) and self.ai_client:
+            try:
+                from whole_repo_reviewer import WholeRepoReviewer
+
+                wr_start = time.time()
+                reviewer = WholeRepoReviewer(llm_manager=self.ai_client, config=self.config)
+                llm_findings = reviewer.review(target_path)
+                if llm_findings:
+                    # Convert LLMFinding to HybridFinding and merge
+                    for lf in llm_findings:
+                        # Deduplicate: skip if we already have a finding in the same file+line
+                        existing_locs = {(f.file_path, f.line_number) for f in all_findings}
+                        norm_path = str(Path(target_path) / lf.file_path)
+                        if (norm_path, lf.line_number) in existing_locs:
+                            continue
+                        all_findings.append(
+                            HybridFinding(
+                                finding_id=f"llm-review-{len(all_findings)}",
+                                source_tool="llm-review",
+                                severity=lf.severity,
+                                category="security",
+                                title=lf.title,
+                                description=lf.description,
+                                file_path=norm_path,
+                                line_number=lf.line_number,
+                                cwe_id=lf.cwe_id,
+                                recommendation=lf.recommendation,
+                            )
+                        )
+                    logger.info("Whole-repo LLM review: %d new findings added", len(llm_findings))
+                wr_duration = time.time() - wr_start
+                phase_timings["phase2_8_whole_repo_review"] = wr_duration
+                logger.info("   Phase 2.8 duration: %.1fs", wr_duration)
+            except ImportError:
+                logger.debug("Whole-repo reviewer module not available")
+            except Exception as e:
+                logger.warning("Whole-repo LLM review failed (non-fatal): %s", e)
+
         self._validate_phase("phase2", {"findings": [asdict(f) for f in all_findings]})
 
         # -- PHASE 3: Multi-Agent Persona Review --

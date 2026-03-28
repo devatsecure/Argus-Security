@@ -153,6 +153,10 @@ def get_default_config() -> dict[str, Any]:
         "suppression_auto_expire_days": 90,
         "enable_compliance_mapping": True,
         "compliance_frameworks": "",  # comma-separated: nist_800_53,pci_dss_4,owasp_top10_2021,soc2,cis_kubernetes,iso_27001
+        # -- Whole-repo LLM review (Phase 2.8) --
+        "enable_whole_repo_review": True,
+        "whole_repo_max_files": 100,
+        "whole_repo_chunk_size": 16000,
         # -- Post-Phase-3 quality filter --
         "enable_quality_filter": True,
         "quality_filter_min_confidence": 0.30,

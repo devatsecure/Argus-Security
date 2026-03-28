@@ -296,7 +296,7 @@ def main():
         "enable_skills_knowledge", "enable_diff_scoping", "enable_findings_store",
         "enable_app_context", "enable_agent_chain_discovery", "enable_cross_component_analysis",
         "enable_autofix_pr", "enable_live_validation", "enable_mcp_server", "enable_temporal",
-        "enable_heuristics", "enable_quality_filter", "enable_license_risk_scoring",
+        "enable_heuristics", "enable_quality_filter", "enable_whole_repo_review", "enable_license_risk_scoring",
         "enable_phase_gating", "enable_smart_retry", "enable_audit_trail",
         "enable_epss_scoring", "enable_fix_version_tracking", "enable_vex",
         "enable_vuln_deduplication", "enable_advanced_suppression", "enable_compliance_mapping",

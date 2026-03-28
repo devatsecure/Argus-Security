@@ -1,0 +1,111 @@
+rules:
+  - id: torch-load-weights-only-false
+    patterns:
+      - pattern: torch.load(..., weights_only=False, ...)
+    message: >-
+      torch.load() called with weights_only=False allows arbitrary code execution
+      via pickle deserialization. A malicious .pt/.pth file can execute arbitrary
+      Python code when loaded. Use weights_only=True or torch.safe_load().
+    severity: ERROR
+    languages: [python]
+    metadata:
+      cwe:
+        - "CWE-502: Deserialization of Untrusted Data"
+      owasp:
+        - "A08:2021 - Software and Data Integrity Failures"
+      category: security
+      confidence: HIGH
+
+  - id: torch-load-no-weights-only
+    patterns:
+      - pattern: torch.load(...)
+      - pattern-not: torch.load(..., weights_only=True, ...)
+      - pattern-not: torch.load(..., weights_only=False, ...)
+    message: >-
+      torch.load() called without weights_only parameter. Default behavior uses
+      pickle deserialization which allows arbitrary code execution. Set
+      weights_only=True to only load tensor data safely.
+    severity: WARNING
+    languages: [python]
+    metadata:
+      cwe:
+        - "CWE-502: Deserialization of Untrusted Data"
+      category: security
+      confidence: MEDIUM
+
+  - id: trust-remote-code-enabled
+    patterns:
+      - pattern: trust_remote_code=True
+    message: >-
+      trust_remote_code=True allows execution of arbitrary Python code from
+      model repositories (e.g., HuggingFace). A supply chain attack on the
+      model repo leads to remote code execution. Only use with vetted models
+      from trusted sources.
+    severity: ERROR
+    languages: [python]
+    metadata:
+      cwe:
+        - "CWE-94: Improper Control of Generation of Code"
+        - "CWE-494: Download of Code Without Integrity Check"
+      category: security
+      confidence: HIGH
+
+  - id: trust-remote-code-cli-flag
+    patterns:
+      - pattern: '"--trust-remote-code"'
+    message: >-
+      --trust-remote-code flag enables arbitrary code execution from model
+      repositories. This is a supply chain risk — if the model repo is
+      compromised, the server executes attacker code on startup.
+    severity: ERROR
+    languages: [python]
+    metadata:
+      cwe:
+        - "CWE-94: Improper Control of Generation of Code"
+      category: security
+      confidence: HIGH
+
+  - id: pickle-load-unsafe
+    patterns:
+      - pattern: pickle.load(...)
+    message: >-
+      pickle.load() deserializes arbitrary Python objects. A malicious pickle
+      file can execute arbitrary code. Use json, msgpack, or other safe
+      serialization formats.
+    severity: ERROR
+    languages: [python]
+    metadata:
+      cwe:
+        - "CWE-502: Deserialization of Untrusted Data"
+      category: security
+      confidence: HIGH
+
+  - id: pickle-loads-unsafe
+    patterns:
+      - pattern: pickle.loads(...)
+    message: >-
+      pickle.loads() deserializes arbitrary Python objects from bytes. A
+      malicious payload can execute arbitrary code.
+    severity: ERROR
+    languages: [python]
+    metadata:
+      cwe:
+        - "CWE-502: Deserialization of Untrusted Data"
+      category: security
+      confidence: HIGH
+
+  - id: yaml-unsafe-load
+    patterns:
+      - pattern: yaml.load(...)
+      - pattern-not: yaml.load(..., Loader=yaml.SafeLoader, ...)
+      - pattern-not: yaml.safe_load(...)
+    message: >-
+      yaml.load() without SafeLoader allows arbitrary code execution.
+      Use yaml.safe_load() or yaml.load(data, Loader=yaml.SafeLoader).
+    severity: ERROR
+    languages: [python]
+    metadata:
+      cwe:
+        - "CWE-502: Deserialization of Untrusted Data"
+      category: security
+      confidence: HIGH

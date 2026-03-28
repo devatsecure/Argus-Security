@@ -1,0 +1,95 @@
+rules:
+  - id: fastapi-no-cors-middleware
+    patterns:
+      - pattern: app = FastAPI(...)
+      - pattern-not-inside: |
+          ...
+          app.add_middleware(CORSMiddleware, ...)
+          ...
+    message: >-
+      FastAPI app created without CORS middleware. If this serves web content,
+      it may be vulnerable to cross-origin attacks. Add CORSMiddleware with
+      appropriate allowed origins.
+    severity: WARNING
+    languages: [python]
+    metadata:
+      cwe:
+        - "CWE-942: Permissive Cross-domain Policy with Untrusted Domains"
+      category: security
+      confidence: MEDIUM
+
+  - id: websocket-no-auth-check
+    patterns:
+      - pattern: |
+          @$APP.websocket(...)
+          async def $FUNC($WS: WebSocket) -> ...:
+              await $WS.accept()
+              ...
+      - pattern-not-inside: |
+          ...
+          if not $AUTH:
+              ...
+          ...
+    message: >-
+      WebSocket endpoint accepts connections without authentication check.
+      Any client can connect and use this endpoint. Add token/session
+      validation before accepting the WebSocket connection.
+    severity: WARNING
+    languages: [python]
+    metadata:
+      cwe:
+        - "CWE-306: Missing Authentication for Critical Function"
+      category: security
+      confidence: MEDIUM
+
+  - id: fastapi-static-files-no-auth
+    patterns:
+      - pattern: app.mount($PATH, StaticFiles(...), ...)
+    message: >-
+      Static files served without authentication. Ensure no sensitive files
+      are in the static directory. Consider adding authentication middleware
+      if the content is not intended to be public.
+    severity: INFO
+    languages: [python]
+    metadata:
+      cwe:
+        - "CWE-552: Files or Directories Accessible to External Parties"
+      category: security
+      confidence: LOW
+
+  - id: nginx-config-in-tmp
+    patterns:
+      - pattern: |
+          with open("/tmp/$FILE", "w") as $F:
+              ...
+    message: >-
+      Writing configuration to /tmp is unsafe in shared environments.
+      Other processes can read or modify the file. Use a private directory
+      with restricted permissions.
+    severity: WARNING
+    languages: [python]
+    metadata:
+      cwe:
+        - "CWE-732: Incorrect Permission Assignment for Critical Resource"
+      category: security
+      confidence: MEDIUM
+
+  - id: no-request-size-limit
+    patterns:
+      - pattern: |
+          $TEXT = $WS.query_params.get(...)
+      - pattern-not-inside: |
+          ...
+          if len($TEXT) > ...:
+              ...
+          ...
+    message: >-
+      User input from query parameters used without size validation.
+      An attacker can send extremely large inputs to cause denial of service.
+    severity: WARNING
+    languages: [python]
+    metadata:
+      cwe:
+        - "CWE-770: Allocation of Resources Without Limits"
+      category: security
+      confidence: LOW

@@ -158,14 +158,31 @@ class SemgrepScanner:
             logger.error(f"Target path does not exist: {target_path}")
             return {"error": "path_not_found", "findings": []}
 
-        # Build semgrep command
-        cmd = self._semgrep_cmd_prefix() + [
-            "--config",
-            self.semgrep_rules if self.semgrep_rules != "auto" else "p/security-audit",
-            "--json",
-            "--quiet",
-            "--metrics=off",
-        ]
+        # Build semgrep command with expanded rule sets
+        if self.semgrep_rules != "auto":
+            rule_configs = [self.semgrep_rules]
+        else:
+            rule_configs = [
+                "p/security-audit",           # Core security rules (2000+)
+                "p/python",                   # Python-specific rules
+                "p/owasp-top-ten",            # OWASP Top 10
+                "p/cwe-top-25",               # CWE Top 25 Most Dangerous
+                "p/command-injection",         # Command injection patterns
+                "p/insecure-transport",        # Missing TLS/HTTPS
+                "p/secrets",                   # Hardcoded secrets/credentials
+                "p/supply-chain",             # Supply chain risks (trust_remote_code, etc.)
+                "p/deserialization",           # Pickle, torch.load, yaml.load
+            ]
+
+        cmd = self._semgrep_cmd_prefix() + ["--json", "--quiet", "--metrics=off"]
+        for rc in rule_configs:
+            cmd.extend(["--config", rc])
+
+        # Add Argus custom rules if they exist
+        custom_rules_dir = Path(__file__).parent.parent / "rules" / "custom"
+        if custom_rules_dir.exists():
+            cmd.extend(["--config", str(custom_rules_dir)])
+            logger.info("   Including Argus custom rules from %s", custom_rules_dir)
 
         # Add exclude patterns
         for pattern in self.exclude_patterns:

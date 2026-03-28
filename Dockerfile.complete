@@ -160,6 +160,7 @@ COPY scripts/ ./scripts/
 COPY policy/ ./policy/
 COPY profiles/ ./profiles/
 COPY schemas/ ./schemas/
+COPY rules/ ./rules/
 COPY config/ ./config/
 
 # Install Docker CLI for Phase 4 sandbox validation (Docker-in-Docker via socket mount).
