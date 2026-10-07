@@ -285,6 +285,8 @@ Skills coverage: web-security, cloud-security, malware-analysis, incident-respon
 
 Argus has been used to scan real-world open-source projects. Table ordered by GitHub stars (descending).
 
+These are scan targets, not confirmed adopters. See [public adoption evidence](ADOPTERS.md) for verified integrations and run limitations.
+
 | Repo | Findings | Key Issues |
 |------|----------|------------|
 | **affaan-m/everything-claude-code** | 3 Critical | Command injection (CWE-78) in `utils.js` — `commandExists()` and `runCommand()` using unsanitized `execSync` with user-controlled input |
@@ -462,6 +464,7 @@ mypy scripts/*.py                # Type check
 | [docs/PHASE_27_DEEP_ANALYSIS.md](docs/PHASE_27_DEEP_ANALYSIS.md) | Deep Analysis rollout guide |
 | [docs/FAQ.md](docs/FAQ.md) | Common questions |
 | [docs/CONTINUOUS_SECURITY_TESTING_GUIDE.md](docs/CONTINUOUS_SECURITY_TESTING_GUIDE.md) | Continuous security testing architecture |
+| [ADOPTERS.md](ADOPTERS.md) | Public integration evidence and execution status |
 | [CHANGELOG.md](CHANGELOG.md) | Release history |
 
 ---
