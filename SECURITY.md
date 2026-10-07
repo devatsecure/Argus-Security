@@ -1,5 +1,19 @@
 # Security Policy
 
+## Security Maintainer
+
+Argus Security is maintained by **Waseem Ahmed** ([@devatsecure](https://github.com/devatsecure)), who is the project's security maintainer and point of contact for all vulnerability reports.
+
+Responsibilities:
+
+- Receiving, triaging, and acknowledging vulnerability reports
+- Validating impact and assigning severity
+- Developing, reviewing, and releasing security fixes
+- Publishing GitHub Security Advisories and requesting CVEs where appropriate
+- Coordinating disclosure timelines with reporters and crediting researchers
+- Monitoring Dependabot, code scanning, and secret scanning alerts for this repository
+- Maintaining this security policy
+
 ## Supported Versions
 
 We release patches for security vulnerabilities. Currently supported versions:
@@ -18,7 +32,10 @@ We take the security of Argus seriously. If you believe you have found a securit
 
 **Please do NOT report security vulnerabilities through public GitHub issues.**
 
-Instead, please report them via email to: **security@devatsecure.com**
+Instead, report them privately through one of these channels:
+
+1. **GitHub private vulnerability reporting (preferred)**: [Report a vulnerability](https://github.com/devatsecure/Argus-Security/security/advisories/new) from this repository's Security tab.
+2. **Email**: **waseem@secure.com** (monitored by the security maintainer). Please include "Argus Security vulnerability" in the subject line.
 
 ### What to Include
 
@@ -166,10 +183,10 @@ We believe in responsible disclosure and will credit security researchers who re
 
 ## Questions?
 
-If you have questions about this security policy, please contact: security@devatsecure.com
+If you have questions about this security policy, please contact Waseem Ahmed ([@devatsecure](https://github.com/devatsecure)) at waseem@secure.com.
 
 ---
 
-**Last Updated**: January 29, 2026  
-**Version**: 1.1
+**Last Updated**: October 7, 2026  
+**Version**: 1.2
 

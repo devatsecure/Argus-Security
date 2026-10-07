@@ -411,5 +411,5 @@ MIT License - See [LICENSE](../../LICENSE) file
 
 For issues or questions:
 - GitHub Issues: https://github.com/devatsecure/Argus-Security/issues
-- Documentation: https://docs.argus-security.io
-- Email: security@argus-security.io
+- Documentation: https://github.com/devatsecure/Argus-Security/tree/main/docs
+- Security reports: see [SECURITY.md](../../SECURITY.md)

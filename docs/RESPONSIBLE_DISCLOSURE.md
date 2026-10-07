@@ -402,7 +402,7 @@ python scripts/responsible_disclosure.py --check-overdue
 ## Contact
 
 For questions about Argus Security's responsible disclosure process:
-- **Email**: security@argus-security.io
+- **Email**: waseem@secure.com (security maintainer, see [SECURITY.md](../SECURITY.md))
 - **GitHub**: https://github.com/devatsecure/Argus-Security
 - **Documentation**: https://github.com/devatsecure/Argus-Security/docs/RESPONSIBLE_DISCLOSURE.md
 

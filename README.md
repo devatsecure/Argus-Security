@@ -76,6 +76,8 @@ docker run -v $(pwd):/workspace \
 ```bash
 git clone https://github.com/devatsecure/Argus-Security.git
 cd Argus-Security && pip install -r requirements.txt
+# or install as a package (PyPI name: argus-code-reviewer)
+pip install -e .
 export ANTHROPIC_API_KEY="your-key"
 
 # Fast AI code review (Semgrep + 2-3 LLM calls)
