@@ -19,8 +19,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
 from hybrid.models import HybridFinding
-from hybrid.scanner_runners import run_dast, _discover_openapi_spec
-
+from hybrid.scanner_runners import _discover_openapi_spec, run_dast
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -106,7 +105,10 @@ class TestRunDast:
         orchestrator.scan.return_value = scan_result
 
         findings = run_dast(
-            orchestrator, "/tmp/project", self.logger, self.config,
+            orchestrator,
+            "/tmp/project",
+            self.logger,
+            self.config,
             dast_target_url="http://example.com",
         )
 
@@ -130,7 +132,10 @@ class TestRunDast:
         orchestrator.scan.return_value = scan_result
 
         findings = run_dast(
-            orchestrator, "/tmp/project", self.logger, self.config,
+            orchestrator,
+            "/tmp/project",
+            self.logger,
+            self.config,
             dast_target_url="http://example.com",
         )
 
@@ -151,7 +156,10 @@ class TestRunDast:
         orchestrator.scan.return_value = scan_result
 
         findings = run_dast(
-            orchestrator, "/tmp/project", self.logger, self.config,
+            orchestrator,
+            "/tmp/project",
+            self.logger,
+            self.config,
             dast_target_url="http://example.com",
         )
 
@@ -166,23 +174,21 @@ class TestRunDast:
         orchestrator.scan.return_value = scan_result
 
         findings = run_dast(
-            orchestrator, "/tmp/project", self.logger, self.config,
+            orchestrator,
+            "/tmp/project",
+            self.logger,
+            self.config,
             dast_target_url="http://example.com",
         )
 
         assert findings == []
 
-    def test_orchestrator_exception_returns_empty(self):
-        """run_dast catches orchestrator exceptions and returns empty list."""
+    def test_orchestrator_exception_propagates(self):
+        """The phase coordinator must see a failed DAST execution."""
         orchestrator = MagicMock()
         orchestrator.scan.side_effect = RuntimeError("Nuclei binary not found")
-
-        findings = run_dast(
-            orchestrator, "/tmp/project", self.logger, self.config,
-            dast_target_url="http://example.com",
-        )
-
-        assert findings == []
+        with pytest.raises(RuntimeError):
+            run_dast(orchestrator, "/tmp/project", self.logger, self.config, dast_target_url="http://example.com")
 
     def test_no_target_url_no_spec_skips(self):
         """run_dast skips when no target URL and no OpenAPI spec found."""
@@ -190,7 +196,10 @@ class TestRunDast:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             findings = run_dast(
-                orchestrator, tmpdir, self.logger, self.config,
+                orchestrator,
+                tmpdir,
+                self.logger,
+                self.config,
                 dast_target_url=None,
             )
 
@@ -209,7 +218,10 @@ class TestRunDast:
             spec_file.write_text("openapi: '3.0.0'\npaths: {}\n")
 
             findings = run_dast(
-                orchestrator, tmpdir, self.logger, self.config,
+                orchestrator,
+                tmpdir,
+                self.logger,
+                self.config,
                 dast_target_url=None,
             )
 
@@ -231,7 +243,10 @@ class TestRunDast:
         orchestrator.scan.return_value = scan_result
 
         findings = run_dast(
-            orchestrator, "/tmp/project", self.logger, self.config,
+            orchestrator,
+            "/tmp/project",
+            self.logger,
+            self.config,
             dast_target_url="http://example.com",
         )
 
@@ -250,7 +265,10 @@ class TestRunDast:
         orchestrator.scan.return_value = scan_result
 
         findings = run_dast(
-            orchestrator, "/tmp/project", self.logger, self.config,
+            orchestrator,
+            "/tmp/project",
+            self.logger,
+            self.config,
             dast_target_url="http://example.com",
         )
 
@@ -267,7 +285,10 @@ class TestRunDast:
         orchestrator.scan.return_value = scan_result
 
         findings = run_dast(
-            orchestrator, "/tmp/project", self.logger, self.config,
+            orchestrator,
+            "/tmp/project",
+            self.logger,
+            self.config,
             dast_target_url="http://example.com",
         )
 
@@ -289,7 +310,10 @@ class TestRunDast:
         orchestrator.scan.return_value = scan_result
 
         findings = run_dast(
-            orchestrator, "/tmp/project", self.logger, self.config,
+            orchestrator,
+            "/tmp/project",
+            self.logger,
+            self.config,
             dast_target_url="http://example.com",
         )
 
@@ -415,9 +439,7 @@ class TestPhase1DastIntegration:
         analyzer.enable_zap_baseline = False
         analyzer.zap_baseline_scanner = None
 
-        findings, duration, health = run_phase1_scanning(
-            target_path="/tmp/test", analyzer=analyzer
-        )
+        findings, duration, health = run_phase1_scanning(target_path="/tmp/test", analyzer=analyzer)
 
         assert health["DAST"] == "disabled"
 
@@ -428,19 +450,35 @@ class TestPhase1DastIntegration:
         analyzer = MagicMock()
         # Disable all scanners except DAST
         for attr in [
-            "enable_semgrep", "enable_trivy", "enable_checkov",
-            "enable_api_security", "enable_supply_chain", "enable_fuzzing",
-            "enable_threat_intel", "enable_runtime_security",
-            "enable_regression_testing", "enable_trufflehog",
-            "enable_gitleaks", "enable_nuclei_templates", "enable_zap_baseline",
+            "enable_semgrep",
+            "enable_trivy",
+            "enable_checkov",
+            "enable_api_security",
+            "enable_supply_chain",
+            "enable_fuzzing",
+            "enable_threat_intel",
+            "enable_runtime_security",
+            "enable_regression_testing",
+            "enable_trufflehog",
+            "enable_gitleaks",
+            "enable_nuclei_templates",
+            "enable_zap_baseline",
         ]:
             setattr(analyzer, attr, False)
         for attr in [
-            "semgrep_scanner", "trivy_scanner", "checkov_scanner",
-            "api_security_scanner", "supply_chain_scanner", "fuzzing_scanner",
-            "threat_intel_enricher", "runtime_security_monitor",
-            "regression_tester", "trufflehog_scanner", "gitleaks_scanner",
-            "nuclei_template_scanner", "zap_baseline_scanner",
+            "semgrep_scanner",
+            "trivy_scanner",
+            "checkov_scanner",
+            "api_security_scanner",
+            "supply_chain_scanner",
+            "fuzzing_scanner",
+            "threat_intel_enricher",
+            "runtime_security_monitor",
+            "regression_tester",
+            "trufflehog_scanner",
+            "gitleaks_scanner",
+            "nuclei_template_scanner",
+            "zap_baseline_scanner",
         ]:
             setattr(analyzer, attr, None)
 
@@ -449,9 +487,7 @@ class TestPhase1DastIntegration:
         analyzer.dast_scanner = MagicMock()
         analyzer._run_dast.side_effect = RuntimeError("DAST exploded")
 
-        findings, duration, health = run_phase1_scanning(
-            target_path="/tmp/test", analyzer=analyzer
-        )
+        findings, duration, health = run_phase1_scanning(target_path="/tmp/test", analyzer=analyzer)
 
         assert health["DAST"] == "failed"
         # Pipeline should not crash

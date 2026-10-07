@@ -17,7 +17,7 @@ import subprocess
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -37,7 +37,7 @@ class TruffleHogFinding:
     timestamp: str  # When secret was committed
     author: str  # Commit author
     email: str  # Commit author email
-    repository_url: Optional[str] = None
+    repository_url: str | None = None
     redacted: str = ""  # Redacted version for safe display
 
     def to_dict(self) -> dict:
@@ -53,7 +53,7 @@ class TruffleHogScanner:
     Only reports secrets that are verified via API calls to prevent false positives.
     """
 
-    def __init__(self, config: Optional[dict] = None):
+    def __init__(self, config: dict | None = None):
         """
         Initialize TruffleHog scanner
 
@@ -433,11 +433,9 @@ class TruffleHogScanner:
                 findings.append(finding)
 
             except json.JSONDecodeError as e:
-                logger.warning(f"⚠️  Failed to parse TruffleHog JSON line: {e}")
-                continue
+                raise ValueError("Malformed TruffleHog JSON output") from e
             except Exception as e:
-                logger.warning(f"⚠️  Error processing TruffleHog finding: {e}")
-                continue
+                raise ValueError("Invalid TruffleHog finding") from e
 
         return findings
 

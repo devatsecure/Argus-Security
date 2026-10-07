@@ -1,0 +1,5 @@
+recursive-include profiles *.yml *.yaml *.json *.md
+recursive-include policy *.rego
+recursive-include rules *.yml *.yaml
+recursive-include schemas *.yaml
+recursive-include templates *.j2 *.md *.json *.yaml *.yml

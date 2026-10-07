@@ -31,7 +31,8 @@ Functions:
 
 import logging
 import os
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from hybrid.models import HybridFinding
 
@@ -42,14 +43,28 @@ def run_scanner_guarded(
     logger: logging.Logger,
 ) -> list[HybridFinding]:
     """
-    Shared harness: run a scanner callable and return findings, or [] on any exception.
-    Use this to avoid duplicating try/except and error logging in each run_*.
+    Run a scanner callable, preserving failures for the phase coordinator.
+
+    Only a successful scan may return an empty list. Phase 1 catches failures,
+    records scanner health, and continues collecting results from other tools.
     """
     try:
         return get_findings()
     except Exception as e:
         logger.error("❌ %s scan failed: %s", name, e)
-        return []
+        raise RuntimeError(f"{name} scan failed") from e
+
+
+def checked_findings(response: Any) -> list:
+    """Validate dictionary scanner responses before treating them as successful."""
+    if not isinstance(response, dict):
+        raise RuntimeError("Invalid scanner response: expected an object")
+    if response.get("error") or response.get("errors") or response.get("success") is False:
+        raise RuntimeError("Scanner reported an execution error")
+    findings = response.get("findings")
+    if not isinstance(findings, list):
+        raise RuntimeError("Invalid scanner response: expected a findings list")
+    return findings
 
 
 def normalize_severity(severity: str) -> str:
@@ -91,16 +106,8 @@ def run_semgrep(scanner: Any, target_path: str, logger: logging.Logger) -> list[
 
     def _scan() -> list[HybridFinding]:
         findings: list[HybridFinding] = []
-        if not hasattr(scanner, "scan"):
-            return findings
         semgrep_results = scanner.scan(target_path)
-        findings_list = (
-            semgrep_results.get("findings", [])
-            if isinstance(semgrep_results, dict)
-            else semgrep_results
-            if isinstance(semgrep_results, list)
-            else []
-        )
+        findings_list = semgrep_results if isinstance(semgrep_results, list) else checked_findings(semgrep_results)
         for result in findings_list:
             rule_id = result.get("rule_id", "unknown")
             findings.append(
@@ -366,7 +373,9 @@ def run_supply_chain(scanner: Any, target_path: str, logger: logging.Logger) -> 
                         line_number=None,
                         cwe_id=None,
                         recommendation="\n".join(sc_threat.recommendations) if sc_threat.recommendations else "",
-                        references=sc_threat.similar_legitimate_packages if sc_threat.similar_legitimate_packages else [],
+                        references=sc_threat.similar_legitimate_packages
+                        if sc_threat.similar_legitimate_packages
+                        else [],
                         confidence=0.95,
                         llm_enriched=False,
                     )
@@ -593,15 +602,7 @@ def run_gitleaks(scanner: Any, target_path: str, logger: logging.Logger) -> list
     def _scan() -> list[HybridFinding]:
         findings: list[HybridFinding] = []
         gitleaks_result = scanner.scan(str(target_path), scan_type="filesystem")
-        if gitleaks_result.get("error"):
-            error_msg = gitleaks_result.get("error", "unknown")
-            if error_msg == "gitleaks_not_installed":
-                logger.warning("⚠️  Gitleaks binary not installed -- skipping")
-            else:
-                logger.warning("⚠️  Gitleaks returned error: %s", error_msg)
-            return findings
-
-        for idx, f in enumerate(gitleaks_result.get("findings", [])):
+        for idx, f in enumerate(checked_findings(gitleaks_result)):
             file_path = f.get("file_path", "")
             if not file_path or file_path.strip() in ("", "."):
                 continue

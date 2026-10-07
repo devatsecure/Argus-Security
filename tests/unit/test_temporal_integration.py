@@ -71,6 +71,8 @@ class TestTemporalDisabled:
             analyzer.config = config
             analyzer._mcp_started = False
             analyzer.enable_ai_enrichment = False
+            analyzer.ai_client = None
+            analyzer.skills_knowledge = None
 
             # Mock the phase imports to avoid full pipeline execution
             mock_result = MagicMock()
@@ -437,6 +439,8 @@ class TestAnalyzeTemporalDispatch:
             analyzer.config = config
             analyzer._mcp_started = False
             analyzer.enable_ai_enrichment = False
+            analyzer.ai_client = None
+            analyzer.skills_knowledge = None
 
             mock_temporal_result = MagicMock()
 
@@ -470,6 +474,8 @@ class TestAnalyzeTemporalDispatch:
             analyzer.config = config
             analyzer._mcp_started = False
             analyzer.enable_ai_enrichment = False
+            analyzer.ai_client = None
+            analyzer.skills_knowledge = None
 
             mock_direct_result = MagicMock()
 

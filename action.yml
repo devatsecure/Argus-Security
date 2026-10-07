@@ -693,6 +693,11 @@ runs:
         echo "✅ Code review completed successfully (fast mode)"
 
     # ── Full Pipeline Mode (hybrid_analyzer.py) ────────────────────────────
+    - name: Install Full Pipeline Dependencies
+      if: ${{ inputs.pipeline-mode == 'full' }}
+      shell: bash
+      run: python3 -m pip install "$GITHUB_ACTION_PATH"
+
     - name: Run Full Pipeline
       id: run-pipeline
       if: ${{ inputs.pipeline-mode == 'full' }}
@@ -740,6 +745,7 @@ runs:
 
         # Create results directory
         mkdir -p .argus/hybrid-results
+        RESULTS_DIR=$(mktemp -d .argus/hybrid-results/run-XXXXXX)
 
         echo "Configuration:"
         echo "   - Pipeline mode: full"
@@ -750,7 +756,7 @@ runs:
 
         # Build args array safely
         PIPELINE_ARGS=("$(pwd)")
-        PIPELINE_ARGS+=(--output-dir ".argus/hybrid-results")
+        PIPELINE_ARGS+=(--output-dir "$RESULTS_DIR")
 
         # Severity filter
         if [ -n "$SEVERITY_FILTER" ]; then
@@ -782,15 +788,14 @@ runs:
         export PYTHONPATH="$HOME/.argus/scripts:$PYTHONPATH"
 
         set +e
-        python3 "$HOME/.argus/scripts/hybrid_analyzer.py" "${PIPELINE_ARGS[@]}"
+        python3 "$GITHUB_ACTION_PATH/scripts/hybrid_analyzer.py" "${PIPELINE_ARGS[@]}"
         PIPELINE_EXIT=$?
         set -e
 
         echo "pipeline-mode-used=full" >> $GITHUB_OUTPUT
 
-        # Parse results from the hybrid output
-        RESULTS_DIR=".argus/hybrid-results"
-        JSON_FILE=$(ls -t "$RESULTS_DIR"/*.json 2>/dev/null | head -1 || true)
+        # Read only reports produced by this invocation.
+        JSON_FILE=$(ls -t "$RESULTS_DIR"/hybrid-scan-*.json 2>/dev/null | head -1 || true)
         SARIF_FILE=$(ls -t "$RESULTS_DIR"/*.sarif 2>/dev/null | head -1 || true)
 
         if [ -n "$JSON_FILE" ] && [ -f "$JSON_FILE" ]; then
@@ -801,7 +806,7 @@ runs:
           TOTAL=$(jq -r '.total_findings // 0' "$JSON_FILE" 2>/dev/null || echo "0")
           DURATION=$(jq -r '.scan_duration_seconds // 0' "$JSON_FILE" 2>/dev/null || echo "0")
           COST=$(jq -r '.cost_usd // 0' "$JSON_FILE" 2>/dev/null || echo "0.00")
-          SCANNERS=$(jq -r '.scanners_used // [] | join(",")' "$JSON_FILE" 2>/dev/null || echo "")
+          SCANNERS=$(jq -r '.tools_used // [] | join(",")' "$JSON_FILE" 2>/dev/null || echo "")
         else
           CRITICAL="0"
           HIGH="0"
@@ -816,9 +821,18 @@ runs:
         BLOCKERS=$(( ${CRITICAL:-0} + ${HIGH:-0} ))
         SUGGESTIONS=$(( ${MEDIUM:-0} + ${LOW:-0} ))
 
+        # Execution failures cannot be waived by fail-on-blockers=false.
+        COMPLETED=true
+        if [ "$PIPELINE_EXIT" -gt 1 ] || [ ! -f "${JSON_FILE:-}" ]; then
+          COMPLETED=false
+        elif ! jq -e '.scan_status == "complete" and (.policy_gate_result.decision == "pass" or .policy_gate_result.decision == "fail")' "$JSON_FILE" > /dev/null; then
+          COMPLETED=false
+        fi
+
         # Write outputs (compatible with fast-mode output names for downstream steps)
         {
-          echo "completed=true"
+          echo "completed=$COMPLETED"
+          echo "pipeline-exit-code=$PIPELINE_EXIT"
           echo "blockers=$BLOCKERS"
           echo "suggestions=$SUGGESTIONS"
           echo "report-path=${RESULTS_DIR}"
@@ -840,12 +854,14 @@ runs:
         echo "Full pipeline completed with exit code: $PIPELINE_EXIT"
         echo "  Critical: $CRITICAL | High: $HIGH | Medium: $MEDIUM | Low: $LOW"
 
-        # Exit with pipeline exit code (non-zero if critical/high findings)
-        if [ "$PIPELINE_EXIT" -ne 0 ]; then
-          echo "Full pipeline found critical/high severity issues"
+        if [ "$COMPLETED" != "true" ]; then
+          echo "::error::Full pipeline did not complete successfully; inspect scanner health and policy results"
+          exit 2
         fi
-
-        echo "Full 6-phase pipeline completed successfully"
+        if [ "$PIPELINE_EXIT" -eq 1 ]; then
+          echo "Full pipeline found blocking findings or a policy rejection"
+        fi
+        echo "Full 6-phase pipeline execution completed"
 
     # Upload SARIF from full pipeline to GitHub Security tab
     - name: Upload SARIF (Full Pipeline)
@@ -1195,7 +1211,7 @@ runs:
         exit 1
 
     - name: Fail on Blockers (Full Pipeline)
-      if: ${{ inputs.fail-on-blockers == 'true' && inputs.pipeline-mode == 'full' && steps.run-pipeline.outputs.blockers > 0 }}
+      if: ${{ inputs.fail-on-blockers == 'true' && inputs.pipeline-mode == 'full' && (steps.run-pipeline.outputs.blockers > 0 || steps.run-pipeline.outputs.pipeline-exit-code == '1') }}
       shell: bash
       run: |
         echo "Full pipeline found blockers: ${{ steps.run-pipeline.outputs.blockers }}"
@@ -1203,7 +1219,6 @@ runs:
         echo "Total findings: ${{ steps.run-pipeline.outputs.total-findings }}"
         echo "Please fix all critical/high severity issues before merging."
         exit 1
-
 
 
 

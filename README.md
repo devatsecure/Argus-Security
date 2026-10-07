@@ -1,6 +1,6 @@
 # Argus Security
 
-**AI-powered security pipeline that orchestrates scanners, triages findings with LLMs, and cuts false positives by 60-70%.**
+**AI-powered security pipeline that orchestrates scanners, triages findings with LLMs, and produces policy-gated reports.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![AI-Powered](https://img.shields.io/badge/AI-Claude%20%7C%20OpenAI%20%7C%20Ollama-blue.svg)](#ai-providers)
@@ -16,17 +16,24 @@ Traditional security scanners generate hundreds of findings. Most are noise. Tea
 
 ## How Argus Solves It
 
-Argus runs **5 scanners in parallel**, then passes findings through **AI-powered triage** with **5 specialized agent personas** that debate severity, filter false positives, and generate fix suggestions.
+Argus orchestrates **5 core scanners**, then passes findings through **AI-powered triage** with **5 specialized agent personas** that debate severity, filter false positives, and generate fix suggestions.
 
 | Before Argus | After Argus |
 |--------------|-------------|
-| 500+ raw findings, mostly noise | 60-70% false positive reduction |
-| Scanners miss logic bugs | +15-20% more findings via heuristic + AI discovery |
+| 500+ raw findings, mostly noise | AI-assisted triage and false-positive review |
+| Scanners miss logic bugs | Additional heuristic and AI-assisted discovery |
 | Manual triage takes hours | Automated multi-agent analysis in minutes |
 | No fix guidance | AI-generated remediation + compliance mapping |
-| Point-in-time scans | Persistent findings store with regression detection |
+| Point-in-time scans | Findings-store module for regression tracking (integration in progress) |
 
 ---
+
+## Project maturity
+
+See the [codebase review, open-source comparison, and roadmap](docs/PROJECT_MATURITY_REVIEW.md)
+and [implementation/validation plan](docs/superpowers/plans/2026-10-07-project-maturity.md).
+Detection quality, false-positive reduction, speed, and cost depend on the target,
+scanner rules, and model. Published percentages are not a validated general guarantee.
 
 ## Quick Start
 
@@ -78,6 +85,12 @@ git clone https://github.com/devatsecure/Argus-Security.git
 cd Argus-Security && pip install -r requirements.txt
 # or install as a package (PyPI name: argus-code-reviewer)
 pip install -e .
+# Optional Python scanner dependencies (other scanner binaries and OPA install separately)
+pip install -e '.[scanners]'
+# Installed commands also work outside this checkout:
+argus-scan --help
+argus-audit --help
+argus-gate --help
 export ANTHROPIC_API_KEY="your-key"
 
 # Fast AI code review (Semgrep + 2-3 LLM calls)
@@ -88,6 +101,22 @@ python scripts/hybrid_analyzer.py /path/to/project
 ```
 
 ---
+
+## Scan outcome contract
+
+The full pipeline requires OPA for policy evaluation and Python 3.10 or newer.
+`argus-scan` exits **0** for a complete passing scan, **1** for blocking findings
+or a policy rejection, and **2** for incomplete execution or policy errors.
+Missing requested scanners are reported as unavailable; disable tools explicitly
+when intentionally running a subset. JSON includes `scanner_health`, `scan_status`,
+`policy_gate_result`, and `vulnerability_chains`; Markdown and SARIF expose execution
+status too. `--severity-filter` changes displayed findings, not enforcement counts.
+API-verified secret evidence cannot be removed by AI false-positive filtering.
+
+The full GitHub Action preserves these outcomes. `fail-on-blockers: false` can
+waive finding/policy rejection, but cannot turn an execution failure into success.
+Existing integrations that relied on missing tools or missing OPA being ignored
+must install those tools or explicitly select a smaller scanner set.
 
 ## 6-Phase Pipeline
 
@@ -139,7 +168,7 @@ Phase 6: Reporting
 
 ## Scanners
 
-5 scanners are fully wired and run in parallel during Phase 1:
+5 core scanners are wired into Phase 1; the synchronous hybrid pipeline runs them sequentially:
 
 | Scanner | Detection Type | Default |
 |---------|---------------|---------|
@@ -161,7 +190,7 @@ Optional DAST scanners (require target URL or binary):
 
 ## Enrichment Features
 
-These modules enrich findings after scanner results are collected. All are wired into `hybrid_analyzer.py` and toggled via config/env vars.
+These modules enrich findings after scanner results are collected. Integration varies by execution path; the [maturity review](docs/PROJECT_MATURITY_REVIEW.md) distinguishes available modules from verified end-to-end behavior.
 
 | Feature | Config Key | Default | What It Does |
 |---------|-----------|---------|--------------|
@@ -176,7 +205,7 @@ These modules enrich findings after scanner results are collected. All are wired
 | Phase Gating | `enable_phase_gating` | On | Schema validation between pipeline phases |
 | Smart Retry | `enable_smart_retry` | On | Classified retry strategies per error type |
 | Audit Trail | `enable_audit_trail` | On | Per-agent cost/duration tracking, session.json |
-| Parallel Agents | `enable_parallel_agents` | On | Quality agents run concurrently (~60% faster Phase 3) |
+| Parallel Agents | `enable_parallel_agents` | On | Quality agents run concurrently (speedup depends on workload) |
 | IRIS Semantic Analysis | `enable_iris` | On | Research-proven semantic analysis (arXiv 2405.17238) |
 | Collaborative Reasoning | `enable_collaborative_reasoning` | On | Multi-agent debate for contested findings |
 | Deep Analysis | `deep_analysis_mode` | off | AISLE-inspired semantic analysis (off/semantic-only/conservative/full) |
@@ -185,7 +214,9 @@ These modules enrich findings after scanner results are collected. All are wired
 | Temporal Orchestration | `enable_temporal` | Off | Durable workflow wrapping for crash recovery |
 | Skills Knowledge | `enable_skills_knowledge` | On | Inject 734 cybersecurity runbooks as context into Phase 3 agent prompts (auto-discovers repo) |
 
-### Continuous Security (v3.0)
+### Continuous Security (v3.0 modules)
+
+These modules are under active integration. Initialization or a config flag alone does not establish end-to-end behavior; see the [integration gaps and acceptance criteria](docs/PROJECT_MATURITY_REVIEW.md).
 
 | Feature | Config Key | Default | What It Does |
 |---------|-----------|---------|--------------|
@@ -237,7 +268,7 @@ Skills coverage: web-security, cloud-security, malware-analysis, incident-respon
 | 9 | Gitleaks | `enable_gitleaks` | Pattern-based secret detection |
 | 10 | Nuclei Templates | `enable_nuclei_templates` | Source-aware DAST template analysis |
 | 11 | Multi-Agent Review | `enable_multi_agent` | 5 specialized AI personas (Phase 3) |
-| 12 | Spontaneous Discovery | `enable_spontaneous_discovery` | Find issues beyond scanner rules (+15-20%) |
+| 12 | Spontaneous Discovery | `enable_spontaneous_discovery` | Find issues beyond scanner rules (workload-dependent) |
 | 13 | AI Enrichment | `enable_ai_enrichment` | Claude/OpenAI triage, CWE mapping |
 | 14 | Threat Modeling | `enable_threat_modeling` | STRIDE-based threat analysis |
 | 15 | Sandbox Validation | `enable_sandbox_validation` | Docker-based exploit verification |
@@ -246,7 +277,7 @@ Skills coverage: web-security, cloud-security, malware-analysis, incident-respon
 | 18 | IRIS Semantic | `enable_iris` | Research-proven semantic analysis (arXiv 2405.17238) |
 | 19 | Audit Trail | `enable_audit_trail` | Per-agent cost/duration tracking |
 | 20 | Smart Retry | `enable_smart_retry` | Classified retry strategies per error type |
-| 21 | Parallel Agents | `enable_parallel_agents` | Concurrent quality agents (~60% faster Phase 3) |
+| 21 | Parallel Agents | `enable_parallel_agents` | Concurrent quality agents (speedup depends on workload) |
 | 22 | Phase Gating | `enable_phase_gating` | Schema validation between phases |
 | 23 | License Risk Scoring | `enable_license_risk_scoring` | 5-tier SPDX classification |
 | 24 | EPSS Scoring | `enable_epss_scoring` | FIRST.org exploit probability scores |
@@ -437,8 +468,8 @@ The Action supports two pipeline modes:
 |--------|-----------|---------------|
 | Scan Time | 30-90 seconds | 3-5 minutes (first run) |
 | AI Calls | 2-3 LLM calls | Full enrichment + multi-agent |
-| False Positive Reduction | Basic | 60-70% |
-| Additional Findings | Heuristic only | +15-20% (heuristic + AI) |
+| False Positive Reduction | Requires benchmark | Requires benchmark |
+| Additional Findings | Heuristic only | Heuristic + AI (not comparatively benchmarked) |
 | Cost per Scan | ~$0.10 | ~$0.35 (Claude) |
 
 ---

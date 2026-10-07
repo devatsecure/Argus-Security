@@ -13,10 +13,10 @@ and returns the final ``HybridScanResult``.
 import logging
 import os
 import time
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from hybrid.models import HybridFinding, HybridScanResult
 
@@ -28,13 +28,14 @@ def run_phase6_reporting(
     all_findings: list[HybridFinding],
     target_path: str,
     analyzer: Any,
-    output_dir: Optional[str],
-    severity_filter: Optional[list[str]],
+    output_dir: str | None,
+    severity_filter: list[str] | None,
     overall_start: float,
     phase_timings: dict[str, float],
     total_cost: float,
-    policy_gate_result: Optional[dict],
-    vulnerability_chains: Optional[dict],
+    policy_gate_result: dict | None,
+    vulnerability_chains: dict | None,
+    scanner_health: dict[str, str] | None = None,
 ) -> HybridScanResult:
     """Execute Phase 6 -- report generation and result assembly.
 
@@ -49,6 +50,7 @@ def run_phase6_reporting(
         total_cost: Running total of API costs.
         policy_gate_result: Result from Phase 5 policy gate (or None).
         vulnerability_chains: Result from Phase 5.5 chaining (or None).
+        scanner_health: Execution status for each requested/disabled scanner.
 
     Returns:
         Fully assembled ``HybridScanResult``.
@@ -80,7 +82,10 @@ def run_phase6_reporting(
         logger.info("   Phase 6.5 duration: %.1fs", phase_timings["phase6.5_disclosure"])
 
     # --- v2.0: Vulnerability Enrichment Pipeline ---
+    verified_evidence = [replace(f) for f in all_findings if f.secret_verified]
     all_findings = analyzer._enrich_findings(all_findings, target_path)
+    verified_ids = {f.finding_id for f in verified_evidence}
+    all_findings = [f for f in all_findings if f.finding_id not in verified_ids] + verified_evidence
 
     # --- Calculate statistics ---
     overall_duration = time.time() - overall_start
@@ -93,6 +98,10 @@ def run_phase6_reporting(
         all_findings = [f for f in all_findings if f.severity.lower() in [s.lower() for s in severity_filter]]
 
     # --- Assemble result ---
+    health = scanner_health or {}
+    successful = any(status == "clean" or status.startswith("ran(") for status in health.values())
+    incomplete = any(status in {"failed", "unavailable"} for status in health.values())
+    scan_status = "partial" if successful and incomplete else "complete" if successful else "failed"
     result = HybridScanResult(
         target_path=target_path,
         scan_timestamp=datetime.now().isoformat(),
@@ -105,10 +114,11 @@ def run_phase6_reporting(
         phase_timings=phase_timings,
         tools_used=analyzer._get_enabled_tools(),
         llm_enrichment_enabled=analyzer.enable_ai_enrichment,
+        scanner_health=health,
+        scan_status=scan_status,
+        policy_gate_result=policy_gate_result,
+        vulnerability_chains=vulnerability_chains,
     )
-
-    if vulnerability_chains:
-        result.__dict__["vulnerability_chains"] = vulnerability_chains
 
     # --- Save results ---
     if output_dir:
@@ -129,7 +139,7 @@ def _generate_disclosure_report(
     *,
     all_findings: list[HybridFinding],
     config: dict,
-    output_dir: Optional[str],
+    output_dir: str | None,
 ) -> None:
     """Generate responsible disclosure reports.
 

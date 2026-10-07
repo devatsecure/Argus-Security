@@ -18,7 +18,7 @@ import sys
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -35,8 +35,8 @@ class SemgrepFinding:
     start_line: int
     end_line: int
     code_snippet: str
-    cwe: Optional[str] = None
-    owasp: Optional[str] = None
+    cwe: str | None = None
+    owasp: str | None = None
     confidence: str = "HIGH"
 
     def to_dict(self) -> dict:
@@ -46,7 +46,7 @@ class SemgrepFinding:
 class SemgrepScanner:
     """Wrapper for Semgrep SAST scanning"""
 
-    def __init__(self, config: Optional[dict] = None):
+    def __init__(self, config: dict | None = None):
         """
         Initialize Semgrep scanner
 
@@ -66,11 +66,11 @@ class SemgrepScanner:
 
         # Resolve semgrep binary path (shutil.which + common fallbacks + python -m)
         # _semgrep_bin is either a str (binary path) or list[str] (e.g. ["python", "-m", "semgrep"])
-        self._semgrep_bin: Optional[Union[str, list[str]]] = self._resolve_semgrep_path()
+        self._semgrep_bin: str | list[str] | None = self._resolve_semgrep_path()
         if not self._semgrep_bin:
             logger.warning("Semgrep not installed. Install with: pip install semgrep")
 
-    def _resolve_semgrep_path(self) -> Optional[Union[str, list[str]]]:
+    def _resolve_semgrep_path(self) -> str | list[str] | None:
         """Resolve the semgrep binary path or fall back to ``python -m semgrep``.
 
         Returns:
@@ -163,15 +163,15 @@ class SemgrepScanner:
             rule_configs = [self.semgrep_rules]
         else:
             rule_configs = [
-                "p/security-audit",           # Core security rules (2000+)
-                "p/python",                   # Python-specific rules
-                "p/owasp-top-ten",            # OWASP Top 10
-                "p/cwe-top-25",               # CWE Top 25 Most Dangerous
-                "p/command-injection",         # Command injection patterns
-                "p/insecure-transport",        # Missing TLS/HTTPS
-                "p/secrets",                   # Hardcoded secrets/credentials
-                "p/supply-chain",             # Supply chain risks (trust_remote_code, etc.)
-                "p/deserialization",           # Pickle, torch.load, yaml.load
+                "p/security-audit",  # Core security rules (2000+)
+                "p/python",  # Python-specific rules
+                "p/owasp-top-ten",  # OWASP Top 10
+                "p/cwe-top-25",  # CWE Top 25 Most Dangerous
+                "p/command-injection",  # Command injection patterns
+                "p/insecure-transport",  # Missing TLS/HTTPS
+                "p/secrets",  # Hardcoded secrets/credentials
+                "p/supply-chain",  # Supply chain risks (trust_remote_code, etc.)
+                "p/deserialization",  # Pickle, torch.load, yaml.load
             ]
 
         cmd = self._semgrep_cmd_prefix() + ["--json", "--quiet", "--metrics=off"]
@@ -179,7 +179,9 @@ class SemgrepScanner:
             cmd.extend(["--config", rc])
 
         # Add Argus custom rules if they exist
-        custom_rules_dir = Path(__file__).parent.parent / "rules" / "custom"
+        from resource_paths import resource_root
+
+        custom_rules_dir = resource_root() / "rules" / "custom"
         if custom_rules_dir.exists():
             cmd.extend(["--config", str(custom_rules_dir)])
             logger.info("   Including Argus custom rules from %s", custom_rules_dir)
@@ -201,6 +203,10 @@ class SemgrepScanner:
 
             # Parse JSON output
             semgrep_output = json.loads(result.stdout)
+            if not isinstance(semgrep_output, dict) or not isinstance(semgrep_output.get("results"), list):
+                return {"error": "invalid_output", "findings": []}
+            if semgrep_output.get("errors"):
+                return {"error": "incomplete_scan", "findings": []}
             findings = self._parse_semgrep_output(semgrep_output)
 
             logger.info(f"✅ Semgrep scan complete: {len(findings)} findings")

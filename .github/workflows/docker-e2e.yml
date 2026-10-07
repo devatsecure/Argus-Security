@@ -71,24 +71,22 @@ jobs:
           set -euo pipefail
           docker run --rm --entrypoint bash argus-security:e2e-test -c '
             STATUS=0
-            for cmd_check in \
-              "semgrep --version" \
-              "trivy --version" \
-              "trufflehog --version" \
-              "gitleaks version" \
-              "nuclei -version" \
-              "opa version" \
-              "checkov --version" \
-              "python -c \"import hybrid_analyzer; print(\\\"import ok\\\")\"" \
-            ; do
-              TOOL_NAME=$(echo "$cmd_check" | awk "{print \$1}")
-              if eval "$cmd_check" > /dev/null 2>&1; then
-                echo "PASS: $cmd_check"
+            for tool in semgrep trivy trufflehog gitleaks nuclei opa checkov; do
+              case "$tool" in
+                gitleaks|opa) version_arg=version ;;
+                nuclei) version_arg=-version ;;
+                *) version_arg=--version ;;
+              esac
+              if "$tool" "$version_arg" > /dev/null 2>&1; then
+                echo "PASS: $tool"
               else
-                echo "FAIL: $cmd_check"
+                echo "FAIL: $tool"
                 STATUS=1
               fi
             done
+            if ! python -c "import hybrid_analyzer"; then
+              STATUS=1
+            fi
             exit $STATUS
           '
           echo "result=PASS" >> "$GITHUB_OUTPUT"

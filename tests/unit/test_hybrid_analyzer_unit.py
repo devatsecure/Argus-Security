@@ -309,6 +309,7 @@ class TestHybridSecurityAnalyzerInit:
                 enable_spontaneous_discovery=False,
                 enable_collaborative_reasoning=False,
                 enable_trufflehog=False,
+                enable_gitleaks=False,
                 enable_iris=False,
                 enable_nuclei_templates=False,
                 enable_zap_baseline=False,

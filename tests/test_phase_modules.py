@@ -12,7 +12,7 @@ Verifies:
 import inspect
 import sys
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -22,10 +22,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
 from hybrid.models import HybridFinding, HybridScanResult
 
-
 # ============================================================================
 # Helpers
 # ============================================================================
+
 
 def _make_finding(**overrides: Any) -> HybridFinding:
     """Create a minimal HybridFinding with sensible defaults."""
@@ -94,11 +94,13 @@ def _make_mock_analyzer(**overrides: Any) -> MagicMock:
 # Test: Module imports
 # ============================================================================
 
+
 class TestModuleImports:
     """Verify each phase module can be imported without errors."""
 
     def test_import_phases_init(self):
         import hybrid.phases
+
         assert hasattr(hybrid.phases, "run_phase1_scanning")
         assert hasattr(hybrid.phases, "run_phase2_enrichment")
         assert hasattr(hybrid.phases, "run_phase3_review")
@@ -108,32 +110,39 @@ class TestModuleImports:
 
     def test_import_phase1(self):
         from hybrid.phases.phase1_scanning import run_phase1_scanning
+
         assert callable(run_phase1_scanning)
 
     def test_import_phase2(self):
         from hybrid.phases.phase2_enrichment import run_phase2_enrichment
+
         assert callable(run_phase2_enrichment)
 
     def test_import_phase3(self):
         from hybrid.phases.phase3_review import run_phase3_review
+
         assert callable(run_phase3_review)
 
     def test_import_phase4(self):
         from hybrid.phases.phase4_sandbox import run_phase4_sandbox
+
         assert callable(run_phase4_sandbox)
 
     def test_import_phase5(self):
         from hybrid.phases.phase5_policy import run_phase5_policy
+
         assert callable(run_phase5_policy)
 
     def test_import_phase6(self):
         from hybrid.phases.phase6_reporting import run_phase6_reporting
+
         assert callable(run_phase6_reporting)
 
     def test_import_internal_helpers(self):
         """Internal helper functions should also be importable."""
         from hybrid.phases.phase3_review import _run_argus_review
         from hybrid.phases.phase4_sandbox import _run_sandbox_validation
+
         assert callable(_run_argus_review)
         assert callable(_run_sandbox_validation)
 
@@ -142,11 +151,13 @@ class TestModuleImports:
 # Test: Function signatures
 # ============================================================================
 
+
 class TestFunctionSignatures:
     """Verify phase functions accept the expected keyword arguments."""
 
     def test_phase1_signature(self):
         from hybrid.phases.phase1_scanning import run_phase1_scanning
+
         sig = inspect.signature(run_phase1_scanning)
         param_names = set(sig.parameters.keys())
         assert "target_path" in param_names
@@ -154,6 +165,7 @@ class TestFunctionSignatures:
 
     def test_phase2_signature(self):
         from hybrid.phases.phase2_enrichment import run_phase2_enrichment
+
         sig = inspect.signature(run_phase2_enrichment)
         param_names = set(sig.parameters.keys())
         assert "all_findings" in param_names
@@ -162,6 +174,7 @@ class TestFunctionSignatures:
 
     def test_phase3_signature(self):
         from hybrid.phases.phase3_review import run_phase3_review
+
         sig = inspect.signature(run_phase3_review)
         param_names = set(sig.parameters.keys())
         assert "all_findings" in param_names
@@ -170,6 +183,7 @@ class TestFunctionSignatures:
 
     def test_phase4_signature(self):
         from hybrid.phases.phase4_sandbox import run_phase4_sandbox
+
         sig = inspect.signature(run_phase4_sandbox)
         param_names = set(sig.parameters.keys())
         assert "all_findings" in param_names
@@ -178,6 +192,7 @@ class TestFunctionSignatures:
 
     def test_phase5_signature(self):
         from hybrid.phases.phase5_policy import run_phase5_policy
+
         sig = inspect.signature(run_phase5_policy)
         param_names = set(sig.parameters.keys())
         assert "all_findings" in param_names
@@ -186,6 +201,7 @@ class TestFunctionSignatures:
 
     def test_phase6_signature(self):
         from hybrid.phases.phase6_reporting import run_phase6_reporting
+
         sig = inspect.signature(run_phase6_reporting)
         param_names = set(sig.parameters.keys())
         assert "all_findings" in param_names
@@ -204,6 +220,7 @@ class TestFunctionSignatures:
 # Test: Phase 1 - Scanner Orchestration
 # ============================================================================
 
+
 class TestPhase1Scanning:
     """Tests for run_phase1_scanning."""
 
@@ -211,9 +228,7 @@ class TestPhase1Scanning:
         from hybrid.phases.phase1_scanning import run_phase1_scanning
 
         analyzer = _make_mock_analyzer()
-        findings, duration, health = run_phase1_scanning(
-            target_path=str(tmp_path), analyzer=analyzer
-        )
+        findings, duration, health = run_phase1_scanning(target_path=str(tmp_path), analyzer=analyzer)
         assert findings == []
         assert duration >= 0.0
         assert isinstance(health, dict)
@@ -229,9 +244,7 @@ class TestPhase1Scanning:
         # _run_semgrep returns findings
         analyzer._run_semgrep.return_value = [_make_finding(finding_id="sg-1")]
 
-        findings, duration, _health = run_phase1_scanning(
-            target_path=str(tmp_path), analyzer=analyzer
-        )
+        findings, duration, _health = run_phase1_scanning(target_path=str(tmp_path), analyzer=analyzer)
         assert len(findings) == 1
         assert findings[0].finding_id == "sg-1"
         analyzer._run_semgrep.assert_called_once_with(str(tmp_path))
@@ -249,9 +262,7 @@ class TestPhase1Scanning:
         analyzer._run_semgrep.side_effect = RuntimeError("Semgrep crashed")
         analyzer._run_trivy.return_value = [_make_finding(finding_id="trivy-1")]
 
-        findings, _, health = run_phase1_scanning(
-            target_path=str(tmp_path), analyzer=analyzer
-        )
+        findings, _, health = run_phase1_scanning(target_path=str(tmp_path), analyzer=analyzer)
         assert len(findings) == 1
         assert findings[0].finding_id == "trivy-1"
         assert health["Semgrep"] == "failed"
@@ -262,7 +273,13 @@ class TestPhase1Scanning:
         mock_th = MagicMock()
         mock_th.scan.return_value = {
             "findings": [
-                {"detector_type": "AWS", "detector_name": "aws_key", "verified": True, "file_path": "creds.py", "line": 10}
+                {
+                    "detector_type": "AWS",
+                    "detector_name": "aws_key",
+                    "verified": True,
+                    "file_path": "creds.py",
+                    "line": 10,
+                }
             ]
         }
         analyzer = _make_mock_analyzer(
@@ -270,9 +287,7 @@ class TestPhase1Scanning:
             trufflehog_scanner=mock_th,
         )
 
-        findings, _, _health = run_phase1_scanning(
-            target_path=str(tmp_path), analyzer=analyzer
-        )
+        findings, _, _health = run_phase1_scanning(target_path=str(tmp_path), analyzer=analyzer)
         assert len(findings) == 1
         assert "trufflehog" in findings[0].finding_id
         assert findings[0].severity == "critical"  # verified secret
@@ -282,17 +297,15 @@ class TestPhase1Scanning:
 # Test: Phase 2 - AI Enrichment
 # ============================================================================
 
-class TestPhase2Enrichment:
 
+class TestPhase2Enrichment:
     def test_skipped_when_ai_disabled(self, tmp_path):
         from hybrid.phases.phase2_enrichment import run_phase2_enrichment
 
         analyzer = _make_mock_analyzer(enable_ai_enrichment=False)
         findings = [_make_finding()]
 
-        result, timings = run_phase2_enrichment(
-            all_findings=findings, target_path=str(tmp_path), analyzer=analyzer
-        )
+        result, timings = run_phase2_enrichment(all_findings=findings, target_path=str(tmp_path), analyzer=analyzer)
         assert len(result) == 1
         assert timings == {}  # no sub-phases ran
 
@@ -300,9 +313,7 @@ class TestPhase2Enrichment:
         from hybrid.phases.phase2_enrichment import run_phase2_enrichment
 
         analyzer = _make_mock_analyzer(enable_ai_enrichment=True)
-        result, timings = run_phase2_enrichment(
-            all_findings=[], target_path=str(tmp_path), analyzer=analyzer
-        )
+        result, timings = run_phase2_enrichment(all_findings=[], target_path=str(tmp_path), analyzer=analyzer)
         assert result == []
 
     def test_ai_enrichment_called_with_findings(self, tmp_path):
@@ -312,9 +323,7 @@ class TestPhase2Enrichment:
         analyzer = _make_mock_analyzer(enable_ai_enrichment=True)
         analyzer._enrich_with_ai.return_value = findings
 
-        result, timings = run_phase2_enrichment(
-            all_findings=findings, target_path=str(tmp_path), analyzer=analyzer
-        )
+        result, timings = run_phase2_enrichment(all_findings=findings, target_path=str(tmp_path), analyzer=analyzer)
         assert len(result) == 1
         assert "phase2_ai_enrichment" in timings
         analyzer._enrich_with_ai.assert_called_once()
@@ -324,17 +333,15 @@ class TestPhase2Enrichment:
 # Test: Phase 3 - Multi-Agent Review
 # ============================================================================
 
-class TestPhase3Review:
 
+class TestPhase3Review:
     def test_skipped_when_disabled(self, tmp_path):
         from hybrid.phases.phase3_review import run_phase3_review
 
         analyzer = _make_mock_analyzer(enable_multi_agent=False)
         findings = [_make_finding()]
 
-        result, duration = run_phase3_review(
-            all_findings=findings, target_path=str(tmp_path), analyzer=analyzer
-        )
+        result, duration = run_phase3_review(all_findings=findings, target_path=str(tmp_path), analyzer=analyzer)
         assert result == findings
         assert duration is None
 
@@ -346,9 +353,7 @@ class TestPhase3Review:
             agent_personas=MagicMock(),
         )
 
-        result, duration = run_phase3_review(
-            all_findings=[], target_path=str(tmp_path), analyzer=analyzer
-        )
+        result, duration = run_phase3_review(all_findings=[], target_path=str(tmp_path), analyzer=analyzer)
         assert result == []
         assert duration is None
 
@@ -385,17 +390,15 @@ class TestPhase3Review:
 # Test: Phase 4 - Sandbox Validation
 # ============================================================================
 
-class TestPhase4Sandbox:
 
+class TestPhase4Sandbox:
     def test_skipped_when_disabled(self, tmp_path):
         from hybrid.phases.phase4_sandbox import run_phase4_sandbox
 
         analyzer = _make_mock_analyzer(enable_sandbox=False)
         findings = [_make_finding()]
 
-        result, duration = run_phase4_sandbox(
-            all_findings=findings, target_path=str(tmp_path), analyzer=analyzer
-        )
+        result, duration = run_phase4_sandbox(all_findings=findings, target_path=str(tmp_path), analyzer=analyzer)
         assert result == findings
         assert duration is None
 
@@ -422,9 +425,7 @@ class TestPhase4Sandbox:
             sandbox_validator=MagicMock(),
         )
 
-        result, duration = run_phase4_sandbox(
-            all_findings=[], target_path=str(tmp_path), analyzer=analyzer
-        )
+        result, duration = run_phase4_sandbox(all_findings=[], target_path=str(tmp_path), analyzer=analyzer)
         assert result == []
         assert duration is None
 
@@ -457,18 +458,16 @@ class TestPhase4Sandbox:
 # Test: Phase 5 - Policy Gate
 # ============================================================================
 
-class TestPhase5Policy:
 
-    def test_skipped_when_no_findings(self):
+class TestPhase5Policy:
+    def test_evaluated_when_no_findings(self):
         from hybrid.phases.phase5_policy import run_phase5_policy
 
         analyzer = _make_mock_analyzer()
-        policy_result, chains, timings = run_phase5_policy(
-            all_findings=[], analyzer=analyzer
-        )
-        assert policy_result is None
+        policy_result, chains, timings = run_phase5_policy(all_findings=[], analyzer=analyzer)
+        assert policy_result["decision"] in {"pass", "error"}
         assert chains is None
-        assert timings == {}
+        assert "phase5_policy_gate" in timings
 
     @patch.dict("os.environ", {"ENABLE_VULNERABILITY_CHAINING": "false"}, clear=False)
     def test_policy_gate_import_error_handled(self):
@@ -478,9 +477,7 @@ class TestPhase5Policy:
         findings = [_make_finding()]
 
         # gate module is not installed, so ImportError should be caught
-        policy_result, chains, timings = run_phase5_policy(
-            all_findings=findings, analyzer=analyzer
-        )
+        policy_result, chains, timings = run_phase5_policy(all_findings=findings, analyzer=analyzer)
         # Should not crash, policy_result may be None if import failed
         assert "phase5_policy_gate" in timings
 
@@ -489,11 +486,12 @@ class TestPhase5Policy:
 # Test: Phase 6 - Reporting
 # ============================================================================
 
-class TestPhase6Reporting:
 
+class TestPhase6Reporting:
     def test_result_assembly(self, tmp_path):
-        from hybrid.phases.phase6_reporting import run_phase6_reporting
         import time
+
+        from hybrid.phases.phase6_reporting import run_phase6_reporting
 
         findings = [_make_finding(), _make_finding(finding_id="test-002", severity="critical")]
         analyzer = _make_mock_analyzer()
@@ -522,8 +520,9 @@ class TestPhase6Reporting:
         assert result.target_path == str(tmp_path)
 
     def test_severity_filter_applied(self, tmp_path):
-        from hybrid.phases.phase6_reporting import run_phase6_reporting
         import time
+
+        from hybrid.phases.phase6_reporting import run_phase6_reporting
 
         findings = [
             _make_finding(finding_id="f1", severity="high"),
@@ -554,8 +553,9 @@ class TestPhase6Reporting:
         assert all(f.severity == "high" for f in result.findings)
 
     def test_vulnerability_chains_attached(self, tmp_path):
-        from hybrid.phases.phase6_reporting import run_phase6_reporting
         import time
+
+        from hybrid.phases.phase6_reporting import run_phase6_reporting
 
         findings = [_make_finding()]
         analyzer = _make_mock_analyzer()
@@ -583,8 +583,9 @@ class TestPhase6Reporting:
         assert result.__dict__.get("vulnerability_chains") == chains
 
     def test_empty_findings_no_crash(self, tmp_path):
-        from hybrid.phases.phase6_reporting import run_phase6_reporting
         import time
+
+        from hybrid.phases.phase6_reporting import run_phase6_reporting
 
         analyzer = _make_mock_analyzer()
         analyzer._enrich_findings.return_value = []
@@ -614,6 +615,7 @@ class TestPhase6Reporting:
 # Test: End-to-End Orchestrator
 # ============================================================================
 
+
 class TestOrchestratorE2E:
     """Test that HybridSecurityAnalyzer.analyze() still works with the phase modules."""
 
@@ -624,13 +626,16 @@ class TestOrchestratorE2E:
         from hybrid_analyzer import HybridSecurityAnalyzer
 
         # Create a minimal analyzer with all scanners disabled but AI "enabled" to pass validation
-        with patch.multiple(
-            "enrichment_pipeline",
-            _EPSS_OK=False,
-            _FIX_OK=False,
-            _VEX_OK=False,
-            _DEDUP_OK=False,
-        ), patch("hybrid_analyzer._REGISTRY_OK", False):
+        with (
+            patch.multiple(
+                "enrichment_pipeline",
+                _EPSS_OK=False,
+                _FIX_OK=False,
+                _VEX_OK=False,
+                _DEDUP_OK=False,
+            ),
+            patch("hybrid_analyzer._REGISTRY_OK", False),
+        ):
             analyzer = HybridSecurityAnalyzer.__new__(HybridSecurityAnalyzer)
             # Manually set all attributes (skip __init__ scanner setup)
             analyzer.enable_semgrep = False
@@ -668,6 +673,7 @@ class TestOrchestratorE2E:
             analyzer.trufflehog_scanner = None
             analyzer.sandbox_validator = None
             analyzer.ai_client = None
+            analyzer.skills_knowledge = None
             analyzer.agent_personas = None
             analyzer.spontaneous_discovery = None
             analyzer.collaborative_reasoning = None
@@ -708,39 +714,42 @@ class TestOrchestratorE2E:
 # Test: Backward Compatibility
 # ============================================================================
 
+
 class TestBackwardCompat:
     """Ensure existing imports and APIs still work."""
 
     def test_hybrid_finding_importable_from_hybrid_analyzer(self):
         from hybrid_analyzer import HybridFinding, HybridScanResult
+
         assert HybridFinding is not None
         assert HybridScanResult is not None
 
     def test_hybrid_finding_importable_from_hybrid(self):
         from hybrid import HybridFinding, HybridScanResult
+
         assert HybridFinding is not None
         assert HybridScanResult is not None
 
     def test_phase_functions_importable_from_hybrid(self):
         from hybrid import (
             run_phase1_scanning,
-            run_phase2_enrichment,
-            run_phase3_review,
-            run_phase4_sandbox,
-            run_phase5_policy,
             run_phase6_reporting,
         )
+
         assert callable(run_phase1_scanning)
         assert callable(run_phase6_reporting)
 
     def test_analyzer_has_run_argus_review(self):
         from hybrid_analyzer import HybridSecurityAnalyzer
+
         assert hasattr(HybridSecurityAnalyzer, "_run_argus_review")
 
     def test_analyzer_has_run_sandbox_validation(self):
         from hybrid_analyzer import HybridSecurityAnalyzer
+
         assert hasattr(HybridSecurityAnalyzer, "_run_sandbox_validation")
 
     def test_main_function_exists(self):
         from hybrid_analyzer import main
+
         assert callable(main)

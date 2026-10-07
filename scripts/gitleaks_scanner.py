@@ -19,7 +19,7 @@ import subprocess
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -38,13 +38,13 @@ class GitleaksFinding:
     end_column: int  # Column number where the match ends
     match: str  # The matched text (redacted for display)
     secret: str  # The actual secret (should be redacted in output)
-    commit: Optional[str] = None  # Git commit SHA (if git scan)
-    author: Optional[str] = None  # Commit author
-    email: Optional[str] = None  # Commit author email
-    date: Optional[str] = None  # Commit date
-    message: Optional[str] = None  # Commit message
-    entropy: Optional[float] = None  # Shannon entropy of the secret
-    tags: Optional[list[str]] = None  # Tags from Gitleaks rules
+    commit: str | None = None  # Git commit SHA (if git scan)
+    author: str | None = None  # Commit author
+    email: str | None = None  # Commit author email
+    date: str | None = None  # Commit date
+    message: str | None = None  # Commit message
+    entropy: float | None = None  # Shannon entropy of the secret
+    tags: list[str] | None = None  # Tags from Gitleaks rules
 
     def __post_init__(self):
         if self.tags is None:
@@ -64,7 +64,7 @@ class GitleaksScanner:
     matching identifies but that cannot be API-verified.
     """
 
-    def __init__(self, config: Optional[dict] = None):
+    def __init__(self, config: dict | None = None):
         """
         Initialize Gitleaks scanner.
 
@@ -79,7 +79,7 @@ class GitleaksScanner:
         self.scan_depth = self.config.get("scan_depth", None)
         self.config_path = self.config.get("config_path", None)
         self.redact = self.config.get("redact", True)
-        self._installed: Optional[bool] = None
+        self._installed: bool | None = None
 
         # Check if gitleaks is installed
         if not self._check_gitleaks_installed():
@@ -281,12 +281,10 @@ class GitleaksScanner:
         try:
             data = json.loads(raw_output)
         except json.JSONDecodeError as e:
-            logger.warning(f"Failed to parse Gitleaks JSON output: {e}")
-            return findings
+            raise ValueError("Malformed Gitleaks JSON output") from e
 
         if not isinstance(data, list):
-            logger.warning(f"Expected JSON array from Gitleaks, got {type(data).__name__}")
-            return findings
+            raise ValueError("Expected JSON array from Gitleaks")
 
         for item in data:
             if not isinstance(item, dict):

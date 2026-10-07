@@ -14,7 +14,7 @@ import os
 import time
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from hybrid.models import HybridFinding
 
@@ -25,8 +25,8 @@ def run_phase5_policy(
     *,
     all_findings: list[HybridFinding],
     analyzer: Any,
-    output_dir: Optional[str] = None,
-) -> tuple[Optional[dict], Optional[dict], dict[str, float]]:
+    output_dir: str | None = None,
+) -> tuple[dict | None, dict | None, dict[str, float]]:
     """Execute Phase 5 -- policy gate evaluation and vulnerability chaining.
 
     Args:
@@ -41,30 +41,27 @@ def run_phase5_policy(
     policy_gate_result = None
     vulnerability_chains = None
 
-    # --- Phase 5: Policy Gate Evaluation ---
-    if all_findings:
-        logger.info("")
-        logger.info("-" * 80)
-        logger.info("Phase 5: Policy Gate Evaluation")
-        logger.info("-" * 80)
-
-        phase5_start = time.time()
-
-        try:
-            policy_gate_result = _evaluate_policy_gate(
-                all_findings=all_findings,
-                config=analyzer.config,
-            )
-        except ImportError:
-            logger.warning("   PolicyGate not available - skipping policy evaluation")
-        except Exception as e:
-            logger.error("   Policy gate evaluation failed: %s", e)
-            logger.info("   Continuing without policy enforcement...")
-
-        phase_timings["phase5_policy_gate"] = time.time() - phase5_start
-        logger.info("   Phase 5 duration: %.1fs", phase_timings["phase5_policy_gate"])
-    else:
-        logger.info("   Skipping Phase 5: No findings to evaluate")
+    # Evaluate even empty scans: release metadata is independent of findings.
+    phase5_start = time.time()
+    try:
+        policy_gate_result = _evaluate_policy_gate(
+            all_findings=all_findings,
+            config=analyzer.config,
+        )
+        if not isinstance(policy_gate_result, dict) or policy_gate_result.get("decision") not in {"pass", "fail"}:
+            raise ValueError("Policy engine returned an invalid decision")
+        for key in ("blocks", "warnings", "reasons"):
+            if not isinstance(policy_gate_result.get(key, []), list):
+                raise ValueError(f"Policy engine returned invalid {key}")
+    except Exception as exc:
+        logger.error("Policy gate evaluation failed: %s", exc)
+        policy_gate_result = {
+            "decision": "error",
+            "reasons": ["Policy evaluation failed; check OPA installation, policy files, and logs."],
+            "blocks": [],
+            "warnings": [],
+        }
+    phase_timings["phase5_policy_gate"] = time.time() - phase5_start
 
     # --- Phase 5.5: Vulnerability Chaining Analysis ---
     # Enabled by default for comprehensive attack chain analysis across findings.
@@ -105,7 +102,7 @@ def _evaluate_policy_gate(
     *,
     all_findings: list[HybridFinding],
     config: dict,
-) -> Optional[dict]:
+) -> dict | None:
     """Evaluate findings against Rego/OPA policy gate.
 
     Raises:
@@ -124,14 +121,23 @@ def _evaluate_policy_gate(
             "id": finding.finding_id,
             "source_tool": finding.source_tool,
             "severity": finding.severity,
-            "category": finding.category,
+            "category": {
+                "semgrep": "SAST",
+                "trivy": "DEPS",
+                "checkov": "IAC",
+                "trufflehog": "SECRETS",
+                "gitleaks": "SECRETS",
+            }.get(finding.source_tool, finding.category.upper()),
             "title": finding.title,
             "description": finding.description,
             "path": finding.file_path,
             "line": finding.line_number,
             "cwe_id": finding.cwe_id,
             "cve_id": finding.cve_id,
-            "cvss_score": finding.cvss_score,
+            "cvss": finding.cvss_score,
+            "secret_verified": "true" if finding.secret_verified else "false",
+            "reachability": finding.reachability,
+            "service_tier": finding.service_tier,
             "exploitability": finding.exploitability,
             "confidence": finding.confidence,
         }
@@ -144,7 +150,7 @@ def _evaluate_policy_gate(
         metadata=config.get("policy_metadata", {}),
     )
 
-    decision = policy_gate_result.get("decision", "pass")
+    decision = policy_gate_result.get("decision", "error")
     blocks = policy_gate_result.get("blocks", [])
     warnings = policy_gate_result.get("warnings", [])
     reasons = policy_gate_result.get("reasons", [])
@@ -164,7 +170,7 @@ def _evaluate_policy_gate(
 def _run_vulnerability_chaining(
     *,
     all_findings: list[HybridFinding],
-    output_dir: Optional[str],
+    output_dir: str | None,
 ) -> dict:
     """Run vulnerability chaining analysis.
 

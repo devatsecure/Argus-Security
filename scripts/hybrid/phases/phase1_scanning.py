@@ -18,6 +18,7 @@ import time
 from typing import Any
 
 from hybrid.models import HybridFinding
+from hybrid.scanner_runners import checked_findings
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +42,8 @@ def run_phase1_scanning(
 
         - ``"ran(N)"`` -- scanner produced *N* findings
         - ``"clean"``  -- scanner ran successfully but found nothing
-        - ``"disabled"`` -- scanner was not enabled or not initialised
+        - ``"disabled"`` -- scanner was not requested
+        - ``"unavailable"`` -- requested scanner could not be initialised
         - ``"failed"``  -- scanner raised an exception
     """
     logger.info("-" * 80)
@@ -108,8 +110,13 @@ def run_phase1_scanning(
     ]
 
     scanner_health: dict[str, str] = {}
+    requested = getattr(analyzer, "requested_scanners", {})
+    if not isinstance(requested, dict):
+        requested = {}
     for name, enabled, initialised in _scanner_flags:
-        if not enabled or not initialised:
+        if requested.get(name, enabled) and (not enabled or not initialised):
+            scanner_health[name] = "unavailable"
+        elif not enabled:
             scanner_health[name] = "disabled"
 
     # --- Semgrep ---
@@ -130,7 +137,7 @@ def run_phase1_scanning(
         try:
             logger.info("   Running TruffleHog secret scanner...")
             th_result = analyzer.trufflehog_scanner.scan(str(target_path), scan_type="filesystem")
-            th_findings_raw = th_result.get("findings", [])
+            th_findings_raw = checked_findings(th_result)
             trufflehog_findings: list[HybridFinding] = []
             for f in th_findings_raw:
                 trufflehog_findings.append(
@@ -146,6 +153,7 @@ def run_phase1_scanning(
                         ),
                         file_path=f.get("file_path", ""),
                         line_number=f.get("line"),
+                        secret_verified=f.get("verified") is True,
                     )
                 )
             all_findings.extend(trufflehog_findings)

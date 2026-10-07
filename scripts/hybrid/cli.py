@@ -211,13 +211,15 @@ def main():
         "openrouter_api_key": os.getenv("OPENROUTER_API_KEY"),
         "openrouter_model": os.getenv("OPENROUTER_MODEL", "deepseek/deepseek-v3.2"),
         "openrouter_phase_models": {
-            k: v for k, v in {
+            k: v
+            for k, v in {
                 "enrichment": os.getenv("OPENROUTER_MODEL_ENRICHMENT"),
                 "deep_analysis": os.getenv("OPENROUTER_MODEL_DEEP_ANALYSIS"),
                 "multi_agent": os.getenv("OPENROUTER_MODEL_MULTI_AGENT"),
                 "remediation": os.getenv("OPENROUTER_MODEL_REMEDIATION"),
                 "discovery": os.getenv("OPENROUTER_MODEL_DISCOVERY"),
-            }.items() if v
+            }.items()
+            if v
         },
         "ollama_endpoint": os.getenv("OLLAMA_ENDPOINT"),
         "model": os.getenv("MODEL", "auto"),
@@ -293,15 +295,35 @@ def main():
     # Populate config with all feature flags read by hybrid_analyzer via self.config
     # These features don't have CLI args — they're controlled via env vars or config files
     _config_features = [
-        "enable_skills_knowledge", "enable_diff_scoping", "enable_findings_store",
-        "enable_app_context", "enable_agent_chain_discovery", "enable_cross_component_analysis",
-        "enable_autofix_pr", "enable_live_validation", "enable_mcp_server", "enable_temporal",
-        "enable_heuristics", "enable_quality_filter", "enable_whole_repo_review", "enable_license_risk_scoring",
-        "enable_phase_gating", "enable_smart_retry", "enable_audit_trail",
-        "enable_epss_scoring", "enable_fix_version_tracking", "enable_vex",
-        "enable_vuln_deduplication", "enable_advanced_suppression", "enable_compliance_mapping",
-        "enable_consensus", "enable_parallel_agents", "enable_sandbox_validation",
-        "enable_iris", "enable_regression_testing", "enable_proof_by_exploitation",
+        "enable_skills_knowledge",
+        "enable_diff_scoping",
+        "enable_findings_store",
+        "enable_app_context",
+        "enable_agent_chain_discovery",
+        "enable_cross_component_analysis",
+        "enable_autofix_pr",
+        "enable_live_validation",
+        "enable_mcp_server",
+        "enable_temporal",
+        "enable_heuristics",
+        "enable_quality_filter",
+        "enable_whole_repo_review",
+        "enable_license_risk_scoring",
+        "enable_phase_gating",
+        "enable_smart_retry",
+        "enable_audit_trail",
+        "enable_epss_scoring",
+        "enable_fix_version_tracking",
+        "enable_vex",
+        "enable_vuln_deduplication",
+        "enable_advanced_suppression",
+        "enable_compliance_mapping",
+        "enable_consensus",
+        "enable_parallel_agents",
+        "enable_sandbox_validation",
+        "enable_iris",
+        "enable_regression_testing",
+        "enable_proof_by_exploitation",
     ]
     for feat in _config_features:
         env_key = feat.upper()
@@ -328,33 +350,37 @@ def main():
     config["project_path"] = args.target
 
     # Initialize analyzer
-    analyzer = HybridSecurityAnalyzer(
-        enable_semgrep=enable_semgrep,
-        enable_trufflehog=enable_trufflehog,
-        enable_gitleaks=enable_gitleaks,
-        enable_trivy=enable_trivy,
-        enable_checkov=enable_checkov,
-        enable_api_security=enable_api_security,
-        enable_dast=enable_dast,
-        enable_supply_chain=enable_supply_chain,
-        enable_fuzzing=enable_fuzzing,
-        enable_threat_intel=enable_threat_intel,
-        enable_remediation=enable_remediation,
-        enable_runtime_security=enable_runtime_security,
-        enable_regression_testing=enable_regression_testing,
-        enable_ai_enrichment=enable_ai_enrichment,
-        enable_multi_agent=enable_multi_agent,
-        enable_spontaneous_discovery=enable_spontaneous_discovery,
-        enable_collaborative_reasoning=enable_collaborative_reasoning,
-        enable_iris=enable_iris,
-        enable_nuclei_templates=enable_nuclei_templates,
-        enable_zap_baseline=enable_zap_baseline,
-        ai_provider=args.ai_provider,
-        dast_target_url=dast_target_url,
-        fuzzing_duration=fuzzing_duration,
-        runtime_monitoring_duration=runtime_monitoring_duration,
-        config=config,
-    )
+    try:
+        analyzer = HybridSecurityAnalyzer(
+            enable_semgrep=enable_semgrep,
+            enable_trufflehog=enable_trufflehog,
+            enable_gitleaks=enable_gitleaks,
+            enable_trivy=enable_trivy,
+            enable_checkov=enable_checkov,
+            enable_api_security=enable_api_security,
+            enable_dast=enable_dast,
+            enable_supply_chain=enable_supply_chain,
+            enable_fuzzing=enable_fuzzing,
+            enable_threat_intel=enable_threat_intel,
+            enable_remediation=enable_remediation,
+            enable_runtime_security=enable_runtime_security,
+            enable_regression_testing=enable_regression_testing,
+            enable_ai_enrichment=enable_ai_enrichment,
+            enable_multi_agent=enable_multi_agent,
+            enable_spontaneous_discovery=enable_spontaneous_discovery,
+            enable_collaborative_reasoning=enable_collaborative_reasoning,
+            enable_iris=enable_iris,
+            enable_nuclei_templates=enable_nuclei_templates,
+            enable_zap_baseline=enable_zap_baseline,
+            ai_provider=args.ai_provider,
+            dast_target_url=dast_target_url,
+            fuzzing_duration=fuzzing_duration,
+            runtime_monitoring_duration=runtime_monitoring_duration,
+            config=config,
+        )
+
+    except Exception as exc:
+        parser.error(f"Could not initialize scan: {exc}")
 
     # Parse severity filter
     severity_filter = None
@@ -362,8 +388,20 @@ def main():
         severity_filter = [s.strip() for s in args.severity_filter.split(",")]
 
     # Run analysis
-    result = analyzer.analyze(target_path=args.target, output_dir=args.output_dir, severity_filter=severity_filter)
+    try:
+        result = analyzer.analyze(target_path=args.target, output_dir=args.output_dir, severity_filter=severity_filter)
+    except Exception as exc:
+        parser.error(f"Scan execution failed: {exc}")
 
+    # Execution errors take precedence over security findings. Never report an
+    # incomplete scan or missing policy evaluation as a successful clean run.
+    decision = (result.policy_gate_result or {}).get("decision")
+    if result.scan_status != "complete" or decision not in {"pass", "fail"}:
+        sys.exit(2)
+    if decision == "fail":
+        sys.exit(1)
+
+    # Counts intentionally include findings hidden by --severity-filter.
     # Exit with error code if critical/high found
     if result.findings_by_severity["critical"] > 0 or result.findings_by_severity["high"] > 0:
         sys.exit(1)

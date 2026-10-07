@@ -259,6 +259,7 @@ class TestUnifiedNormalizer:
         assert len(findings) == 1
 
 
+@pytest.mark.skipif(__import__("shutil").which("opa") is None, reason="OPA executable required for real policy tests")
 class TestPolicyGate:
     """Test policy gate evaluation"""
 

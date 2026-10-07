@@ -7,31 +7,19 @@ MCP-dependent behaviour is tested via mocks when the package is absent.
 
 import json
 import os
-import sys
-import tempfile
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-# ---------------------------------------------------------------------------
-# Ensure scripts/ is importable
-# ---------------------------------------------------------------------------
-scripts_dir = Path(__file__).parent.parent.parent / "scripts"
-sys.path.insert(0, str(scripts_dir))
-
 from mcp_server import (
     CWE_REMEDIATION_MAP,
-    DEFAULT_GATE_RULES,
+    MCP_AVAILABLE,
     VALID_SEVERITIES,
     Finding,
     FindingsStore,
-    MCP_AVAILABLE,
     create_argus_mcp_server,
     evaluate_policy_gate,
     get_remediation,
 )
-
 
 # ===================================================================
 # TestFinding
@@ -106,7 +94,7 @@ class TestFinding:
             ids.add(f.finding_id)
         assert len(ids) == 100
 
-    @pytest.mark.parametrize("severity", list(VALID_SEVERITIES))
+    @pytest.mark.parametrize("severity", sorted(VALID_SEVERITIES))
     def test_all_valid_severities(self, severity):
         """All five severity levels can be assigned."""
         f = Finding(
@@ -249,15 +237,9 @@ class TestFindingsStore:
 
     def test_summary_counts(self, store):
         """summary() returns correct counts by severity."""
-        store.add(
-            Finding(severity="critical", title="a", file_path="a", line=1, description="d")
-        )
-        store.add(
-            Finding(severity="critical", title="b", file_path="b", line=2, description="d")
-        )
-        store.add(
-            Finding(severity="high", title="c", file_path="c", line=3, description="d")
-        )
+        store.add(Finding(severity="critical", title="a", file_path="a", line=1, description="d"))
+        store.add(Finding(severity="critical", title="b", file_path="b", line=2, description="d"))
+        store.add(Finding(severity="high", title="c", file_path="c", line=3, description="d"))
         s = store.summary()
         assert s["critical"] == 2
         assert s["high"] == 1
@@ -288,9 +270,7 @@ class TestFindingsStore:
         """save_to_disk() creates the output directory if needed."""
         deep = str(tmp_path / "a" / "b" / "c")
         store = FindingsStore(deep)
-        store.add(
-            Finding(severity="info", title="t", file_path="f", line=1, description="d")
-        )
+        store.add(Finding(severity="info", title="t", file_path="f", line=1, description="d"))
         path = store.save_to_disk()
         assert os.path.isfile(path)
 
@@ -410,18 +390,14 @@ class TestEvaluatePolicyGate:
         """Custom rules override default gate rules."""
         findings = self._make_findings(["high"] * 3)
         # Override max_high to 2, so 3 should fail
-        result = evaluate_policy_gate(
-            "pr", findings, custom_rules={"max_high": 2}
-        )
+        result = evaluate_policy_gate("pr", findings, custom_rules={"max_high": 2})
         assert result["passed"] is False
 
     def test_custom_rules_relax(self):
         """Custom rules can relax the gate."""
         findings = self._make_findings(["critical"])
         # Override block_severities to empty
-        result = evaluate_policy_gate(
-            "pr", findings, custom_rules={"block_severities": []}
-        )
+        result = evaluate_policy_gate("pr", findings, custom_rules={"block_severities": []})
         assert result["passed"] is True
 
 
@@ -529,8 +505,7 @@ class TestCreateServer:
             mock_server_instance.tool = MagicMock(side_effect=lambda name: lambda fn: fn)
             mock_server_cls.return_value = mock_server_instance
 
-            with patch("mcp_server.MCP_AVAILABLE", True), \
-                 patch("mcp_server.Server", mock_server_cls, create=True):
+            with patch("mcp_server.MCP_AVAILABLE", True), patch("mcp_server.Server", mock_server_cls, create=True):
                 result = create_argus_mcp_server(str(tmp_path))
                 assert result is not None
                 mock_server_cls.assert_called_once_with("argus-security")
@@ -554,8 +529,7 @@ class TestCreateServer:
             mock_server_instance.tool = MagicMock(side_effect=lambda name: lambda fn: fn)
             mock_server_cls.return_value = mock_server_instance
 
-            with patch("mcp_server.MCP_AVAILABLE", True), \
-                 patch("mcp_server.Server", mock_server_cls, create=True):
+            with patch("mcp_server.MCP_AVAILABLE", True), patch("mcp_server.Server", mock_server_cls, create=True):
                 result = create_argus_mcp_server(str(tmp_path))
                 assert result is not None
         else:

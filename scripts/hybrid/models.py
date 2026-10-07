@@ -10,8 +10,7 @@ Classes:
     HybridScanResult: Aggregated results from hybrid security scan
 """
 
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -25,19 +24,22 @@ class HybridFinding:
     title: str
     description: str
     file_path: str
-    line_number: Optional[int] = None
-    cwe_id: Optional[str] = None
-    cve_id: Optional[str] = None
-    cvss_score: Optional[float] = None
-    exploitability: Optional[str] = None  # 'trivial', 'moderate', 'complex', 'theoretical'
-    recommendation: Optional[str] = None
+    line_number: int | None = None
+    cwe_id: str | None = None
+    cve_id: str | None = None
+    cvss_score: float | None = None
+    exploitability: str | None = None  # 'trivial', 'moderate', 'complex', 'theoretical'
+    recommendation: str | None = None
     references: list[str] = None
     confidence: float = 1.0
     llm_enriched: bool = False
     sandbox_validated: bool = False
     iris_verified: bool = False  # IRIS semantic analysis verification
-    iris_confidence: Optional[float] = None  # IRIS confidence score (0.0-1.0)
-    iris_verdict: Optional[str] = None  # 'true_positive', 'false_positive', 'uncertain'
+    iris_confidence: float | None = None  # IRIS confidence score (0.0-1.0)
+    iris_verdict: str | None = None  # 'true_positive', 'false_positive', 'uncertain'
+    secret_verified: bool = False
+    reachability: str = "unknown"
+    service_tier: str = "unknown"
 
     def __post_init__(self):
         if self.references is None:
@@ -59,6 +61,10 @@ class HybridScanResult:
     phase_timings: dict[str, float]
     tools_used: list[str]
     llm_enrichment_enabled: bool
+    scanner_health: dict[str, str] = field(default_factory=dict)
+    scan_status: str = "complete"
+    policy_gate_result: dict | None = None
+    vulnerability_chains: dict | None = None
 
 
 __all__ = ["HybridFinding", "HybridScanResult"]

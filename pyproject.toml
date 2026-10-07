@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=45", "wheel"]
+requires = ["setuptools>=69", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,7 +7,7 @@ name = "argus-code-reviewer"
 version = "1.1.0"
 description = "Enterprise-grade AI Security Platform with multi-agent analysis"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
     {name = "Waseem Ahmed", email = "waseem@secure.com"}
@@ -17,18 +17,34 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "anthropic>=0.18.0",
-    "openai>=1.0.0",
-    "tenacity>=8.0.0",
+    "anthropic>=0.40.0",
+    "openai>=1.56.0",
+    "tenacity>=9.0.0",
+    "pydantic>=2.0.0",
+    "pyyaml>=6.0.2",
+    "requests>=2.32.0",
+    "urllib3>=2.0.0",
+    "certifi>=2024.8.30",
+    "cryptography>=44.0.0",
+    "defusedxml>=0.7.1",
+    "docker>=7.0.0",
+    "rich>=13.0.0",
+    "networkx>=3.0",
+    "psutil>=6.1.0",
 ]
 
+[project.scripts]
+argus-scan = "scripts.cli:scan_main"
+argus-audit = "scripts.cli:audit_main"
+argus-gate = "scripts.cli:gate_main"
+
 [project.optional-dependencies]
+scanners = ["semgrep>=1.100.0", "pytm>=1.3.0"]
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
@@ -37,12 +53,20 @@ dev = [
     "ruff>=0.8.0",  # Replaces black + pylint - 10x faster
     "mypy>=1.0.0",
     "types-requests",
+    "build>=1.0.0",
+    "setuptools>=69",
+    "wheel>=0.43.0",
+    "pytest-timeout>=2.1.0",
+    "pytest-asyncio>=0.21.0",
+    "responses>=0.23.0",
+    "numpy>=1.24.0",
+    "scipy>=1.10.0",
 ]
 
 # Ruff configuration (replaces black, pylint, isort, flake8)
 [tool.ruff]
 line-length = 120
-target-version = "py39"
+target-version = "py310"
 exclude = [
     ".eggs",
     ".git",
@@ -97,7 +121,7 @@ skip-magic-trailing-comma = false
 line-ending = "auto"
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false

@@ -201,12 +201,16 @@ def load_agent_prompt(agent_name):
         # Fallback: try to find prompt file by agent name
         prompt_file = f"{agent_name}.md"
 
-    # Try multiple locations
+    from resource_paths import resource_root
+
+    # Try operator overrides before the packaged defaults.
     possible_paths = [
         Path.home() / f".argus/profiles/default/agents/{prompt_file}",
         Path.home() / f".argus/profiles/default/agents/{agent_name}.md",
         Path(".argus") / f"profiles/default/agents/{prompt_file}",
         Path(".argus") / f"profiles/default/agents/{agent_name}.md",
+        resource_root() / f"profiles/default/agents/{prompt_file}",
+        resource_root() / f"profiles/default/agents/{agent_name}.md",
     ]
 
     for prompt_path in possible_paths:
@@ -652,8 +656,26 @@ Be specific with file paths and line numbers. Focus on actionable, real issues.
                 "input_tokens": input_tokens,
                 "output_tokens": output_tokens,
                 "cost_usd": round(
-                    (input_tokens / 1_000_000) * (3.0 if provider == "anthropic" else 10.0 if provider == "openai" else 0.14 if provider == "openrouter" else 0.0)
-                    + (output_tokens / 1_000_000) * (15.0 if provider == "anthropic" else 30.0 if provider == "openai" else 0.28 if provider == "openrouter" else 0.0),
+                    (input_tokens / 1_000_000)
+                    * (
+                        3.0
+                        if provider == "anthropic"
+                        else 10.0
+                        if provider == "openai"
+                        else 0.14
+                        if provider == "openrouter"
+                        else 0.0
+                    )
+                    + (output_tokens / 1_000_000)
+                    * (
+                        15.0
+                        if provider == "anthropic"
+                        else 30.0
+                        if provider == "openai"
+                        else 0.28
+                        if provider == "openrouter"
+                        else 0.0
+                    ),
                     4,
                 ),
                 "validation": validation,
@@ -1060,8 +1082,26 @@ Generate the complete audit report as specified in your instructions.
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
             "cost_usd": round(
-                (input_tokens / 1_000_000) * (3.0 if provider == "anthropic" else 10.0 if provider == "openai" else 0.14 if provider == "openrouter" else 0.0)
-                + (output_tokens / 1_000_000) * (15.0 if provider == "anthropic" else 30.0 if provider == "openai" else 0.28 if provider == "openrouter" else 0.0),
+                (input_tokens / 1_000_000)
+                * (
+                    3.0
+                    if provider == "anthropic"
+                    else 10.0
+                    if provider == "openai"
+                    else 0.14
+                    if provider == "openrouter"
+                    else 0.0
+                )
+                + (output_tokens / 1_000_000)
+                * (
+                    15.0
+                    if provider == "anthropic"
+                    else 30.0
+                    if provider == "openai"
+                    else 0.28
+                    if provider == "openrouter"
+                    else 0.0
+                ),
                 4,
             ),
         }

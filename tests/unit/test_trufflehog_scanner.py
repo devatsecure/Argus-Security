@@ -17,8 +17,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from unittest.mock import Mock, MagicMock, patch, call
-from datetime import datetime
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -140,20 +139,18 @@ class TestTruffleHogScanner:
 
     def test_scanner_initialization_warning_when_not_installed(self):
         """Test that scanner logs warning when TruffleHog not installed"""
-        with patch.object(TruffleHogScanner, "_check_trufflehog_installed", return_value=False):
-            with patch("trufflehog_scanner.logger.warning") as mock_warning:
-                scanner = TruffleHogScanner()
-                mock_warning.assert_called_once()
-                assert "TruffleHog not installed" in mock_warning.call_args[0][0]
+        with (
+            patch.object(TruffleHogScanner, "_check_trufflehog_installed", return_value=False),
+            patch("trufflehog_scanner.logger.warning") as mock_warning,
+        ):
+            TruffleHogScanner()
+            mock_warning.assert_called_once()
+            assert "TruffleHog not installed" in mock_warning.call_args[0][0]
 
     @patch("subprocess.run")
     def test_check_trufflehog_installed_success(self, mock_run):
         """Test checking if TruffleHog is installed (success)"""
-        mock_run.return_value = Mock(
-            returncode=0,
-            stdout="trufflehog v3.63.0\n",
-            stderr=""
-        )
+        mock_run.return_value = Mock(returncode=0, stdout="trufflehog v3.63.0\n", stderr="")
 
         scanner = TruffleHogScanner()
         result = scanner._check_trufflehog_installed()
@@ -221,11 +218,7 @@ class TestTruffleHogScanner:
     @patch("subprocess.run")
     def test_get_trufflehog_version_success(self, mock_run):
         """Test getting TruffleHog version"""
-        mock_run.return_value = Mock(
-            returncode=0,
-            stdout="trufflehog v3.63.0\n",
-            stderr=""
-        )
+        mock_run.return_value = Mock(returncode=0, stdout="trufflehog v3.63.0\n", stderr="")
 
         scanner = TruffleHogScanner()
         version = scanner._get_trufflehog_version()
@@ -238,7 +231,7 @@ class TestTruffleHogScanner:
         # First call from __init__, second from _get_trufflehog_version
         mock_run.side_effect = [
             Mock(returncode=0, stdout="trufflehog v3.63.0\n", stderr=""),  # __init__ check
-            Exception("Command failed")  # _get_trufflehog_version call
+            Exception("Command failed"),  # _get_trufflehog_version call
         ]
 
         scanner = TruffleHogScanner()
@@ -308,26 +301,28 @@ class TestTruffleHogScanner:
         """Test parsing TruffleHog output with Git metadata"""
         scanner = TruffleHogScanner()
 
-        trufflehog_output = json.dumps({
-            "SourceMetadata": {
-                "Data": {
-                    "Git": {
-                        "file": "config/aws.yaml",
-                        "commit": "abc123def456",
-                        "timestamp": "2024-01-08T12:00:00Z",
-                        "author": "John Doe",
-                        "email": "john@example.com",
-                        "line": 15,
-                        "repository": "https://github.com/example/repo"
+        trufflehog_output = json.dumps(
+            {
+                "SourceMetadata": {
+                    "Data": {
+                        "Git": {
+                            "file": "config/aws.yaml",
+                            "commit": "abc123def456",
+                            "timestamp": "2024-01-08T12:00:00Z",
+                            "author": "John Doe",
+                            "email": "john@example.com",
+                            "line": 15,
+                            "repository": "https://github.com/example/repo",
+                        }
                     }
-                }
-            },
-            "DetectorType": "AWS",
-            "DetectorName": "AWS Access Key",
-            "Raw": "AKIAIOSFODNN7EXAMPLE",
-            "Redacted": "AKIA***************MPLE",
-            "Verified": True
-        })
+                },
+                "DetectorType": "AWS",
+                "DetectorName": "AWS Access Key",
+                "Raw": "AKIAIOSFODNN7EXAMPLE",
+                "Redacted": "AKIA***************MPLE",
+                "Verified": True,
+            }
+        )
 
         findings = scanner._parse_output(trufflehog_output)
 
@@ -347,20 +342,15 @@ class TestTruffleHogScanner:
         """Test parsing TruffleHog output with filesystem metadata"""
         scanner = TruffleHogScanner()
 
-        trufflehog_output = json.dumps({
-            "SourceMetadata": {
-                "Data": {
-                    "Filesystem": {
-                        "file": "/app/secrets.txt",
-                        "line": 5
-                    }
-                }
-            },
-            "DetectorType": "GitHub",
-            "DetectorName": "GitHub Token",
-            "Raw": "ghp_1234567890abcdefghijklmnopqrstuvwxyz",
-            "Verified": False
-        })
+        trufflehog_output = json.dumps(
+            {
+                "SourceMetadata": {"Data": {"Filesystem": {"file": "/app/secrets.txt", "line": 5}}},
+                "DetectorType": "GitHub",
+                "DetectorName": "GitHub Token",
+                "Raw": "ghp_1234567890abcdefghijklmnopqrstuvwxyz",
+                "Verified": False,
+            }
+        )
 
         findings = scanner._parse_output(trufflehog_output)
 
@@ -380,21 +370,36 @@ class TestTruffleHogScanner:
         """Test parsing multiple findings (newline-delimited JSON)"""
         scanner = TruffleHogScanner()
 
-        finding1 = json.dumps({
-            "SourceMetadata": {"Data": {"Git": {"file": "file1.py", "commit": "abc123", "timestamp": "2024-01-08T12:00:00Z", "author": "Alice", "email": "alice@example.com", "line": 10}}},
-            "DetectorType": "AWS",
-            "DetectorName": "AWS Key",
-            "Raw": "secret1",
-            "Verified": True
-        })
+        finding1 = json.dumps(
+            {
+                "SourceMetadata": {
+                    "Data": {
+                        "Git": {
+                            "file": "file1.py",
+                            "commit": "abc123",
+                            "timestamp": "2024-01-08T12:00:00Z",
+                            "author": "Alice",
+                            "email": "alice@example.com",
+                            "line": 10,
+                        }
+                    }
+                },
+                "DetectorType": "AWS",
+                "DetectorName": "AWS Key",
+                "Raw": "secret1",
+                "Verified": True,
+            }
+        )
 
-        finding2 = json.dumps({
-            "SourceMetadata": {"Data": {"Filesystem": {"file": "file2.py", "line": 20}}},
-            "DetectorType": "Slack",
-            "DetectorName": "Slack Webhook",
-            "Raw": "secret2",
-            "Verified": False
-        })
+        finding2 = json.dumps(
+            {
+                "SourceMetadata": {"Data": {"Filesystem": {"file": "file2.py", "line": 20}}},
+                "DetectorType": "Slack",
+                "DetectorName": "Slack Webhook",
+                "Raw": "secret2",
+                "Verified": False,
+            }
+        )
 
         output = f"{finding1}\n{finding2}"
         findings = scanner._parse_output(output)
@@ -405,36 +410,41 @@ class TestTruffleHogScanner:
         assert findings[1].detector_type == "Slack"
         assert findings[1].verified is False
 
-    def test_parse_output_invalid_json_line_skipped(self):
-        """Test that invalid JSON lines are skipped gracefully"""
+    def test_parse_output_invalid_json_line_rejected(self):
+        """Test that invalid JSON lines fail the scan"""
         scanner = TruffleHogScanner()
 
-        valid_finding = json.dumps({
-            "SourceMetadata": {"Data": {"Git": {"file": "test.py", "commit": "abc", "timestamp": "2024-01-08T12:00:00Z", "author": "Test", "email": "test@test.com", "line": 1}}},
-            "DetectorType": "Test",
-            "DetectorName": "Test Detector",
-            "Raw": "secret",
-            "Verified": True
-        })
+        valid_finding = json.dumps(
+            {
+                "SourceMetadata": {
+                    "Data": {
+                        "Git": {
+                            "file": "test.py",
+                            "commit": "abc",
+                            "timestamp": "2024-01-08T12:00:00Z",
+                            "author": "Test",
+                            "email": "test@test.com",
+                            "line": 1,
+                        }
+                    }
+                },
+                "DetectorType": "Test",
+                "DetectorName": "Test Detector",
+                "Raw": "secret",
+                "Verified": True,
+            }
+        )
 
         output = f"invalid json\n{valid_finding}\n{{broken json"
 
-        with patch("trufflehog_scanner.logger.warning") as mock_warning:
-            findings = scanner._parse_output(output)
-
-            # Should have 1 valid finding, 2 warnings for invalid lines
-            assert len(findings) == 1
-            assert findings[0].detector_type == "Test"
-            assert mock_warning.call_count == 2
+        with pytest.raises(ValueError):
+            scanner._parse_output(output)
 
     def test_parse_output_missing_fields_handled(self):
         """Test parsing output with missing optional fields"""
         scanner = TruffleHogScanner()
 
-        minimal_finding = json.dumps({
-            "SourceMetadata": {"Data": {}},
-            "DetectorType": "Unknown"
-        })
+        minimal_finding = json.dumps({"SourceMetadata": {"Data": {}}, "DetectorType": "Unknown"})
 
         findings = scanner._parse_output(minimal_finding)
 
@@ -446,13 +456,26 @@ class TestTruffleHogScanner:
         """Test public parse_output wrapper method"""
         scanner = TruffleHogScanner()
 
-        output = json.dumps({
-            "SourceMetadata": {"Data": {"Git": {"file": "test.py", "commit": "abc", "timestamp": "2024-01-08T12:00:00Z", "author": "Test", "email": "test@test.com", "line": 1}}},
-            "DetectorType": "Test",
-            "DetectorName": "Test",
-            "Raw": "secret",
-            "Verified": True
-        })
+        output = json.dumps(
+            {
+                "SourceMetadata": {
+                    "Data": {
+                        "Git": {
+                            "file": "test.py",
+                            "commit": "abc",
+                            "timestamp": "2024-01-08T12:00:00Z",
+                            "author": "Test",
+                            "email": "test@test.com",
+                            "line": 1,
+                        }
+                    }
+                },
+                "DetectorType": "Test",
+                "DetectorName": "Test",
+                "Raw": "secret",
+                "Verified": True,
+            }
+        )
 
         # Both methods should return same result
         findings1 = scanner.parse_output(output)
@@ -470,15 +493,17 @@ class TestTruffleHogScanner:
             Mock(returncode=0, stdout="trufflehog v3.63.0\n", stderr=""),  # scan() check
             Mock(
                 returncode=183,  # TruffleHog returns 183 when secrets found
-                stdout=json.dumps({
-                    "SourceMetadata": {"Data": {"Filesystem": {"file": str(tmp_path / "test.py"), "line": 5}}},
-                    "DetectorType": "AWS",
-                    "DetectorName": "AWS Key",
-                    "Raw": "AKIAIOSFODNN7EXAMPLE",
-                    "Verified": True
-                }),
-                stderr=""
-            )
+                stdout=json.dumps(
+                    {
+                        "SourceMetadata": {"Data": {"Filesystem": {"file": str(tmp_path / "test.py"), "line": 5}}},
+                        "DetectorType": "AWS",
+                        "DetectorName": "AWS Key",
+                        "Raw": "AKIAIOSFODNN7EXAMPLE",
+                        "Verified": True,
+                    }
+                ),
+                stderr="",
+            ),
         ]
 
         scanner = TruffleHogScanner()
@@ -511,13 +536,13 @@ class TestTruffleHogScanner:
             Mock(
                 returncode=0,  # No secrets found
                 stdout="",
-                stderr=""
-            )
+                stderr="",
+            ),
         ]
 
         config = {"scan_depth": 100}
         scanner = TruffleHogScanner(config)
-        results = scanner.scan(str(tmp_path), scan_type="git")
+        scanner.scan(str(tmp_path), scan_type="git")
 
         # Verify command includes depth
         call_args = mock_run.call_args_list[2]  # Get third call (actual scan)
@@ -530,30 +555,30 @@ class TestTruffleHogScanner:
     @patch("subprocess.run")
     def test_scan_include_unverified(self, mock_run, tmp_path):
         """Test scan including unverified secrets"""
-        verified_finding = json.dumps({
-            "SourceMetadata": {"Data": {"Filesystem": {"file": str(tmp_path / "file1.py"), "line": 5}}},
-            "DetectorType": "AWS",
-            "DetectorName": "AWS",
-            "Raw": "secret1",
-            "Verified": True
-        })
-        unverified_finding = json.dumps({
-            "SourceMetadata": {"Data": {"Filesystem": {"file": str(tmp_path / "file2.py"), "line": 10}}},
-            "DetectorType": "GitHub",
-            "DetectorName": "GitHub",
-            "Raw": "secret2",
-            "Verified": False
-        })
+        verified_finding = json.dumps(
+            {
+                "SourceMetadata": {"Data": {"Filesystem": {"file": str(tmp_path / "file1.py"), "line": 5}}},
+                "DetectorType": "AWS",
+                "DetectorName": "AWS",
+                "Raw": "secret1",
+                "Verified": True,
+            }
+        )
+        unverified_finding = json.dumps(
+            {
+                "SourceMetadata": {"Data": {"Filesystem": {"file": str(tmp_path / "file2.py"), "line": 10}}},
+                "DetectorType": "GitHub",
+                "DetectorName": "GitHub",
+                "Raw": "secret2",
+                "Verified": False,
+            }
+        )
 
         # Three calls: __init__ check, scan() check, and actual scan
         mock_run.side_effect = [
             Mock(returncode=0, stdout="trufflehog v3.63.0\n", stderr=""),  # __init__ check
             Mock(returncode=0, stdout="trufflehog v3.63.0\n", stderr=""),  # scan() check
-            Mock(
-                returncode=183,
-                stdout=f"{verified_finding}\n{unverified_finding}",
-                stderr=""
-            )
+            Mock(returncode=183, stdout=f"{verified_finding}\n{unverified_finding}", stderr=""),
         ]
 
         config = {"verified_only": False, "include_unverified": True}
@@ -575,7 +600,7 @@ class TestTruffleHogScanner:
         # Two calls: __init__ check, scan() check (no actual scan since path doesn't exist)
         mock_run.side_effect = [
             Mock(returncode=0, stdout="trufflehog v3.63.0\n", stderr=""),  # __init__ check
-            Mock(returncode=0, stdout="trufflehog v3.63.0\n", stderr="")   # scan() check
+            Mock(returncode=0, stdout="trufflehog v3.63.0\n", stderr=""),  # scan() check
         ]
 
         scanner = TruffleHogScanner()
@@ -606,8 +631,8 @@ class TestTruffleHogScanner:
             Mock(
                 returncode=2,  # Unexpected error code
                 stdout="",
-                stderr="Error: Something went wrong"
-            )
+                stderr="Error: Something went wrong",
+            ),
         ]
 
         scanner = TruffleHogScanner()
@@ -625,7 +650,7 @@ class TestTruffleHogScanner:
         mock_run.side_effect = [
             Mock(returncode=0, stdout="trufflehog v3.63.0\n", stderr=""),  # __init__ check
             Mock(returncode=0, stdout="trufflehog v3.63.0\n", stderr=""),  # scan() check
-            subprocess.TimeoutExpired("trufflehog", 600)  # actual scan call
+            subprocess.TimeoutExpired("trufflehog", 600),  # actual scan call
         ]
 
         scanner = TruffleHogScanner()
@@ -641,7 +666,7 @@ class TestTruffleHogScanner:
         mock_run.side_effect = [
             Mock(returncode=0, stdout="trufflehog v3.63.0\n", stderr=""),  # __init__ check
             Mock(returncode=0, stdout="trufflehog v3.63.0\n", stderr=""),  # scan() check
-            Exception("Unexpected error")  # actual scan call
+            Exception("Unexpected error"),  # actual scan call
         ]
 
         scanner = TruffleHogScanner()
@@ -653,30 +678,30 @@ class TestTruffleHogScanner:
     @patch("subprocess.run")
     def test_scan_verified_only_filtering(self, mock_run, tmp_path):
         """Test that verified_only config filters results correctly"""
-        verified_finding = json.dumps({
-            "SourceMetadata": {"Data": {"Filesystem": {"file": str(tmp_path / "file1.py"), "line": 5}}},
-            "DetectorType": "AWS",
-            "DetectorName": "AWS",
-            "Raw": "secret1",
-            "Verified": True
-        })
-        unverified_finding = json.dumps({
-            "SourceMetadata": {"Data": {"Filesystem": {"file": str(tmp_path / "file2.py"), "line": 10}}},
-            "DetectorType": "GitHub",
-            "DetectorName": "GitHub",
-            "Raw": "secret2",
-            "Verified": False
-        })
+        verified_finding = json.dumps(
+            {
+                "SourceMetadata": {"Data": {"Filesystem": {"file": str(tmp_path / "file1.py"), "line": 5}}},
+                "DetectorType": "AWS",
+                "DetectorName": "AWS",
+                "Raw": "secret1",
+                "Verified": True,
+            }
+        )
+        unverified_finding = json.dumps(
+            {
+                "SourceMetadata": {"Data": {"Filesystem": {"file": str(tmp_path / "file2.py"), "line": 10}}},
+                "DetectorType": "GitHub",
+                "DetectorName": "GitHub",
+                "Raw": "secret2",
+                "Verified": False,
+            }
+        )
 
         # Three calls: __init__ check, scan() check, and actual scan
         mock_run.side_effect = [
             Mock(returncode=0, stdout="trufflehog v3.63.0\n", stderr=""),  # __init__ check
             Mock(returncode=0, stdout="trufflehog v3.63.0\n", stderr=""),  # scan() check
-            Mock(
-                returncode=183,
-                stdout=f"{verified_finding}\n{unverified_finding}",
-                stderr=""
-            )
+            Mock(returncode=183, stdout=f"{verified_finding}\n{unverified_finding}", stderr=""),
         ]
 
         scanner = TruffleHogScanner({"verified_only": True})
@@ -697,8 +722,8 @@ class TestTruffleHogScanner:
             Mock(
                 returncode=0,  # Exit code 0 means no secrets
                 stdout="",
-                stderr=""
-            )
+                stderr="",
+            ),
         ]
 
         scanner = TruffleHogScanner()
@@ -716,7 +741,7 @@ class TestTruffleHogScanner:
         mock_run.side_effect = [
             Mock(returncode=0, stdout="trufflehog v3.63.0\n", stderr=""),  # __init__ check
             Mock(returncode=0, stdout="trufflehog v3.63.0\n", stderr=""),  # scan() check
-            Mock(returncode=0, stdout="", stderr="")  # actual scan call
+            Mock(returncode=0, stdout="", stderr=""),  # actual scan call
         ]
 
         scanner = TruffleHogScanner()
@@ -736,9 +761,10 @@ class TestTruffleHogScanner:
         mock_run.return_value = Mock(returncode=0, stdout="trufflehog v3.63.0\n", stderr="")
 
         # Create a temporary test file
-        import tempfile
         import os
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+        import tempfile
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             test_file = f.name
             f.write("test content")
 
@@ -751,10 +777,10 @@ class TestTruffleHogScanner:
                 "tool": "trufflehog",
                 "findings": [
                     {"file_path": normalized_path, "verified": True},
-                    {"file_path": os.path.join(parent_dir, "other.txt"), "verified": False}
+                    {"file_path": os.path.join(parent_dir, "other.txt"), "verified": False},
                 ],
                 "findings_count": 2,
-                "verified_count": 1
+                "verified_count": 1,
             }
 
             scanner = TruffleHogScanner()
@@ -796,10 +822,10 @@ class TestTruffleHogScanner:
                     "detector_type": "AWS",
                     "raw": "AKIAIOSFODNN7EXAMPLE",
                     "redacted": "AKIA************MPLE",
-                    "verified": True
+                    "verified": True,
                 }
             ],
-            "findings_count": 1
+            "findings_count": 1,
         }
 
         output_path = tmp_path / "results.json"
@@ -859,12 +885,7 @@ class TestTruffleHogCLI:
     @patch.object(TruffleHogScanner, "scan")
     def test_cli_verified_secrets_exit_code(self, mock_scan):
         """Test that CLI returns exit code 1 when verified secrets found"""
-        mock_scan.return_value = {
-            "tool": "trufflehog",
-            "findings": [],
-            "findings_count": 2,
-            "verified_count": 1
-        }
+        mock_scan.return_value = {"tool": "trufflehog", "findings": [], "findings_count": 2, "verified_count": 1}
 
         from trufflehog_scanner import main
 
@@ -875,12 +896,7 @@ class TestTruffleHogCLI:
     @patch.object(TruffleHogScanner, "scan")
     def test_cli_no_secrets_exit_code(self, mock_scan):
         """Test that CLI returns exit code 0 when no secrets found"""
-        mock_scan.return_value = {
-            "tool": "trufflehog",
-            "findings": [],
-            "findings_count": 0,
-            "verified_count": 0
-        }
+        mock_scan.return_value = {"tool": "trufflehog", "findings": [], "findings_count": 0, "verified_count": 0}
 
         from trufflehog_scanner import main
 
@@ -896,55 +912,55 @@ class TestTruffleHogIntegration:
     def test_end_to_end_git_scan(self, mock_run, tmp_path):
         """Test complete git scan workflow"""
         # Mock TruffleHog output with multiple findings
-        finding1 = json.dumps({
-            "SourceMetadata": {
-                "Data": {
-                    "Git": {
-                        "file": "config/database.yml",
-                        "commit": "abc123",
-                        "timestamp": "2024-01-08T12:00:00Z",
-                        "author": "Developer",
-                        "email": "dev@example.com",
-                        "line": 5,
-                        "repository": "https://github.com/example/repo"
+        finding1 = json.dumps(
+            {
+                "SourceMetadata": {
+                    "Data": {
+                        "Git": {
+                            "file": "config/database.yml",
+                            "commit": "abc123",
+                            "timestamp": "2024-01-08T12:00:00Z",
+                            "author": "Developer",
+                            "email": "dev@example.com",
+                            "line": 5,
+                            "repository": "https://github.com/example/repo",
+                        }
                     }
-                }
-            },
-            "DetectorType": "PostgreSQL",
-            "DetectorName": "PostgreSQL Connection String",
-            "Raw": "postgresql://user:password@localhost/db",
-            "Redacted": "postgresql://user:***@localhost/db",
-            "Verified": True
-        })
+                },
+                "DetectorType": "PostgreSQL",
+                "DetectorName": "PostgreSQL Connection String",
+                "Raw": "postgresql://user:password@localhost/db",
+                "Redacted": "postgresql://user:***@localhost/db",
+                "Verified": True,
+            }
+        )
 
-        finding2 = json.dumps({
-            "SourceMetadata": {
-                "Data": {
-                    "Git": {
-                        "file": ".env",
-                        "commit": "def456",
-                        "timestamp": "2024-01-08T11:00:00Z",
-                        "author": "Admin",
-                        "email": "admin@example.com",
-                        "line": 10
+        finding2 = json.dumps(
+            {
+                "SourceMetadata": {
+                    "Data": {
+                        "Git": {
+                            "file": ".env",
+                            "commit": "def456",
+                            "timestamp": "2024-01-08T11:00:00Z",
+                            "author": "Admin",
+                            "email": "admin@example.com",
+                            "line": 10,
+                        }
                     }
-                }
-            },
-            "DetectorType": "Generic",
-            "DetectorName": "Generic Secret",
-            "Raw": "secret_key_12345",
-            "Verified": False
-        })
+                },
+                "DetectorType": "Generic",
+                "DetectorName": "Generic Secret",
+                "Raw": "secret_key_12345",
+                "Verified": False,
+            }
+        )
 
         # Three calls: __init__ check, scan() check, and actual scan
         mock_run.side_effect = [
             Mock(returncode=0, stdout="trufflehog v3.63.0\n", stderr=""),  # __init__ check
             Mock(returncode=0, stdout="trufflehog v3.63.0\n", stderr=""),  # scan() check
-            Mock(
-                returncode=183,
-                stdout=f"{finding1}\n{finding2}",
-                stderr=""
-            )
+            Mock(returncode=183, stdout=f"{finding1}\n{finding2}", stderr=""),
         ]
 
         scanner = TruffleHogScanner({"verified_only": False})
@@ -966,31 +982,22 @@ class TestTruffleHogIntegration:
     @patch("subprocess.run")
     def test_end_to_end_filesystem_scan(self, mock_run, tmp_path):
         """Test complete filesystem scan workflow"""
-        finding = json.dumps({
-            "SourceMetadata": {
-                "Data": {
-                    "Filesystem": {
-                        "file": str(tmp_path / "credentials.json"),
-                        "line": 3
-                    }
-                }
-            },
-            "DetectorType": "AWS",
-            "DetectorName": "AWS Access Key",
-            "Raw": "AKIAIOSFODNN7EXAMPLE",
-            "Redacted": "AKIA************MPLE",
-            "Verified": True
-        })
+        finding = json.dumps(
+            {
+                "SourceMetadata": {"Data": {"Filesystem": {"file": str(tmp_path / "credentials.json"), "line": 3}}},
+                "DetectorType": "AWS",
+                "DetectorName": "AWS Access Key",
+                "Raw": "AKIAIOSFODNN7EXAMPLE",
+                "Redacted": "AKIA************MPLE",
+                "Verified": True,
+            }
+        )
 
         # Three calls: __init__ check, scan() check, and actual scan
         mock_run.side_effect = [
             Mock(returncode=0, stdout="trufflehog v3.63.0\n", stderr=""),  # __init__ check
             Mock(returncode=0, stdout="trufflehog v3.63.0\n", stderr=""),  # scan() check
-            Mock(
-                returncode=183,
-                stdout=finding,
-                stderr=""
-            )
+            Mock(returncode=183, stdout=finding, stderr=""),
         ]
 
         scanner = TruffleHogScanner()

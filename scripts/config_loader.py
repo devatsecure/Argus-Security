@@ -14,9 +14,10 @@ import os
 import platform
 import subprocess
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import yaml
+from resource_paths import resource_root
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,9 @@ logger = logging.getLogger(__name__)
 
 def _find_project_root() -> Path:
     """Find the Argus project root by looking for known markers."""
+    bundled_root = resource_root()
+    if (bundled_root / "profiles").is_dir():
+        return bundled_root
     # Walk up from this file's directory
     current = Path(__file__).resolve().parent
     for ancestor in [current, *current.parents]:
@@ -204,7 +208,7 @@ def _profile_search_paths(profile_name: str) -> list[Path]:
     ]
 
 
-def _load_raw_profile(profile_name: str, _chain: Optional[list[str]] = None) -> dict[str, Any]:
+def _load_raw_profile(profile_name: str, _chain: list[str] | None = None) -> dict[str, Any]:
     """Load raw YAML dict for *profile_name*, resolving ``_extends``.
 
     Parameters
@@ -234,8 +238,8 @@ def _load_raw_profile(profile_name: str, _chain: Optional[list[str]] = None) -> 
     _chain.append(profile_name)
 
     # Search for the profile YAML
-    raw: Optional[dict[str, Any]] = None
-    loaded_path: Optional[Path] = None
+    raw: dict[str, Any] | None = None
+    loaded_path: Path | None = None
     for candidate in _profile_search_paths(profile_name):
         if candidate.is_file():
             loaded_path = candidate
@@ -782,7 +786,7 @@ def _load_argus_yml(repo_path: str) -> dict[str, Any]:
 
 
 def build_unified_config(
-    profile: Optional[str] = None,
+    profile: str | None = None,
     cli_args: Any = None,
     repo_path: str = ".",
 ) -> dict[str, Any]:
@@ -920,7 +924,12 @@ def validate_config(config: dict[str, Any]) -> list[str]:
             "WARNING: ai_provider is 'ollama' but OLLAMA_ENDPOINT is not set. Defaulting to http://localhost:11434."
         )
     if provider == "auto":
-        has_any = config.get("anthropic_api_key") or config.get("openai_api_key") or config.get("openrouter_api_key") or config.get("ollama_endpoint")
+        has_any = (
+            config.get("anthropic_api_key")
+            or config.get("openai_api_key")
+            or config.get("openrouter_api_key")
+            or config.get("ollama_endpoint")
+        )
         if not has_any:
             issues.append(
                 "WARNING: ai_provider is 'auto' but no API keys or endpoints are "

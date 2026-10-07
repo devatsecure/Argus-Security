@@ -37,6 +37,10 @@ def get_enabled_tools(flags: dict[str, Any]) -> list[str]:
     tools = []
     if flags.get("enable_semgrep"):
         tools.append("Semgrep")
+    if flags.get("enable_trufflehog"):
+        tools.append("TruffleHog")
+    if flags.get("enable_gitleaks"):
+        tools.append("Gitleaks")
     if flags.get("enable_trivy"):
         tools.append("Trivy")
     if flags.get("enable_checkov"):
@@ -72,8 +76,7 @@ def get_enabled_tools(flags: dict[str, Any]) -> list[str]:
     return tools
 
 
-def save_results(result: HybridScanResult, output_dir: str, target_path: str,
-                  skills_knowledge: Any = None) -> None:
+def save_results(result: HybridScanResult, output_dir: str, target_path: str, skills_knowledge: Any = None) -> None:
     """Save results in multiple formats.
 
     Args:
@@ -155,11 +158,22 @@ def convert_to_sarif(result: HybridScanResult, target_path: str) -> dict:
                     "driver": {
                         "name": "Hybrid Security Analyzer",
                         "version": "1.0.0",
-                        "informationUri": "https://github.com/securedotcom/argus",
+                        "informationUri": "https://github.com/devatsecure/Argus-Security",
                         "rules": [],
                     }
                 },
                 "results": [],
+                "invocations": [
+                    {
+                        "executionSuccessful": result.scan_status == "complete"
+                        and (result.policy_gate_result or {}).get("decision") in {"pass", "fail"},
+                    }
+                ],
+                "properties": {
+                    "scanStatus": result.scan_status,
+                    "scannerHealth": result.scanner_health,
+                    "policyGate": result.policy_gate_result,
+                },
             }
         ],
     }
@@ -224,6 +238,14 @@ def generate_markdown_report(result: HybridScanResult, skills_knowledge: Any = N
     report.append(f"**Duration**: {result.scan_duration_seconds:.1f}s\n")
     report.append(f"**Cost**: ${result.cost_usd:.2f}\n")
     report.append(f"**Tools**: {', '.join(result.tools_used)}\n")
+    report.append(f"**Scan status**: {result.scan_status}\n")
+    policy = result.policy_gate_result or {}
+    report.append(f"**Policy decision**: {policy.get('decision', 'unavailable')}\n")
+    for reason in policy.get("reasons", []):
+        report.append(f"- {reason}\n")
+    report.append("\n### Scanner health\n\n")
+    for tool, status in result.scanner_health.items():
+        report.append(f"- **{tool}**: {status}\n")
     report.append("\n---\n\n")
 
     report.append("## 📊 Summary\n\n")
@@ -317,6 +339,8 @@ def print_summary(result: HybridScanResult) -> None:
     print(f"⏱️  Total Duration: {result.scan_duration_seconds:.1f}s")
     print(f"💰 Cost: ${result.cost_usd:.2f}")
     print(f"🛠️  Tools Used: {', '.join(result.tools_used)}")
+    print(f"Scan status: {result.scan_status}")
+    print(f"Policy decision: {(result.policy_gate_result or {}).get('decision', 'unavailable')}")
     print()
     print("📊 Findings by Severity:")
     print(f"   🔴 Critical: {result.findings_by_severity['critical']}")

@@ -29,44 +29,46 @@ _logger = logging.getLogger("test_gitleaks_scanner")
 # Sample data
 # ---------------------------------------------------------------------------
 
-SAMPLE_GITLEAKS_JSON = json.dumps([
-    {
-        "Description": "AWS Access Key",
-        "StartLine": 10,
-        "EndLine": 10,
-        "StartColumn": 1,
-        "EndColumn": 40,
-        "Match": "AKIAIOSFODNN7EXAMPLE",
-        "Secret": "AKIAIOSFODNN7EXAMPLE",
-        "File": "config/settings.py",
-        "Commit": "abc1234def5678",
-        "Entropy": 3.5,
-        "Author": "developer",
-        "Email": "dev@example.com",
-        "Date": "2024-01-15",
-        "Message": "Add config",
-        "Tags": ["aws", "key"],
-        "RuleID": "aws-access-key",
-    },
-    {
-        "Description": "Generic API Key",
-        "StartLine": 25,
-        "EndLine": 25,
-        "StartColumn": 5,
-        "EndColumn": 50,
-        "Match": "api_key=sk-1234567890abcdef",
-        "Secret": "sk-1234567890abcdef",
-        "File": "src/app.py",
-        "Commit": "def5678abc1234",
-        "Entropy": 4.1,
-        "Author": "developer",
-        "Email": "dev@example.com",
-        "Date": "2024-02-20",
-        "Message": "Add API integration",
-        "Tags": ["api-key"],
-        "RuleID": "generic-api-key",
-    },
-])
+SAMPLE_GITLEAKS_JSON = json.dumps(
+    [
+        {
+            "Description": "AWS Access Key",
+            "StartLine": 10,
+            "EndLine": 10,
+            "StartColumn": 1,
+            "EndColumn": 40,
+            "Match": "AKIAIOSFODNN7EXAMPLE",
+            "Secret": "AKIAIOSFODNN7EXAMPLE",
+            "File": "config/settings.py",
+            "Commit": "abc1234def5678",
+            "Entropy": 3.5,
+            "Author": "developer",
+            "Email": "dev@example.com",
+            "Date": "2024-01-15",
+            "Message": "Add config",
+            "Tags": ["aws", "key"],
+            "RuleID": "aws-access-key",
+        },
+        {
+            "Description": "Generic API Key",
+            "StartLine": 25,
+            "EndLine": 25,
+            "StartColumn": 5,
+            "EndColumn": 50,
+            "Match": "api_key=sk-1234567890abcdef",
+            "Secret": "sk-1234567890abcdef",
+            "File": "src/app.py",
+            "Commit": "def5678abc1234",
+            "Entropy": 4.1,
+            "Author": "developer",
+            "Email": "dev@example.com",
+            "Date": "2024-02-20",
+            "Message": "Add API integration",
+            "Tags": ["api-key"],
+            "RuleID": "generic-api-key",
+        },
+    ]
+)
 
 SAMPLE_GITLEAKS_EMPTY = json.dumps([])
 
@@ -145,38 +147,40 @@ class TestGitleaksScannerParseOutput:
         assert findings == []
 
     def test_parse_invalid_json(self):
-        """Returns empty list for malformed JSON."""
+        """Rejects malformed JSON instead of reporting a clean scan."""
         scanner = self._make_scanner()
-        findings = scanner._parse_output("not json at all")
-        assert findings == []
+        with pytest.raises(ValueError):
+            scanner._parse_output("not json at all")
 
     def test_parse_skips_empty_file_path(self):
         """Skips findings with empty File field."""
         scanner = self._make_scanner()
-        data = json.dumps([
-            {
-                "Description": "Test",
-                "File": "",
-                "RuleID": "test",
-                "StartLine": 1,
-                "EndLine": 1,
-                "StartColumn": 1,
-                "EndColumn": 10,
-                "Match": "secret",
-                "Secret": "secret",
-            },
-            {
-                "Description": "Test2",
-                "File": "valid.py",
-                "RuleID": "test2",
-                "StartLine": 5,
-                "EndLine": 5,
-                "StartColumn": 1,
-                "EndColumn": 10,
-                "Match": "secret2",
-                "Secret": "secret2",
-            },
-        ])
+        data = json.dumps(
+            [
+                {
+                    "Description": "Test",
+                    "File": "",
+                    "RuleID": "test",
+                    "StartLine": 1,
+                    "EndLine": 1,
+                    "StartColumn": 1,
+                    "EndColumn": 10,
+                    "Match": "secret",
+                    "Secret": "secret",
+                },
+                {
+                    "Description": "Test2",
+                    "File": "valid.py",
+                    "RuleID": "test2",
+                    "StartLine": 5,
+                    "EndLine": 5,
+                    "StartColumn": 1,
+                    "EndColumn": 10,
+                    "Match": "secret2",
+                    "Secret": "secret2",
+                },
+            ]
+        )
         findings = scanner._parse_output(data)
         assert len(findings) == 1
         assert findings[0].file_path == "valid.py"
@@ -184,9 +188,21 @@ class TestGitleaksScannerParseOutput:
     def test_parse_skips_dot_file_path(self):
         """Skips findings with '.' as File field."""
         scanner = self._make_scanner()
-        data = json.dumps([{"File": ".", "RuleID": "test", "Description": "d",
-                            "StartLine": 1, "EndLine": 1, "StartColumn": 1,
-                            "EndColumn": 1, "Match": "m", "Secret": "s"}])
+        data = json.dumps(
+            [
+                {
+                    "File": ".",
+                    "RuleID": "test",
+                    "Description": "d",
+                    "StartLine": 1,
+                    "EndLine": 1,
+                    "StartColumn": 1,
+                    "EndColumn": 1,
+                    "Match": "m",
+                    "Secret": "s",
+                }
+            ]
+        )
         findings = scanner._parse_output(data)
         assert findings == []
 
@@ -200,8 +216,8 @@ class TestGitleaksScannerParseOutput:
     def test_parse_non_array_output(self):
         """Returns empty list when output is not an array."""
         scanner = self._make_scanner()
-        findings = scanner._parse_output('{"not": "an array"}')
-        assert findings == []
+        with pytest.raises(ValueError):
+            scanner._parse_output('{"not": "an array"}')
 
 
 class TestGitleaksScannerScan:
@@ -397,7 +413,7 @@ class TestRunGitleaks:
         assert findings == []
 
     def test_run_gitleaks_not_installed(self):
-        """Returns empty list when gitleaks is not installed."""
+        """Raises an execution error when gitleaks is not installed."""
         mock_scanner = MagicMock()
         mock_scanner.scan.return_value = {
             "tool": "gitleaks",
@@ -406,11 +422,11 @@ class TestRunGitleaks:
             "findings": [],
         }
 
-        findings = run_gitleaks(mock_scanner, "/tmp/test", _logger)
-        assert findings == []
+        with pytest.raises(RuntimeError):
+            run_gitleaks(mock_scanner, "/tmp/test", _logger)
 
     def test_run_gitleaks_scan_error(self):
-        """Returns empty list when scan returns an error."""
+        """Raises an execution error when scan returns an error."""
         mock_scanner = MagicMock()
         mock_scanner.scan.return_value = {
             "tool": "gitleaks",
@@ -419,16 +435,16 @@ class TestRunGitleaks:
             "findings": [],
         }
 
-        findings = run_gitleaks(mock_scanner, "/tmp/test", _logger)
-        assert findings == []
+        with pytest.raises(RuntimeError):
+            run_gitleaks(mock_scanner, "/tmp/test", _logger)
 
     def test_run_gitleaks_exception(self):
-        """Returns empty list when scanner raises an exception."""
+        """Raises an execution error when scanner raises an exception."""
         mock_scanner = MagicMock()
         mock_scanner.scan.side_effect = RuntimeError("Scanner crashed")
 
-        findings = run_gitleaks(mock_scanner, "/tmp/test", _logger)
-        assert findings == []
+        with pytest.raises(RuntimeError):
+            run_gitleaks(mock_scanner, "/tmp/test", _logger)
 
     def test_run_gitleaks_skips_empty_file_path(self):
         """Skips findings with empty file paths."""

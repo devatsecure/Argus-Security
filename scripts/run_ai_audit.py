@@ -30,7 +30,7 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from tenacity import before_sleep_log, retry
 
@@ -921,8 +921,8 @@ class AuditContext:
     model: str
     max_tokens: int
     circuit_breaker: Any
-    phase_gate: Optional[Any]
-    threat_model: Optional[dict]
+    phase_gate: Any | None
+    threat_model: dict | None
     files: list
     context_tracker: Any  # ContextTracker
     summarizer: Any  # FindingSummarizer
@@ -1519,6 +1519,10 @@ def _run_phase3_analysis(
 
     # Load audit instructions
     audit_command_path = Path.home() / ".argus/profiles/default/commands/audit-codebase/multi-agent/audit-codebase.md"
+    if not audit_command_path.exists():
+        from resource_paths import resource_root
+
+        audit_command_path = resource_root() / "profiles/default/commands/audit-codebase/multi-agent/audit-codebase.md"
     if audit_command_path.exists():
         with open(audit_command_path) as f:
             audit_instructions = f.read()
@@ -1913,16 +1917,11 @@ def _run_multi_agent_audit(ctx, config, repo_path, review_type):
                 category = category.strip().lower()
                 severity = severity.strip().lower()
                 if category == "any":
-                    if (
-                        severity in ctx.metrics.metrics["findings"]
-                        and ctx.metrics.metrics["findings"][severity] > 0
-                    ):
+                    if severity in ctx.metrics.metrics["findings"] and ctx.metrics.metrics["findings"][severity] > 0:
                         print(f"   ❌ FAIL: Found {ctx.metrics.metrics['findings'][severity]} {severity} issues")
                         should_fail = True
                 else:
-                    matching_findings = [
-                        f for f in findings if f["category"] == category and f["severity"] == severity
-                    ]
+                    matching_findings = [f for f in findings if f["category"] == category and f["severity"] == severity]
                     if matching_findings:
                         print(f"   ❌ FAIL: Found {len(matching_findings)} {category}:{severity} issues")
                         should_fail = True
@@ -1953,6 +1952,7 @@ def _run_single_path_audit(ctx, config):
         print(f"❌ Error during AI analysis: {e}")
         print(f"Error type: {type(e).__name__}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 

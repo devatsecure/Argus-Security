@@ -11,6 +11,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from resource_paths import resource_root
+
 
 class PolicyGate:
     """Policy engine for security gates"""
@@ -24,8 +26,7 @@ class PolicyGate:
                 self.policy_dir = policy_path
             else:
                 # Try relative to script directory
-                script_dir = Path(__file__).parent.parent
-                self.policy_dir = script_dir / policy_dir
+                self.policy_dir = resource_root() / policy_dir
         else:
             self.policy_dir = policy_path
         self._check_opa_installed()
@@ -33,67 +34,9 @@ class PolicyGate:
     def _check_opa_installed(self):
         """Check if OPA is installed"""
         try:
-            subprocess.run(["opa", "version"], capture_output=True, check=True)
-            self.opa_available = True
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            # In test environments, make OPA optional
-            import os
-
-            if os.environ.get("PYTEST_CURRENT_TEST") or os.environ.get("TESTING"):
-                self.opa_available = False
-                return
-            print("❌ Error: OPA not installed")
-            print("\nInstall OPA:")
-            print("  macOS:  brew install opa")
-            print("  Linux:  curl -L -o opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64")
-            print("          chmod +x opa && sudo mv opa /usr/local/bin/")
-            sys.exit(2)
-
-    def _fallback_policy_evaluation(self, stage, findings, metadata=None):
-        """Fallback policy evaluation when OPA is not available (for testing)"""
-        blocks = []
-        warnings = []
-        reasons = []
-
-        if stage == "pr":
-            # PR policy: Block verified secrets and critical public IAC
-            for finding in findings:
-                category = finding.get("category", "").upper()
-                severity = finding.get("severity", "").lower()
-
-                # Block verified secrets
-                if category == "SECRETS" and finding.get("secret_verified") == "true":
-                    blocks.append(finding)
-                    reasons.append(f"Verified secret detected in {finding.get('path', 'unknown')}")
-
-                # Warn on unverified secrets
-                elif category == "SECRETS" and finding.get("secret_verified") == "false":
-                    warnings.append(finding)
-
-                # Block critical IAC with public exposure
-                elif category == "IAC" and severity == "critical" and finding.get("service_tier") == "public":
-                    blocks.append(finding)
-                    reasons.append(f"Critical IAC issue with public exposure in {finding.get('path', 'unknown')}")
-
-        elif stage == "release":
-            # Release policy: Require SBOM, signature, and no critical findings
-            if metadata:
-                if not metadata.get("sbom_present", metadata.get("sbom_generated", False)):
-                    blocks.append({"type": "missing_sbom"})
-                    reasons.append("SBOM not generated")
-
-                if not metadata.get("signature_verified", True):
-                    blocks.append({"type": "missing_signature"})
-                    reasons.append("Signature not verified")
-
-            # Block any critical findings
-            for finding in findings:
-                if finding.get("severity", "").lower() == "critical":
-                    blocks.append(finding)
-                    reasons.append(f"Critical finding in {finding.get('path', 'unknown')}")
-
-        decision = "fail" if blocks else "pass"
-        return {"decision": decision, "reasons": reasons, "blocks": blocks, "warnings": warnings}
+            subprocess.run(["opa", "version"], capture_output=True, check=True, timeout=10)
+        except (subprocess.SubprocessError, OSError) as exc:
+            raise RuntimeError("OPA is required for policy evaluation; install the opa executable") from exc
 
     def evaluate(self, stage: str, findings: list[dict], metadata: dict[str, bool] = None) -> dict[str, Any]:
         """
@@ -109,10 +52,6 @@ class PolicyGate:
         """
         if stage not in ["pr", "release"]:
             raise ValueError(f"Invalid stage: {stage}. Must be 'pr' or 'release'")
-
-        # If OPA not available (e.g., in test environment), use fallback policy
-        if not getattr(self, "opa_available", True):
-            return self._fallback_policy_evaluation(stage, findings, metadata)
 
         policy_file = self.policy_dir / f"{stage}.rego"
         if not policy_file.exists():
@@ -146,19 +85,20 @@ class PolicyGate:
                 f"data.argus.{stage}.decision",
             ]
 
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=30)
 
             output = json.loads(result.stdout)
             decision = output["result"][0]["expressions"][0]["value"]
 
+            if not isinstance(decision, dict) or decision.get("decision") not in {"pass", "fail"}:
+                raise ValueError("OPA returned an invalid decision")
+            for key in ("blocks", "warnings", "reasons"):
+                if not isinstance(decision.get(key, []), list):
+                    raise ValueError(f"OPA returned invalid {key}")
             return decision
 
-        except subprocess.CalledProcessError as e:
-            print(f"❌ OPA evaluation failed: {e.stderr}")
-            sys.exit(2)
-        except Exception as e:
-            print(f"❌ Error evaluating policy: {e}")
-            sys.exit(2)
+        except (subprocess.SubprocessError, OSError, ValueError, KeyError, IndexError, TypeError) as exc:
+            raise RuntimeError("OPA policy evaluation failed") from exc
         finally:
             # Clean up temp file
             Path(input_file).unlink(missing_ok=True)
@@ -237,8 +177,12 @@ def main():
         }
 
     # Evaluate policy
-    gate = PolicyGate(policy_dir=args.policy_dir)
-    decision = gate.evaluate(args.stage, findings, metadata)
+    try:
+        gate = PolicyGate(policy_dir=args.policy_dir)
+        decision = gate.evaluate(args.stage, findings, metadata)
+    except (RuntimeError, ValueError, OSError) as exc:
+        print(f"Policy error: {exc}", file=sys.stderr)
+        sys.exit(2)
 
     # Print decision
     gate.print_decision(decision)

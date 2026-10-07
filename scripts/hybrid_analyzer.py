@@ -68,9 +68,9 @@ import os
 import sys
 import threading
 import time
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 # Ensure scripts directory is in path for imports
 SCRIPT_DIR = Path(__file__).parent
@@ -269,11 +269,11 @@ class HybridSecurityAnalyzer:
         enable_iris: bool = True,  # IRIS-style semantic analysis (arXiv 2405.17238)
         enable_nuclei_templates: bool = True,  # Nuclei source-aware DAST analysis
         enable_zap_baseline: bool = False,  # opt-in: requires ZAP binary or Docker image
-        ai_provider: Optional[str] = None,
-        dast_target_url: Optional[str] = None,
+        ai_provider: str | None = None,
+        dast_target_url: str | None = None,
         fuzzing_duration: int = 300,  # 5 minutes default
         runtime_monitoring_duration: int = 60,  # 1 minute default
-        config: Optional[dict] = None,
+        config: dict | None = None,
     ):
         """
         Initialize hybrid analyzer
@@ -325,6 +325,23 @@ class HybridSecurityAnalyzer:
         self.enable_iris = enable_iris
         self.enable_nuclei_templates = enable_nuclei_templates
         self.enable_zap_baseline = enable_zap_baseline
+        # Keep user intent even when an unavailable scanner disables itself below.
+        self.requested_scanners = {
+            "Semgrep": enable_semgrep,
+            "TruffleHog": enable_trufflehog,
+            "Gitleaks": enable_gitleaks,
+            "Trivy": enable_trivy,
+            "Checkov": enable_checkov,
+            "API-Security": enable_api_security,
+            "DAST": enable_dast,
+            "Supply-Chain": enable_supply_chain,
+            "Fuzzing": enable_fuzzing,
+            "Threat-Intel": enable_threat_intel,
+            "Runtime-Security": enable_runtime_security,
+            "Regression-Testing": enable_regression_testing,
+            "Nuclei-Templates": enable_nuclei_templates,
+            "ZAP-Baseline": enable_zap_baseline,
+        }
         self.ai_provider = ai_provider
         self.dast_target_url = dast_target_url
         self.fuzzing_duration = fuzzing_duration
@@ -395,7 +412,10 @@ class HybridSecurityAnalyzer:
         if _SKILLS_KNOWLEDGE_OK and self.config.get("enable_skills_knowledge", False):
             self.skills_knowledge = SkillsKnowledge.from_config(self.config)
             if self.skills_knowledge:
-                logger.info("✅ Skills knowledge loaded: %d cybersecurity skills available", self.skills_knowledge.index.total_skills)
+                logger.info(
+                    "✅ Skills knowledge loaded: %d cybersecurity skills available",
+                    self.skills_knowledge.index.total_skills,
+                )
 
         if self.enable_spontaneous_discovery and self.enable_ai_enrichment and self.ai_client:
             try:
@@ -759,11 +779,11 @@ class HybridSecurityAnalyzer:
             )
             if getattr(self, f"enable_{name}", False)
         ]
-        if not active_features:
+        if not active_features and not any(self.requested_scanners.values()):
             raise ValueError("At least one tool must be enabled! Use --help to see available scanner flags.")
 
     def analyze(
-        self, target_path: str, output_dir: Optional[str] = None, severity_filter: Optional[list[str]] = None
+        self, target_path: str, output_dir: str | None = None, severity_filter: list[str] | None = None
     ) -> HybridScanResult:
         """
         Run complete hybrid security analysis.
@@ -840,6 +860,8 @@ class HybridSecurityAnalyzer:
             target_path=target_path,
             analyzer=self,
         )
+        # Keep API-verified evidence independent of later AI mutation/filtering.
+        verified_evidence = [replace(f) for f in all_findings if f.secret_verified]
         phase_timings["phase1_static_analysis"] = p1_duration
         self._validate_phase(
             "phase1", {"findings": [asdict(f) for f in all_findings], "scanner_health": scanner_health}
@@ -1032,6 +1054,10 @@ class HybridSecurityAnalyzer:
         if p4_duration is not None:
             phase_timings["phase4_sandbox_validation"] = p4_duration
 
+        # Verified scanner evidence cannot be waived by an AI verdict.
+        verified_ids = {f.finding_id for f in verified_evidence}
+        all_findings = [f for f in all_findings if f.finding_id not in verified_ids] + verified_evidence
+
         # -- PHASE 5: Policy Gate + Vulnerability Chaining --
         policy_gate_result, vulnerability_chains, p5_timings = run_phase5_policy(
             all_findings=all_findings,
@@ -1052,10 +1078,8 @@ class HybridSecurityAnalyzer:
             total_cost=total_cost,
             policy_gate_result=policy_gate_result,
             vulnerability_chains=vulnerability_chains,
+            scanner_health=scanner_health,
         )
-
-        # Attach scanner health so reports can distinguish "0 findings" vs "scanner failed"
-        result.__dict__["scanner_health"] = scanner_health
 
         # -- Phase 0 cleanup: stop MCP server --
         if self._mcp_started:
@@ -1070,9 +1094,9 @@ class HybridSecurityAnalyzer:
     def _try_temporal_execution(
         self,
         target_path: str,
-        output_dir: Optional[str],
-        severity_filter: Optional[list[str]],
-    ) -> Optional[HybridScanResult]:
+        output_dir: str | None,
+        severity_filter: list[str] | None,
+    ) -> HybridScanResult | None:
         """Attempt to run the pipeline via the Temporal orchestrator.
 
         Returns a ``HybridScanResult`` if Temporal execution succeeds, or
@@ -1388,15 +1412,16 @@ class HybridSecurityAnalyzer:
     def _enrich_with_ai(self, findings: list[HybridFinding]) -> list[HybridFinding]:
         from hybrid.ai_enrichment import enrich_with_ai
 
-        return enrich_with_ai(self.ai_client, findings, self.project_context, logger,
-                              skills_knowledge=self.skills_knowledge)
+        return enrich_with_ai(
+            self.ai_client, findings, self.project_context, logger, skills_knowledge=self.skills_knowledge
+        )
 
     def _enrich_with_iris(self, findings: list[HybridFinding], target_path: str) -> list[HybridFinding]:
         from hybrid.ai_enrichment import enrich_with_iris
 
         return enrich_with_iris(self.iris_analyzer, findings, target_path, self.project_context, logger)
 
-    def _analyze_xss_output_destination(self, finding: HybridFinding) -> Optional[str]:
+    def _analyze_xss_output_destination(self, finding: HybridFinding) -> str | None:
         from hybrid.ai_enrichment import analyze_xss_output_destination
 
         return analyze_xss_output_destination(finding, "", logger)
@@ -1406,7 +1431,7 @@ class HybridSecurityAnalyzer:
 
         return build_enrichment_prompt(finding, self.project_context, finding.file_path, logger)
 
-    def _parse_ai_response(self, response: str) -> Optional[dict[str, Any]]:
+    def _parse_ai_response(self, response: str) -> dict[str, Any] | None:
         from hybrid.ai_enrichment import parse_ai_response
 
         return parse_ai_response(response, logger)

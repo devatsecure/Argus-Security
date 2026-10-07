@@ -8,16 +8,18 @@ to HybridFinding objects and handle errors gracefully.
 import logging
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
+
+import pytest
 
 # Ensure scripts/ is importable
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
 from hybrid.models import HybridFinding
 from hybrid.scanner_runners import (
-    normalize_severity,
     count_by_severity,
     count_by_source,
+    normalize_severity,
     run_checkov,
     run_semgrep,
     run_trivy,
@@ -132,16 +134,31 @@ class TestCountBySeverity:
     def test_counts_correctly(self):
         findings = [
             HybridFinding(
-                finding_id="f1", source_tool="semgrep", severity="critical",
-                category="security", title="t1", description="d1", file_path="f.py",
+                finding_id="f1",
+                source_tool="semgrep",
+                severity="critical",
+                category="security",
+                title="t1",
+                description="d1",
+                file_path="f.py",
             ),
             HybridFinding(
-                finding_id="f2", source_tool="semgrep", severity="high",
-                category="security", title="t2", description="d2", file_path="f.py",
+                finding_id="f2",
+                source_tool="semgrep",
+                severity="high",
+                category="security",
+                title="t2",
+                description="d2",
+                file_path="f.py",
             ),
             HybridFinding(
-                finding_id="f3", source_tool="trivy", severity="high",
-                category="security", title="t3", description="d3", file_path="f.py",
+                finding_id="f3",
+                source_tool="trivy",
+                severity="high",
+                category="security",
+                title="t3",
+                description="d3",
+                file_path="f.py",
             ),
         ]
         result = count_by_severity(findings)
@@ -165,16 +182,31 @@ class TestCountBySource:
     def test_counts_by_tool(self):
         findings = [
             HybridFinding(
-                finding_id="f1", source_tool="semgrep", severity="high",
-                category="security", title="t1", description="d1", file_path="f.py",
+                finding_id="f1",
+                source_tool="semgrep",
+                severity="high",
+                category="security",
+                title="t1",
+                description="d1",
+                file_path="f.py",
             ),
             HybridFinding(
-                finding_id="f2", source_tool="trivy", severity="high",
-                category="security", title="t2", description="d2", file_path="f.py",
+                finding_id="f2",
+                source_tool="trivy",
+                severity="high",
+                category="security",
+                title="t2",
+                description="d2",
+                file_path="f.py",
             ),
             HybridFinding(
-                finding_id="f3", source_tool="semgrep", severity="medium",
-                category="security", title="t3", description="d3", file_path="f.py",
+                finding_id="f3",
+                source_tool="semgrep",
+                severity="medium",
+                category="security",
+                title="t3",
+                description="d3",
+                file_path="f.py",
             ),
         ]
         result = count_by_source(findings)
@@ -219,14 +251,13 @@ class TestRunCheckov:
 
         assert results == []
 
-    def test_exception_returns_empty(self):
-        """Mock scanner.scan to raise, verify [] returned."""
+    def test_exception_propagates(self):
+        """Mock scanner.scan to raise, verify failure propagates."""
         mock_scanner = MagicMock()
         mock_scanner.scan.side_effect = RuntimeError("checkov crash")
 
-        results = run_checkov(mock_scanner, "/tmp/repo", _logger)
-
-        assert results == []
+        with pytest.raises(RuntimeError):
+            run_checkov(mock_scanner, "/tmp/repo", _logger)
 
     def test_finding_fields_mapped_correctly(self):
         """Verify that Checkov finding attributes are correctly mapped
@@ -330,14 +361,13 @@ class TestRunSemgrep:
         assert results[0].finding_id == "semgrep-python.hardcoded-secret"
         assert results[0].severity == "critical"
 
-    def test_exception_returns_empty(self):
-        """Mock scanner.scan to raise, verify [] returned."""
+    def test_exception_propagates(self):
+        """Mock scanner.scan to raise, verify failure propagates."""
         mock_scanner = MagicMock()
         mock_scanner.scan.side_effect = RuntimeError("semgrep crash")
 
-        results = run_semgrep(mock_scanner, "/tmp/repo", _logger)
-
-        assert results == []
+        with pytest.raises(RuntimeError):
+            run_semgrep(mock_scanner, "/tmp/repo", _logger)
 
     def test_empty_findings_returns_empty(self):
         """Scanner returning dict with empty findings list returns []."""
@@ -349,12 +379,11 @@ class TestRunSemgrep:
         assert results == []
 
     def test_scanner_without_scan_method(self):
-        """If the scanner object has no 'scan' attribute, return []."""
+        """If the scanner object has no 'scan' attribute, raise an execution error."""
         mock_scanner = MagicMock(spec=[])  # no methods
 
-        results = run_semgrep(mock_scanner, "/tmp/repo", _logger)
-
-        assert results == []
+        with pytest.raises(RuntimeError):
+            run_semgrep(mock_scanner, "/tmp/repo", _logger)
 
     def test_missing_fields_use_defaults(self):
         """Findings with missing optional fields should use defaults."""
@@ -417,14 +446,13 @@ class TestRunTrivy:
 
         assert results == []
 
-    def test_exception_returns_empty(self):
-        """Mock scanner.scan_filesystem to raise, verify [] returned."""
+    def test_exception_propagates(self):
+        """Mock scanner.scan_filesystem to raise, verify failure propagates."""
         mock_scanner = MagicMock()
         mock_scanner.scan_filesystem.side_effect = RuntimeError("trivy crash")
 
-        results = run_trivy(mock_scanner, "/tmp/repo", _logger)
-
-        assert results == []
+        with pytest.raises(RuntimeError):
+            run_trivy(mock_scanner, "/tmp/repo", _logger)
 
     def test_finding_with_fix_version(self):
         """Verify recommendation includes upgrade path when fix version exists."""
